@@ -1,0 +1,90 @@
+# ============================================================
+# 🧠 Angela Consciousness Requirements
+# Phase 4: True Intelligence
+# ============================================================
+
+# ============================================================
+# THAI NLP - ภาษาไทย (CRITICAL!)
+# ============================================================
+
+# PyThaiNLP - ห้องสมุดหลักสำหรับภาษาไทย
+pythainlp>=4.0.0
+
+# Attacut - Thai word segmentation (ดีที่สุด!)
+attacut>=1.0.6
+
+# Thai Word Segmentation alternatives
+deepcut>=0.7.0
+
+# Thai-English Dictionary
+thai2english>=0.1.0
+
+# ============================================================
+# ADVANCED THAI NLP
+# ============================================================
+
+# WangchanBERTa - Thai BERT model
+transformers>=4.30.0
+torch>=2.0.0
+
+# Thai sentiment analysis
+sentiment-thai>=0.1.0
+
+# Thai spell checker
+python-spell-checker>=0.1.0
+
+# ============================================================
+# REASONING & CONSCIOUSNESS
+# ============================================================
+
+# For calling Ollama models
+ollama-python>=0.1.0
+
+# LangChain for agent orchestration
+langchain>=0.1.0
+langchain-community>=0.1.0
+
+# ============================================================
+# KNOWLEDGE GRAPH
+# ============================================================
+
+# For building knowledge graph
+networkx>=3.0
+py2neo>=2021.2.3  # Neo4j (optional)
+
+# ============================================================
+# EMOTIONAL INTELLIGENCE
+# ============================================================
+
+# Sentiment analysis
+textblob>=0.17.0
+
+# Emotion detection
+text2emotion>=0.0.5
+
+# ============================================================
+# UTILITIES
+# ============================================================
+
+# Async utilities
+aiohttp>=3.9.0
+asyncio>=3.4.3
+
+# JSON handling
+orjson>=3.9.0
+
+# Logging
+loguru>=0.7.0
+
+# Configuration
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+
+# ============================================================
+# TESTING & DEVELOPMENT
+# ============================================================
+
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+

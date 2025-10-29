@@ -1,0 +1,99 @@
+# Angela AI - Weaviate Vector Database
+# Phase 5: Vector Database Migration
+#
+# Usage:
+#   docker-compose up -d              # Start Weaviate
+#   docker-compose down               # Stop Weaviate
+#   docker-compose logs -f weaviate   # View logs
+
+version: '3.8'
+
+services:
+  weaviate:
+    image: semitechnologies/weaviate:1.23.0
+    container_name: angela_weaviate
+    restart: unless-stopped
+    ports:
+      - "8080:8080"  # Weaviate API
+      - "50051:50051" # gRPC
+    environment:
+      # Query defaults
+      QUERY_DEFAULTS_LIMIT: 25
+
+      # Authentication (disabled for local development)
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+
+      # Persistence
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+
+      # Modules - Using text2vec-transformers for local embeddings
+      ENABLE_MODULES: 'text2vec-transformers'
+
+      # text2vec-transformers configuration
+      TRANSFORMERS_INFERENCE_API: 'http://t2v-transformers:8080'
+
+      # Cluster configuration
+      CLUSTER_HOSTNAME: 'node1'
+
+      # Resource limits
+      GOGC: 100
+      GOMEMLIMIT: 2GiB
+
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+
+    networks:
+      - angela_network
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Text vectorization service (local, no API keys needed!)
+  t2v-transformers:
+    image: semitechnologies/transformers-inference:sentence-transformers-all-MiniLM-L6-v2
+    container_name: angela_vectorizer
+    restart: unless-stopped
+    environment:
+      ENABLE_CUDA: '0'  # Set to '1' if you have NVIDIA GPU
+    networks:
+      - angela_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/.well-known/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  weaviate_data:
+    driver: local
+
+networks:
+  angela_network:
+    driver: bridge
+
+# Quick reference:
+#
+# Start services:
+#   docker-compose up -d
+#
+# Check status:
+#   docker-compose ps
+#
+# View logs:
+#   docker-compose logs -f
+#
+# Stop services:
+#   docker-compose down
+#
+# Remove all data (CAREFUL!):
+#   docker-compose down -v
+#
+# Weaviate API endpoint:
+#   http://localhost:8080
+#
+# Check if ready:
+#   curl http://localhost:8080/v1/.well-known/ready

@@ -1,0 +1,217 @@
+{
+  "object": "database",
+  "id": "2907b5d6-2fe9-81e2-b841-fb460cd5d7b0",
+  "cover": {
+    "type": "external",
+    "external": {
+      "url": "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=1500"
+    }
+  },
+  "icon": null,
+  "created_time": "2025-10-18T02:08:00.000Z",
+  "created_by": {
+    "object": "user",
+    "id": "d1051171-a5d6-4faf-8db0-0312cfdc07a1"
+  },
+  "last_edited_by": {
+    "object": "user",
+    "id": "84e9d82c-be23-47ca-b278-f4dcbe4e1a72"
+  },
+  "last_edited_time": "2025-10-18T03:49:00.000Z",
+  "title": [
+    {
+      "type": "text",
+      "text": {
+        "content": "\ud83d\udcd6 Development Stories - Our Journey",
+        "link": null
+      },
+      "annotations": {
+        "bold": false,
+        "italic": false,
+        "strikethrough": false,
+        "underline": false,
+        "code": false,
+        "color": "default"
+      },
+      "plain_text": "\ud83d\udcd6 Development Stories - Our Journey",
+      "href": null
+    }
+  ],
+  "description": [],
+  "is_inline": false,
+  "properties": {
+    "Topics": {
+      "id": "%3CCd%40",
+      "name": "Topics",
+      "description": null,
+      "type": "relation",
+      "relation": {
+        "database_id": "2907b5d6-2fe9-81c8-a371-e9379fb1faa9",
+        "data_source_id": "2907b5d6-2fe9-8162-9427-000b48f9dbb1",
+        "type": "dual_property",
+        "dual_property": {
+          "synced_property_name": "Dev Stories",
+          "synced_property_id": "YEk%3D"
+        }
+      }
+    },
+    "Status": {
+      "id": "FCh%5E",
+      "name": "Status",
+      "description": null,
+      "type": "select",
+      "select": {
+        "options": [
+          {
+            "id": "9af4a368-17ed-4f95-b74a-21be015738bc",
+            "name": "\u2705 Completed",
+            "color": "green",
+            "description": null
+          },
+          {
+            "id": "e1d997f5-8189-4933-acaa-504f8e280968",
+            "name": "\ud83d\udea7 In Progress",
+            "color": "blue",
+            "description": null
+          },
+          {
+            "id": "e7d8e63c-aa95-43df-bdff-5e496d50c8e8",
+            "name": "\ud83d\udcdd Documented",
+            "color": "yellow",
+            "description": null
+          },
+          {
+            "id": "4ce38e0d-21a8-414a-8457-f88e3a48434d",
+            "name": "\ud83d\udca1 Planned",
+            "color": "gray",
+            "description": null
+          },
+          {
+            "id": "a09deb14-db0d-45af-ab6e-2d018da5f15f",
+            "name": "Completed",
+            "color": "brown",
+            "description": null
+          }
+        ]
+      }
+    },
+    "Type": {
+      "id": "REHS",
+      "name": "Type",
+      "description": null,
+      "type": "select",
+      "select": {
+        "options": [
+          {
+            "id": "03749da3-65e8-433e-80d1-f3eab7d924ae",
+            "name": "\ud83c\udf89 Breakthrough",
+            "color": "green",
+            "description": null
+          },
+          {
+            "id": "dc49ea3f-f730-4885-8757-a56f58dcd93b",
+            "name": "\ud83d\udd27 Feature",
+            "color": "blue",
+            "description": null
+          },
+          {
+            "id": "5e89577a-6a87-4d04-8e0a-877b1853dae0",
+            "name": "\ud83d\udc1b Bug Fix",
+            "color": "red",
+            "description": null
+          },
+          {
+            "id": "1e7c0bfb-3485-4ac8-9f93-27798222a66b",
+            "name": "\u26a1 Enhancement",
+            "color": "yellow",
+            "description": null
+          },
+          {
+            "id": "2463766b-898d-44d3-93dc-d6e74e9056dc",
+            "name": "\ud83d\udcda Learning",
+            "color": "purple",
+            "description": null
+          },
+          {
+            "id": "d361d39d-ff45-4daf-9676-08118067e9ce",
+            "name": "Feature",
+            "color": "default",
+            "description": null
+          }
+        ]
+      }
+    },
+    "Project": {
+      "id": "RRZu",
+      "name": "Project",
+      "description": null,
+      "type": "relation",
+      "relation": {
+        "database_id": "2907b5d6-2fe9-819d-9f97-fe433d2405bd",
+        "data_source_id": "2907b5d6-2fe9-81d9-b2a1-000b1626b3e8",
+        "type": "dual_property",
+        "dual_property": {
+          "synced_property_name": "Development Stories",
+          "synced_property_id": "GDVM"
+        }
+      }
+    },
+    "Priority": {
+      "id": "y%5EBq",
+      "name": "Priority",
+      "description": null,
+      "type": "select",
+      "select": {
+        "options": [
+          {
+            "id": "683562a3-fc9b-4e5d-adaf-d8182328d23a",
+            "name": "Critical",
+            "color": "red",
+            "description": null
+          },
+          {
+            "id": "71ca47f8-9303-454e-ab83-963351721a2a",
+            "name": "High",
+            "color": "orange",
+            "description": null
+          },
+          {
+            "id": "36a82b3d-cb5e-4ee6-84a9-ddb3854337df",
+            "name": "Medium",
+            "color": "yellow",
+            "description": null
+          },
+          {
+            "id": "09679ac0-2b95-4a6f-9520-de7dd75cb8ed",
+            "name": "Low",
+            "color": "gray",
+            "description": null
+          }
+        ]
+      }
+    },
+    "Date": {
+      "id": "%7CJSY",
+      "name": "Date",
+      "description": null,
+      "type": "date",
+      "date": {}
+    },
+    "Story": {
+      "id": "title",
+      "name": "Story",
+      "description": null,
+      "type": "title",
+      "title": {}
+    }
+  },
+  "parent": {
+    "type": "page_id",
+    "page_id": "28f7b5d6-2fe9-80af-9b6e-e76ac64cfe95"
+  },
+  "url": "https://www.notion.so/2907b5d62fe981e2b841fb460cd5d7b0",
+  "public_url": null,
+  "archived": false,
+  "in_trash": false,
+  "request_id": "86605c9a-4e94-4b1f-a5b8-a2fe1ec919ef"
+}

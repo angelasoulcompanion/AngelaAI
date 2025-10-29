@@ -1,0 +1,71 @@
+# Angela AI - Python Dependencies
+# Created: 2025-10-18
+# Updated: 2025-10-28 (Code Audit & Refactor)
+# Python Version: 3.12+
+
+# ========================================
+# Database & Storage
+# ========================================
+asyncpg>=0.29.0          # Async PostgreSQL driver with connection pooling
+psycopg2-binary>=2.9.9   # PostgreSQL adapter (for migrations)
+pgvector>=0.2.0          # PostgreSQL vector extension (Python bindings)
+
+# ========================================
+# Web & API
+# ========================================
+fastapi>=0.104.0         # FastAPI framework
+uvicorn[standard]>=0.24.0  # ASGI server
+httpx>=0.25.0            # Async HTTP client
+aiohttp>=3.9.0           # Async HTTP client/server
+
+# ========================================
+# AI & Machine Learning
+# ========================================
+anthropic>=0.7.0         # Anthropic API (Claude)
+# Note: Ollama runs locally, no Python package needed
+
+# ========================================
+# Data Validation & Models
+# ========================================
+pydantic>=2.5.0          # Data validation
+pydantic-settings>=2.1.0 # Settings management
+
+# ========================================
+# Thai Language Processing
+# ========================================
+pythainlp>=4.0.0         # Thai NLP library
+python-crfsuite>=0.9.9   # CRF for Thai word segmentation
+
+# ========================================
+# Utilities
+# ========================================
+python-dotenv>=1.0.0     # Environment variables
+python-dateutil>=2.8.2   # Date/time utilities
+pytz>=2023.3             # Timezone support
+
+# ========================================
+# Development & Testing
+# ========================================
+pytest>=7.4.0            # Testing framework
+pytest-asyncio>=0.21.0   # Async testing
+rich>=13.7.0             # Beautiful terminal output
+
+# ========================================
+# Optional: macOS Integration
+# ========================================
+# PyObjC - for macOS Notes/Calendar integration
+# Install separately if needed:
+# pip install pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-EventKit
+
+# ========================================
+# Notes:
+# ========================================
+# - PostgreSQL must be installed separately
+# - Ollama must be installed separately (https://ollama.ai)
+# - pgvector extension must be enabled in PostgreSQL
+# - macOS AppleScript used for Notes/Calendar (no Python package needed)
+
+# Installation:
+# pip install -r requirements.txt
+
+# Recommended Python version: 3.12 or higher
