@@ -14,7 +14,7 @@ from typing import Dict, Set, Optional
 from datetime import datetime
 import hashlib
 
-from angela_core.knowledge_importer import KnowledgeImporter
+from angela_core.services.knowledge_importer import KnowledgeImporter
 
 logger = logging.getLogger('DocumentationMonitor')
 

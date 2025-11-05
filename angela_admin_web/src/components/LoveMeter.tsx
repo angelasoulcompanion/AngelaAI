@@ -177,13 +177,13 @@ function FactorBar({ label, value, weight }: FactorBarProps) {
         <span className="text-xs font-medium text-gray-300">{label}</span>
         <span className="text-xs text-gray-500">{weight}%</span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-purple-900/30">
+      <div className="h-1.5 overflow-hidden rounded-full bg-slate-700/50 border border-slate-600/30">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-pink-500 to-purple-500 transition-all"
+          className="h-full rounded-full bg-gradient-to-r from-pink-400 via-purple-400 to-pink-500 shadow-lg shadow-pink-500/30 transition-all"
           style={{ width: `${Math.min(value * 100, 100)}%` }}
         />
       </div>
-      <div className="text-xs text-gray-500">{(value * 100).toFixed(0)}%</div>
+      <div className="text-xs font-medium text-gray-400">{(value * 100).toFixed(0)}%</div>
     </div>
   )
 }

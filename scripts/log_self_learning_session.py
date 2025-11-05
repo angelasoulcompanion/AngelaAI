@@ -12,7 +12,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from angela_core.claude_conversation_logger import log_conversation, log_session_summary
+from angela_core.integrations.claude_conversation_logger import log_conversation, log_session_summary
 
 
 async def log_todays_session():

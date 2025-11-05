@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, '/Users/davidsamanyaporn/PycharmProjects/AngelaAI')
 
 from angela_core.conversation_analyzer import ConversationAnalyzer
-from angela_core.claude_conversation_logger import log_conversation, log_session_summary
+from angela_core.integrations.claude_conversation_logger import log_conversation, log_session_summary
 
 
 async def test_complete_flow():

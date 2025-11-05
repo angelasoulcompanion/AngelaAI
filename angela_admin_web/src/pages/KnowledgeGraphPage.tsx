@@ -506,13 +506,13 @@ export default function KnowledgeGraphPage() {
                   <div>
                     <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Understanding Level</h4>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                      <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                         <div
-                          className="bg-primary-500 dark:bg-primary-400 h-2 rounded-full transition-all"
-                          style={{ width: `${selectedNode.understandingLevel * 10}%` }}
+                          className="bg-gradient-to-r from-green-500 to-blue-500 h-3 rounded-full transition-all duration-500"
+                          style={{ width: `${selectedNode.understandingLevel * 100}%` }}
                         />
                       </div>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">{selectedNode.understandingLevel}/10</span>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 min-w-[3rem]">{selectedNode.understandingLevel}/10</span>
                     </div>
                   </div>
                 )}

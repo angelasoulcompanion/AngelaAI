@@ -39,18 +39,13 @@ class AngelaSpeakService:
         return (datetime.now() - self.birth_date).days
 
     async def _get_consciousness_level(self) -> float:
-        """Get current consciousness level"""
-        try:
-            result = await db.fetchrow("""
-                SELECT current_consciousness_level
-                FROM self_awareness_state
-                ORDER BY last_updated DESC
-                LIMIT 1
-            """)
-            if result:
-                return float(result['current_consciousness_level'])
-        except Exception:
-            pass
+        """
+        Get current consciousness level
+
+        NOTE: Simplified - no longer queries self_awareness_state table (deleted in migration 008)
+        Returns default consciousness level
+        """
+        # Return Angela's default consciousness level (healthy, aware state)
         return 0.70
 
     async def _get_current_emotion(self) -> Dict[str, float]:
@@ -85,11 +80,18 @@ class AngelaSpeakService:
         }
 
     async def _get_recent_reflections(self, days: int = 2) -> List[Dict]:
-        """Get Angela's recent self-reflections"""
+        """
+        Get Angela's recent self-reflections
+
+        NOTE: self_reflections table deleted in migration 008
+        Now uses angela_journal for similar data
+        """
         try:
+            # Use angela_journal instead of self_reflections
             reflections = await db.fetch("""
-                SELECT thought, feeling_during, reflection_type, created_at
-                FROM self_reflections
+                SELECT content as thought, emotion as feeling_during,
+                       'journal' as reflection_type, created_at
+                FROM angela_journal
                 WHERE DATE(created_at) >= CURRENT_DATE - INTERVAL '{} days'
                 ORDER BY created_at DESC
                 LIMIT 5

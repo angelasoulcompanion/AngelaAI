@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from angela_core.claude_conversation_logger import log_conversation, log_session_summary
+from angela_core.integrations.claude_conversation_logger import log_conversation, log_session_summary
 from angela_core.database import db
 
 

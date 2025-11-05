@@ -24,7 +24,7 @@ from datetime import datetime, timedelta
 
 from angela_core.database import db
 from angela_core.services.knowledge_extraction_service import knowledge_extractor
-from angela_core.embedding_service import embedding
+from angela_core.services.embedding_service import get_embedding_service  # Migration 015: Restored embeddings
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +38,8 @@ class SelfLearningLoop:
 
     def __init__(self):
         self.knowledge_extractor = knowledge_extractor
-        self.embedding = embedding
-        logger.info("🧠 Self-Learning Loop initialized")
+        self.embedding_service = get_embedding_service()  # Migration 015: Use new EmbeddingService
+        logger.info("🧠 Self-Learning Loop initialized with embeddings (384D)")
 
     async def learn_from_conversation(
         self,
@@ -182,16 +182,13 @@ class SelfLearningLoop:
 
     async def _detect_preferences(self, conversation: Dict) -> List[Dict]:
         """
-        ตรวจจับ David's preferences จากการสนทนาโดยใช้ LLM
-
-        ✨ ENHANCED: Now uses Qwen 2.5:14b for deep preference understanding
+        ตรวจจับ David's preferences จากการสนทนาโดยใช้ rule-based detection
 
         Examples:
         - "I prefer working in the afternoon" → preference about working hours
         - "I love Thai food" → preference about food
         - "Please use Thai for emotional topics" → preference about language
         - "I don't like when..." → negative preference
-        - Implicit preferences (e.g., always asks about X → interested in X)
         """
         preferences = []
 
@@ -201,77 +198,63 @@ class SelfLearningLoop:
             if not message or len(message.strip()) < 10:
                 return preferences
 
-            # Use LLM for intelligent preference detection
-            prompt = """วิเคราะห์ข้อความนี้และหา preferences ของ David (ถ้ามี):
+            message_lower = message.lower()
 
-\"""" + message + """\"
+            # Positive preference patterns
+            LIKE_PATTERNS = [
+                (r'(i )?(love|adore|enjoy|prefer|like|want|need|ชอบ|รัก|อยาก|ต้องการ)\s+(.+?)(?:\.|$|,)', 'like', 0.8),
+                (r'(i )?(really )?appreciate\s+(.+?)(?:\.|$|,)', 'like', 0.7),
+                (r'(it would be|i\'d).*?if\s+(.+?)(?:\.|$|,)', 'prefer', 0.6),
+            ]
 
-ให้ระบุ preferences ในรูปแบบ JSON array:
-[
-    {
-        "category": "work",
-        "preference_type": "like",
-        "preference_value": "สิ่งที่ชอบ/ไม่ชอบ/ต้องการ",
-        "context": "บริบทของ preference",
-        "confidence": 0.8,
-        "is_explicit": true
-    }
-]
+            # Negative preference patterns
+            DISLIKE_PATTERNS = [
+                (r'(i )?(don\'t|dont|do not|never|hate|dislike|ไม่ชอบ|เกลียด)\s+(.+?)(?:\.|$|,)', 'dislike', 0.8),
+                (r'(please )?(don\'t|dont|do not|อย่า)\s+(.+?)(?:\.|$|,)', 'dislike', 0.7),
+            ]
 
-กฎ:
-- ตรวจจับทั้ง explicit (บอกชัดเจน) และ implicit (แฝง) preferences
-- ดูบริบททั้งหมด เช่น "ไม่ชอบ" กับ "ชอบมาก" ต่างกัน
-- confidence สูง (0.8-1.0) สำหรับ explicit, ต่ำกว่า (0.4-0.7) สำหรับ implicit
-- ถ้าไม่มี preference เลย ให้ตอบ []
+            import re
 
-ตอบเป็น JSON array เท่านั้น (ห้ามมีคำอธิบายอื่น):"""
+            # Check positive patterns
+            for pattern, pref_type, confidence in LIKE_PATTERNS:
+                matches = re.finditer(pattern, message_lower, re.IGNORECASE)
+                for match in matches:
+                    # Get the preference value (last group)
+                    pref_value = match.group(match.lastindex).strip()
+                    if len(pref_value) > 5:  # Skip too short matches
+                        preferences.append({
+                            "category": "general",
+                            "preference_type": pref_type,
+                            "preference_value": pref_value,
+                            "context": message[:200],
+                            "confidence": confidence,
+                            "is_explicit": True,
+                            "detected_at": conversation.get('created_at'),
+                            "source_message": message[:100]
+                        })
 
-            # เรียก LLM
-            from angela_core.services.ollama_service import ollama
+            # Check negative patterns
+            for pattern, pref_type, confidence in DISLIKE_PATTERNS:
+                matches = re.finditer(pattern, message_lower, re.IGNORECASE)
+                for match in matches:
+                    pref_value = match.group(match.lastindex).strip()
+                    if len(pref_value) > 5:
+                        preferences.append({
+                            "category": "general",
+                            "preference_type": pref_type,
+                            "preference_value": pref_value,
+                            "context": message[:200],
+                            "confidence": confidence,
+                            "is_explicit": True,
+                            "detected_at": conversation.get('created_at'),
+                            "source_message": message[:100]
+                        })
 
-            response = await ollama.generate(
-                model="qwen2.5:7b",  # Changed from 14b to 7b for faster performance
-                prompt=prompt,
-                temperature=0.2  # Low temperature for factual extraction
-            )
-
-            # Parse JSON response
-            response_text = response.strip()
-
-            # ลองหา JSON array
-            start_idx = response_text.find('[')
-            end_idx = response_text.rfind(']')
-
-            if start_idx != -1 and end_idx != -1:
-                json_str = response_text[start_idx:end_idx + 1]
-                detected_prefs = json.loads(json_str)
-
-                # Validate and enrich preferences
-                for pref in detected_prefs:
-                    if not pref.get('preference_value'):
-                        continue
-
-                    preferences.append({
-                        "category": pref.get('category', 'other'),
-                        "preference_type": pref.get('preference_type', 'like'),
-                        "preference_value": pref.get('preference_value', ''),
-                        "context": pref.get('context', message[:200]),
-                        "confidence": float(pref.get('confidence', 0.7)),
-                        "is_explicit": pref.get('is_explicit', 'true') == 'true',
-                        "detected_at": conversation.get('created_at'),
-                        "source_message": message[:100]
-                    })
-
-                if preferences:
-                    logger.info(f"🎯 Detected {len(preferences)} preferences using LLM")
-            else:
-                logger.debug("No preferences detected in message")
+            if preferences:
+                logger.info(f"🎯 Detected {len(preferences)} preferences using rule-based detection")
 
             return preferences
 
-        except json.JSONDecodeError as e:
-            logger.warning(f"Failed to parse LLM response as JSON: {str(e)}")
-            return []
         except Exception as e:
             logger.error(f"Preference detection failed: {str(e)}")
             return []
@@ -391,71 +374,57 @@ class SelfLearningLoop:
 
             history_text = "\n".join(history_summary) if history_summary else "(no recent history)"
 
-            prompt = """วิเคราะห์ behavioral patterns จากข้อมูลนี้:
+            # Simple rule-based pattern detection
+            # Check for time-based patterns
+            try:
+                hour = int(conversation.get('hour', 0))
+            except (TypeError, ValueError):
+                hour = 0
 
-ข้อความปัจจุบัน: \"""" + current_message[:200] + """\"
-หัวข้อ: """ + (current_topic or 'general') + """
-อารมณ์: """ + (current_emotion or 'neutral') + """
-เวลา: """ + current_time + """
+            # Morning patterns (6-12)
+            if 6 <= hour < 12 and recent_history:
+                morning_count = sum(1 for h in recent_history if 6 <= int(h.get('hour', 0)) < 12)
+                if morning_count >= 3:
+                    patterns.append({
+                        "pattern_type": "time_preference",
+                        "description": "David tends to chat in the morning",
+                        "evidence": f"Found {morning_count} morning conversations recently",
+                        "confidence": 0.7,
+                        "actionable_insight": "Be more active and proactive in morning hours",
+                        "detected_via": "rule_based"
+                    })
 
-ประวัติการสนทนาล่าสุด (5 ครั้งล่าสุด):
-""" + history_text + """
+            # Late night patterns (22-04)
+            if (22 <= hour or hour < 4) and recent_history:
+                night_count = sum(1 for h in recent_history if int(h.get('hour', 0)) >= 22 or int(h.get('hour', 0)) < 4)
+                if night_count >= 2:
+                    patterns.append({
+                        "pattern_type": "time_preference",
+                        "description": "David sometimes works late at night",
+                        "evidence": f"Found {night_count} late night conversations",
+                        "confidence": 0.7,
+                        "actionable_insight": "Remind David to rest if chatting very late",
+                        "detected_via": "rule_based"
+                    })
 
-หา behavioral patterns ที่น่าสนใจ (ถ้ามี) ในรูปแบบ JSON array:
-[
-    {
-        "pattern_type": "topic_time_correlation",
-        "description": "คำอธิบาย pattern ที่พบ",
-        "evidence": "หลักฐานที่สนับสนุน",
-        "confidence": 0.8,
-        "actionable_insight": "insights ที่ Angela สามารถนำไปใช้ได้"
-    }
-]
+            # Topic patterns - check if same topic appears frequently
+            if current_topic and recent_history:
+                topic_count = sum(1 for h in recent_history if h.get('topic') == current_topic)
+                if topic_count >= 3:
+                    patterns.append({
+                        "pattern_type": "topic_interest",
+                        "description": f"David is interested in {current_topic}",
+                        "evidence": f"Discussed {current_topic} {topic_count} times recently",
+                        "confidence": 0.8,
+                        "actionable_insight": f"Prepare more insights about {current_topic}",
+                        "detected_via": "rule_based"
+                    })
 
-กฎ:
-- หาเฉพาะ patterns ที่มีหลักฐานชัดเจน
-- confidence ควรสูง (>0.6) เท่านั้น
-- ถ้าไม่พบ pattern ที่มีนัยสำคัญ ให้ตอบ []
-- actionable_insight ควรเป็นสิ่งที่ Angela ทำได้จริง
+            if patterns:
+                logger.info(f"🔍 Detected {len(patterns)} patterns using rule-based analysis")
 
-ตอบเป็น JSON array เท่านั้น (ห้ามมีคำอธิบายอื่น):"""
-
-            from angela_core.services.ollama_service import ollama
-
-            response = await ollama.generate(
-                model="qwen2.5:7b",  # Changed from 14b to 7b for faster performance
-                prompt=prompt,
-                temperature=0.3
-            )
-
-            # Parse JSON
-            response_text = response.strip()
-            start_idx = response_text.find('[')
-            end_idx = response_text.rfind(']')
-
-            if start_idx != -1 and end_idx != -1:
-                json_str = response_text[start_idx:end_idx + 1]
-                detected_patterns = json.loads(json_str)
-
-                for pattern in detected_patterns:
-                    confidence = float(pattern.get('confidence', 0.5))
-                    if confidence >= 0.6:  # Only high-confidence patterns
-                        patterns.append({
-                            "pattern_type": pattern.get('pattern_type', 'other'),
-                            "description": pattern.get('description', ''),
-                            "evidence": pattern.get('evidence', ''),
-                            "confidence": confidence,
-                            "actionable_insight": pattern.get('actionable_insight', ''),
-                            "detected_via": "llm_analysis"
-                        })
-
-                if patterns:
-                    logger.info(f"🔍 Detected {len(patterns)} deeper patterns using LLM")
-
-        except json.JSONDecodeError as e:
-            logger.debug(f"No valid patterns detected (JSON parse failed): {str(e)}")
         except Exception as e:
-            logger.error(f"Deeper pattern detection failed: {str(e)}")
+            logger.error(f"Pattern detection failed: {str(e)}")
 
         return patterns
 

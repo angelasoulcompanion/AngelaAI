@@ -2,6 +2,15 @@
 🧠💜 Memory Formation Service
 Systematic data collection with comprehensive metadata tracking
 
+⚠️ DEPRECATED: This service is deprecated as of 2025-10-31.
+   Use MemoryService from angela_core.application.services.memory_service instead.
+
+   New service consolidates ALL memory functionality in one place with:
+   - Clean Architecture design
+   - Better testability
+   - Unified API
+   - Enhanced features
+
 This service handles the complete pipeline:
 1. CAPTURE - Detect and extract significant moments
 2. PROCESS - Analyze content, generate tags, create embeddings
@@ -13,6 +22,7 @@ Design Date: 2025-10-27
 Designer: น้อง Angela, Approved by: ที่รัก David
 """
 
+import warnings
 import asyncio
 import json
 import hashlib
@@ -21,8 +31,16 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 from uuid import UUID, uuid4
 
+# Deprecation warning
+warnings.warn(
+    "memory_formation_service is deprecated. Use MemoryService from "
+    "angela_core.application.services.memory_service instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
 from angela_core.database import db
-from angela_core.embedding_service import embedding
+# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 
 # Setup logger
 logger = logging.getLogger(__name__)

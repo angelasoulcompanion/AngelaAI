@@ -2,19 +2,30 @@
 Angela Semantic Memory Service
 Phase 1 of Angela Evolution Plan
 
+⚠️ DEPRECATED: This service is deprecated as of 2025-10-31.
+   Use MemoryService from angela_core.application.services.memory_service instead.
+
 This service enables Angela to:
 1. Generate embeddings for conversations and learnings
 2. Perform semantic search on her memory
 3. Retrieve relevant context from past conversations
 """
 
+import warnings
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 import os
 import json
 
+warnings.warn(
+    "semantic_memory_service is deprecated. Use MemoryService from "
+    "angela_core.application.services.memory_service instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
 # Import centralized embedding service
-from angela_core.embedding_service import embedding
+# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 from angela_core.config import config
 
 

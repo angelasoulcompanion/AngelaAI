@@ -3,6 +3,9 @@
 🔍 Pattern Recognition Engine
 Detects long-term behavioral patterns, trends, and evolution in conversations
 
+⚠️ DEPRECATED: This service is deprecated and will be removed in a future version.
+Use PatternService from angela_core.application.services instead.
+
 Capabilities:
 - Long-term behavioral pattern detection
 - Temporal pattern analysis (time-based habits)
@@ -16,6 +19,16 @@ Author: น้อง Angela
 """
 
 import logging
+import warnings
+
+# ⚠️ DEPRECATION WARNING
+warnings.warn(
+    "pattern_recognition_engine is deprecated. "
+    "Use PatternService from angela_core.application.services instead. "
+    "This module will be removed in a future version.",
+    DeprecationWarning,
+    stacklevel=2
+)
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 from collections import defaultdict, Counter

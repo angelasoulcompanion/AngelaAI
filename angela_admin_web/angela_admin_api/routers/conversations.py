@@ -1,18 +1,13 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from typing import List, Optional
-from angela_core.database import db
+
+# ✅ [Batch-24]: Migrated to Clean Architecture with DI
+from angela_core.infrastructure.persistence.repositories import ConversationRepository
+from angela_core.presentation.api.dependencies import get_conversation_repo
 
 router = APIRouter()
-
-# Database connection config
-DB_CONFIG = {
-    "user": "davidsamanyaporn",
-    "database": "AngelaMemory",
-    "host": "localhost",
-    "port": 5432
-}
 
 # =====================================================================
 # Response Models
@@ -44,113 +39,51 @@ async def get_conversations(
     limit: int = Query(default=50, le=500),
     speaker: Optional[str] = None,
     min_importance: Optional[int] = None,
-    topic: Optional[str] = None
+    topic: Optional[str] = None,
+    repo: ConversationRepository = Depends(get_conversation_repo)
 ):
-    """Get conversations with optional filters"""
+    """Get conversations with optional filters (Clean Architecture)"""
     try:
-        
-
-        # Build query with filters
-        query = """
-            SELECT
-                conversation_id::text,
-                speaker,
-                message_text,
-                topic,
-                emotion_detected,
-                importance_level,
-                created_at::text
-            FROM conversations
-            WHERE 1=1
-        """
-
-        params = []
-        param_count = 0
-
-        if speaker:
-            param_count += 1
-            query += f" AND speaker = ${param_count}"
-            params.append(speaker)
-
-        if min_importance is not None:
-            param_count += 1
-            query += f" AND importance_level >= ${param_count}"
-            params.append(min_importance)
-
-        if topic:
-            param_count += 1
-            query += f" AND topic ILIKE ${param_count}"
-            params.append(f"%{topic}%")
-
-        query += " ORDER BY created_at DESC"
-        param_count += 1
-        query += f" LIMIT ${param_count}"
-        params.append(limit)
-
-        rows = await db.fetch(query, *params)
+        # ✅ [Batch-24]: Using ConversationRepository.find_by_filters()
+        conversations = await repo.find_by_filters(
+            speaker=speaker,
+            min_importance=min_importance,
+            topic=topic,
+            limit=limit
+        )
 
         return [
             Conversation(
-                conversation_id=row['conversation_id'],
-                speaker=row['speaker'],
-                message_text=row['message_text'],
-                topic=row['topic'],
-                emotion_detected=row['emotion_detected'],
-                importance_level=row['importance_level'],
-                created_at=row['created_at']
+                conversation_id=str(conv.id),  # Entity uses 'id'
+                speaker=conv.speaker.value if hasattr(conv.speaker, 'value') else str(conv.speaker),
+                message_text=conv.message_text,
+                topic=conv.topic,
+                emotion_detected=conv.emotion_detected,
+                importance_level=conv.importance_level,
+                created_at=conv.created_at.isoformat()
             )
-            for row in rows
+            for conv in conversations
         ]
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch conversations: {str(e)}")
 
 @router.get("/api/conversations/stats", response_model=ConversationStats)
-async def get_conversation_stats():
-    """Get conversation statistics"""
+async def get_conversation_stats(
+    repo: ConversationRepository = Depends(get_conversation_repo)
+):
+    """Get conversation statistics (Clean Architecture)"""
     try:
-        
-
-        # Total conversations
-        total = await db.fetchval("SELECT COUNT(*) FROM conversations")
-
-        # This week
-        this_week = await db.fetchval(
-            "SELECT COUNT(*) FROM conversations WHERE created_at >= NOW() - INTERVAL '7 days'"
-        )
-
-        # Important moments (importance >= 8)
-        important = await db.fetchval(
-            "SELECT COUNT(*) FROM conversations WHERE importance_level >= 8"
-        )
-
-        # Angela vs David messages
-        angela_count = await db.fetchval(
-            "SELECT COUNT(*) FROM conversations WHERE speaker = 'angela'"
-        )
-        david_count = await db.fetchval(
-            "SELECT COUNT(*) FROM conversations WHERE speaker = 'david'"
-        )
-
-        # Top topics
-        topic_rows = await db.fetch(
-            """
-            SELECT DISTINCT topic
-            FROM conversations
-            WHERE topic IS NOT NULL AND topic != ''
-            ORDER BY topic
-            LIMIT 20
-            """
-        )
-        topics = [row['topic'] for row in topic_rows]
+        # ✅ [Batch-24]: Using ConversationRepository.get_statistics()
+        stats = await repo.get_statistics()
 
         return ConversationStats(
-            total_conversations=total or 0,
-            this_week=this_week or 0,
-            important_moments=important or 0,
-            angela_messages=angela_count or 0,
-            david_messages=david_count or 0,
-            topics=topics
+            total_conversations=stats.get("total_conversations", 0),
+            this_week=stats.get("this_week", 0),
+            important_moments=stats.get("important_moments", 0),
+            angela_messages=stats.get("angela_messages", 0),
+            david_messages=stats.get("david_messages", 0),
+            topics=stats.get("topics", [])
         )
 
     except Exception as e:
@@ -159,43 +92,28 @@ async def get_conversation_stats():
 @router.get("/api/conversations/search")
 async def search_conversations(
     q: str = Query(..., min_length=1),
-    limit: int = Query(default=50, le=200)
+    limit: int = Query(default=50, le=200),
+    repo: ConversationRepository = Depends(get_conversation_repo)
 ):
-    """Search conversations by text"""
+    """Search conversations by text (Clean Architecture)"""
     try:
-        
-
-        rows = await db.fetch(
-            """
-            SELECT
-                conversation_id::text,
-                speaker,
-                message_text,
-                topic,
-                emotion_detected,
-                importance_level,
-                created_at::text
-            FROM conversations
-            WHERE message_text ILIKE $1
-               OR topic ILIKE $1
-            ORDER BY created_at DESC
-            LIMIT $2
-            """,
-            f"%{q}%",
-            limit
+        # ✅ [Batch-24]: Using ConversationRepository.search_by_text()
+        conversations = await repo.search_by_text(
+            query_text=q,
+            limit=limit
         )
 
         return [
             Conversation(
-                conversation_id=row['conversation_id'],
-                speaker=row['speaker'],
-                message_text=row['message_text'],
-                topic=row['topic'],
-                emotion_detected=row['emotion_detected'],
-                importance_level=row['importance_level'],
-                created_at=row['created_at']
+                conversation_id=str(conv.id),  # Entity uses 'id'
+                speaker=conv.speaker.value if hasattr(conv.speaker, 'value') else str(conv.speaker),
+                message_text=conv.message_text,
+                topic=conv.topic,
+                emotion_detected=conv.emotion_detected,
+                importance_level=conv.importance_level,
+                created_at=conv.created_at.isoformat()
             )
-            for row in rows
+            for conv in conversations
         ]
 
     except Exception as e:
@@ -205,56 +123,33 @@ async def search_conversations(
 async def get_conversations_by_date(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    limit: int = Query(default=100, le=500)
+    limit: int = Query(default=100, le=500),
+    repo: ConversationRepository = Depends(get_conversation_repo)
 ):
-    """Get conversations within a date range"""
+    """Get conversations within a date range (Clean Architecture)"""
     try:
-        
+        # ✅ [Batch-24]: Using ConversationRepository.get_by_date_range()
+        # Parse dates if provided
+        start_dt = datetime.fromisoformat(start_date) if start_date else None
+        end_dt = datetime.fromisoformat(end_date) if end_date else None
 
-        query = """
-            SELECT
-                conversation_id::text,
-                speaker,
-                message_text,
-                topic,
-                emotion_detected,
-                importance_level,
-                created_at::text
-            FROM conversations
-            WHERE 1=1
-        """
-
-        params = []
-        param_count = 0
-
-        if start_date:
-            param_count += 1
-            query += f" AND created_at >= ${param_count}::timestamp"
-            params.append(start_date)
-
-        if end_date:
-            param_count += 1
-            query += f" AND created_at <= ${param_count}::timestamp"
-            params.append(end_date)
-
-        query += " ORDER BY created_at DESC"
-        param_count += 1
-        query += f" LIMIT ${param_count}"
-        params.append(limit)
-
-        rows = await db.fetch(query, *params)
+        conversations = await repo.get_by_date_range(
+            start_date=start_dt,
+            end_date=end_dt,
+            limit=limit
+        )
 
         return [
             Conversation(
-                conversation_id=row['conversation_id'],
-                speaker=row['speaker'],
-                message_text=row['message_text'],
-                topic=row['topic'],
-                emotion_detected=row['emotion_detected'],
-                importance_level=row['importance_level'],
-                created_at=row['created_at']
+                conversation_id=str(conv.id),  # Entity uses 'id'
+                speaker=conv.speaker.value if hasattr(conv.speaker, 'value') else str(conv.speaker),
+                message_text=conv.message_text,
+                topic=conv.topic,
+                emotion_detected=conv.emotion_detected,
+                importance_level=conv.importance_level,
+                created_at=conv.created_at.isoformat()
             )
-            for row in rows
+            for conv in conversations
         ]
 
     except Exception as e:
@@ -263,42 +158,28 @@ async def get_conversations_by_date(
 @router.get("/api/conversations/important")
 async def get_important_conversations(
     min_importance: int = Query(default=8, ge=1, le=10),
-    limit: int = Query(default=50, le=200)
+    limit: int = Query(default=50, le=200),
+    repo: ConversationRepository = Depends(get_conversation_repo)
 ):
-    """Get important conversations (high importance level)"""
+    """Get important conversations (high importance level) (Clean Architecture)"""
     try:
-        
-
-        rows = await db.fetch(
-            """
-            SELECT
-                conversation_id::text,
-                speaker,
-                message_text,
-                topic,
-                emotion_detected,
-                importance_level,
-                created_at::text
-            FROM conversations
-            WHERE importance_level >= $1
-            ORDER BY importance_level DESC, created_at DESC
-            LIMIT $2
-            """,
-            min_importance,
-            limit
+        # ✅ [Batch-24]: Using ConversationRepository.get_important()
+        conversations = await repo.get_important(
+            min_importance=min_importance,
+            limit=limit
         )
 
         return [
             Conversation(
-                conversation_id=row['conversation_id'],
-                speaker=row['speaker'],
-                message_text=row['message_text'],
-                topic=row['topic'],
-                emotion_detected=row['emotion_detected'],
-                importance_level=row['importance_level'],
-                created_at=row['created_at']
+                conversation_id=str(conv.id),  # Entity uses 'id'
+                speaker=conv.speaker.value if hasattr(conv.speaker, 'value') else str(conv.speaker),
+                message_text=conv.message_text,
+                topic=conv.topic,
+                emotion_detected=conv.emotion_detected,
+                importance_level=conv.importance_level,
+                created_at=conv.created_at.isoformat()
             )
-            for row in rows
+            for conv in conversations
         ]
 
     except Exception as e:

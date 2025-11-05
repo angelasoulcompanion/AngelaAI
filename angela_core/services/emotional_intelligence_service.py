@@ -2,6 +2,13 @@
 Angela Emotional Intelligence Service
 Phase 2 of Angela Evolution Plan - COMPLETE
 
+⚠️ DEPRECATION WARNING ⚠️
+This service has been migrated to Clean Architecture:
+    New location: angela_core.application.services.emotional_intelligence_service
+    This file is kept for backward compatibility only.
+    Please update your imports to use the new service.
+    Migration: Batch-15 (2025-10-31)
+
 This service enables Angela to:
 1. Advanced multi-dimensional emotion detection
 2. Emotion prediction based on context
@@ -18,7 +25,7 @@ import httpx
 import json
 
 # Import centralized embedding service
-from angela_core.embedding_service import embedding
+# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 from angela_core.config import config
 
 

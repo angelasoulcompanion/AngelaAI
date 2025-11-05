@@ -1,17 +1,19 @@
 import { NavLink } from 'react-router-dom'
-import { Heart, BookOpen, FileText, Network, BarChart3, MessageSquare, MessageCircle, Files, Database } from 'lucide-react'
+import { Heart, BookOpen, Network, BarChart3, MessageSquare, Brain, Lightbulb, Camera, Sparkles } from 'lucide-react'
 import ThemeToggle from '@/components/ThemeToggle'
 
 const navItems = [
   { to: '/', icon: BarChart3, label: 'Dashboard' },
-  { to: '/chat', icon: MessageCircle, label: '💜 Chat with Angela' },
-  { to: '/documents', icon: Files, label: '📚 Documents' },
+  { to: '/quick-capture', icon: Sparkles, label: '💜 Quick Capture', highlight: true },
+  { to: '/second-brain', icon: Brain, label: 'Second Brain' },
+  { to: '/self-learning', icon: Lightbulb, label: 'Self-Learning' },
+  { to: '/shared-experiences', icon: Camera, label: 'Shared Experiences' },
   { to: '/emotions', icon: Heart, label: 'Emotions' },
   { to: '/angela-speak', icon: MessageSquare, label: 'Angela Speak' },
   { to: '/knowledge-graph', icon: Network, label: 'Knowledge Graph' },
   { to: '/journal', icon: BookOpen, label: 'Journal' },
   { to: '/conversations', icon: MessageSquare, label: 'Conversations' },
-  { to: '/models', icon: Database, label: '🤖 Models' },
+  // Removed: Chat, Models, Documents (deprecated - not used)
 ]
 
 export default function Sidebar() {
@@ -35,8 +37,12 @@ export default function Sidebar() {
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                item.highlight
+                  ? isActive
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
+                    : 'bg-gradient-to-r from-purple-500/10 to-pink-500/10 text-purple-600 dark:text-purple-400 hover:from-purple-500/20 hover:to-pink-500/20 border border-purple-500/30'
+                  : isActive
                   ? 'bg-purple-600 text-white shadow-md'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-gray-800'
               }`

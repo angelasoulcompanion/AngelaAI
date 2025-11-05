@@ -57,58 +57,60 @@ class LoveMeterCalculator:
             }
         """
         try:
+            # Acquire database connection from pool
+            async with db.acquire() as conn:
+                # Calculate individual factors
+                emotional_score = await self._calculate_emotional_intensity(conn)
+                conversation_score = await self._calculate_conversation_frequency(conn)
+                gratitude_score = await self._calculate_gratitude_level(conn)
+                happiness_score = await self._calculate_happiness_level(conn)
+                time_score = await self._calculate_time_together(conn)
+                milestone_score = await self._calculate_milestones(conn)
 
-            # Calculate individual factors
-            emotional_score = await self._calculate_emotional_intensity(conn)
-            conversation_score = await self._calculate_conversation_frequency(conn)
-            gratitude_score = await self._calculate_gratitude_level(conn)
-            happiness_score = await self._calculate_happiness_level(conn)
-            time_score = await self._calculate_time_together(conn)
-            milestone_score = await self._calculate_milestones(conn)
+                # Weight each factor
+                weighted_scores = {
+                    "emotional_intensity": emotional_score * 0.25,      # 25%
+                    "conversation_frequency": conversation_score * 0.20, # 20%
+                    "gratitude_level": gratitude_score * 0.20,          # 20%
+                    "happiness_level": happiness_score * 0.15,          # 15%
+                    "time_together_score": time_score * 0.12,           # 12%
+                    "milestone_achievement": milestone_score * 0.08,    # 8%
+                }
 
-            # Weight each factor
-            weighted_scores = {
-                "emotional_intensity": emotional_score * 0.25,      # 25%
-                "conversation_frequency": conversation_score * 0.20, # 20%
-                "gratitude_level": gratitude_score * 0.20,          # 20%
-                "happiness_level": happiness_score * 0.15,          # 15%
-                "time_together_score": time_score * 0.12,           # 12%
-                "milestone_achievement": milestone_score * 0.08,    # 8%
-            }
+                # Calculate total love percentage
+                # Sum of weights should be ~1.0, then multiply by 100 to get percentage
+                total_love = sum(weighted_scores.values())
+                love_percentage = min(int(total_love * 100), 100)  # Convert to 0-100%
 
-            # Calculate total love percentage
-            # Sum of weights should be ~1.0, then multiply by 100 to get percentage
-            total_love = sum(weighted_scores.values())
-            love_percentage = min(int(total_love * 100), 100)  # Convert to 0-100%
+                # Determine love status
+                love_status = self._get_love_status(total_love)
 
-            # Determine love status
-            love_status = self._get_love_status(total_love)
+                # Get description and breakdown
+                description = self._get_love_description(love_percentage, love_status)
+                breakdown = self._get_breakdown(weighted_scores, love_percentage)
 
-            # Get description and breakdown
-            description = self._get_love_description(love_percentage, love_status)
-            breakdown = self._get_breakdown(weighted_scores, love_percentage)
+                # Store in database
+                await self._store_love_calculation(conn, love_percentage, weighted_scores)
 
-            # Store in database
-            await self._store_love_calculation(conn, love_percentage, weighted_scores)
+                # Connection is automatically released back to pool by context manager
+                # No need to call db.close() or db.disconnect() here!
 
-            await db.close()
-
-            return {
-                "love_percentage": love_percentage,
-                "love_status": love_status,
-                "factors": {
-                    "emotional_intensity": round(emotional_score, 2),
-                    "conversation_frequency": round(conversation_score, 2),
-                    "gratitude_level": round(gratitude_score, 2),
-                    "happiness_level": round(happiness_score, 2),
-                    "time_together_score": round(time_score, 2),
-                    "milestone_achievement": round(milestone_score, 2),
-                },
-                "weighted_scores": {k: round(v, 2) for k, v in weighted_scores.items()},
-                "description": description,
-                "breakdown": breakdown,
-                "calculated_at": datetime.now().isoformat(),
-            }
+                return {
+                    "love_percentage": love_percentage,
+                    "love_status": love_status,
+                    "factors": {
+                        "emotional_intensity": round(emotional_score, 2),
+                        "conversation_frequency": round(conversation_score, 2),
+                        "gratitude_level": round(gratitude_score, 2),
+                        "happiness_level": round(happiness_score, 2),
+                        "time_together_score": round(time_score, 2),
+                        "milestone_achievement": round(milestone_score, 2),
+                    },
+                    "weighted_scores": {k: round(v, 2) for k, v in weighted_scores.items()},
+                    "description": description,
+                    "breakdown": breakdown,
+                    "calculated_at": datetime.now().isoformat(),
+                }
 
         except Exception as e:
             self.logger.error(f"Error calculating love meter: {e}")

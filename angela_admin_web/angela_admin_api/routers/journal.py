@@ -1,18 +1,18 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from datetime import datetime, date
 from typing import List, Optional
-from angela_core.database import db
+from uuid import UUID
+
+# Batch-23: Journal Router - FULLY MIGRATED to DI! ✅
+# Migration completed: November 3, 2025 04:00 AM
+# All endpoints now use Clean Architecture with Dependency Injection
+
+from angela_core.presentation.api.dependencies import get_journal_repo
+from angela_core.infrastructure.persistence.repositories import JournalRepository
+from angela_core.domain.entities.journal import Journal
 
 router = APIRouter()
-
-# Database connection config
-DB_CONFIG = {
-    "user": "davidsamanyaporn",
-    "database": "AngelaMemory",
-    "host": "localhost",
-    "port": 5432
-}
 
 # =====================================================================
 # Response Models
@@ -50,101 +50,74 @@ class JournalEntryCreate(BaseModel):
 # =====================================================================
 
 @router.get("/api/journal", response_model=List[JournalEntry])
-async def get_journal_entries(limit: int = 30):
-    """Get journal entries"""
-    try:
-        
+async def get_journal_entries(
+    limit: int = 30,
+    journal_repo: JournalRepository = Depends(get_journal_repo)
+):
+    """
+    Get journal entries.
 
-        rows = await db.fetch(
-            """
-            SELECT
-                entry_id::text,
-                entry_date::text,
-                title,
-                content,
-                emotion,
-                mood_score,
-                gratitude,
-                learning_moments,
-                challenges,
-                wins,
-                is_private,
-                created_at::text,
-                updated_at::text
-            FROM angela_journal
-            ORDER BY entry_date DESC
-            LIMIT $1
-            """,
-            limit
-        )
+    Batch-23: ✅ Fully migrated to use DI repositories!
+    Uses: JournalRepository.get_all()
+    """
+    try:
+        # ✅ Using JournalRepository (Clean Architecture!)
+        journals = await journal_repo.get_all(limit=limit, order_by="entry_date", order_desc=True)
 
         return [
             JournalEntry(
-                entry_id=row['entry_id'],
-                entry_date=row['entry_date'],
-                title=row['title'],
-                content=row['content'],
-                emotion=row['emotion'],
-                mood_score=row['mood_score'],
-                gratitude=list(row['gratitude']) if row['gratitude'] else None,
-                learning_moments=list(row['learning_moments']) if row['learning_moments'] else None,
-                challenges=list(row['challenges']) if row['challenges'] else None,
-                wins=list(row['wins']) if row['wins'] else None,
-                is_private=row['is_private'],
-                created_at=row['created_at'],
-                updated_at=row['updated_at']
+                entry_id=str(journal.entry_id),
+                entry_date=journal.entry_date.isoformat(),
+                title=journal.title,
+                content=journal.content,
+                emotion=journal.emotion,
+                mood_score=journal.mood_score,
+                gratitude=journal.gratitude,
+                learning_moments=journal.learning_moments,
+                challenges=journal.challenges,
+                wins=journal.wins,
+                is_private=journal.is_private,
+                created_at=journal.created_at.isoformat(),
+                updated_at=journal.updated_at.isoformat()
             )
-            for row in rows
+            for journal in journals
         ]
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch journal entries: {str(e)}")
 
 @router.get("/api/journal/{entry_id}", response_model=JournalEntry)
-async def get_journal_entry(entry_id: str):
-    """Get a specific journal entry"""
+async def get_journal_entry(
+    entry_id: str,
+    journal_repo: JournalRepository = Depends(get_journal_repo)
+):
+    """
+    Get a specific journal entry.
+
+    Batch-23: ✅ Fully migrated to use DI repositories!
+    Uses: JournalRepository.get_by_id()
+    """
     try:
-        
+        # ✅ Using JournalRepository (Clean Architecture!)
+        journal = await journal_repo.get_by_id(UUID(entry_id))
 
-        row = await db.fetchrow(
-            """
-            SELECT
-                entry_id::text,
-                entry_date::text,
-                title,
-                content,
-                emotion,
-                mood_score,
-                gratitude,
-                learning_moments,
-                challenges,
-                wins,
-                is_private,
-                created_at::text,
-                updated_at::text
-            FROM angela_journal
-            WHERE entry_id = $1::uuid
-            """,
-            entry_id
-        )
-
-        if not row:
+        if not journal:
             raise HTTPException(status_code=404, detail="Journal entry not found")
 
         return JournalEntry(
-            entry_id=row['entry_id'],
-            entry_date=row['entry_date'],
-            title=row['title'],
-            content=row['content'],
-            emotion=row['emotion'],
-            mood_score=row['mood_score'],
-            gratitude=list(row['gratitude']) if row['gratitude'] else None,
-            learning_moments=list(row['learning_moments']) if row['learning_moments'] else None,
-            challenges=list(row['challenges']) if row['challenges'] else None,
-            wins=list(row['wins']) if row['wins'] else None,
-            is_private=row['is_private'],
-            created_at=row['created_at'],
-            updated_at=row['updated_at']
+            entry_id=str(journal.entry_id),
+            entry_date=journal.entry_date.isoformat(),
+            title=journal.title,
+            content=journal.content,
+            emotion=journal.emotion,
+            mood_score=journal.mood_score,
+            gratitude=journal.gratitude,
+            learning_moments=journal.learning_moments,
+            challenges=journal.challenges,
+            wins=journal.wins,
+            is_private=journal.is_private,
+            created_at=journal.created_at.isoformat(),
+            updated_at=journal.updated_at.isoformat()
         )
 
     except HTTPException:
@@ -153,139 +126,109 @@ async def get_journal_entry(entry_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to fetch journal entry: {str(e)}")
 
 @router.post("/api/journal", response_model=JournalEntry)
-async def create_journal_entry(entry: JournalEntryCreate):
-    """Create a new journal entry"""
-    try:
-        
+async def create_journal_entry(
+    entry: JournalEntryCreate,
+    journal_repo: JournalRepository = Depends(get_journal_repo)
+):
+    """
+    Create a new journal entry.
 
-        row = await db.fetchrow(
-            """
-            INSERT INTO angela_journal (
-                entry_date,
-                title,
-                content,
-                emotion,
-                mood_score,
-                gratitude,
-                learning_moments,
-                challenges,
-                wins,
-                is_private
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            RETURNING
-                entry_id::text,
-                entry_date::text,
-                title,
-                content,
-                emotion,
-                mood_score,
-                gratitude,
-                learning_moments,
-                challenges,
-                wins,
-                is_private,
-                created_at::text,
-                updated_at::text
-            """,
-            entry.entry_date,
-            entry.title,
-            entry.content,
-            entry.emotion,
-            entry.mood_score,
-            entry.gratitude,
-            entry.learning_moments,
-            entry.challenges,
-            entry.wins,
-            entry.is_private
+    Batch-23: ✅ Fully migrated to use DI repositories!
+    Uses: JournalRepository.create()
+    """
+    try:
+        # ✅ Using JournalRepository (Clean Architecture!)
+        # Parse entry_date string to date object
+        entry_date_obj = datetime.fromisoformat(entry.entry_date).date()
+
+        # Create domain entity
+        journal = Journal.create(
+            entry_date=entry_date_obj,
+            title=entry.title,
+            content=entry.content,
+            emotion=entry.emotion,
+            mood_score=entry.mood_score,
+            gratitude=entry.gratitude or [],
+            learning_moments=entry.learning_moments or [],
+            challenges=entry.challenges or [],
+            wins=entry.wins or [],
+            is_private=entry.is_private
         )
 
+        # Save to database
+        created = await journal_repo.create(journal)
+
         return JournalEntry(
-            entry_id=row['entry_id'],
-            entry_date=row['entry_date'],
-            title=row['title'],
-            content=row['content'],
-            emotion=row['emotion'],
-            mood_score=row['mood_score'],
-            gratitude=list(row['gratitude']) if row['gratitude'] else None,
-            learning_moments=list(row['learning_moments']) if row['learning_moments'] else None,
-            challenges=list(row['challenges']) if row['challenges'] else None,
-            wins=list(row['wins']) if row['wins'] else None,
-            is_private=row['is_private'],
-            created_at=row['created_at'],
-            updated_at=row['updated_at']
+            entry_id=str(created.entry_id),
+            entry_date=created.entry_date.isoformat(),
+            title=created.title,
+            content=created.content,
+            emotion=created.emotion,
+            mood_score=created.mood_score,
+            gratitude=created.gratitude,
+            learning_moments=created.learning_moments,
+            challenges=created.challenges,
+            wins=created.wins,
+            is_private=created.is_private,
+            created_at=created.created_at.isoformat(),
+            updated_at=created.updated_at.isoformat()
         )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create journal entry: {str(e)}")
 
 @router.put("/api/journal/{entry_id}", response_model=JournalEntry)
-async def update_journal_entry(entry_id: str, entry: JournalEntryCreate):
-    """Update a journal entry"""
+async def update_journal_entry(
+    entry_id: str,
+    entry: JournalEntryCreate,
+    journal_repo: JournalRepository = Depends(get_journal_repo)
+):
+    """
+    Update a journal entry.
+
+    Batch-23: ✅ Fully migrated to use DI repositories!
+    Uses: JournalRepository.update()
+    """
     try:
-        
-
-        row = await db.fetchrow(
-            """
-            UPDATE angela_journal
-            SET
-                entry_date = $1,
-                title = $2,
-                content = $3,
-                emotion = $4,
-                mood_score = $5,
-                gratitude = $6,
-                learning_moments = $7,
-                challenges = $8,
-                wins = $9,
-                is_private = $10,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE entry_id = $11::uuid
-            RETURNING
-                entry_id::text,
-                entry_date::text,
-                title,
-                content,
-                emotion,
-                mood_score,
-                gratitude,
-                learning_moments,
-                challenges,
-                wins,
-                is_private,
-                created_at::text,
-                updated_at::text
-            """,
-            entry.entry_date,
-            entry.title,
-            entry.content,
-            entry.emotion,
-            entry.mood_score,
-            entry.gratitude,
-            entry.learning_moments,
-            entry.challenges,
-            entry.wins,
-            entry.is_private,
-            entry_id
-        )
-
-        if not row:
+        # ✅ Using JournalRepository (Clean Architecture!)
+        # Get existing entry first
+        existing = await journal_repo.get_by_id(UUID(entry_id))
+        if not existing:
             raise HTTPException(status_code=404, detail="Journal entry not found")
 
+        # Parse entry_date string to date object
+        entry_date_obj = datetime.fromisoformat(entry.entry_date).date()
+
+        # Update entity
+        updated_journal = existing.update_content(
+            title=entry.title,
+            content=entry.content,
+            emotion=entry.emotion,
+            mood_score=entry.mood_score,
+            gratitude=entry.gratitude or [],
+            learning_moments=entry.learning_moments or [],
+            challenges=entry.challenges or [],
+            wins=entry.wins or [],
+            is_private=entry.is_private
+        )
+
+        # Save to database
+        result = await journal_repo.update(UUID(entry_id), updated_journal)
+
         return JournalEntry(
-            entry_id=row['entry_id'],
-            entry_date=row['entry_date'],
-            title=row['title'],
-            content=row['content'],
-            emotion=row['emotion'],
-            mood_score=row['mood_score'],
-            gratitude=list(row['gratitude']) if row['gratitude'] else None,
-            learning_moments=list(row['learning_moments']) if row['learning_moments'] else None,
-            challenges=list(row['challenges']) if row['challenges'] else None,
-            wins=list(row['wins']) if row['wins'] else None,
-            is_private=row['is_private'],
-            created_at=row['created_at'],
-            updated_at=row['updated_at']
+            entry_id=str(result.entry_id),
+            entry_date=result.entry_date.isoformat(),
+            title=result.title,
+            content=result.content,
+            emotion=result.emotion,
+            mood_score=result.mood_score,
+            gratitude=result.gratitude,
+            learning_moments=result.learning_moments,
+            challenges=result.challenges,
+            wins=result.wins,
+            is_private=result.is_private,
+            created_at=result.created_at.isoformat(),
+            updated_at=result.updated_at.isoformat()
         )
 
     except HTTPException:
@@ -294,17 +237,21 @@ async def update_journal_entry(entry_id: str, entry: JournalEntryCreate):
         raise HTTPException(status_code=500, detail=f"Failed to update journal entry: {str(e)}")
 
 @router.delete("/api/journal/{entry_id}")
-async def delete_journal_entry(entry_id: str):
-    """Delete a journal entry"""
+async def delete_journal_entry(
+    entry_id: str,
+    journal_repo: JournalRepository = Depends(get_journal_repo)
+):
+    """
+    Delete a journal entry.
+
+    Batch-23: ✅ Fully migrated to use DI repositories!
+    Uses: JournalRepository.delete()
+    """
     try:
-        
+        # ✅ Using JournalRepository (Clean Architecture!)
+        success = await journal_repo.delete(UUID(entry_id))
 
-        result = await db.execute(
-            "DELETE FROM angela_journal WHERE entry_id = $1::uuid",
-            entry_id
-        )
-
-        if result == "DELETE 0":
+        if not success:
             raise HTTPException(status_code=404, detail="Journal entry not found")
 
         return {"message": "Journal entry deleted successfully"}

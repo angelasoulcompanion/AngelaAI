@@ -7,7 +7,7 @@ Date: 2025-10-28
 
 import asyncio
 from datetime import datetime
-from angela_core.claude_conversation_logger import log_conversation, log_session_summary
+from angela_core.integrations.claude_conversation_logger import log_conversation, log_session_summary
 
 async def log_session():
     """Log the bug fix and successful logging session"""

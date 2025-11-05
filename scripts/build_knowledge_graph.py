@@ -174,7 +174,9 @@ async def build_knowledge_graph(
         traceback.print_exc()
 
     finally:
-        await db.close()
+        # Since we called db.connect() at the start, we should disconnect at the end
+        # to properly clean up the connection pool
+        await db.disconnect()
 
 
 async def show_graph_stats():
@@ -232,7 +234,7 @@ async def show_graph_stats():
         print("\n" + "="*60 + "\n")
 
     finally:
-        await db.close()
+        await db.disconnect()
 
 
 if __name__ == "__main__":

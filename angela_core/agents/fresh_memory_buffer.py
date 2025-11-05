@@ -12,7 +12,7 @@ from uuid import UUID, uuid4
 import json
 
 from angela_core.database import get_db_connection
-from angela_core.embedding_service import generate_embedding
+# from angela_core.embedding_service import  # REMOVED: Migration 009 generate_embedding
 
 
 class FreshMemoryBuffer:

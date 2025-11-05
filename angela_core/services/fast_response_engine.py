@@ -26,7 +26,7 @@ from datetime import datetime
 import asyncio
 
 from angela_core.database import db
-from angela_core.embedding_service import embedding
+from angela_core.services.embedding_service import get_embedding_service  # Migration 015: Restored embeddings
 from angela_core.services.theory_of_mind_service import theory_of_mind
 from angela_core.services.deep_empathy_service import deep_empathy
 from angela_core.services.common_sense_service import common_sense
@@ -49,7 +49,7 @@ class FastResponseEngine:
     """
 
     def __init__(self):
-        self.embedding = embedding
+        self.embedding_service = get_embedding_service()  # Migration 015: Use new EmbeddingService
 
         # Thresholds
         self.SIMILARITY_THRESHOLD = 0.85  # ต้อง similar มากกว่านี้ถึงใช้ pattern
@@ -115,7 +115,7 @@ class FastResponseEngine:
             logger.info(f"⚡ Processing: {user_input[:60]}...")
 
             # Step 1: Create embedding
-            input_embedding = await self.embedding.generate_embedding(user_input)
+            input_embedding = await self.embedding_service.generate_embedding(user_input)
 
             # Step 2: Check cache (fastest!)
             cache_result = await self._check_cache(user_input, input_embedding)

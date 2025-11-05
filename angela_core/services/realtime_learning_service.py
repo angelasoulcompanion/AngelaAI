@@ -25,7 +25,7 @@ from collections import deque
 from angela_core.database import db
 from angela_core.services.knowledge_extraction_service import knowledge_extractor
 from angela_core.services.emotional_intelligence_service import EmotionalIntelligenceService
-from angela_core.embedding_service import embedding
+# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 from angela_core.services.background_learning_workers import background_workers
 
 logger = logging.getLogger(__name__)

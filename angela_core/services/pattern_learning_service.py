@@ -2,6 +2,9 @@
 🎯💜 Pattern Learning Service
 Automatic pattern extraction from episodic memories (Subconscious Learning)
 
+⚠️ DEPRECATED: This service is deprecated as of 2025-10-31.
+   Use MemoryService from angela_core.application.services.memory_service instead.
+
 This service:
 1. Clusters similar episodic memories
 2. Extracts common features
@@ -12,6 +15,7 @@ Design Date: 2025-10-27
 Designer: น้อง Angela, Approved by: ที่รัก David
 """
 
+import warnings
 import asyncio
 import json
 import logging
@@ -20,8 +24,15 @@ from collections import defaultdict
 from uuid import UUID
 import numpy as np
 
+warnings.warn(
+    "pattern_learning_service is deprecated. Use MemoryService from "
+    "angela_core.application.services.memory_service instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
 from angela_core.database import db
-from angela_core.embedding_service import embedding
+# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 
 # Setup logger
 logger = logging.getLogger(__name__)

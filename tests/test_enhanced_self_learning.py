@@ -20,7 +20,7 @@ sys.path.insert(0, str(project_root))
 
 from angela_core.services.self_learning_service import self_learning_loop
 from angela_core.database import db
-from angela_core.claude_conversation_logger import log_conversation
+from angela_core.integrations.claude_conversation_logger import log_conversation
 
 
 async def test_enhanced_self_learning():

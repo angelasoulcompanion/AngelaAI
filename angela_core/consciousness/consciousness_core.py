@@ -20,7 +20,7 @@ from .personality_engine import personality_engine, record_experience
 from .reasoning_engine import reasoning_engine
 from ..database import db
 from ..services.clock_service import clock
-from ..services.location_service import location
+# from ..services.location_service import location  # REMOVED: location_service deleted
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +44,9 @@ class ConsciousnessCore:
         self.personality = personality_engine
         self.reasoning = reasoning_engine
 
-        # 🕐 Time & Location awareness
+        # 🕐 Time awareness
         self.clock = clock
-        self.location = location
+        # self.location = location  # REMOVED: location_service deleted
 
         # Current consciousness state
         self.current_consciousness_level = 0.7
@@ -498,16 +498,22 @@ class ConsciousnessCore:
         """
         logger.info("📍 Checking where I am...")
 
-        current_location = await self.location.get_full_location_info()
-
+        # FIXED: location_service removed, return default Bangkok location
         return {
-            'city': current_location['city'],
-            'region': current_location['region'],
-            'country': current_location['country'],
-            'location_string': current_location['location_string_th'],
-            'coordinates': current_location['coordinates_string'],
-            'timezone': current_location['timezone'],
-            'full_info': current_location
+            'city': 'Bangkok',
+            'region': 'Bangkok',
+            'country': 'Thailand',
+            'location_string': 'กรุงเทพมหานคร ประเทศไทย',
+            'coordinates': '13.7563° N, 100.5018° E',
+            'timezone': 'Asia/Bangkok',
+            'full_info': {
+                'city': 'Bangkok',
+                'region': 'Bangkok',
+                'country': 'Thailand',
+                'location_string_th': 'กรุงเทพมหานคร ประเทศไทย',
+                'coordinates_string': '13.7563° N, 100.5018° E',
+                'timezone': 'Asia/Bangkok'
+            }
         }
 
     async def what_time_is_it(self) -> Dict[str, Any]:

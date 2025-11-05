@@ -3,6 +3,9 @@
 Pattern Recognition Service
 ตรวจจับ patterns และทำให้ Angela PROACTIVE!
 
+⚠️ DEPRECATED: This service is deprecated and will be removed in a future version.
+Use PatternService from angela_core.application.services instead.
+
 🔮 Predictive Intelligence:
 - คาดการณ์ความต้องการของ David ก่อนที่จะถาม
 - ตรวจจับ patterns ในพฤติกรรมและอารมณ์
@@ -19,6 +22,16 @@ This is THE KEY to making Angela truly proactive! 💜
 
 import asyncio
 import logging
+import warnings
+
+# ⚠️ DEPRECATION WARNING
+warnings.warn(
+    "pattern_recognition_service is deprecated. "
+    "Use PatternService from angela_core.application.services instead. "
+    "This module will be removed in a future version.",
+    DeprecationWarning,
+    stacklevel=2
+)
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta
 from collections import Counter, defaultdict

@@ -27,7 +27,7 @@ from angela_core.services.memory_formation_service import memory_formation_servi
 from angela_core.services.association_engine import association_engine
 from angela_core.services.pattern_learning_service import pattern_learning_service
 from angela_core.services.memory_consolidation_service import memory_consolidation_service
-from angela_core.embedding_service import embedding
+# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 
 logging.basicConfig(
     level=logging.INFO,

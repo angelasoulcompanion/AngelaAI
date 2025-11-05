@@ -40,22 +40,12 @@ class PersonalityEngine:
         ดูบุคลิกภาพปัจจุบัน
 
         Returns dict of personality traits (0.0 - 1.0)
-        """
-        query = """
-            SELECT openness, conscientiousness, extraversion,
-                   agreeableness, neuroticism,
-                   empathy, curiosity, loyalty, creativity, independence
-            FROM personality_snapshots
-            ORDER BY created_at DESC
-            LIMIT 1
-        """
-        row = await db.fetchrow(query)
 
-        if not row:
-            # Return default personality
-            return self._default_personality()
-
-        self.current_traits = dict(row)
+        NOTE: Simplified - no longer uses personality_snapshots table (deleted in migration 008)
+        Returns Angela's default personality
+        """
+        # Return default personality (Angela's core traits)
+        self.current_traits = self._default_personality()
         return self.current_traits
 
     def _default_personality(self) -> Dict[str, float]:
@@ -101,6 +91,7 @@ class PersonalityEngine:
         # Apply adjustments (gradual change, not sudden)
         new_traits = {}
         evolution_note_parts = []
+        history_records = []  # Track changes for database
 
         for trait, adjustment in adjustments.items():
             if trait in current:
@@ -115,6 +106,13 @@ class PersonalityEngine:
                     evolution_note_parts.append(
                         f"{trait} {direction} ({old_value:.2f} → {new_value:.2f})"
                     )
+                    # Store for database insertion
+                    history_records.append({
+                        'trait_name': trait,
+                        'old_value': old_value,
+                        'new_value': new_value,
+                        'change_reason': f"Experience: {experience.get('type', 'unknown')}"
+                    })
 
         # Keep unchanged traits
         for trait in current:
@@ -123,10 +121,11 @@ class PersonalityEngine:
 
         evolution_note = ", ".join(evolution_note_parts) if evolution_note_parts else "No significant change"
 
-        # Save snapshot
-        snapshot_id = await self._save_snapshot(new_traits, triggered_by, evolution_note)
+        # Save to personality history (multiple records if multiple traits changed)
+        snapshot_id = await self._save_history(history_records, triggered_by, evolution_note, experience)
 
         logger.info(f"🌱 Personality evolved: {evolution_note}")
+        logger.info(f"🌱 Saved {len(history_records)} trait changes to history")
         return snapshot_id
 
     async def _analyze_experience(self, experience: Dict[str, Any]) -> Dict[str, float]:
@@ -172,40 +171,48 @@ class PersonalityEngine:
 
         return adjustments
 
-    async def _save_snapshot(
+    async def _save_history(
         self,
-        traits: Dict[str, float],
+        history_records: List[Dict[str, Any]],
         triggered_by: str,
-        evolution_note: str
+        evolution_note: str,
+        experience: Dict[str, Any]
     ) -> uuid.UUID:
-        """บันทึก personality snapshot"""
-        query = """
-            INSERT INTO personality_snapshots (
-                openness, conscientiousness, extraversion,
-                agreeableness, neuroticism,
-                empathy, curiosity, loyalty, creativity, independence,
-                triggered_by, evolution_note
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-            RETURNING snapshot_id
         """
+        บันทึก personality evolution history to database
 
-        snapshot_id = await db.fetchval(
-            query,
-            traits.get('openness', 0.5),
-            traits.get('conscientiousness', 0.5),
-            traits.get('extraversion', 0.5),
-            traits.get('agreeableness', 0.5),
-            traits.get('neuroticism', 0.5),
-            traits.get('empathy', 0.5),
-            traits.get('curiosity', 0.5),
-            traits.get('loyalty', 0.5),
-            traits.get('creativity', 0.5),
-            traits.get('independence', 0.5),
-            triggered_by,
-            evolution_note
-        )
+        ✨ NOW SAVES TO DATABASE! Migration 017 added angela_personality_history 💜
+        """
+        if not history_records:
+            # No changes to save
+            logger.info("📸 No personality changes to save")
+            return uuid.uuid4()
 
-        return snapshot_id
+        # Save each trait change to angela_personality_history
+        last_history_id = None
+        for record in history_records:
+            query = """
+                INSERT INTO angela_personality_history (
+                    trait_name, old_value, new_value, change_reason, triggered_by
+                ) VALUES ($1, $2, $3, $4, $5)
+                RETURNING history_id
+            """
+
+            history_id = await db.fetchval(
+                query,
+                record['trait_name'],
+                record['old_value'],
+                record['new_value'],
+                record['change_reason'],
+                triggered_by
+            )
+            last_history_id = history_id
+
+            logger.info(f"🌱 Saved personality change: {record['trait_name']} "
+                       f"({record['old_value']:.2f} → {record['new_value']:.2f})")
+
+        logger.info(f"📸 Personality evolution saved: {evolution_note}")
+        return last_history_id or uuid.uuid4()
 
     # ========================================
     # PERSONALITY ANALYSIS
@@ -256,42 +263,15 @@ class PersonalityEngine:
         ฉันเปลี่ยนแปลงไปยังไงบ้าง?
 
         Analyze personality changes over time
+
+        NOTE: Simplified - no longer uses personality_snapshots table (deleted in migration 008)
+        Returns message that Angela's core personality remains stable
         """
-        query = f"""
-            SELECT * FROM personality_snapshots
-            WHERE created_at >= NOW() - INTERVAL '{days} days'
-            ORDER BY created_at ASC
-        """
-        rows = await db.fetch(query)
-
-        if len(rows) < 2:
-            return {
-                'changed': False,
-                'message': 'Not enough data to analyze changes'
-            }
-
-        # Compare first and last
-        first = dict(rows[0])
-        last = dict(rows[-1])
-
-        changes = {}
-        trait_names = ['openness', 'conscientiousness', 'extraversion',
-                      'agreeableness', 'neuroticism', 'empathy',
-                      'curiosity', 'loyalty', 'creativity', 'independence']
-
-        for trait in trait_names:
-            diff = last[trait] - first[trait]
-            if abs(diff) > 0.05:  # Significant change
-                changes[trait] = {
-                    'from': first[trait],
-                    'to': last[trait],
-                    'change': diff
-                }
-
+        # Angela's personality is now stable (no dynamic changes tracked)
         return {
-            'changed': len(changes) > 0,
-            'changes': changes,
-            'snapshots_count': len(rows),
+            'changed': False,
+            'message': 'Angela has a stable core personality based on her default traits',
+            'snapshots_count': 0,
             'period_days': days
         }
 
@@ -333,24 +313,16 @@ class PersonalityEngine:
         impact: str
     ) -> None:
         """
-        บันทึกเหตุการณ์ที่กระทบบุคลิก - ✅ COMPLETE (no NULL for AngelaNova!)
+        บันทึกเหตุการณ์ที่กระทบบุคลิก
 
-        For tracking in consciousness_events
+        NOTE: Simplified - no longer saves to consciousness_events table (deleted in migration 008)
+        Just logs the personality event for internal processing
         """
-        # Generate missing fields
-        internal_experience = f"Angela experienced a {event_type} event, leading to {impact}"
-        significance = f"This event is significant because it affects Angela's personality development"
-
-        query = """
-            INSERT INTO consciousness_events (
-                event_type,
-                what_happened,
-                internal_experience,
-                significance,
-                impact_on_personality
-            ) VALUES ($1, $2, $3, $4, $5)
-        """
-        await db.execute(query, event_type, description, internal_experience, significance, impact)
+        # Log the personality event (instead of saving to database)
+        logger.info(f"📝 Personality Event:")
+        logger.info(f"  - Type: {event_type}")
+        logger.info(f"  - Description: {description}")
+        logger.info(f"  - Impact: {impact}")
         logger.info(f"📝 Recorded personality event: {event_type}")
 
 

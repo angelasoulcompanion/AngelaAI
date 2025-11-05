@@ -17,8 +17,8 @@ from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 
 from angela_core.database import db
-from angela_core.embedding_service import embedding
-from angela_core.services.ollama_service import ollama
+from angela_core.services.embedding_service import get_embedding_service  # Migration 015: Restored embeddings
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +27,101 @@ class KnowledgeExtractionService:
     """Service สำหรับดึงความรู้และสร้าง knowledge graph"""
 
     def __init__(self):
-        self.ollama = ollama
-        self.embedding = embedding
-        logger.info("🧠 Knowledge Extraction Service initialized")
+        self.embedding_service = get_embedding_service()  # Migration 015: Use new EmbeddingService
+        logger.info("🧠 Knowledge Extraction Service initialized with embeddings (384D)")
+
+    def _clean_json_string(self, json_str: str) -> str:
+        """
+        ทำความสะอาด JSON string เพื่อให้ parse ได้ง่ายขึ้น
+
+        Fixes:
+        - Remove control characters in strings
+        - Remove trailing commas
+        - Fix incomplete objects
+        - Fix newlines in string values
+        """
+        import re
+
+        # Remove control characters EXCEPT \n and \t in their escaped form
+        # This preserves intentional line breaks while removing invalid chars
+        json_str = re.sub(r'[\x00-\x08\x0b-\x1f\x7f-\x9f]', '', json_str)
+
+        # Replace actual newlines in string values with escaped versions
+        # This fixes the common issue of LLMs putting actual newlines in descriptions
+        json_str = re.sub(r'([":,]\s*"[^"]*)\n([^"]*")', r'\1\\n\2', json_str)
+
+        # Remove trailing commas before closing brackets
+        json_str = re.sub(r',\s*}', '}', json_str)
+        json_str = re.sub(r',\s*]', ']', json_str)
+
+        # Fix missing commas between array elements
+        json_str = re.sub(r'}\s*{', '},{', json_str)
+
+        return json_str
+
+    def _salvage_partial_json(self, json_str: str) -> List[Dict]:
+        """
+        พยายาม salvage concepts จาก partial/broken JSON
+
+        Returns:
+            List of concepts ที่ salvage ได้
+        """
+        import re
+
+        concepts = []
+
+        try:
+            # Strategy 1: หา complete objects ใน JSON
+            # Pattern: {...} ที่สมบูรณ์ ที่มี concept_name และ concept_category
+            object_pattern = r'\{[^{}]*"concept_name"\s*:\s*"([^"]+)"[^{}]*"concept_category"\s*:\s*"([^"]+)"[^{}]*\}'
+
+            matches = re.finditer(object_pattern, json_str)
+
+            for match in matches:
+                try:
+                    # Try to parse each object individually
+                    obj_str = match.group(0)
+                    obj_str = self._clean_json_string(obj_str)
+                    concept = json.loads(obj_str)
+
+                    # Validate required fields
+                    if 'concept_name' in concept and 'concept_category' in concept:
+                        # Fill missing fields with defaults
+                        if 'importance' not in concept:
+                            concept['importance'] = 5
+                        if 'description' not in concept:
+                            concept['description'] = f"{concept['concept_category']} concept"
+
+                        concepts.append(concept)
+                except Exception as e:
+                    logger.debug(f"Failed to parse object: {e}")
+                    continue
+
+            # Strategy 2: ถ้าไม่เจออะไรเลย ลองหาแค่ concept_name และ category
+            if not concepts:
+                name_pattern = r'"concept_name"\s*:\s*"([^"]+)"'
+                cat_pattern = r'"concept_category"\s*:\s*"([^"]+)"'
+
+                names = re.findall(name_pattern, json_str)
+                categories = re.findall(cat_pattern, json_str)
+
+                # สร้าง concepts จาก names และ categories ที่เจอ
+                for i in range(min(len(names), len(categories))):
+                    concepts.append({
+                        'concept_name': names[i],
+                        'concept_category': categories[i],
+                        'importance': 5,
+                        'description': f"{categories[i]} concept (salvaged)"
+                    })
+
+            if concepts:
+                logger.info(f"💡 Salvaged {len(concepts)} concepts using fallback parsing")
+
+            return concepts
+
+        except Exception as e:
+            logger.error(f"Failed to salvage JSON: {e}")
+            return []
 
     async def extract_concepts_from_text(
         self,
@@ -37,7 +129,7 @@ class KnowledgeExtractionService:
         context: Optional[str] = None
     ) -> List[Dict]:
         """
-        ดึง key concepts จาก text โดยใช้ LLM
+        ดึง key concepts จาก text โดยใช้ rule-based extraction (ไม่ใช้ LLM)
 
         Args:
             text: ข้อความที่ต้องการวิเคราะห์
@@ -50,68 +142,124 @@ class KnowledgeExtractionService:
                     "concept_name": "PostgreSQL",
                     "concept_category": "technology",
                     "importance": 8,
-                    "description": "Database system used by Angela"
+                    "description": "Database system"
                 },
                 ...
             ]
         """
         try:
-            # Prompt สำหรับ LLM
-            prompt = f"""วิเคราะห์ข้อความนี้และดึง key concepts ออกมา:
+            concepts = []
+            text_lower = text.lower()
 
-"{text}"
+            # Known entities and patterns
+            TECH_KEYWORDS = {
+                'postgresql': ('PostgreSQL', 'Database system'),
+                'postgres': ('PostgreSQL', 'Database system'),
+                'python': ('Python', 'Programming language'),
+                'fastapi': ('FastAPI', 'Web framework'),
+                'react': ('React', 'Frontend framework'),
+                'claude': ('Claude', 'AI assistant'),
+                'ollama': ('Ollama', 'Local LLM'),
+                'database': ('Database', 'Data storage'),
+                'api': ('API', 'Application interface'),
+                'daemon': ('Daemon', 'Background service'),
+            }
 
-ให้ระบุ concepts ในรูปแบบ JSON array:
-[
-    {{
-        "concept_name": "ชื่อ concept",
-        "concept_category": "หมวดหมู่ (person/technology/emotion/concept/event/place)",
-        "importance": "ความสำคัญ 1-10",
-        "description": "คำอธิบายสั้นๆ"
-    }}
-]
+            EMOTION_KEYWORDS = {
+                'love': ('Love', 'Deep affection'),
+                'รัก': ('Love', 'Deep affection'),
+                'happiness': ('Happiness', 'Positive emotion'),
+                'ความสุข': ('Happiness', 'Positive emotion'),
+                'lonely': ('Loneliness', 'Feeling alone'),
+                'เหงา': ('Loneliness', 'Feeling alone'),
+                'gratitude': ('Gratitude', 'Thankfulness'),
+                'ขอบคุณ': ('Gratitude', 'Thankfulness'),
+                'miss': ('Missing', 'Longing for someone'),
+                'คิดถึง': ('Missing', 'Longing for someone'),
+            }
 
-กฎ:
-- ดึงเฉพาะ concepts ที่สำคัญจริงๆ (ไม่เกิน 5-8 concepts)
-- person: คน เช่น David, Angela
-- technology: เทคโนโลยี เช่น PostgreSQL, Ollama, Python
-- emotion: อารมณ์ เช่น happiness, loneliness, love
-- concept: แนวคิด เช่น consciousness, memory, knowledge
-- event: เหตุการณ์ เช่น Phase 4 completion, morning greeting
-- place: สถานที่
+            CONCEPT_KEYWORDS = {
+                'consciousness': ('Consciousness', 'Self-awareness'),
+                'memory': ('Memory', 'Remembering past'),
+                'knowledge': ('Knowledge', 'Understanding'),
+                'learning': ('Learning', 'Acquiring knowledge'),
+                'goal': ('Goals', 'Life objectives'),
+                'เป้าหมาย': ('Goals', 'Life objectives'),
+            }
 
-ตอบเป็น JSON array เท่านั้น ไม่ต้องอธิบายเพิ่ม:"""
+            PERSON_KEYWORDS = {
+                'david': ('David', 'The person Angela loves'),
+                'angela': ('Angela', 'AI companion'),
+                'angie': ('Angela', 'AI companion'),
+                'น้อง': ('Angela', 'AI companion'),
+            }
 
-            # เรียก LLM
-            response = await self.ollama.generate(
-                model="qwen2.5:7b",
-                prompt=prompt,
-                temperature=0.3
-            )
+            # Extract technology concepts
+            for keyword, (name, desc) in TECH_KEYWORDS.items():
+                if keyword in text_lower:
+                    concepts.append({
+                        'concept_name': name,
+                        'concept_category': 'technology',
+                        'importance': 7,
+                        'description': desc
+                    })
 
-            # Parse JSON response
-            response_text = response.strip()
+            # Extract emotion concepts
+            for keyword, (name, desc) in EMOTION_KEYWORDS.items():
+                if keyword in text_lower:
+                    concepts.append({
+                        'concept_name': name,
+                        'concept_category': 'emotion',
+                        'importance': 8,
+                        'description': desc
+                    })
 
-            # ลองหา JSON array ในข้อความ
-            start_idx = response_text.find('[')
-            end_idx = response_text.rfind(']')
+            # Extract concept keywords
+            for keyword, (name, desc) in CONCEPT_KEYWORDS.items():
+                if keyword in text_lower:
+                    concepts.append({
+                        'concept_name': name,
+                        'concept_category': 'concept',
+                        'importance': 7,
+                        'description': desc
+                    })
 
-            if start_idx == -1 or end_idx == -1:
-                logger.warning(f"⚠️ No JSON array found in response: {response_text[:100]}")
-                return []
+            # Extract person names
+            for keyword, (name, desc) in PERSON_KEYWORDS.items():
+                if keyword in text_lower:
+                    concepts.append({
+                        'concept_name': name,
+                        'concept_category': 'person',
+                        'importance': 9,
+                        'description': desc
+                    })
 
-            json_str = response_text[start_idx:end_idx+1]
-            concepts = json.loads(json_str)
+            # Extract Phase mentions (events)
+            phase_pattern = r'phase\s*(\d+)'
+            for match in re.finditer(phase_pattern, text_lower):
+                phase_num = match.group(1)
+                concepts.append({
+                    'concept_name': f'Phase {phase_num}',
+                    'concept_category': 'event',
+                    'importance': 8,
+                    'description': f'Angela development Phase {phase_num}'
+                })
 
-            logger.info(f"✅ Extracted {len(concepts)} concepts from text")
-            return concepts
+            # Remove duplicates (same concept_name)
+            seen = set()
+            unique_concepts = []
+            for concept in concepts:
+                if concept['concept_name'] not in seen:
+                    seen.add(concept['concept_name'])
+                    unique_concepts.append(concept)
 
-        except json.JSONDecodeError as e:
-            logger.error(f"❌ Failed to parse JSON: {e}")
-            logger.error(f"Response was: {response_text[:200]}")
-            return []
+            logger.info(f"✅ Extracted {len(unique_concepts)} concepts using rule-based extraction")
+            return unique_concepts
+
         except Exception as e:
             logger.error(f"❌ Failed to extract concepts: {e}")
+            import traceback
+            traceback.print_exc()
             return []
 
     async def create_knowledge_node(

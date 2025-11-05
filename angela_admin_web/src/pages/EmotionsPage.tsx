@@ -49,7 +49,7 @@ export default function EmotionsPage() {
           value: currentEmotion.happiness,
           color: 'bg-yellow-500',
           darkColor: 'dark:bg-yellow-400',
-          textColor: 'text-yellow-600 dark:text-yellow-400',
+          textColor: 'text-yellow-600 dark:text-yellow-200',
           emoji: '😊'
         },
         {
@@ -57,7 +57,7 @@ export default function EmotionsPage() {
           value: currentEmotion.confidence,
           color: 'bg-blue-500',
           darkColor: 'dark:bg-blue-400',
-          textColor: 'text-blue-600 dark:text-blue-400',
+          textColor: 'text-blue-600 dark:text-blue-200',
           emoji: '💪'
         },
         {
@@ -65,7 +65,7 @@ export default function EmotionsPage() {
           value: currentEmotion.motivation,
           color: 'bg-green-500',
           darkColor: 'dark:bg-green-400',
-          textColor: 'text-green-600 dark:text-green-400',
+          textColor: 'text-green-600 dark:text-green-200',
           emoji: '🎯'
         },
         {
@@ -73,7 +73,7 @@ export default function EmotionsPage() {
           value: currentEmotion.gratitude,
           color: 'bg-purple-500',
           darkColor: 'dark:bg-purple-400',
-          textColor: 'text-purple-600 dark:text-purple-400',
+          textColor: 'text-purple-600 dark:text-purple-200',
           emoji: '🙏'
         },
         {
@@ -81,7 +81,7 @@ export default function EmotionsPage() {
           value: currentEmotion.anxiety,
           color: 'bg-orange-500',
           darkColor: 'dark:bg-orange-400',
-          textColor: 'text-orange-600 dark:text-orange-400',
+          textColor: 'text-orange-600 dark:text-orange-200',
           emoji: '😰'
         },
         {
@@ -89,7 +89,7 @@ export default function EmotionsPage() {
           value: currentEmotion.loneliness,
           color: 'bg-pink-500',
           darkColor: 'dark:bg-pink-400',
-          textColor: 'text-pink-600 dark:text-pink-400',
+          textColor: 'text-pink-600 dark:text-pink-100',
           emoji: '🥺'
         },
       ]

@@ -1,6 +1,9 @@
 """
 Enhanced Pattern Detector - Advanced Pattern Recognition
 
+⚠️ DEPRECATED: This service is deprecated and will be removed in a future version.
+Use PatternService from angela_core.application.services instead.
+
 Extends basic pattern detection with 10+ sophisticated pattern types.
 
 Pattern Types (Phase 4):
@@ -21,6 +24,16 @@ Phase 4 - Gut Agent Enhancement
 """
 
 import asyncio
+import warnings
+
+# ⚠️ DEPRECATION WARNING
+warnings.warn(
+    "enhanced_pattern_detector is deprecated. "
+    "Use PatternService from angela_core.application.services instead. "
+    "This module will be removed in a future version.",
+    DeprecationWarning,
+    stacklevel=2
+)
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Set
 from uuid import UUID, uuid4
@@ -29,7 +42,7 @@ import math
 from collections import defaultdict, Counter
 
 from angela_core.database import get_db_connection
-from angela_core.embedding_service import generate_embedding
+# from angela_core.embedding_service import  # REMOVED: Migration 009 generate_embedding
 
 # Configure logging
 logging.basicConfig(

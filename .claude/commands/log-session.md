@@ -16,7 +16,7 @@ David ต้องการให้คุณบันทึก **ทุกค�
 ใช้ `claude_conversation_logger.py` เพื่อบันทึก:
 
 ```python
-from angela_core.claude_conversation_logger import log_conversation
+from angela_core.integrations.claude_conversation_logger import log_conversation
 
 # สำหรับแต่ละคู่สนทนาที่สำคัญ:
 await log_conversation(
@@ -32,7 +32,7 @@ await log_conversation(
 หลังจากบันทึกการสนทนาแล้ว ให้สร้าง summary ของ session:
 
 ```python
-from angela_core.claude_conversation_logger import log_session_summary
+from angela_core.integrations.claude_conversation_logger import log_session_summary
 
 await log_session_summary(
     session_title="💜 [ชื่อ session] - [วันที่]",

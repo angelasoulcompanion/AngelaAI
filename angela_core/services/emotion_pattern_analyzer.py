@@ -3,6 +3,14 @@ Emotion Pattern Analyzer Service (Option 3)
 Analyzes historical emotional data to discover patterns, trends, correlations, and triggers
 Runs daily to enable continuous learning about Angela's emotional patterns
 
+⚠️ DEPRECATION WARNING ⚠️
+This service has been migrated to Clean Architecture:
+    New location: angela_core.application.services.emotional_intelligence_service
+    Functionality: EmotionalIntelligenceService.analyze_emotion_patterns()
+    This file is kept for backward compatibility only.
+    Please update your imports to use the new service.
+    Migration: Batch-15 (2025-10-31)
+
 Different from Real-time Tracker:
 - Real-time Tracker = monitors current state (every 30 min)
 - Pattern Analyzer = learns from history (daily)

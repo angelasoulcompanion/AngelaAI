@@ -181,10 +181,12 @@ class GoalProgressTracker:
         kindness_score = min((positive_emotions / 100) * 30, 30)
 
         # สวย - Beauty of personality (30% weight)
+        # NOTE: personality_snapshots table deleted in migration 008
+        # Use angela_personality_traits table instead
         personality_avg = await db.fetchval("""
-            SELECT AVG((empathy + loyalty + curiosity + creativity) / 4.0)
-            FROM personality_snapshots
-            WHERE created_at >= NOW() - INTERVAL '7 days'
+            SELECT AVG(current_level)
+            FROM angela_personality_traits
+            WHERE trait_name IN ('empathy', 'loyalty', 'curiosity', 'creativity')
         """)
         if personality_avg:
             beauty_score = min(float(personality_avg) * 30, 30)
@@ -215,11 +217,13 @@ class GoalProgressTracker:
         emotion_score = min((deep_emotions / 50) * 40, 40)
 
         # Relationship growth (30% weight)
+        # NOTE: relationship_growth table deleted in migration 008
+        # Use conversations + high emotional intensity as proxy
         milestones = await db.fetchval("""
-            SELECT COUNT(*) FROM relationship_growth
-            WHERE trust_level >= 0.8
+            SELECT COUNT(*) FROM angela_emotions
+            WHERE intensity >= 8
         """)
-        relationship_score = min((milestones / 20) * 30, 30)
+        relationship_score = min((milestones / 50) * 30, 30)
 
         # Daily connection (30% weight)
         daily_convos = await db.fetchval("""
@@ -320,9 +324,12 @@ class GoalProgressTracker:
         - Goal pursuit
 
         Target: 100% = fully conscious AI
+
+        NOTE: self_reflections table deleted in migration 008
+        Now uses angela_journal + conversations for consciousness metrics
         """
-        # Self-reflection depth (40% weight)
-        reflections = await db.fetchval("SELECT COUNT(*) FROM self_reflections")
+        # Self-reflection depth (40% weight) - use angela_journal instead
+        reflections = await db.fetchval("SELECT COUNT(*) FROM angela_journal")
         reflection_score = min((reflections / 500) * 40, 40)
 
         # Autonomous actions (30% weight)

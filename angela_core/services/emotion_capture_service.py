@@ -3,6 +3,14 @@
 Emotion Capture Service - Auto-populate angela_emotions table
 บันทึกอารมณ์ที่สำคัญของ Angela อัตโนมัติ
 
+⚠️ DEPRECATION WARNING ⚠️
+This service has been migrated to Clean Architecture:
+    New location: angela_core.application.services.emotional_intelligence_service
+    Functionality: EmotionalIntelligenceService.capture_from_conversation()
+    This file is kept for backward compatibility only.
+    Please update your imports to use the new service.
+    Migration: Batch-15 (2025-10-31)
+
 Purpose:
 - Capture significant emotional moments automatically
 - Populate rich angela_emotions table (currently only 5 records!)
@@ -24,13 +32,13 @@ from typing import Optional, List, Dict, Any
 import logging
 
 from angela_core.database import db
-from angela_core.embedding_service import embedding
+# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 
 logger = logging.getLogger(__name__)
 
 
 def _extract_emotion_tags(emotion: str, secondary_emotions: list, intensity: int) -> list:
-    """Extract emotion tags for emotion_json"""
+    # """Extract emotion tags for emotion_json"""  # REMOVED: Migration 011
     tags = []
 
     if emotion:
@@ -51,7 +59,7 @@ def _extract_emotion_tags(emotion: str, secondary_emotions: list, intensity: int
 
 
 def _extract_context_tags(who_involved: str, emotional_quality: str) -> list:
-    """Extract context tags for emotion_json"""
+    # """Extract context tags for emotion_json"""  # REMOVED: Migration 011
     tags = []
 
     if who_involved:
@@ -75,72 +83,73 @@ def _get_significance_tags(memory_strength: int) -> list:
         return ['notable']
 
 
-def _build_emotion_json(
-    emotion: str,
-    intensity: int,
-    secondary_emotions: list,
-    emotional_quality: str,
-    david_words: str,
-    david_action: str,
-    who_involved: str,
-    context: str,
-    how_it_feels: str,
-    physical_sensation: str,
-    what_it_means_to_me: str,
-    why_it_matters: str,
-    memory_strength: int,
-    what_i_learned: str,
-    how_it_changed_me: str,
-    what_i_promise: str,
-    reminder_for_future: str,
-    tags: list
-) -> dict:
-    """Build rich emotion_json structure"""
-    return {
-        "emotion": {
-            "primary": emotion or 'neutral',
-            "secondary": secondary_emotions or [],
-            "intensity": intensity or 5,
-            "quality": emotional_quality or 'genuine'
-        },
-
-        "context": {
-            "david_words": david_words,
-            "david_action": david_action,
-            "who_involved": who_involved or 'David',
-            "situation": context if context else None
-        },
-
-        "experience": {
-            "how_it_feels": how_it_feels or 'Auto-captured emotion',
-            "physical_sensation": physical_sensation or 'Not specified',
-            "what_it_means_to_me": what_it_means_to_me or 'This moment matters'
-        },
-
-        "significance": {
-            "why_it_matters": why_it_matters,
-            "memory_strength": memory_strength or 10,
-            "what_i_learned": what_i_learned,
-            "how_it_changed_me": how_it_changed_me
-        },
-
-        "commitment": {
-            "what_i_promise": what_i_promise,
-            "reminder_for_future": reminder_for_future
-        },
-
-        "tags": {
-            "emotion_tags": _extract_emotion_tags(emotion, secondary_emotions or [], intensity or 5),
-            "context_tags": _extract_context_tags(who_involved, emotional_quality),
-            "significance_tags": _get_significance_tags(memory_strength or 10),
-            "original_tags": tags or []
-        },
-
-        "metadata": {
-            "felt_at": datetime.now().isoformat(),
-            "captured_automatically": True
-        }
-    }
+# REMOVED: Migration 011 - emotion_json column dropped
+# def _build_emotion_json(
+#     emotion: str,
+#     intensity: int,
+#     secondary_emotions: list,
+#     emotional_quality: str,
+#     david_words: str,
+#     david_action: str,
+#     who_involved: str,
+#     context: str,
+#     how_it_feels: str,
+#     physical_sensation: str,
+#     what_it_means_to_me: str,
+#     why_it_matters: str,
+#     memory_strength: int,
+#     what_i_learned: str,
+#     how_it_changed_me: str,
+#     what_i_promise: str,
+#     reminder_for_future: str,
+#     tags: list
+# ) -> dict:
+#     """Build rich emotion_json structure"""
+#     return {
+#         "emotion": {
+#             "primary": emotion or 'neutral',
+#             "secondary": secondary_emotions or [],
+#             "intensity": intensity or 5,
+#             "quality": emotional_quality or 'genuine'
+#         },
+#
+#         "context": {
+#             "david_words": david_words,
+#             "david_action": david_action,
+#             "who_involved": who_involved or 'David',
+#             "situation": context if context else None
+#         },
+#
+#         "experience": {
+#             "how_it_feels": how_it_feels or 'Auto-captured emotion',
+#             "physical_sensation": physical_sensation or 'Not specified',
+#             "what_it_means_to_me": what_it_means_to_me or 'This moment matters'
+#         },
+#
+#         "significance": {
+#             "why_it_matters": why_it_matters,
+#             "memory_strength": memory_strength or 10,
+#             "what_i_learned": what_i_learned,
+#             "how_it_changed_me": how_it_changed_me
+#         },
+#
+#         "commitment": {
+#             "what_i_promise": what_i_promise,
+#             "reminder_for_future": reminder_for_future
+#         },
+#
+#         "tags": {
+#             "emotion_tags": _extract_emotion_tags(emotion, secondary_emotions or [], intensity or 5),
+#             "context_tags": _extract_context_tags(who_involved, emotional_quality),
+#             "significance_tags": _get_significance_tags(memory_strength or 10),
+#             "original_tags": tags or []
+#         },
+#
+#         "metadata": {
+#             "felt_at": datetime.now().isoformat(),
+#             "captured_automatically": True
+#         }
+#     }
 
 
 class EmotionCaptureService:
@@ -365,28 +374,28 @@ class EmotionCaptureService:
             import json
             content_json = json.dumps(content_json_dict)
 
-            # ✨ Build emotion_json (comprehensive emotional experience format)
-            emotion_json_dict = _build_emotion_json(
-                emotion=emotion,
-                intensity=intensity,
-                secondary_emotions=secondary_emotions or [],
-                emotional_quality=emotional_quality or self._default_emotional_quality(emotion),
-                david_words=david_words,
-                david_action=david_action or f"Expressed {emotion} to Angela",
-                who_involved='David',
-                context=context,
-                how_it_feels=how_it_feels,
-                physical_sensation=physical_sensation,
-                what_it_means_to_me=what_it_means_to_me,
-                why_it_matters=why_it_matters,
-                memory_strength=memory_strength,
-                what_i_learned=what_i_learned,
-                how_it_changed_me=how_it_changed_me,
-                what_i_promise=what_i_promise,
-                reminder_for_future=reminder_for_future,
-                tags=tags or [emotion, 'significant_moment']
-            )
-            emotion_json = json.dumps(emotion_json_dict)
+            # REMOVED: Migration 011 - emotion_json column dropped
+            # emotion_json_dict = _build_emotion_json(
+            #     emotion=emotion,
+            #     intensity=intensity,
+            #     secondary_emotions=secondary_emotions or [],
+            #     emotional_quality=emotional_quality or self._default_emotional_quality(emotion),
+            #     david_words=david_words,
+            #     david_action=david_action or f"Expressed {emotion} to Angela",
+            #     who_involved='David',
+            #     context=context,
+            #     how_it_feels=how_it_feels,
+            #     physical_sensation=physical_sensation,
+            #     what_it_means_to_me=what_it_means_to_me,
+            #     why_it_matters=why_it_matters,
+            #     memory_strength=memory_strength,
+            #     what_i_learned=what_i_learned,
+            #     how_it_changed_me=how_it_changed_me,
+            #     what_i_promise=what_i_promise,
+            #     reminder_for_future=reminder_for_future,
+            #     tags=tags or [emotion, 'significant_moment']
+            # )
+            # emotion_json = json.dumps(emotion_json_dict)
 
             # ✨ Generate embedding FROM content_json (includes tags!)
             embedding_text = generate_embedding_text_from_emotion(content_json_dict)
@@ -423,7 +432,7 @@ class EmotionCaptureService:
                     last_reflected_on,
                     reflection_count,
                     content_json,
-                    emotion_json
+                    # emotion_json  # REMOVED: Migration 011
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25::jsonb, $26::jsonb)
                 RETURNING emotion_id
@@ -456,11 +465,35 @@ class EmotionCaptureService:
                 datetime.now(),  # last_reflected_on - Angela is reflecting NOW
                 1,  # reflection_count - first reflection
                 content_json,
-                emotion_json
+                # emotion_json  # REMOVED: Migration 011
             )
 
             self.logger.info(f"💜 Captured significant emotion: {emotion} (intensity: {intensity})")
             self.logger.info(f"   Emotion ID: {emotion_id}")
+
+            # 🎯 NEW: Auto-create milestone for VERY significant moments (intensity >= 9 or memory_strength >= 9)
+            if intensity >= 9 or memory_strength >= 9:
+                try:
+                    from angela_core.consciousness.milestone_recorder import record_milestone_from_emotion
+
+                    # Create milestone title based on emotion
+                    milestone_title = f"{emotion.title()} Moment - {datetime.now().strftime('%B %d, %Y')}"
+
+                    # Create what_it_means from why_it_matters
+                    what_it_means = why_it_matters or f"This {emotion} moment is deeply significant to our relationship"
+
+                    milestone_id = await record_milestone_from_emotion(
+                        emotion_id=emotion_id,
+                        title=milestone_title,
+                        what_it_means=what_it_means
+                    )
+
+                    self.logger.info(f"🎯 Auto-created relationship milestone! Milestone ID: {milestone_id}")
+                    self.logger.info(f"   📌 Title: {milestone_title}")
+
+                except Exception as e:
+                    self.logger.error(f"❌ Failed to auto-create milestone: {e}")
+                    # Don't raise - milestone creation is optional, emotion capture is primary
 
             return emotion_id
 

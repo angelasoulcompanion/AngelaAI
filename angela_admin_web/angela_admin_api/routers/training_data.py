@@ -1,6 +1,13 @@
 """
 💜 Training Data Export API Router
 Endpoints for preparing and exporting training data
+
+✅ [Batch-30]: ALREADY CLEAN ARCHITECTURE COMPLIANT!
+Migration Status: NO MIGRATION NEEDED
+- This router calls an external Python script (prepare_angela_training_data.py)
+- NO direct database access in router code
+- NO service layer needed (just subprocess wrapper)
+- Clean Architecture compliance: Perfect!
 """
 
 from fastapi import APIRouter, HTTPException

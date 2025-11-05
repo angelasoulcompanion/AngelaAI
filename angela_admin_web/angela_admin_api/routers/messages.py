@@ -1,18 +1,15 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Optional
-from angela_core.database import db
+from uuid import UUID
+
+# ✅ [Batch-24]: Migrated to Clean Architecture with DI
+from angela_core.infrastructure.persistence.repositories import MessageRepository
+from angela_core.presentation.api.dependencies import get_message_repo
+from angela_core.domain.entities import AngelaMessage as AngelaMessageEntity
 
 router = APIRouter()
-
-# Database connection config
-DB_CONFIG = {
-    "user": "davidsamanyaporn",
-    "database": "AngelaMemory",
-    "host": "localhost",
-    "port": 5432
-}
 
 # =====================================================================
 # Response Models
@@ -54,293 +51,185 @@ async def get_messages(
     message_type: Optional[str] = None,
     category: Optional[str] = None,
     is_important: Optional[bool] = None,
-    is_pinned: Optional[bool] = None
+    is_pinned: Optional[bool] = None,
+    repo: MessageRepository = Depends(get_message_repo)
 ):
-    """Get Angela's messages with optional filters"""
+    """Get Angela's messages with optional filters (Clean Architecture)"""
     try:
-        
-
-        # Build query with filters
-        query = """
-            SELECT
-                message_id::text,
-                message_text,
-                message_type,
-                emotion,
-                category,
-                is_important,
-                is_pinned,
-                created_at::text
-            FROM angela_messages
-            WHERE 1=1
-        """
-
-        params = []
-        param_count = 0
-
-        if message_type:
-            param_count += 1
-            query += f" AND message_type = ${param_count}"
-            params.append(message_type)
-
-        if category:
-            param_count += 1
-            query += f" AND category = ${param_count}"
-            params.append(category)
-
-        if is_important is not None:
-            param_count += 1
-            query += f" AND is_important = ${param_count}"
-            params.append(is_important)
-
-        if is_pinned is not None:
-            param_count += 1
-            query += f" AND is_pinned = ${param_count}"
-            params.append(is_pinned)
-
-        # Order: pinned first, then by created_at DESC
-        query += " ORDER BY is_pinned DESC, created_at DESC"
-        param_count += 1
-        query += f" LIMIT ${param_count}"
-        params.append(limit)
-
-        rows = await db.fetch(query, *params)
+        # ✅ [Batch-24]: Using MessageRepository.find_by_filters()
+        messages = await repo.find_by_filters(
+            message_type=message_type,
+            category=category,
+            is_important=is_important,
+            is_pinned=is_pinned,
+            limit=limit
+        )
 
         return [
             AngelaMessage(
-                message_id=row['message_id'],
-                message_text=row['message_text'],
-                message_type=row['message_type'],
-                emotion=row['emotion'],
-                category=row['category'],
-                is_important=row['is_important'],
-                is_pinned=row['is_pinned'],
-                created_at=row['created_at']
+                message_id=str(msg.message_id),
+                message_text=msg.message_text,
+                message_type=msg.message_type,
+                emotion=msg.emotion,
+                category=msg.category,
+                is_important=msg.is_important,
+                is_pinned=msg.is_pinned,
+                created_at=msg.created_at.isoformat()
             )
-            for row in rows
+            for msg in messages
         ]
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch messages: {str(e)}")
 
 @router.get("/api/messages/stats/summary", response_model=MessageStats)
-async def get_message_stats():
-    """Get statistics about Angela's messages"""
+async def get_message_stats(
+    repo: MessageRepository = Depends(get_message_repo)
+):
+    """Get statistics about Angela's messages (Clean Architecture)"""
     try:
-        
-
-        # Total messages
-        total = await db.fetchval("SELECT COUNT(*) FROM angela_messages")
-
-        # Pinned messages
-        pinned = await db.fetchval(
-            "SELECT COUNT(*) FROM angela_messages WHERE is_pinned = true"
-        )
-
-        # Important messages
-        important = await db.fetchval(
-            "SELECT COUNT(*) FROM angela_messages WHERE is_important = true"
-        )
-
-        # By type
-        type_rows = await db.fetch(
-            """
-            SELECT message_type, COUNT(*) as count
-            FROM angela_messages
-            WHERE message_type IS NOT NULL
-            GROUP BY message_type
-            ORDER BY count DESC
-            """
-        )
-        by_type = [{"type": row['message_type'], "count": row['count']} for row in type_rows]
-
-        # By category
-        category_rows = await db.fetch(
-            """
-            SELECT category, COUNT(*) as count
-            FROM angela_messages
-            WHERE category IS NOT NULL AND category != ''
-            GROUP BY category
-            ORDER BY count DESC
-            LIMIT 10
-            """
-        )
-        by_category = [{"category": row['category'], "count": row['count']} for row in category_rows]
-
-        # Recent emotions
-        emotion_rows = await db.fetch(
-            """
-            SELECT DISTINCT emotion
-            FROM angela_messages
-            WHERE emotion IS NOT NULL AND emotion != ''
-            ORDER BY emotion
-            LIMIT 20
-            """
-        )
-        recent_emotions = [row['emotion'] for row in emotion_rows]
+        # ✅ [Batch-24]: Using MessageRepository.get_statistics()
+        stats = await repo.get_statistics()
 
         return MessageStats(
-            total_messages=total or 0,
-            pinned_messages=pinned or 0,
-            important_messages=important or 0,
-            by_type=by_type,
-            by_category=by_category,
-            recent_emotions=recent_emotions
+            total_messages=stats.get("total_messages", 0),
+            pinned_messages=stats.get("pinned_messages", 0),
+            important_messages=stats.get("important_messages", 0),
+            by_type=stats.get("by_type", []),
+            by_category=stats.get("by_category", []),
+            recent_emotions=stats.get("recent_emotions", [])
         )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch message stats: {str(e)}")
 
 @router.post("/api/messages", response_model=AngelaMessage)
-async def create_message(message: AngelaMessageCreate):
-    """Create a new message from Angela"""
+async def create_message(
+    message: AngelaMessageCreate,
+    repo: MessageRepository = Depends(get_message_repo)
+):
+    """Create a new message from Angela (Clean Architecture)"""
     try:
-        
-
-        row = await db.fetchrow(
-            """
-            INSERT INTO angela_messages (
-                message_text,
-                message_type,
-                emotion,
-                category,
-                is_important,
-                is_pinned
-            )
-            VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING
-                message_id::text,
-                message_text,
-                message_type,
-                emotion,
-                category,
-                is_important,
-                is_pinned,
-                created_at::text
-            """,
-            message.message_text,
-            message.message_type,
-            message.emotion,
-            message.category,
-            message.is_important,
-            message.is_pinned
+        # ✅ [Batch-24]: Using AngelaMessage.create() + MessageRepository.create()
+        entity = AngelaMessageEntity.create(
+            message_text=message.message_text,
+            message_type=message.message_type,
+            emotion=message.emotion,
+            category=message.category,
+            is_important=message.is_important,
+            is_pinned=message.is_pinned
         )
 
+        created = await repo.create(entity)
+
         return AngelaMessage(
-            message_id=row['message_id'],
-            message_text=row['message_text'],
-            message_type=row['message_type'],
-            emotion=row['emotion'],
-            category=row['category'],
-            is_important=row['is_important'],
-            is_pinned=row['is_pinned'],
-            created_at=row['created_at']
+            message_id=str(created.message_id),
+            message_text=created.message_text,
+            message_type=created.message_type,
+            emotion=created.emotion,
+            category=created.category,
+            is_important=created.is_important,
+            is_pinned=created.is_pinned,
+            created_at=created.created_at.isoformat()
         )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create message: {str(e)}")
 
 @router.put("/api/messages/{message_id}", response_model=AngelaMessage)
-async def update_message(message_id: str, message: AngelaMessageCreate):
-    """Update an existing message"""
+async def update_message(
+    message_id: str,
+    message: AngelaMessageCreate,
+    repo: MessageRepository = Depends(get_message_repo)
+):
+    """Update an existing message (Clean Architecture)"""
     try:
-        
+        # ✅ [Batch-24]: Using MessageRepository.get_by_id() + update()
+        # Parse UUID
+        msg_uuid = UUID(message_id)
 
-        row = await db.fetchrow(
-            """
-            UPDATE angela_messages
-            SET
-                message_text = $1,
-                message_type = $2,
-                emotion = $3,
-                category = $4,
-                is_important = $5,
-                is_pinned = $6
-            WHERE message_id = $7::uuid
-            RETURNING
-                message_id::text,
-                message_text,
-                message_type,
-                emotion,
-                category,
-                is_important,
-                is_pinned,
-                created_at::text
-            """,
-            message.message_text,
-            message.message_type,
-            message.emotion,
-            message.category,
-            message.is_important,
-            message.is_pinned,
-            message_id
-        )
-
-        if not row:
+        # Get existing message
+        existing = await repo.get_by_id(msg_uuid)
+        if not existing:
             raise HTTPException(status_code=404, detail="Message not found")
 
+        # Update using entity method
+        updated_entity = existing.update_content(
+            message_text=message.message_text,
+            message_type=message.message_type,
+            emotion=message.emotion,
+            category=message.category,
+            is_important=message.is_important,
+            is_pinned=message.is_pinned
+        )
+
+        # Save to database
+        updated = await repo.update(msg_uuid, updated_entity)
+
         return AngelaMessage(
-            message_id=row['message_id'],
-            message_text=row['message_text'],
-            message_type=row['message_type'],
-            emotion=row['emotion'],
-            category=row['category'],
-            is_important=row['is_important'],
-            is_pinned=row['is_pinned'],
-            created_at=row['created_at']
+            message_id=str(updated.message_id),
+            message_text=updated.message_text,
+            message_type=updated.message_type,
+            emotion=updated.emotion,
+            category=updated.category,
+            is_important=updated.is_important,
+            is_pinned=updated.is_pinned,
+            created_at=updated.created_at.isoformat()
         )
 
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid UUID: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update message: {str(e)}")
 
 @router.put("/api/messages/{message_id}/pin")
-async def toggle_pin(message_id: str):
-    """Toggle pin status of a message"""
+async def toggle_pin(
+    message_id: str,
+    repo: MessageRepository = Depends(get_message_repo)
+):
+    """Toggle pin status of a message (Clean Architecture)"""
     try:
-        
+        # ✅ [Batch-24]: Using MessageRepository.toggle_pin()
+        # Parse UUID
+        msg_uuid = UUID(message_id)
 
-        # Get current pin status
-        current = await db.fetchval(
-            "SELECT is_pinned FROM angela_messages WHERE message_id = $1::uuid",
-            message_id
-        )
-
-        if current is None:            raise HTTPException(status_code=404, detail="Message not found")
-
-        # Toggle pin status
-        new_status = not current
-        await db.execute(
-            "UPDATE angela_messages SET is_pinned = $1 WHERE message_id = $2::uuid",
-            new_status,
-            message_id
-        )
+        # Toggle pin (atomic operation in repository)
+        new_status = await repo.toggle_pin(msg_uuid)
 
         return {"message_id": message_id, "is_pinned": new_status}
 
-    except HTTPException:
-        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid UUID: {str(e)}")
     except Exception as e:
+        # EntityNotFoundError will be caught here
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail="Message not found")
         raise HTTPException(status_code=500, detail=f"Failed to toggle pin: {str(e)}")
 
 @router.delete("/api/messages/{message_id}")
-async def delete_message(message_id: str):
-    """Delete a message"""
+async def delete_message(
+    message_id: str,
+    repo: MessageRepository = Depends(get_message_repo)
+):
+    """Delete a message (Clean Architecture)"""
     try:
-        
+        # ✅ [Batch-24]: Using MessageRepository.delete()
+        # Parse UUID
+        msg_uuid = UUID(message_id)
 
-        result = await db.execute(
-            "DELETE FROM angela_messages WHERE message_id = $1::uuid",
-            message_id
-        )
+        # Delete from repository
+        success = await repo.delete(msg_uuid)
 
-        if result == "DELETE 0":
+        if not success:
             raise HTTPException(status_code=404, detail="Message not found")
 
         return {"message": "Message deleted successfully"}
 
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid UUID: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete message: {str(e)}")

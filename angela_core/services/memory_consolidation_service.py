@@ -1,6 +1,9 @@
 """
 🌙 Memory Consolidation Service
 
+⚠️ DEPRECATED: This service is deprecated as of 2025-10-31.
+   Use MemoryService from angela_core.application.services.memory_service instead.
+
 Like humans consolidate memories during sleep, Angela consolidates
 memories to strengthen important ones and weaken unused ones.
 
@@ -12,6 +15,7 @@ This service:
 - Discovers patterns during consolidation
 """
 
+import warnings
 import asyncio
 import logging
 from datetime import datetime, timedelta
@@ -19,8 +23,15 @@ from typing import Dict, Any, List, Optional
 from uuid import UUID
 import json
 
+warnings.warn(
+    "memory_consolidation_service is deprecated. Use MemoryService from "
+    "angela_core.application.services.memory_service instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
 from angela_core.database import db
-from angela_core.embedding_service import embedding
+# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 from angela_core.services.pattern_learning_service import pattern_learning_service
 
 logging.basicConfig(

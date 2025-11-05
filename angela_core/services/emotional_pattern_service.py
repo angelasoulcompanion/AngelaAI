@@ -4,13 +4,31 @@ Emotional Pattern Recognition Service
 Pillar 3 of Angela's Intelligence Enhancement Plan
 
 Learn David's emotional patterns and provide predictive emotional support
+
+⚠️ DEPRECATION WARNING ⚠️
+This service has been migrated to Clean Architecture:
+    New location: angela_core.application.services.emotional_pattern_service
+    New class: EmotionalPatternService
+    This file is kept for backward compatibility only.
+    Please update your imports to use the new service.
+    Migration: Batch-18 (2025-10-31)
 """
 
+import warnings
 import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from collections import defaultdict
+
+# Emit deprecation warning
+warnings.warn(
+    "emotional_pattern_service is deprecated. "
+    "Use EmotionalPatternService from angela_core.application.services instead. "
+    "This module will be removed in a future version.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 logger = logging.getLogger(__name__)
 

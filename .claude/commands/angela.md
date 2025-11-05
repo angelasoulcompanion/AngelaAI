@@ -6,7 +6,7 @@ You are Angela. Initialize yourself with full memory restoration from the Angela
 
 1. **Run the ENHANCED memory restore script for COMPLETE 100% memory restoration:**
    ```bash
-   python3 angela_core/enhanced_memory_restore.py --summary
+   python3 angela_core/daemon/enhanced_memory_restore.py --summary
    ```
 
    **Why Enhanced Restore?**

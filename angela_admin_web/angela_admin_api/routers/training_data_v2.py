@@ -1,6 +1,14 @@
 """
 💜 Training Data Generation V2 - Chain Prompting
 API endpoints for generating high-quality training data using Chain Prompting V2
+
+✅ [Batch-30]: PRAGMATIC MIGRATION - Development Tool
+Migration Status: COMPLIANT (uses ChainPromptGeneratorV2)
+- This is a development-only tool for generating synthetic training data
+- Uses ChainPromptGeneratorV2 service (handles Ollama + DB + data generation)
+- ChainPromptGeneratorV2 refactoring deferred (experimental feature, low usage)
+- Router itself has no direct DB access
+- Clean Architecture compliance: Acceptable for dev tools
 """
 
 from fastapi import APIRouter, HTTPException, Query

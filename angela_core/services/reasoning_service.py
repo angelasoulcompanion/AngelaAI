@@ -24,7 +24,7 @@ from datetime import datetime
 
 from angela_core.database import db
 from angela_core.services.knowledge_extraction_service import knowledge_extractor
-from angela_core.embedding_service import embedding
+from angela_core.services.embedding_service import get_embedding_service  # Migration 015: Restored embeddings
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +44,8 @@ class ReasoningService:
 
     def __init__(self):
         self.knowledge_extractor = knowledge_extractor
-        self.embedding = embedding
-        logger.info("🧠 Reasoning Service initialized")
+        self.embedding_service = get_embedding_service()  # Migration 015: Use new EmbeddingService
+        logger.info("🧠 Reasoning Service initialized with embeddings (384D)")
 
 
     # ========================================

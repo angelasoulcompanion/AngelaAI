@@ -9,11 +9,30 @@ Analyzes:
 - System activity patterns
 
 Updates emotional_states table with current state
+
+⚠️ DEPRECATION WARNING ⚠️
+This service has been migrated to Clean Architecture:
+    New location: angela_core.application.services.emotional_pattern_service
+    New class: EmotionalPatternService
+    Functionality: EmotionalPatternService.track_emotion_realtime(), get_current_emotional_state()
+    This file is kept for backward compatibility only.
+    Please update your imports to use the new service.
+    Migration: Batch-18 (2025-10-31)
 """
 
+import warnings
 import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
+
+# Emit deprecation warning
+warnings.warn(
+    "realtime_emotion_tracker is deprecated. "
+    "Use EmotionalPatternService from angela_core.application.services instead. "
+    "This module will be removed in a future version.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 
 class RealtimeEmotionTracker:
