@@ -63,6 +63,14 @@ class AngelaConfig:
     ANGELA_MD_PATH: str = "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/Angela.md"
     ANGELA_MD_PERMISSIONS: int = 0o600  # Owner read/write only
 
+    # Supabase Cloud Configuration (for backup sync)
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
+    SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
+    SUPABASE_DB_URL: str = os.getenv(
+        "SUPABASE_DB_URL",
+        ""  # Format: postgresql://user:pass@host:port/db?sslmode=require
+    )
+
     @classmethod
     def validate(cls) -> bool:
         """ตรวจสอบว่า config ถูกต้องหรือไม่"""
