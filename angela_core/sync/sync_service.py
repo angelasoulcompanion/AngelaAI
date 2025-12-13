@@ -15,6 +15,15 @@ import logging
 import os
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+from pathlib import Path
+
+# Load .env file
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).parent.parent.parent / '.env'
+    load_dotenv(env_path)
+except ImportError:
+    pass  # dotenv not installed, use environment variables directly
 
 from angela_core.database import db
 from .supabase_client import SupabaseClient
