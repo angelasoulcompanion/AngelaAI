@@ -39,7 +39,7 @@ class SemanticMemoryService:
         conversation_id: str
     ) -> bool:
         """Update embedding for a specific conversation"""
-
+        try:
             # Get conversation text
             row = await db.fetchrow(
                 """
@@ -127,6 +127,7 @@ class SemanticMemoryService:
 
             for conv_id, embedding in zip(conversation_ids, embeddings):
                 if embedding:
+                    try:
                         # Convert list to pgvector format: '[1,2,3,...]'
                         embedding_str = '[' + ','.join(map(str, embedding)) + ']'
 
@@ -321,7 +322,7 @@ class SemanticMemoryService:
         limit: int = 20
     ) -> List[Dict]:
         """Get recent conversations (chronological, not semantic)"""
-
+        try:
             cutoff_date = datetime.now() - timedelta(days=days)
 
             rows = await db.fetch(

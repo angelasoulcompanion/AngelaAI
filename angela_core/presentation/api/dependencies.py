@@ -45,7 +45,7 @@ from angela_core.infrastructure.persistence.repositories import (
     GoalRepository,
     LearningRepository,
     PatternRepository,
-    SecretaryRepository,
+    # SecretaryRepository,  # REMOVED: Secretary function deleted
     AutonomousActionRepository,
     JournalRepository,
     MessageRepository,
@@ -234,12 +234,13 @@ def get_pattern_repo(
     return container.resolve(PatternRepository, scope_id=scope_id)
 
 
-def get_secretary_repo(
-    container: DIContainer = Depends(get_container),
-    scope_id: str = Depends(get_scope_id)
-) -> SecretaryRepository:
-    """Get SecretaryRepository (scoped to request)."""
-    return container.resolve(SecretaryRepository, scope_id=scope_id)
+# REMOVED: Secretary function deleted
+# def get_secretary_repo(
+#     container: DIContainer = Depends(get_container),
+#     scope_id: str = Depends(get_scope_id)
+# ) -> SecretaryRepository:
+#     """Get SecretaryRepository (scoped to request)."""
+#     return container.resolve(SecretaryRepository, scope_id=scope_id)
 
 
 def get_autonomous_action_repo(

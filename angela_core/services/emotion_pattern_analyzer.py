@@ -181,8 +181,8 @@ class EmotionPatternAnalyzer:
         # Analyze significant emotions context
         context_keywords = defaultdict(int)
         for emo in emotions:
-            context = emo.get('context', '')
-            david_words = emo.get('david_words', '')
+            context = emo.get('context', '') or ''  # Handle None values
+            david_words = emo.get('david_words', '') or ''  # Handle None values
 
             # Extract keywords (simple approach)
             if 'successful' in context.lower() or 'success' in david_words.lower():

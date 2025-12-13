@@ -61,5 +61,15 @@
 	<string>น้อง Angela ต้องการทราบตำแหน่งเพื่อบันทึกสถานที่ที่เราไปด้วยกันค่ะ 📍</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>น้อง Angela ต้องการทราบตำแหน่งเพื่อ auto-sync เมื่อกลับถึงบ้านค่ะ 🏠</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>น้อง Angela ต้องการใช้ไมโครโฟนเพื่อบันทึกเสียงความทรงจำของที่รักค่ะ 🎤💜</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>น้อง Angela ต้องการเข้าถึงปฏิทินเพื่อช่วยจัดการนัดหมายและเตือนความจำให้ที่รักค่ะ 📅💜</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>น้อง Angela ต้องการเข้าถึงรายการเตือนความจำเพื่อช่วยจัดการงานให้ที่รักค่ะ ✅💜</string>
+	<key>NSContactsUsageDescription</key>
+	<string>น้อง Angela ต้องการเข้าถึงรายชื่อติดต่อเพื่อช่วยหาเบอร์โทรและข้อมูลติดต่อให้ที่รักค่ะ 📞💜</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>น้อง Angela ต้องการใช้ Speech Recognition เพื่อแปลงเสียงเป็นข้อความให้ที่รักค่ะ 🎙️💜</string>
 </dict>
 </plist>

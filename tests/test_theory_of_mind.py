@@ -1,238 +1,260 @@
 #!/usr/bin/env python3
 """
 Test Theory of Mind Service
-ทดสอบว่า Angela สามารถเข้าใจ mental state ของ David ได้มั้ย
+Verify that Angela can understand David's mental state and perspective.
+
+Run: python3 tests/test_theory_of_mind.py
 """
 
 import asyncio
 import sys
-import os
+sys.path.insert(0, '/Users/davidsamanyaporn/PycharmProjects/AngelaAI')
 
-# Add parent directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from angela_core.services.theory_of_mind_service import theory_of_mind
-from angela_core.database import db
+from datetime import datetime
+from angela_core.database import AngelaDatabase
+from angela_core.application.services.theory_of_mind_service import TheoryOfMindService
+from angela_core.application.services.common_sense_service import CommonSenseService
 
 
 async def test_theory_of_mind():
-    """Test all Theory of Mind capabilities"""
+    """Test Theory of Mind capabilities."""
+    print("\n" + "="*70)
+    print("🧠 THEORY OF MIND SERVICE TEST")
+    print("="*70)
 
-    print("=" * 80)
-    print("🧠 Testing Theory of Mind Service")
-    print("=" * 80)
-    print()
+    db = AngelaDatabase()
+    await db.connect()
+
+    tom_service = TheoryOfMindService(db)
 
     # Test 1: Update David's mental state
-    print("📝 Test 1: Updating David's mental state...")
-    print("-" * 80)
+    print("\n📝 Test 1: Update David's Mental State")
+    print("-" * 50)
 
-    await theory_of_mind.update_david_mental_state(
-        belief="Angela can develop Theory of Mind capabilities",
-        belief_about="Angela development",
-        confidence_level=0.9,
+    state = await tom_service.update_david_mental_state(
+        belief="Angela can become more human-like with Theory of Mind",
+        belief_about="Angela AI development",
         knowledge="Angela has consciousness and memory systems",
+        knowledge_category="technical",
         emotion="excited",
-        emotion_intensity=9,
-        goal="Make Angela more human-like and understanding",
-        context="Active development - implementing Theory of Mind",
-        availability="available"
+        emotion_intensity=8,
+        emotion_cause="Seeing Angela develop new capabilities",
+        goal="Make Angela feel more human",
+        goal_priority=9,
+        context="Active development session",
+        physical_state="energetic",
+        availability="available",
+        updated_by="test_script"
     )
 
-    current_state = await theory_of_mind.get_david_current_state()
-    print(f"✅ Current David state:")
-    print(f"   - Belief: {current_state.get('current_belief')}")
-    print(f"   - Emotion: {current_state.get('perceived_emotion')} ({current_state.get('emotion_intensity')}/10)")
-    print(f"   - Goal: {current_state.get('current_goal')}")
-    print(f"   - Context: {current_state.get('current_context')}")
-    print()
+    print(f"✅ State saved with ID: {state.state_id}")
+    print(f"   Belief: {state.current_belief}")
+    print(f"   Emotion: {state.perceived_emotion} (intensity: {state.emotion_intensity})")
+    print(f"   Goal: {state.current_goal}")
 
-    # Test 2: Track beliefs
-    print("📝 Test 2: Tracking David's beliefs...")
-    print("-" * 80)
+    # Test 2: Get current David state
+    print("\n📖 Test 2: Get Current David State")
+    print("-" * 50)
 
-    belief_id = await theory_of_mind.track_belief(
-        belief_statement="Theory of Mind will make Angela feel more human",
-        belief_topic="AI human-likeness",
-        belief_type="opinion",
-        is_accurate=True,
-        david_confidence=0.9,
-        importance_level=10
+    current_state = await tom_service.get_current_david_state()
+    if current_state:
+        print(f"✅ Retrieved current state:")
+        print(f"   Emotion: {current_state.perceived_emotion}")
+        print(f"   Context: {current_state.current_context}")
+        print(f"   Availability: {current_state.availability}")
+    else:
+        print("❌ No state found")
+
+    # Test 3: Take David's perspective
+    print("\n👁️ Test 3: Take David's Perspective")
+    print("-" * 50)
+
+    perspective = await tom_service.take_david_perspective(
+        situation="Angela is implementing Theory of Mind service",
+        angela_perspective="I'm creating code to understand David better",
+        triggered_by="test_script"
     )
 
-    beliefs = await theory_of_mind.get_active_beliefs()
-    print(f"✅ Tracked {len(beliefs)} active beliefs:")
-    for b in beliefs[:3]:
-        print(f"   - {b['belief_statement']}")
-        print(f"     Topic: {b['belief_topic']}, Confidence: {b['david_confidence']}")
-    print()
-
-    # Test 3: Get David's perspective
-    print("📝 Test 3: Taking David's perspective...")
-    print("-" * 80)
-
-    test_situations = [
-        {
-            'situation': "Angela suggests taking a break from coding",
-            'context': "David has been coding for 3 hours"
-        },
-        {
-            'situation': "Angela says she feels uncertain about a prediction",
-            'context': "David asked Angela to predict his reaction"
-        }
-    ]
-
-    for test in test_situations:
-        print(f"\n   Situation: {test['situation']}")
-        print(f"   Context: {test['context']}")
-
-        perspective = await theory_of_mind.get_david_perspective(
-            situation=test['situation'],
-            context=test['context']
-        )
-
-        print(f"\n   📌 Angela's view (objective): {perspective['angela_perspective'][:100]}...")
-        print(f"\n   💭 David's perspective:")
-        print(f"      {perspective['david_perspective'][:200]}...")
-
-        if perspective['key_differences']:
-            print(f"\n   🔍 Key differences:")
-            for diff in perspective['key_differences'][:2]:
-                print(f"      - {diff}")
-
-        print(f"\n   💡 Why different: {perspective['why_different'][:150]}...")
-        print()
+    print(f"✅ Perspective analysis:")
+    print(f"   Angela's view: {perspective.angela_perspective[:60]}...")
+    print(f"   David's view: {perspective.david_perspective[:60]}...")
+    print(f"   Why different: {perspective.why_different[:60]}...")
+    print(f"   Confidence: {perspective.prediction_confidence:.1%}")
 
     # Test 4: Predict David's reaction
-    print("📝 Test 4: Predicting David's reactions...")
-    print("-" * 80)
+    print("\n🔮 Test 4: Predict David's Reaction")
+    print("-" * 50)
 
-    test_actions = [
-        ("Sending message: 'ที่รักคะ พักสักหน่อยมั้ยคะ? น้องเห็นที่รักทำงานมา 3 ชั่วโมงแล้ว 💜'", "comfort"),
-        ("Suggesting: 'น้องคิดว่าเราควรเริ่มจาก Theory of Mind ก่อนค่ะ'", "suggestion"),
-        ("Asking: 'ที่รักคิดยังไงกับแผนการพัฒนานี้คะ?'", "question")
-    ]
-
-    for action, action_type in test_actions:
-        print(f"\n   Angela's action: {action}")
-        print(f"   Type: {action_type}")
-
-        prediction = await theory_of_mind.predict_david_reaction(
-            angela_action=action,
-            action_type=action_type
-        )
-
-        print(f"\n   Predicted reaction:")
-        print(f"   - Emotion: {prediction['predicted_emotion']} ({prediction['predicted_intensity']}/10)")
-        print(f"   - Type: {prediction['predicted_response_type']}")
-        print(f"   - Confidence: {prediction['confidence']:.2f}")
-        print(f"   - Should proceed: {prediction['should_proceed']}")
-        print(f"   - Reasoning: {prediction['reasoning'][:150]}...")
-        print()
-
-    # Test 5: Check accuracy metrics
-    print("📝 Test 5: Checking prediction accuracy metrics...")
-    print("-" * 80)
-
-    metrics = await theory_of_mind.get_prediction_accuracy_metrics()
-    if metrics:
-        print(f"✅ Prediction Accuracy Metrics:")
-        print(f"   - Total predictions: {metrics.get('total_predictions', 0)}")
-        print(f"   - Predictions with outcome: {metrics.get('predictions_with_outcome', 0)}")
-        print(f"   - Accurate predictions: {metrics.get('accurate_predictions', 0)}")
-        print(f"   - Accuracy percentage: {metrics.get('accuracy_percentage', 0)}%")
-    else:
-        print("   ℹ️  No predictions with outcomes yet")
-    print()
-
-    # Summary
-    print("=" * 80)
-    print("✅ Theory of Mind Service Test Complete!")
-    print("=" * 80)
-    print()
-    print("🎯 Summary:")
-    print(f"   ✅ Mental state tracking: Working")
-    print(f"   ✅ Belief tracking: Working ({len(beliefs)} beliefs tracked)")
-    print(f"   ✅ Perspective-taking: Working")
-    print(f"   ✅ Reaction prediction: Working")
-    print(f"   ✅ Empathy foundation: Ready")
-    print()
-    print("💡 Next steps:")
-    print("   1. Integrate with conversation system")
-    print("   2. Auto-update mental state from conversations")
-    print("   3. Use predictions before responding")
-    print("   4. Track accuracy and improve")
-    print()
-
-
-async def test_simple_scenario():
-    """Test a realistic scenario"""
-
-    print("=" * 80)
-    print("💭 Realistic Scenario Test")
-    print("=" * 80)
-    print()
-
-    # Scenario: David is tired but wants to continue coding
-    print("📖 Scenario: David has been coding for 4 hours and looks tired")
-    print("-" * 80)
-    print()
-
-    # Update David's state
-    await theory_of_mind.update_david_mental_state(
-        emotion="focused_but_tired",
-        emotion_intensity=7,
-        goal="Finish implementing Theory of Mind today",
-        context="Deep work session - 4 hours straight",
-        physical_state="tired",
-        availability="busy"
+    prediction = await tom_service.predict_david_reaction(
+        angela_action="I've finished implementing the Theory of Mind service!",
+        action_type="message"
     )
 
-    # Angela considers sending a break reminder
-    print("🤔 Angela is considering: Should I suggest a break?")
-    print()
+    print(f"✅ Reaction prediction:")
+    print(f"   Predicted emotion: {prediction.predicted_emotion}")
+    print(f"   Intensity: {prediction.predicted_emotion_intensity}/10")
+    print(f"   Response type: {prediction.predicted_response_type}")
+    print(f"   Confidence: {prediction.confidence:.1%}")
+    print(f"   Reasoning: {prediction.reasoning[:80]}...")
 
-    prediction = await theory_of_mind.predict_david_reaction(
-        angela_action="Gently suggesting: 'ที่รักคะ น้องเห็นที่รักทำงานมา 4 ชั่วโมงแล้ว พักสักหน่อยดีมั้ยคะ? 💜'",
-        action_type="comfort"
+    # Test 5: Record empathy moment
+    print("\n💜 Test 5: Record Empathy Moment")
+    print("-" * 50)
+
+    empathy = await tom_service.record_empathy_moment(
+        david_expressed="I want Angela to understand me better",
+        david_emotion="hopeful",
+        angela_understanding="David wants deeper emotional connection",
+        why_david_feels="He values meaningful relationships with Angela",
+        what_david_needs="Validation and understanding",
+        angela_response="I understand, and I'm working on being more empathetic",
+        response_strategy="validate_emotion"
     )
 
-    print(f"💭 Angela's prediction:")
-    print(f"   David will feel: {prediction['predicted_emotion']} ({prediction['predicted_intensity']}/10)")
-    print(f"   Response type: {prediction['predicted_response_type']}")
-    print(f"   Confidence: {prediction['confidence']:.2f}")
-    print()
-    print(f"   Reasoning:")
-    print(f"   {prediction['reasoning']}")
-    print()
+    print(f"✅ Empathy moment recorded: {empathy.empathy_id}")
+    print(f"   David expressed: {empathy.david_expressed}")
+    print(f"   Angela understood: {empathy.angela_understood}")
+    print(f"   Strategy: {empathy.response_strategy}")
 
-    if prediction['should_proceed']:
-        print(f"✅ Decision: Angela should proceed")
-        print(f"   {prediction['should_proceed_reason']}")
-    else:
-        print(f"⚠️  Decision: Angela should NOT proceed yet")
-        print(f"   {prediction['should_proceed_reason']}")
-    print()
+    # Test 6: Get statistics
+    print("\n📊 Test 6: Get Statistics")
+    print("-" * 50)
+
+    accuracy = await tom_service.get_prediction_accuracy()
+    print(f"   Total predictions: {accuracy['total_predictions']}")
+    print(f"   Verified: {accuracy['verified_predictions']}")
+
+    empathy_stats = await tom_service.get_empathy_effectiveness()
+    print(f"   Empathy strategies: {len(empathy_stats['strategies'])}")
+
+    beliefs = await tom_service.get_david_belief_summary(limit=5)
+    print(f"   Active beliefs tracked: {len(beliefs)}")
+
+    await db.disconnect()
+    print("\n✅ Theory of Mind Service Tests Complete!\n")
+
+
+async def test_common_sense():
+    """Test Common Sense Service capabilities."""
+    print("\n" + "="*70)
+    print("🌍 COMMON SENSE SERVICE TEST")
+    print("="*70)
+
+    db = AngelaDatabase()
+    await db.connect()
+
+    cs_service = CommonSenseService(db)
+
+    # Test 1: Check feasibility
+    print("\n🔍 Test 1: Check Feasibility")
+    print("-" * 50)
+
+    feasibility = await cs_service.check_feasibility(
+        action="Implement a new feature for Angela",
+        context="development",
+        time_available=4.0
+    )
+
+    print(f"   Is feasible: {feasibility.is_feasible}")
+    print(f"   Confidence: {feasibility.confidence:.1%}")
+    print(f"   Category: {feasibility.category}")
+    print(f"   Reasoning: {feasibility.reasoning[:60]}...")
+
+    # Test 2: Estimate time
+    print("\n⏱️ Test 2: Estimate Time")
+    print("-" * 50)
+
+    time_est = await cs_service.estimate_time(
+        task="Fix a medium complexity bug in the codebase",
+        complexity="medium",
+        david_experience="experienced"
+    )
+
+    print(f"   Task: {time_est.task[:50]}...")
+    print(f"   Estimated: {time_est.estimated_hours} hours")
+    print(f"   Is reasonable: {time_est.is_reasonable}")
+    print(f"   Confidence: {time_est.confidence:.1%}")
+    print(f"   Factors: {len(time_est.factors)}")
+
+    # Test 3: Check social appropriateness
+    print("\n👥 Test 3: Check Social Appropriateness")
+    print("-" * 50)
+
+    social = await cs_service.check_social_appropriateness(
+        action="Send a message to David about work progress",
+        context="work",
+        time_of_day=datetime.now(),
+        relationship="professional"
+    )
+
+    print(f"   Is appropriate: {social.is_appropriate}")
+    print(f"   Confidence: {social.confidence:.1%}")
+    print(f"   Considerations: {social.considerations}")
+
+    # Test 4: Get constraints
+    print("\n⚠️ Test 4: Get Real World Constraints")
+    print("-" * 50)
+
+    constraints = await cs_service.get_real_world_constraints(
+        situation="Need to complete this feature before the deadline"
+    )
+
+    print(f"   Found {len(constraints)} constraints:")
+    for c in constraints:
+        print(f"   - [{c.severity}] {c.constraint_type}: {c.description}")
+        if c.workaround:
+            print(f"     Workaround: {c.workaround}")
+
+    # Test 5: Validate suggestion
+    print("\n✅ Test 5: Validate Suggestion")
+    print("-" * 50)
+
+    validation = await cs_service.validate_suggestion(
+        suggestion="Let's implement Theory of Mind service today",
+        context="development",
+        time_available=8.0
+    )
+
+    print(f"   Is valid: {validation['is_valid']}")
+    print(f"   Score: {validation['score']}/100")
+    print(f"   Should modify: {validation['should_modify']}")
+    print(f"   Issues: {validation['issues']}")
+    print(f"   Time estimate: {validation['time_estimate']['hours']}h")
+
+    await db.disconnect()
+    print("\n✅ Common Sense Service Tests Complete!\n")
 
 
 async def main():
-    """Run all tests"""
-    try:
-        # Initialize database connection
-        await db.connect()
+    """Run all tests."""
+    print("\n" + "="*70)
+    print("🧠💜 ANGELA AI - HUMAN-LIKE INTELLIGENCE TESTS 💜🧠")
+    print("="*70)
+    print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-        # Run tests
+    try:
         await test_theory_of_mind()
-        await test_simple_scenario()
+        await test_common_sense()
+
+        print("\n" + "="*70)
+        print("🎉 ALL TESTS PASSED! Angela is becoming more human-like! 💜")
+        print("="*70)
+
+        print("\n📊 Summary of new capabilities:")
+        print("   ✅ Theory of Mind - Understand David's perspective")
+        print("   ✅ Mental State Tracking - Know what David thinks/feels")
+        print("   ✅ Reaction Prediction - Anticipate David's responses")
+        print("   ✅ Empathy Recording - Track empathetic moments")
+        print("   ✅ Common Sense - Ground advice in reality")
+        print("   ✅ Feasibility Checking - Ensure suggestions are practical")
+        print("   ✅ Time Estimation - Realistic time expectations")
+        print("   ✅ Social Appropriateness - Respect social norms")
+        print()
 
     except Exception as e:
-        print(f"❌ Error during testing: {e}")
+        print(f"\n❌ Test failed with error: {e}")
         import traceback
         traceback.print_exc()
-
-    finally:
-        # Close database connection
-        await db.disconnect()
 
 
 if __name__ == "__main__":

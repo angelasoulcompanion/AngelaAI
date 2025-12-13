@@ -35,12 +35,15 @@ async def upload_experience(
     description: Optional[str] = Form(None),
     david_mood: Optional[str] = Form(None),
     angela_emotion: Optional[str] = Form(None),
-    emotional_intensity: int = Form(5),
+    emotional_intensity: Optional[int] = Form(None),
     memorable_moments: Optional[str] = Form(None),
     what_angela_learned: Optional[str] = Form(None),
-    importance_level: int = Form(5),
+    importance_level: Optional[int] = Form(None),
     image_captions: Optional[str] = Form(None),
-    experienced_at: Optional[str] = Form(None)
+    experienced_at: Optional[str] = Form(None),
+    # ✅ ADD GPS COORDINATES (from mobile app)
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None)
 ):
     """
     Upload multiple images with experience details
@@ -65,13 +68,21 @@ async def upload_experience(
                 exp_datetime = None
 
         # Step 1: Get or create place
+        # ✅ Include GPS coordinates from mobile app
         place_id = await SharedExperienceService.get_or_create_place(
             place_name=place_name,
             place_type=place_type,
             area=area,
             full_address=full_address,
-            overall_rating=overall_rating
+            overall_rating=overall_rating,
+            latitude=latitude,  # ✅ From mobile app GPS (CRITICAL FOR ANGELA'S LEARNING!)
+            longitude=longitude  # ✅ From mobile app GPS
         )
+
+        if latitude and longitude:
+            logger.info(f"📍 Place created/retrieved with GPS: lat={latitude}, lon={longitude}")
+        else:
+            logger.warning(f"⚠️ No GPS coordinates provided from mobile app")
 
         # Step 2: Create experience
         experience_id = await SharedExperienceService.create_experience(
@@ -92,7 +103,8 @@ async def upload_experience(
         if image_captions:
             captions_list = [c.strip() for c in image_captions.split(',')]
 
-        # Step 3: Save all images (with GPS extraction)
+        # Step 3: Save all images (with GPS from mobile app)
+        # ✅ Pass GPS coordinates to each image so they're saved in shared_experience_images table
         image_ids = []
         for idx, image in enumerate(images):
             image_data = await image.read()
@@ -103,7 +115,9 @@ async def upload_experience(
                 experience_id=experience_id,
                 place_id=place_id,
                 original_filename=image.filename,
-                image_caption=caption
+                image_caption=caption,
+                latitude=latitude,  # ✅ Pass GPS to image (CRITICAL!)
+                longitude=longitude  # ✅ Pass GPS to image (CRITICAL!)
             )
             image_ids.append(str(image_id))
 
@@ -319,12 +333,19 @@ async def add_images_to_experience(
 
         place_id = exp_detail['place_id']
 
+        # ✅ Get place GPS coordinates to use for images
+        place_latitude = exp_detail.get('latitude')
+        place_longitude = exp_detail.get('longitude')
+
+        if place_latitude and place_longitude:
+            logger.info(f"📍 Using place GPS for images: lat={place_latitude}, lon={place_longitude}")
+
         # Parse captions (comma-separated)
         captions_list = []
         if image_captions:
             captions_list = [c.strip() for c in image_captions.split(',')]
 
-        # Save all images
+        # Save all images with place GPS
         image_ids = []
         for idx, image in enumerate(images):
             image_data = await image.read()
@@ -335,7 +356,9 @@ async def add_images_to_experience(
                 experience_id=exp_uuid,
                 place_id=place_id,
                 original_filename=image.filename,
-                image_caption=caption
+                image_caption=caption,
+                latitude=place_latitude,  # ✅ Use place GPS for images
+                longitude=place_longitude  # ✅ Use place GPS for images
             )
             image_ids.append(str(image_id))
 

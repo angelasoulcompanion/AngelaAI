@@ -22,26 +22,42 @@ struct ContentView: View {
                 }
                 .tag(0)
 
-            // Tab 2: Experiences
+            // Tab 2: Chat with Angela
+            NavigationView {
+                ChatView()
+            }
+                .tabItem {
+                    Label("Chat", systemImage: "message.fill")
+                }
+                .tag(1)
+
+            // Tab 3: Health Tracking (NEW! 2025-12-11) 💪
+            HealthTrackingView()
+                .tabItem {
+                    Label("Health", systemImage: "heart.text.square.fill")
+                }
+                .tag(2)
+
+            // Tab 4: Experiences
             ExperiencesView()
                 .tabItem {
                     Label("Memories", systemImage: "heart.fill")
                 }
-                .tag(1)
+                .tag(3)
 
-            // Tab 3: Sync Status
+            // Tab 5: Sync Status
             SyncStatusView()
                 .tabItem {
                     Label("Sync", systemImage: "arrow.triangle.2.circlepath")
                 }
-                .tag(2)
+                .tag(4)
 
-            // Tab 4: Settings
+            // Tab 6: Settings
             SettingsView()
                 .tabItem {
                     Label("Settings", systemImage: "gear")
                 }
-                .tag(3)
+                .tag(5)
         }
         .accentColor(.angelaPurple)
     }

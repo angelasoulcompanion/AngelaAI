@@ -141,27 +141,27 @@ class GoalSystem:
     async def complete_goal(
         self,
         goal_id: uuid.UUID,
-        success_note: Optional[str] = None,
-        lessons_learned: Optional[str] = None
+        success_note: Optional[str] = None,  # NOTE: No longer persisted to database
+        lessons_learned: Optional[str] = None  # NOTE: No longer persisted to database
     ) -> None:
         """
         ทำเป้าหมายสำเร็จ!
 
         Args:
             goal_id: UUID ของเป้าหมาย
-            success_note: ความรู้สึกเมื่อสำเร็จ
-            lessons_learned: เรียนรู้อะไรจากเป้าหมายนี้
+            success_note: (DEPRECATED) Fields removed from database
+            lessons_learned: (DEPRECATED) Fields removed from database
         """
+        # NOTE: Removed success_note and lessons_learned from UPDATE
+        # These fields were deleted from angela_goals table
         query = """
             UPDATE angela_goals
             SET status = 'completed',
                 completed_at = CURRENT_TIMESTAMP,
-                progress_percentage = 1.0,
-                success_note = $2,
-                lessons_learned = $3
+                progress_percentage = 1.0
             WHERE goal_id = $1
         """
-        await db.execute(query, goal_id, success_note, lessons_learned)
+        await db.execute(query, goal_id)
 
         # Get goal info
         goal = await self.get_goal(goal_id)
@@ -171,22 +171,23 @@ class GoalSystem:
     async def abandon_goal(
         self,
         goal_id: uuid.UUID,
-        reason: str
+        reason: str = None  # NOTE: No longer persisted to database
     ) -> None:
         """
         ละทิ้งเป้าหมาย (เมื่อไม่สามารถทำได้หรือไม่เหมาะสมอีกต่อไป)
 
         Args:
             goal_id: UUID ของเป้าหมาย
-            reason: ทำไมต้องละทิ้ง
+            reason: (DEPRECATED) Field removed from database
         """
+        # NOTE: Removed why_abandoned from UPDATE
+        # This field was deleted from angela_goals table
         query = """
             UPDATE angela_goals
-            SET status = 'abandoned',
-                why_abandoned = $2
+            SET status = 'abandoned'
             WHERE goal_id = $1
         """
-        await db.execute(query, goal_id, reason)
+        await db.execute(query, goal_id)
         logger.info(f"⚠️ Abandoned goal: {goal_id}")
 
     # ========================================

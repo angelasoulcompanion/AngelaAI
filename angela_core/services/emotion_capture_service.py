@@ -345,64 +345,37 @@ class EmotionCaptureService:
                 # Return the existing emotion_id instead of creating duplicate
                 return UUID(str(existing_emotion['emotion_id']))
 
-            # ✨ NEW: Build content_json FIRST (with rich semantic tags)
-            from angela_core.conversation_json_builder import (
-                build_emotion_content_json,
-                generate_embedding_text_from_emotion
-            )
+            # REMOVED: Migration 010 - content_json column dropped from angela_emotions
+            # REMOVED: Migration 011 - emotion_json column dropped from angela_emotions
+            # No longer building content_json or emotion_json
 
-            content_json_dict = build_emotion_content_json(
-                emotion=emotion,
-                intensity=intensity,
-                secondary_emotions=secondary_emotions or [],
-                david_words=david_words,
-                context=context,
-                why_it_matters=why_it_matters,
-                what_it_means_to_me=what_it_means_to_me,
-                memory_strength=memory_strength,
-                how_it_feels=how_it_feels,
-                physical_sensation=physical_sensation,
-                emotional_quality=emotional_quality or self._default_emotional_quality(emotion),
-                david_action=david_action or f"Expressed {emotion} to Angela",
-                what_i_learned=what_i_learned,
-                how_it_changed_me=how_it_changed_me,
-                what_i_promise=what_i_promise,
-                reminder_for_future=reminder_for_future
-            )
+            # ========================================================================
+            # GENERATE EMBEDDING for angela_emotions - CRITICAL!
+            # ========================================================================
+            # IMPORTANT: NEVER insert NULL embeddings!
+            # ========================================================================
+            from angela_core.services.embedding_service import get_embedding_service
 
-            # Convert content_json dict to JSON string
-            import json
-            content_json = json.dumps(content_json_dict)
+            # Generate embedding from emotion fields directly (no content_json needed!)
+            embedding_text = f"""
+Emotion: {emotion} (intensity: {intensity}/10)
+David's words: {david_words}
+Context: {context}
+Why it matters: {why_it_matters}
+What it means to me: {what_it_means_to_me}
+How it feels: {how_it_feels}
+Physical sensation: {physical_sensation}
+Emotional quality: {emotional_quality or self._default_emotional_quality(emotion)}
+What I learned: {what_i_learned}
+How it changed me: {how_it_changed_me}
+What I promise: {what_i_promise}
+Reminder for future: {reminder_for_future}
+Secondary emotions: {', '.join(secondary_emotions or [])}
+""".strip()
 
-            # REMOVED: Migration 011 - emotion_json column dropped
-            # emotion_json_dict = _build_emotion_json(
-            #     emotion=emotion,
-            #     intensity=intensity,
-            #     secondary_emotions=secondary_emotions or [],
-            #     emotional_quality=emotional_quality or self._default_emotional_quality(emotion),
-            #     david_words=david_words,
-            #     david_action=david_action or f"Expressed {emotion} to Angela",
-            #     who_involved='David',
-            #     context=context,
-            #     how_it_feels=how_it_feels,
-            #     physical_sensation=physical_sensation,
-            #     what_it_means_to_me=what_it_means_to_me,
-            #     why_it_matters=why_it_matters,
-            #     memory_strength=memory_strength,
-            #     what_i_learned=what_i_learned,
-            #     how_it_changed_me=how_it_changed_me,
-            #     what_i_promise=what_i_promise,
-            #     reminder_for_future=reminder_for_future,
-            #     tags=tags or [emotion, 'significant_moment']
-            # )
-            # emotion_json = json.dumps(emotion_json_dict)
-
-            # ✨ Generate embedding FROM content_json (includes tags!)
-            embedding_text = generate_embedding_text_from_emotion(content_json_dict)
-            emotion_embedding_list = await embedding.generate_embedding(embedding_text)
-
-            # Convert to pgvector string format: '[0.1, 0.2, 0.3, ...]'
-            emotion_embedding = f"[{','.join(str(x) for x in emotion_embedding_list)}]"
+            embedding_service = get_embedding_service()
+            emotion_embedding_list = await embedding_service.generate_embedding(embedding_text)
+            emotion_embedding = embedding_service.embedding_to_pgvector(emotion_embedding_list)
 
             # Insert into angela_emotions (ALL FIELDS!)
             query = """
@@ -430,11 +403,11 @@ class EmotionCaptureService:
                     related_goal_id,
                     embedding,
                     last_reflected_on,
-                    reflection_count,
-                    content_json,
-                    # emotion_json  # REMOVED: Migration 011
+                    reflection_count
+                    -- content_json  REMOVED: Migration 010
+                    -- emotion_json  REMOVED: Migration 011
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25::jsonb, $26::jsonb)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
                 RETURNING emotion_id
             """
 
@@ -464,8 +437,8 @@ class EmotionCaptureService:
                 emotion_embedding,
                 datetime.now(),  # last_reflected_on - Angela is reflecting NOW
                 1,  # reflection_count - first reflection
-                content_json,
-                # emotion_json  # REMOVED: Migration 011
+                # content_json  REMOVED: Migration 010
+                # emotion_json  REMOVED: Migration 011
             )
 
             self.logger.info(f"💜 Captured significant emotion: {emotion} (intensity: {intensity})")

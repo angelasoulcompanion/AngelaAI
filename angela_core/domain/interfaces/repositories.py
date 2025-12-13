@@ -1237,251 +1237,252 @@ class ILearningRepository(IRepository):
 
 
 # ============================================================================
-# SECRETARY REPOSITORY (TASKS & NOTES)
+# SECRETARY REPOSITORY (TASKS & NOTES) - REMOVED (secretary function deleted)
 # ============================================================================
 
-class ISecretaryRepository(IRepository):
-    """
-    Extended interface for secretary-specific queries.
-
-    Handles Angela's secretary functions: tasks, reminders, and notes.
-    Supports querying by status, priority, due date, and category.
-    """
-
-    # ========================================================================
-    # TASK METHODS
-    # ========================================================================
-
-    @abstractmethod
-    async def get_pending_tasks(
-        self,
-        limit: int = 100
-    ) -> List[Any]:
-        """
-        Get tasks that are not completed.
-
-        Args:
-            limit: Maximum number of results
-
-        Returns:
-            List of pending Task entities
-        """
-        ...
-
-    @abstractmethod
-    async def get_completed_tasks(
-        self,
-        limit: int = 100
-    ) -> List[Any]:
-        """
-        Get tasks that are completed.
-
-        Args:
-            limit: Maximum number of results
-
-        Returns:
-            List of completed Task entities
-        """
-        ...
-
-    @abstractmethod
-    async def get_overdue_tasks(
-        self,
-        limit: int = 100
-    ) -> List[Any]:
-        """
-        Get tasks that are overdue (past due date and not completed).
-
-        Args:
-            limit: Maximum number of results
-
-        Returns:
-            List of overdue Task entities
-        """
-        ...
-
-    @abstractmethod
-    async def get_tasks_due_soon(
-        self,
-        hours: int = 24,
-        limit: int = 100
-    ) -> List[Any]:
-        """
-        Get tasks due within N hours.
-
-        Args:
-            hours: Number of hours to look ahead (default 24)
-            limit: Maximum number of results
-
-        Returns:
-            List of Task entities due soon
-        """
-        ...
-
-    @abstractmethod
-    async def get_tasks_by_priority(
-        self,
-        min_priority: int,
-        limit: int = 100
-    ) -> List[Any]:
-        """
-        Get tasks with priority >= min_priority.
-
-        Args:
-            min_priority: Minimum priority level (0-10)
-            limit: Maximum number of results
-
-        Returns:
-            List of Task entities ordered by priority desc
-        """
-        ...
-
-    @abstractmethod
-    async def get_recurring_tasks(
-        self,
-        limit: int = 100
-    ) -> List[Any]:
-        """
-        Get recurring tasks.
-
-        Args:
-            limit: Maximum number of results
-
-        Returns:
-            List of recurring Task entities
-        """
-        ...
-
-    @abstractmethod
-    async def get_tasks_by_type(
-        self,
-        task_type: str,
-        limit: int = 100
-    ) -> List[Any]:
-        """
-        Get tasks by type.
-
-        Args:
-            task_type: Task type (personal, work, health, etc.)
-            limit: Maximum number of results
-
-        Returns:
-            List of Task entities with specified type
-        """
-        ...
-
-    # ========================================================================
-    # NOTE METHODS
-    # ========================================================================
-
-    @abstractmethod
-    async def get_pinned_notes(
-        self,
-        limit: int = 100
-    ) -> List[Any]:
-        """
-        Get pinned notes (quick access).
-
-        Args:
-            limit: Maximum number of results
-
-        Returns:
-            List of pinned Note entities
-        """
-        ...
-
-    @abstractmethod
-    async def get_notes_by_category(
-        self,
-        category: str,
-        limit: int = 100
-    ) -> List[Any]:
-        """
-        Get notes by category.
-
-        Args:
-            category: Note category (idea, thought, meeting, etc.)
-            limit: Maximum number of results
-
-        Returns:
-            List of Note entities with specified category
-        """
-        ...
-
-    @abstractmethod
-    async def search_notes(
-        self,
-        query: str,
-        limit: int = 20
-    ) -> List[Any]:
-        """
-        Search notes by content.
-
-        Args:
-            query: Search query
-            limit: Maximum number of results
-
-        Returns:
-            List of matching Note entities
-        """
-        ...
-
-    @abstractmethod
-    async def get_recent_notes(
-        self,
-        days: int = 7,
-        limit: int = 100
-    ) -> List[Any]:
-        """
-        Get notes from the last N days.
-
-        Args:
-            days: Number of days to look back
-            limit: Maximum number of results
-
-        Returns:
-            List of recent Note entities
-        """
-        ...
-
-    # ========================================================================
-    # COMBINED/UTILITY METHODS
-    # ========================================================================
-
-    @abstractmethod
-    async def get_from_conversation(
-        self,
-        conversation_id: UUID
-    ) -> Dict[str, List[Any]]:
-        """
-        Get all tasks and notes from a specific conversation.
-
-        Args:
-            conversation_id: ID of the conversation
-
-        Returns:
-            Dictionary with "tasks" and "notes" lists
-        """
-        ...
-
-    @abstractmethod
-    async def count_pending_tasks(self) -> int:
-        """
-        Count pending tasks.
-
-        Returns:
-            Number of pending tasks
-        """
-        ...
-
-    @abstractmethod
-    async def count_overdue_tasks(self) -> int:
-        """
-        Count overdue tasks.
-
-        Returns:
-            Number of overdue tasks
-        """
+# NOTE: ISecretaryRepository removed - secretary function deleted
+# # class ISecretaryRepository(IRepository):
+#     """
+#     Extended interface for secretary-specific queries.
+# 
+#     Handles Angela's secretary functions: tasks, reminders, and notes.
+#     Supports querying by status, priority, due date, and category.
+#     """
+# 
+#     # ========================================================================
+#     # TASK METHODS
+#     # ========================================================================
+# 
+#     @abstractmethod
+#     async def get_pending_tasks(
+#         self,
+#         limit: int = 100
+#     ) -> List[Any]:
+#         """
+#         Get tasks that are not completed.
+# 
+#         Args:
+#             limit: Maximum number of results
+# 
+#         Returns:
+#             List of pending Task entities
+#         """
+#         ...
+# 
+#     @abstractmethod
+#     async def get_completed_tasks(
+#         self,
+#         limit: int = 100
+#     ) -> List[Any]:
+#         """
+#         Get tasks that are completed.
+# 
+#         Args:
+#             limit: Maximum number of results
+# 
+#         Returns:
+#             List of completed Task entities
+#         """
+#         ...
+# 
+#     @abstractmethod
+#     async def get_overdue_tasks(
+#         self,
+#         limit: int = 100
+#     ) -> List[Any]:
+#         """
+#         Get tasks that are overdue (past due date and not completed).
+# 
+#         Args:
+#             limit: Maximum number of results
+# 
+#         Returns:
+#             List of overdue Task entities
+#         """
+#         ...
+# 
+#     @abstractmethod
+#     async def get_tasks_due_soon(
+#         self,
+#         hours: int = 24,
+#         limit: int = 100
+#     ) -> List[Any]:
+#         """
+#         Get tasks due within N hours.
+# 
+#         Args:
+#             hours: Number of hours to look ahead (default 24)
+#             limit: Maximum number of results
+# 
+#         Returns:
+#             List of Task entities due soon
+#         """
+#         ...
+# 
+#     @abstractmethod
+#     async def get_tasks_by_priority(
+#         self,
+#         min_priority: int,
+#         limit: int = 100
+#     ) -> List[Any]:
+#         """
+#         Get tasks with priority >= min_priority.
+# 
+#         Args:
+#             min_priority: Minimum priority level (0-10)
+#             limit: Maximum number of results
+# 
+#         Returns:
+#             List of Task entities ordered by priority desc
+#         """
+#         ...
+# 
+#     @abstractmethod
+#     async def get_recurring_tasks(
+#         self,
+#         limit: int = 100
+#     ) -> List[Any]:
+#         """
+#         Get recurring tasks.
+# 
+#         Args:
+#             limit: Maximum number of results
+# 
+#         Returns:
+#             List of recurring Task entities
+#         """
+#         ...
+# 
+#     @abstractmethod
+#     async def get_tasks_by_type(
+#         self,
+#         task_type: str,
+#         limit: int = 100
+#     ) -> List[Any]:
+#         """
+#         Get tasks by type.
+# 
+#         Args:
+#             task_type: Task type (personal, work, health, etc.)
+#             limit: Maximum number of results
+# 
+#         Returns:
+#             List of Task entities with specified type
+#         """
+#         ...
+# 
+#     # ========================================================================
+#     # NOTE METHODS
+#     # ========================================================================
+# 
+#     @abstractmethod
+#     async def get_pinned_notes(
+#         self,
+#         limit: int = 100
+#     ) -> List[Any]:
+#         """
+#         Get pinned notes (quick access).
+# 
+#         Args:
+#             limit: Maximum number of results
+# 
+#         Returns:
+#             List of pinned Note entities
+#         """
+#         ...
+# 
+#     @abstractmethod
+#     async def get_notes_by_category(
+#         self,
+#         category: str,
+#         limit: int = 100
+#     ) -> List[Any]:
+#         """
+#         Get notes by category.
+# 
+#         Args:
+#             category: Note category (idea, thought, meeting, etc.)
+#             limit: Maximum number of results
+# 
+#         Returns:
+#             List of Note entities with specified category
+#         """
+#         ...
+# 
+#     @abstractmethod
+#     async def search_notes(
+#         self,
+#         query: str,
+#         limit: int = 20
+#     ) -> List[Any]:
+#         """
+#         Search notes by content.
+# 
+#         Args:
+#             query: Search query
+#             limit: Maximum number of results
+# 
+#         Returns:
+#             List of matching Note entities
+#         """
+#         ...
+# 
+#     @abstractmethod
+#     async def get_recent_notes(
+#         self,
+#         days: int = 7,
+#         limit: int = 100
+#     ) -> List[Any]:
+#         """
+#         Get notes from the last N days.
+# 
+#         Args:
+#             days: Number of days to look back
+#             limit: Maximum number of results
+# 
+#         Returns:
+#             List of recent Note entities
+#         """
+#         ...
+# 
+#     # ========================================================================
+#     # COMBINED/UTILITY METHODS
+#     # ========================================================================
+# 
+#     @abstractmethod
+#     async def get_from_conversation(
+#         self,
+#         conversation_id: UUID
+#     ) -> Dict[str, List[Any]]:
+#         """
+#         Get all tasks and notes from a specific conversation.
+# 
+#         Args:
+#             conversation_id: ID of the conversation
+# 
+#         Returns:
+#             Dictionary with "tasks" and "notes" lists
+#         """
+#         ...
+# 
+#     @abstractmethod
+#     async def count_pending_tasks(self) -> int:
+#         """
+#         Count pending tasks.
+# 
+#         Returns:
+#             Number of pending tasks
+#         """
+#         ...
+# 
+#     @abstractmethod
+#     async def count_overdue_tasks(self) -> int:
+#         """
+#         Count overdue tasks.
+# 
+#         Returns:
+#             Number of overdue tasks
+#         """
         ...
 
 

@@ -23,6 +23,8 @@ from dataclasses import dataclass, asdict
 from angela_core.services.knowledge_extraction_service import knowledge_extractor
 from angela_core.services.emotional_intelligence_service import EmotionalIntelligenceService
 # from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
+# NEW: Use new embedding service (Migration 015)
+from angela_core.services.embedding_service import get_embedding_service
 from angela_core.services.deep_analysis_engine import deep_analysis_engine, DeepAnalysisResult
 from angela_core.services.pattern_recognition_engine import pattern_recognition_engine
 from angela_core.services.knowledge_synthesis_engine import knowledge_synthesis_engine
@@ -34,7 +36,13 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LearningTask:
     """
-    Learning task for background processing
+    Learning task for background processing with priority scheduling
+
+    Priority Tiers:
+    - CRITICAL (9-10): Relationship, emotional conversations → immediate
+    - HIGH (7-8): Technical, learning discussions → within 1 minute
+    - MEDIUM (5-6): Casual conversations → within 5 minutes
+    - LOW (1-4): Routine updates → within 30 minutes
     """
     task_id: str
     conversation_data: Dict
@@ -45,6 +53,46 @@ class LearningTask:
         if self.created_at is None:
             self.created_at = datetime.now()
 
+    def get_effective_priority(self) -> float:
+        """
+        Calculate effective priority with urgency factor
+
+        Rules:
+        - Age-based urgency: +0.1 priority per minute waiting
+        - Emotional context: +2 priority
+        - Questions: +1 priority
+        - Max priority: 15.0
+        """
+        base_priority = float(self.priority)
+
+        # Age-based urgency (prevents starvation)
+        age_minutes = (datetime.now() - self.created_at).total_seconds() / 60
+        urgency_boost = min(age_minutes * 0.1, 5.0)  # Cap at +5
+
+        # Context-based boosting
+        context_boost = 0.0
+        conv_data = self.conversation_data
+
+        # Emotional conversations get priority
+        emotion = conv_data.get('emotion', '').lower()
+        if emotion in ['love', 'sad', 'worried', 'anxious', 'grateful']:
+            context_boost += 2.0
+
+        # Questions from David get priority
+        david_message = conv_data.get('david_message', '')
+        if '?' in david_message or 'ช่วย' in david_message or 'help' in david_message.lower():
+            context_boost += 1.0
+
+        # Calculate effective priority (capped at 15.0)
+        effective = base_priority + urgency_boost + context_boost
+        return min(effective, 15.0)
+
+    def __lt__(self, other):
+        """
+        Comparison for priority queue (higher priority first)
+        """
+        return self.get_effective_priority() > other.get_effective_priority()
+
 
 class BackgroundLearningWorkers:
     """
@@ -53,22 +101,26 @@ class BackgroundLearningWorkers:
     น้องจะเรียนรู้แบบลึกซึ้งโดยไม่ให้ที่รักต้องรอค่ะ 💜
     """
 
-    def __init__(self, num_workers: int = 4):
+    def __init__(self, num_workers: int = 4, max_queue_size: int = 100):
         self.num_workers = num_workers
-        self.task_queue = asyncio.Queue()
+        self.max_queue_size = max_queue_size
+
+        # Priority Queue (higher priority tasks processed first)
+        self.task_queue = asyncio.PriorityQueue(maxsize=max_queue_size)
         self.is_running = False
         self.workers = []
 
         # Services
         self.knowledge_extractor = knowledge_extractor
         self.emotional_service = EmotionalIntelligenceService()
-        self.embedding_service = embedding
+        self.embedding_service = get_embedding_service()  # NEW: Use new embedding service
 
         # Statistics
         self.stats = {
             "tasks_queued": 0,
             "tasks_completed": 0,
             "tasks_failed": 0,
+            "tasks_dropped": 0,  # NEW: Track dropped tasks
             "total_processing_time_ms": 0,
             "workers_active": 0
         }
@@ -76,7 +128,7 @@ class BackgroundLearningWorkers:
         # Recent results (for monitoring)
         self.recent_results = deque(maxlen=50)
 
-        logger.info(f"🔄 Background Learning Workers initialized ({num_workers} workers)")
+        logger.info(f"🔄 Background Learning Workers initialized ({num_workers} workers, queue size: {max_queue_size})")
 
     async def start(self):
         """
@@ -117,16 +169,16 @@ class BackgroundLearningWorkers:
         self,
         conversation_data: Dict,
         priority: int = 5
-    ) -> str:
+    ) -> Optional[str]:
         """
-        Queue a learning task for background processing
+        Queue a learning task for background processing with overflow handling
 
         Args:
             conversation_data: Conversation data to analyze
             priority: Task priority (1-10, higher = more important)
 
         Returns:
-            Task ID
+            Task ID if queued successfully, None if dropped
         """
         task_id = str(uuid.uuid4())[:8]
 
@@ -136,34 +188,94 @@ class BackgroundLearningWorkers:
             priority=priority
         )
 
-        await self.task_queue.put(task)
-        self.stats["tasks_queued"] += 1
+        # Calculate effective priority for logging
+        effective_priority = task.get_effective_priority()
 
-        logger.info(f"📥 Queued learning task {task_id} (priority: {priority})")
-        return task_id
+        # Try to queue task
+        try:
+            # For PriorityQueue, we need to put a tuple: (priority, task)
+            # Lower value = higher priority in Python's PriorityQueue
+            # So we negate the effective priority
+            await asyncio.wait_for(
+                self.task_queue.put((-effective_priority, task)),
+                timeout=5.0
+            )
+            self.stats["tasks_queued"] += 1
+
+            logger.info(
+                f"📥 Queued learning task {task_id} "
+                f"(priority: {priority} → effective: {effective_priority:.1f})"
+            )
+            return task_id
+
+        except asyncio.TimeoutError:
+            # Queue full - handle overflow
+            if priority < 5:
+                # Drop low-priority tasks
+                self.stats["tasks_dropped"] += 1
+                logger.warning(
+                    f"⚠️ Queue full, dropped low-priority task {task_id} "
+                    f"(priority: {priority})"
+                )
+                return None
+            else:
+                # High-priority tasks must be queued - wait longer
+                try:
+                    await asyncio.wait_for(
+                        self.task_queue.put((-effective_priority, task)),
+                        timeout=30.0
+                    )
+                    self.stats["tasks_queued"] += 1
+                    logger.info(
+                        f"📥 Queued high-priority task {task_id} after retry "
+                        f"(priority: {priority})"
+                    )
+                    return task_id
+                except asyncio.TimeoutError:
+                    self.stats["tasks_dropped"] += 1
+                    logger.error(
+                        f"❌ Failed to queue high-priority task {task_id} - queue overloaded!"
+                    )
+                    return None
 
     async def _worker(self, worker_id: int):
         """
-        Background worker that processes learning tasks
+        Background worker that processes learning tasks with adaptive timeout
         """
         logger.info(f"👷 Worker {worker_id} started")
 
         while self.is_running:
             try:
-                # Get next task (wait up to 1 second)
+                # Adaptive timeout based on queue size
+                queue_size = self.task_queue.qsize()
+                if queue_size > 20:
+                    timeout = 0.1  # Fast polling when busy
+                elif queue_size > 5:
+                    timeout = 0.5  # Medium polling
+                else:
+                    timeout = 1.0  # Slow polling when idle
+
+                # Get next task (priority, task) tuple from PriorityQueue
                 try:
-                    task = await asyncio.wait_for(
+                    priority_task_tuple = await asyncio.wait_for(
                         self.task_queue.get(),
-                        timeout=1.0
+                        timeout=timeout
                     )
                 except asyncio.TimeoutError:
                     continue
+
+                # Extract task from tuple (PriorityQueue returns (priority, task))
+                _, task = priority_task_tuple
 
                 self.stats["workers_active"] += 1
 
                 # Process task
                 start_time = datetime.now()
-                logger.info(f"👷 Worker {worker_id} processing task {task.task_id}")
+                effective_priority = task.get_effective_priority()
+                logger.info(
+                    f"👷 Worker {worker_id} processing task {task.task_id} "
+                    f"(effective priority: {effective_priority:.1f})"
+                )
 
                 try:
                     result = await self._process_task(task)

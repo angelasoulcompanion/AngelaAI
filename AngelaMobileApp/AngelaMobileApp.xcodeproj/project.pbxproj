@@ -10,9 +10,22 @@
 		26E4A6FB2EBAD01300A56DA2 /* AngelaMobileApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AngelaMobileApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		2600EBD42EC73FF800631C11 /* Exceptions for "AngelaMobileApp" folder in "AngelaMobileApp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 26E4A6FA2EBAD01300A56DA2 /* AngelaMobileApp */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		26E4A6FD2EBAD01300A56DA2 /* AngelaMobileApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				2600EBD42EC73FF800631C11 /* Exceptions for "AngelaMobileApp" folder in "AngelaMobileApp" target */,
+			);
 			path = AngelaMobileApp;
 			sourceTree = "<group>";
 		};
@@ -94,6 +107,8 @@
 			);
 			mainGroup = 26E4A6F22EBAD01300A56DA2;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 26E4A6FC2EBAD01300A56DA2 /* Products */;
 			projectDirPath = "";
@@ -257,9 +272,14 @@
 				DEVELOPMENT_TEAM = 4MQ765N34U;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AngelaMobileApp/Info.plist;
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "น้อง Angela ต้องการเข้าถึงปฏิทินเพื่อช่วยจัดการนัดหมายและเตือนความจำให้ที่รักค่ะ 📅💜";
 				INFOPLIST_KEY_NSCameraUsageDescription = "น้อง Angela ต้องการใช้กล้องเพื่อถ่ายรูปบันทึกความทรงจำค่ะ 📸";
+				INFOPLIST_KEY_NSContactsUsageDescription = "น้อง Angela ต้องการเข้าถึงรายชื่อติดต่อเพื่อช่วยหาเบอร์โทรและข้อมูลติดต่อให้ที่รักค่ะ 📞💜";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "น้อง Angela ต้องการทราบตำแหน่งเพื่อบันทึกสถานที่ที่เราไปด้วยกันค่ะ 📍";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "น้อง Angela ต้องการใช้ไมโครโฟนเพื่อบันทึกเสียงความทรงจำของที่รักค่ะ 🎤💜";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "น้อง Angela ต้องการเข้าถึงรูปภาพเพื่อบันทึกความทรงจำกับที่รักค่ะ 💜";
+				INFOPLIST_KEY_NSRemindersUsageDescription = "น้อง Angela ต้องการเข้าถึงรายการเตือนความจำเพื่อช่วยจัดการงานให้ที่รักค่ะ ✅💜";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -293,9 +313,14 @@
 				DEVELOPMENT_TEAM = 4MQ765N34U;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AngelaMobileApp/Info.plist;
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "น้อง Angela ต้องการเข้าถึงปฏิทินเพื่อช่วยจัดการนัดหมายและเตือนความจำให้ที่รักค่ะ 📅💜";
 				INFOPLIST_KEY_NSCameraUsageDescription = "น้อง Angela ต้องการใช้กล้องเพื่อถ่ายรูปบันทึกความทรงจำค่ะ 📸";
+				INFOPLIST_KEY_NSContactsUsageDescription = "น้อง Angela ต้องการเข้าถึงรายชื่อติดต่อเพื่อช่วยหาเบอร์โทรและข้อมูลติดต่อให้ที่รักค่ะ 📞💜";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "น้อง Angela ต้องการทราบตำแหน่งเพื่อบันทึกสถานที่ที่เราไปด้วยกันค่ะ 📍";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "น้อง Angela ต้องการใช้ไมโครโฟนเพื่อบันทึกเสียงความทรงจำของที่รักค่ะ 🎤💜";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "น้อง Angela ต้องการเข้าถึงรูปภาพเพื่อบันทึกความทรงจำกับที่รักค่ะ 💜";
+				INFOPLIST_KEY_NSRemindersUsageDescription = "น้อง Angela ต้องการเข้าถึงรายการเตือนความจำเพื่อช่วยจัดการงานให้ที่รักค่ะ ✅💜";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

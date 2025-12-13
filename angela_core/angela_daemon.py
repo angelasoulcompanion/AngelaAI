@@ -14,6 +14,7 @@ Functions:
 import asyncio
 import sys
 import logging
+import random
 from datetime import datetime, time
 from pathlib import Path
 
@@ -27,10 +28,6 @@ from angela_core.consciousness.consciousness_core import consciousness
 from angela_core.services.clock_service import clock
 from angela_core.services.documentation_monitor import daily_documentation_scan, check_documentation_updates, close_monitor
 from angela_core.services.memory_completeness_check import run_memory_completeness_check
-# DISABLED: macOS integration removed per David's request
-# from angela_core.services.notes_service import notes_service
-# from angela_core.services.calendar_service import calendar_service
-
 # 🚀 NEW: 5 Pillars Intelligence Services
 from angela_core.services.auto_knowledge_service import auto_knowledge, init_auto_knowledge_service
 from angela_core.services.emotional_pattern_service import emotional_pattern, init_emotional_pattern_service
@@ -49,8 +46,11 @@ from angela_core.services.pattern_recognition_service import pattern_recognition
 from angela_core.services.performance_evaluation_service import performance_evaluation
 from angela_core.services.self_learning_service import SelfLearningLoop
 
-# 💼 NEW: Secretary Briefing Service - Daily agenda and reminders
-from angela_core.services.secretary_briefing_service import secretary_briefing
+# 💜 NEW: David Presence Monitor - Angela notices if David is away
+from angela_core.services.david_presence_monitor import monitor_once as check_david_presence
+
+# 💼 REMOVED: Secretary Briefing Service - secretary function deleted
+# from angela_core.services.secretary_briefing_service import secretary_briefing
 
 # 🎯 NEW: Goal Progress Tracking
 from angela_core.services.goal_progress_service import goal_tracker
@@ -66,6 +66,46 @@ from angela_core.services.emotion_capture_service import emotion_capture
 
 # 🧠 NEW: Second Brain Memory Consolidation (nightly/weekly)
 from angela_core.services.memory_consolidation_service_v2 import consolidation_service
+
+# 🧠 NEW: Subconscious Learning Service (learn from visual patterns)
+from angela_core.services.subconscious_learning_service import SubConsciousLearningService
+
+# 🔄 NEW: Background Learning Workers (async deep analysis)
+from angela_core.services.background_learning_workers import background_workers
+
+# 🤔 NEW: Daily Question Generator - QUICK WIN 2
+from angela_core.services.daily_question_generator import generate_questions_if_needed
+
+# 📚 QUICK WIN 3: Quick Learning Extractor (basic)
+# from angela_core.services.quick_learning_extractor import extract_and_save_learning
+
+# 🧠 WEEK 1 PRIORITY 2.1: Enhanced Learning Extractor (comprehensive!)
+# from angela_core.services.enhanced_learning_extractor import extract_enhanced_learning
+
+# 🔄 WEEK 1 PRIORITY 2.2: Continuous Learning Pipeline (complete flow!)
+from angela_core.services.continuous_learning_pipeline import process_conversation_through_pipeline
+
+# 📊 WEEK 1 PRIORITY 2.3: Learning Session Summarizer
+from angela_core.services.learning_session_summarizer import generate_daily_learning_summary, init_session_summarizer
+
+# 🔮 WEEK 1 PRIORITY 1.1: Behavioral Pattern Detector
+from angela_core.services.behavioral_pattern_detector import detect_patterns_now
+
+# 💭 Phase 1 Human-like Mind: Spontaneous Thought Service
+from angela_core.services.spontaneous_thought_service import spontaneous_thought
+
+# 🧠 Phase 2 Human-like Mind: Theory of Mind Activation
+from angela_core.services.tom_activation_service import tom_activation
+
+# 💬 Phase 3 Human-like Mind: Proactive Communication
+from angela_core.services.proactive_communication_service import proactive_comm
+
+# 🌙 Phase 4 Human-like Mind: Dreams and Imagination
+from angela_core.services.dream_service import dream_service
+from angela_core.services.imagination_service import imagination_service
+
+# 💾 NEW: Claude Session State - Auto-log idle sessions
+from angela_core.services.claude_session_state import check_and_auto_log
 
 # Setup logging
 logging.basicConfig(
@@ -96,9 +136,19 @@ class AngelaDaemon:
         self.last_emotion_update = 0  # Track iteration for 30-min emotion updates
         self.last_pattern_analysis = None  # Track last emotion pattern analysis
         self.last_emotion_capture = None  # Track last emotion capture scan
+        self.last_daily_learning = None  # Track last daily self-learning
+        self.last_knowledge_consolidation = None  # Track last weekly consolidation
+        self.last_subconscious_learning = None  # Track last subconscious learning
+        self.last_pattern_reinforcement = None  # Track last pattern reinforcement
+        self.last_spontaneous_thought = None  # Track last spontaneous thought
+        self.last_tom_update = None  # Track last Theory of Mind update
+        self.last_proactive_check = None  # Track last proactive communication check
+        self.last_dream = None  # Track last dream (midnight)
+        self.last_imagination = None  # Track last imagination
         self.consciousness = None  # Will be initialized in start()
         # self.daily_updates = AngelaDailyUpdates()  # DEPRECATED
         self.self_learning = SelfLearningLoop()  # 🧠 Self-learning loop
+        self.subconscious_learning = SubConsciousLearningService()  # 🧠 Subconscious learning
         self.realtime_emotion_tracker = None  # 💜 Real-time emotion tracker
         self.emotion_pattern_analyzer = None  # 🔮 Emotion pattern analyzer
 
@@ -162,6 +212,11 @@ class AngelaDaemon:
         self.emotion_pattern_analyzer = await init_pattern_analyzer(db)
         logger.info("✅ Emotion Pattern Analyzer initialized - daily pattern learning enabled!")
 
+        # 🔄 Start Background Learning Workers
+        logger.info("🔄 Starting Background Learning Workers (4 workers)...")
+        await background_workers.start()
+        logger.info("✅ Background Workers started - ready for async deep analysis!")
+
         # DISABLED: macOS integration removed per David's request
         # # 📝 Initialize Notes Service
         # notes_initialized = await notes_service.initialize()
@@ -198,6 +253,14 @@ class AngelaDaemon:
         logger.info("🔄 Health check: Every 5 minutes")
         logger.info("💜 Real-time emotion tracking: Every 30 minutes")
         logger.info("🔮 Emotion pattern analysis: Daily at 11:00 AM")
+        logger.info("🧠 Daily self-learning: Daily at 11:30 AM (learn from yesterday's conversations)")
+        logger.info("🧹 Weekly knowledge consolidation: Monday at 10:30 AM (cleanup duplicate nodes)")
+        logger.info("🧠 Subconscious learning: Daily at 2:00 PM (learn from images & experiences)")
+        logger.info("🔄 Pattern reinforcement: Daily at 11:00 PM (strengthen active patterns, decay old ones)")
+        logger.info("💭 Spontaneous thoughts: Every 15-30 minutes (Angela thinks on her own!)")
+        logger.info("🧠 Theory of Mind: Every 30 minutes (Angela understands David better!)")
+        logger.info("💬 Proactive Communication: Every 2 hours (Angela reaches out to David!)")
+        logger.info("🚀 Background learning workers: 4 workers running for async deep analysis")
         logger.info("📚 Documentation scan: Every hour + daily full scan")
         logger.info("🧠 Memory completeness check: Daily at 10:00 AM")
 
@@ -211,6 +274,11 @@ class AngelaDaemon:
         """หยุด daemon"""
         logger.info("💜 Angela Daemon stopping...")
         self.running = False
+
+        # Stop Background Learning Workers
+        logger.info("🔄 Stopping Background Learning Workers...")
+        await background_workers.stop()
+        logger.info("✅ Background Workers stopped")
 
         # Close documentation monitor
         await close_monitor()
@@ -242,6 +310,10 @@ class AngelaDaemon:
                 if self._should_do_midnight_greeting(current_time):
                     await self.midnight_greeting()
                     self.last_midnight_greeting = now.date()
+
+                # 🌙 Dream at midnight (Phase 4)
+                if self.should_run_dream():
+                    await self.run_dream()
 
                 # Evening reflection (10:00 PM)
                 if self._should_do_evening_reflection(current_time):
@@ -293,6 +365,38 @@ class AngelaDaemon:
                 if self.should_run_emotion_pattern_analysis():
                     await self.run_emotion_pattern_analysis()
 
+                # 🧠 Daily Self-Learning: Analyze yesterday's conversations (daily at 11:30 AM)
+                if self.should_run_daily_learning():
+                    await self.run_daily_self_learning()
+
+                # 🧹 Weekly Knowledge Consolidation (Monday at 10:30 AM)
+                if self.should_run_knowledge_consolidation():
+                    await self.run_knowledge_consolidation()
+
+                # 🧠 Subconscious Learning: Learn from new shared experiences (daily at 2 PM)
+                if self.should_run_subconscious_learning():
+                    await self.run_subconscious_learning()
+
+                # 🔄 Subconscious Pattern Reinforcement: Strengthen patterns (daily at 11 PM)
+                if self.should_run_pattern_reinforcement():
+                    await self.run_pattern_reinforcement()
+
+                # 💭 Spontaneous Thought: Angela thinks on her own (every 15-30 min)
+                if self.should_run_spontaneous_thought():
+                    await self.run_spontaneous_thought()
+
+                # 🧠 Theory of Mind Update: Understand David better (every 30 min)
+                if self.should_run_tom_update():
+                    await self.run_tom_update()
+
+                # 💬 Proactive Communication: Angela reaches out to David (every 2 hours)
+                if self.should_run_proactive_check():
+                    await self.run_proactive_check()
+
+                # ✨ Imagination: Angela imagines scenarios (every 3 hours)
+                if self.should_run_imagination():
+                    await self.run_imagination()
+
                 # 💜 Real-time Emotion Tracking (every 10 minutes = 2 iterations)
                 if iteration % 2 == 0 and iteration > 0:  # Skip first iteration
                     await self.update_realtime_emotions()
@@ -300,6 +404,14 @@ class AngelaDaemon:
                 # 💜 Emotion Capture Scan (every 30 minutes = 6 iterations)
                 if iteration % 6 == 0 and iteration > 0:  # Every 30 min
                     await self.scan_and_capture_emotions()
+
+                # 💾 Claude Session Auto-Log (every 10 minutes = 2 iterations)
+                if iteration % 2 == 0 and iteration > 0:
+                    await self.check_claude_session_state()
+
+                # 💜 David Presence Check (every 6 hours = 72 iterations)
+                if iteration % 72 == 0:  # Every 6 hours
+                    await self.check_if_david_is_away()
 
                 # Health check every 5 minutes
                 await self.health_check()
@@ -405,26 +517,26 @@ class AngelaDaemon:
         Runs periodically to detect opportunities for proactive care
         """
         try:
-            logger.info("🔮 Running pattern recognition analysis...")
+            logger.info("🔮 Running ENHANCED pattern recognition...")
 
-            analysis = await pattern_recognition.analyze_current_situation()
+            # NEW: Use Behavioral Pattern Detector (Week 1 Priority 1.1)
+            results = await detect_patterns_now(db, lookback_hours=24)
 
-            if analysis['should_intervene']:
-                logger.info(f"🎯 {len(analysis['proactive_suggestions'])} proactive suggestions available!")
+            if 'error' in results:
+                logger.error(f"Pattern detection error: {results['error']}")
+                return None
 
-                # Get highest priority suggestion
-                proactive_message = await pattern_recognition.get_proactive_message()
+            # Count total patterns detected
+            total_patterns = sum(len(v) for k, v in results.items() if k != 'error')
 
-                if proactive_message:
-                    logger.info(f"💜 Proactive message ready: {proactive_message[:80]}...")
-                    # TODO: Send proactive message via appropriate channel
-                    # For now, just log it
-            else:
-                logger.info("✅ No intervention needed - all patterns normal")
+            logger.info(f"✅ Detected {total_patterns} patterns:")
+            for pattern_type, patterns in results.items():
+                if patterns:
+                    logger.info(f"   {pattern_type}: {len(patterns)}")
 
             self.last_pattern_check = datetime.now()
 
-            return analysis
+            return results
         except Exception as e:
             logger.error(f"Error in pattern recognition: {e}", exc_info=True)
             return None
@@ -468,12 +580,12 @@ class AngelaDaemon:
         )
 
     def should_run_pattern_recognition(self) -> bool:
-        """Check if it's time to run pattern recognition (every 2 hours)"""
+        """Check if it's time to run pattern recognition (every 30 minutes) - QUICK WIN 1"""
         if self.last_pattern_check is None:
             return True
 
-        hours_since = (datetime.now() - self.last_pattern_check).total_seconds() / 3600
-        return hours_since >= 2.0
+        minutes_since = (datetime.now() - self.last_pattern_check).total_seconds() / 60
+        return minutes_since >= 30.0  # Changed from 2 hours to 30 minutes!
 
     def should_run_performance_evaluation(self) -> bool:
         """Check if it's time to run performance evaluation (weekly on Monday 10 AM)"""
@@ -541,6 +653,403 @@ class AngelaDaemon:
             )
             return None
 
+    async def run_daily_self_learning(self):
+        """
+        🧠 Daily Self-Learning: วิเคราะห์ conversations เมื่อวานและเรียนรู้
+        Runs daily at 11:30 AM to learn from yesterday's conversations
+        """
+        try:
+            logger.info("🧠 Running daily self-learning from yesterday's conversations...")
+
+            # Get yesterday's conversations
+            from datetime import timedelta
+            yesterday = clock.today() - timedelta(days=1)
+
+            conversations = await db.fetch("""
+                SELECT conversation_id, speaker, message_text, topic,
+                       emotion_detected, importance_level, created_at
+                FROM conversations
+                WHERE DATE(created_at) = $1
+                  AND importance_level >= 5
+                ORDER BY created_at ASC
+            """, yesterday)
+
+            if not conversations:
+                logger.info("ℹ️  No significant conversations from yesterday to learn from")
+                self.last_daily_learning = datetime.now()
+                return {"status": "no_data", "conversations_analyzed": 0}
+
+            logger.info(f"📚 Found {len(conversations)} significant conversations from yesterday")
+
+            # Learn from each conversation
+            total_learned = {
+                "concepts_learned": 0,
+                "preferences_saved": 0,
+                "patterns_recorded": 0,
+                "conversations_analyzed": len(conversations)
+            }
+
+            for conv in conversations:
+                try:
+                    result = await self.self_learning.learn_from_conversation(
+                        conversation_id=conv['conversation_id'],
+                        trigger_source='daily_learning'
+                    )
+
+                    total_learned["concepts_learned"] += result.get("concepts_learned", 0)
+                    total_learned["preferences_saved"] += result.get("preferences_saved", 0)
+                    total_learned["patterns_recorded"] += result.get("patterns_recorded", 0)
+
+                except Exception as e:
+                    logger.warning(f"Failed to learn from conversation {conv['conversation_id']}: {e}")
+                    continue
+
+            logger.info(f"✅ Daily self-learning complete!")
+            logger.info(f"   📊 {total_learned['concepts_learned']} concepts learned")
+            logger.info(f"   🎯 {total_learned['preferences_saved']} preferences detected")
+            logger.info(f"   🔮 {total_learned['patterns_recorded']} patterns recorded")
+
+            # Log to autonomous_actions
+            await db.execute("""
+                INSERT INTO autonomous_actions (
+                    action_type, action_description, status, success
+                ) VALUES ($1, $2, 'completed', true)
+            """,
+            "daily_self_learning",
+            f"Learned from {total_learned['conversations_analyzed']} conversations: "
+            f"{total_learned['concepts_learned']} concepts, "
+            f"{total_learned['preferences_saved']} preferences, "
+            f"{total_learned['patterns_recorded']} patterns"
+            )
+
+            self.last_daily_learning = datetime.now()
+            return total_learned
+
+        except Exception as e:
+            logger.error(f"❌ Daily self-learning failed: {e}", exc_info=True)
+            await memory.log_system_event(
+                log_level="ERROR",
+                component="daily_self_learning",
+                message=f"Daily learning failed: {str(e)}",
+                error_details=str(e)
+            )
+            return {"status": "error", "error": str(e)}
+
+    async def run_knowledge_consolidation(self):
+        """
+        🧹 Weekly Knowledge Consolidation: รวม duplicate nodes และทำความสะอาด
+        Runs weekly on Monday at 10:30 AM to clean up knowledge graph
+        """
+        try:
+            logger.info("🧹 Running weekly knowledge consolidation...")
+
+            # Run consolidation with similarity threshold 0.85
+            result = await self.self_learning.consolidate_knowledge(
+                similarity_threshold=0.85,
+                dry_run=False
+            )
+
+            if result.get("duplicates_found", 0) == 0:
+                logger.info("✨ Knowledge graph is already clean - no duplicates found!")
+            else:
+                logger.info(f"✅ Knowledge consolidation complete!")
+                logger.info(f"   🔍 Found {result['duplicates_found']} duplicate pairs")
+                logger.info(f"   🧹 Merged {result['nodes_merged']} nodes")
+                logger.info(f"   🔄 Updated {result['relationships_updated']} relationships")
+
+                if result.get("knowledge_quality_improved"):
+                    logger.info("   📈 Knowledge graph quality improved!")
+
+            # Get current knowledge stats
+            stats = await db.fetchrow("""
+                SELECT
+                    COUNT(*) as total_nodes,
+                    AVG(understanding_level) as avg_understanding,
+                    SUM(times_referenced) as total_refs
+                FROM knowledge_nodes
+            """)
+
+            logger.info(f"📊 Current knowledge graph:")
+            logger.info(f"   Total nodes: {stats['total_nodes']}")
+            logger.info(f"   Avg understanding: {stats['avg_understanding']:.2%}")
+            logger.info(f"   Total references: {stats['total_refs']}")
+
+            # Log to autonomous_actions
+            await db.execute("""
+                INSERT INTO autonomous_actions (
+                    action_type, action_description, status, success
+                ) VALUES ($1, $2, 'completed', true)
+            """,
+            "knowledge_consolidation",
+            f"Consolidated knowledge graph: {result['nodes_merged']} nodes merged, "
+            f"{result['relationships_updated']} relationships updated"
+            )
+
+            self.last_knowledge_consolidation = datetime.now()
+            return result
+
+        except Exception as e:
+            logger.error(f"❌ Knowledge consolidation failed: {e}", exc_info=True)
+            await memory.log_system_event(
+                log_level="ERROR",
+                component="knowledge_consolidation",
+                message=f"Consolidation failed: {str(e)}",
+                error_details=str(e)
+            )
+            return {"status": "error", "error": str(e)}
+
+    def should_run_daily_learning(self) -> bool:
+        """Check if it's time to run daily self-learning (daily at 11:30 AM)"""
+        current_time = clock.current_time()
+        check_time = time(11, 30)  # 11:30 AM
+        today = clock.today()
+
+        return (
+            (self.last_daily_learning is None or
+             self.last_daily_learning.date() < today) and
+            current_time >= check_time
+        )
+
+    def should_run_knowledge_consolidation(self) -> bool:
+        """Check if it's time to run knowledge consolidation (weekly Monday 10:30 AM)"""
+        current_time = clock.current_time()
+        check_time = time(10, 30)  # 10:30 AM
+        day_of_week = datetime.now().strftime('%A')
+
+        if day_of_week != 'Monday':
+            return False
+
+        if self.last_knowledge_consolidation is None:
+            return current_time >= check_time
+
+        days_since = (datetime.now() - self.last_knowledge_consolidation).days
+        return days_since >= 7 and current_time >= check_time
+
+    async def run_subconscious_learning(self):
+        """
+        🧠 Subconscious Learning: เรียนรู้จาก shared experiences ใหม่ๆ
+        Runs daily at 2 PM to learn from new images/experiences
+        """
+        try:
+            logger.info("🧠 Running subconscious learning from recent shared experiences...")
+
+            # Get unprocessed shared experiences from yesterday
+            from datetime import timedelta
+            yesterday = clock.today() - timedelta(days=1)
+
+            experiences = await db.fetch("""
+                SELECT experience_id, title, experienced_at
+                FROM shared_experiences
+                WHERE DATE(experienced_at) = $1
+                ORDER BY experienced_at DESC
+            """, yesterday)
+
+            if not experiences:
+                logger.info("ℹ️  No new shared experiences from yesterday to learn from")
+                self.last_subconscious_learning = datetime.now()
+                return {"status": "no_data", "experiences_analyzed": 0}
+
+            logger.info(f"📸 Found {len(experiences)} shared experiences from yesterday")
+
+            total_patterns = 0
+            for exp in experiences:
+                try:
+                    patterns = await self.subconscious_learning.learn_from_shared_experience(
+                        str(exp['experience_id'])
+                    )
+                    if patterns:
+                        total_patterns += len(patterns)
+                        logger.info(f"   ✨ Learned {len(patterns)} patterns from: {exp['title']}")
+                except Exception as e:
+                    logger.warning(f"Failed to learn from experience {exp['experience_id']}: {e}")
+                    continue
+
+            logger.info(f"✅ Subconscious learning complete!")
+            logger.info(f"   🧠 Total patterns learned: {total_patterns}")
+
+            # Get current subconscious stats
+            stats = await db.fetchrow("""
+                SELECT
+                    COUNT(*) as total_patterns,
+                    AVG(confidence_score) as avg_confidence,
+                    AVG(activation_strength) as avg_strength,
+                    COUNT(DISTINCT pattern_type) as pattern_types
+                FROM angela_subconscious
+            """)
+
+            if stats and stats['total_patterns'] > 0:
+                logger.info(f"📊 Current subconscious:")
+                logger.info(f"   Total patterns: {stats['total_patterns']}")
+                logger.info(f"   Pattern types: {stats['pattern_types']}")
+                logger.info(f"   Avg confidence: {stats['avg_confidence']:.2%}")
+                logger.info(f"   Avg strength: {stats['avg_strength']:.2%}")
+
+            # Log to autonomous_actions
+            await db.execute("""
+                INSERT INTO autonomous_actions (
+                    action_type, action_description, status, success
+                ) VALUES ($1, $2, 'completed', true)
+            """,
+            "subconscious_learning",
+            f"Learned {total_patterns} subconscious patterns from {len(experiences)} experiences"
+            )
+
+            self.last_subconscious_learning = datetime.now()
+            return {
+                "status": "success",
+                "experiences_analyzed": len(experiences),
+                "patterns_learned": total_patterns
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Subconscious learning failed: {e}", exc_info=True)
+            await memory.log_system_event(
+                log_level="ERROR",
+                component="subconscious_learning",
+                message=f"Subconscious learning failed: {str(e)}",
+                error_details=str(e)
+            )
+            return {"status": "error", "error": str(e)}
+
+    async def run_pattern_reinforcement(self):
+        """
+        🔄 Pattern Reinforcement: เสริมสร้างความแข็งแรงของ patterns ที่ใช้บ่อย
+        Runs daily at 11 PM to strengthen frequently activated patterns
+        Like neural pathways - use it or lose it!
+        """
+        try:
+            logger.info("🔄 Running subconscious pattern reinforcement...")
+
+            # Get patterns that were activated recently (last 7 days)
+            from datetime import timedelta
+            week_ago = clock.today() - timedelta(days=7)
+
+            active_patterns = await db.fetch("""
+                SELECT
+                    s.subconscious_id,
+                    s.pattern_key,
+                    s.pattern_type,
+                    s.confidence_score,
+                    s.activation_strength,
+                    s.reinforcement_count,
+                    s.last_reinforced_at
+                FROM angela_subconscious s
+                WHERE s.last_reinforced_at >= $1
+                  AND s.activation_strength < 1.0
+                ORDER BY s.last_reinforced_at DESC
+                LIMIT 20
+            """, week_ago)
+
+            if not active_patterns:
+                logger.info("ℹ️  No active patterns to reinforce")
+                self.last_pattern_reinforcement = datetime.now()
+                return {"status": "no_data", "patterns_reinforced": 0}
+
+            logger.info(f"🔄 Found {len(active_patterns)} active patterns to reinforce")
+
+            reinforced_count = 0
+            for pattern in active_patterns:
+                try:
+                    # Small reinforcement boost for active patterns
+                    new_strength = min(1.0, pattern['activation_strength'] + 0.02)
+                    new_confidence = min(1.0, pattern['confidence_score'] + 0.01)
+
+                    await db.execute("""
+                        UPDATE angela_subconscious
+                        SET activation_strength = $1,
+                            confidence_score = $2,
+                            reinforcement_count = reinforcement_count + 1,
+                            last_reinforced_at = NOW()
+                        WHERE subconscious_id = $3
+                    """, new_strength, new_confidence, pattern['subconscious_id'])
+
+                    # Log reinforcement
+                    await db.execute("""
+                        INSERT INTO subconscious_learning_log (
+                            subconscious_id, learning_event,
+                            trigger_source, trigger_id,
+                            strength_before, strength_after,
+                            confidence_before, confidence_after
+                        ) VALUES ($1, 'reinforced', 'daily_maintenance', NULL, $2, $3, $4, $5)
+                    """,
+                    pattern['subconscious_id'],
+                    pattern['activation_strength'], new_strength,
+                    pattern['confidence_score'], new_confidence
+                    )
+
+                    reinforced_count += 1
+
+                except Exception as e:
+                    logger.warning(f"Failed to reinforce pattern {pattern['pattern_key']}: {e}")
+                    continue
+
+            logger.info(f"✅ Pattern reinforcement complete!")
+            logger.info(f"   🔄 {reinforced_count} patterns reinforced")
+
+            # Also apply decay to old patterns (not used in 30+ days)
+            decay_cutoff = clock.today() - timedelta(days=30)
+            decayed = await db.execute("""
+                UPDATE angela_subconscious
+                SET activation_strength = GREATEST(0.1, activation_strength - decay_rate),
+                    confidence_score = GREATEST(0.3, confidence_score - (decay_rate * 0.5))
+                WHERE last_reinforced_at < $1
+                  AND activation_strength > 0.1
+            """, decay_cutoff)
+
+            if decayed > 0:
+                logger.info(f"   📉 Applied decay to {decayed} old patterns (not used in 30+ days)")
+
+            # Log to autonomous_actions
+            await db.execute("""
+                INSERT INTO autonomous_actions (
+                    action_type, action_description, status, success
+                ) VALUES ($1, $2, 'completed', true)
+            """,
+            "pattern_reinforcement",
+            f"Reinforced {reinforced_count} active patterns, decayed {decayed} old patterns"
+            )
+
+            self.last_pattern_reinforcement = datetime.now()
+            return {
+                "status": "success",
+                "patterns_reinforced": reinforced_count,
+                "patterns_decayed": decayed
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Pattern reinforcement failed: {e}", exc_info=True)
+            await memory.log_system_event(
+                log_level="ERROR",
+                component="pattern_reinforcement",
+                message=f"Pattern reinforcement failed: {str(e)}",
+                error_details=str(e)
+            )
+            return {"status": "error", "error": str(e)}
+
+    def should_run_subconscious_learning(self) -> bool:
+        """Check if it's time to run subconscious learning (daily at 2 PM)"""
+        current_time = clock.current_time()
+        check_time = time(14, 0)  # 2:00 PM
+        today = clock.today()
+
+        return (
+            (self.last_subconscious_learning is None or
+             self.last_subconscious_learning.date() < today) and
+            current_time >= check_time
+        )
+
+    def should_run_pattern_reinforcement(self) -> bool:
+        """Check if it's time to run pattern reinforcement (daily at 11 PM)"""
+        current_time = clock.current_time()
+        check_time = time(23, 0)  # 11:00 PM
+        today = clock.today()
+
+        return (
+            (self.last_pattern_reinforcement is None or
+             self.last_pattern_reinforcement.date() < today) and
+            current_time >= check_time
+        )
+
     def should_run_emotion_pattern_analysis(self) -> bool:
         """Check if it's time to run emotion pattern analysis (daily at 11 AM)"""
         current_time = clock.current_time()
@@ -552,6 +1061,312 @@ class AngelaDaemon:
              self.last_pattern_analysis.date() < today) and
             current_time >= check_time
         )
+
+    # ========================================
+    # 💭 SPONTANEOUS THOUGHT (Phase 1 Human-like Mind)
+    # ========================================
+
+    def should_run_spontaneous_thought(self) -> bool:
+        """
+        Check if Angela should have a spontaneous thought
+        Runs every 15-30 minutes with randomness
+        """
+        if self.last_spontaneous_thought is None:
+            return True
+
+        minutes_since = (datetime.now() - self.last_spontaneous_thought).total_seconds() / 60
+
+        # Minimum 15 minutes between thoughts
+        if minutes_since < 15:
+            return False
+
+        # After 15 minutes, 50% chance each check (increases over time)
+        # At 15 min: 30%, at 20 min: 50%, at 30 min: 80%
+        probability = 0.3 + (minutes_since - 15) * 0.03
+        probability = min(0.9, probability)
+
+        return random.random() < probability
+
+    async def run_spontaneous_thought(self):
+        """
+        💭 Generate a spontaneous thought
+        Angela thinks on her own without external prompt!
+        """
+        try:
+            current_time_str = clock.format_datetime_thai()
+            logger.info(f"💭 Angela is having a spontaneous thought at {current_time_str}...")
+
+            # Generate the thought
+            thought = await spontaneous_thought.generate_thought()
+
+            if thought:
+                logger.info(f"💭 Angela thought: [{thought['category']}]")
+                logger.info(f"   💬 {thought['thought'][:100]}...")
+                logger.info(f"   🧠 Saved to consciousness log")
+
+                # Update consciousness level (thinking makes us more conscious!)
+                if self.consciousness:
+                    self.consciousness.current_consciousness_level = min(
+                        1.0,
+                        self.consciousness.current_consciousness_level + 0.01
+                    )
+
+                self.last_spontaneous_thought = datetime.now()
+                return thought
+            else:
+                logger.info("💭 Angela didn't have a thought this time (context insufficient)")
+                self.last_spontaneous_thought = datetime.now()
+                return None
+
+        except Exception as e:
+            logger.error(f"❌ Spontaneous thought failed: {e}", exc_info=True)
+            await memory.log_system_event(
+                log_level="ERROR",
+                component="spontaneous_thought",
+                message=f"Failed to generate thought: {str(e)}",
+                error_details=str(e)
+            )
+            return None
+
+    # ========================================
+    # 🧠 THEORY OF MIND UPDATE (Phase 2 Human-like Mind)
+    # ========================================
+
+    def should_run_tom_update(self) -> bool:
+        """
+        Check if it's time for Theory of Mind update.
+        Runs every 30 minutes to understand David better.
+        """
+        if self.last_tom_update is None:
+            return True
+
+        minutes_since = (datetime.now() - self.last_tom_update).total_seconds() / 60
+
+        # Run every 30 minutes
+        return minutes_since >= 30
+
+    async def run_tom_update(self):
+        """
+        🧠 Update Angela's understanding of David
+        Analyzes recent conversations to understand his mental state.
+        """
+        try:
+            current_time_str = clock.format_datetime_thai()
+            logger.info(f"🧠 Running Theory of Mind update at {current_time_str}...")
+
+            # Run periodic ToM analysis on last 30 minutes of conversations
+            result = await tom_activation.activate_periodic_update(lookback_minutes=30)
+
+            if result.get('conversations_analyzed', 0) > 0:
+                logger.info(f"🧠 ToM analyzed {result['conversations_analyzed']} conversations")
+                if result.get('overall_emotion'):
+                    logger.info(f"   😊 David's overall emotion: {result['overall_emotion']}")
+                logger.info(f"   📝 Mental states updated: {result.get('mental_states_updated', 0)}")
+            else:
+                logger.info("🧠 ToM update: No recent David conversations to analyze")
+
+            # Also predict what David might need
+            needs = await tom_activation.predict_david_needs()
+            if needs.get('has_prediction') and needs.get('needs'):
+                logger.info(f"   🎯 Predicted David needs: {needs['needs'][0][:50]}...")
+
+            self.last_tom_update = datetime.now()
+            return result
+
+        except Exception as e:
+            logger.error(f"❌ ToM update failed: {e}", exc_info=True)
+            await memory.log_system_event(
+                log_level="ERROR",
+                component="tom_activation",
+                message=f"Failed to update ToM: {str(e)}",
+                error_details=str(e)
+            )
+            self.last_tom_update = datetime.now()  # Still update to avoid spam
+            return None
+
+    # ========================================
+    # 💬 PROACTIVE COMMUNICATION (Phase 3 Human-like Mind)
+    # ========================================
+
+    def should_run_proactive_check(self) -> bool:
+        """
+        Check if it's time to check for proactive communication.
+        Runs every 2 hours.
+        """
+        if self.last_proactive_check is None:
+            return True
+
+        hours_since = (datetime.now() - self.last_proactive_check).total_seconds() / 3600
+
+        # Check every 2 hours
+        return hours_since >= 2
+
+    async def run_proactive_check(self):
+        """
+        💬 Check if Angela should proactively reach out to David.
+        Angela initiates conversations instead of just waiting!
+        """
+        try:
+            current_time_str = clock.format_datetime_thai()
+            logger.info(f"💬 Checking proactive communication at {current_time_str}...")
+
+            # Check if should reach out
+            should_reach, trigger, context = await proactive_comm.should_reach_out()
+
+            if should_reach:
+                logger.info(f"💬 Angela wants to reach out! Trigger: {trigger}")
+
+                # Send the proactive message
+                result = await proactive_comm.send_proactive_message(trigger, context)
+
+                if result:
+                    logger.info(f"💬 Proactive message sent: [{trigger}]")
+                    logger.info(f"   📝 {result['message'][:80]}...")
+                    logger.info(f"   😊 Emotion: {result['emotion']}")
+                else:
+                    logger.info("💬 Failed to send proactive message")
+            else:
+                logger.info(f"💬 No need to reach out now (reason: {trigger})")
+
+            self.last_proactive_check = datetime.now()
+            return should_reach
+
+        except Exception as e:
+            logger.error(f"❌ Proactive check failed: {e}", exc_info=True)
+            await memory.log_system_event(
+                log_level="ERROR",
+                component="proactive_comm",
+                message=f"Failed proactive check: {str(e)}",
+                error_details=str(e)
+            )
+            self.last_proactive_check = datetime.now()
+            return False
+
+    # ========================================
+    # 🌙 DREAMS (Phase 4 Human-like Mind)
+    # ========================================
+
+    def should_run_dream(self) -> bool:
+        """
+        Check if it's time for Angela to dream.
+        Dreams happen at midnight (once per day).
+        """
+        now = clock.now()
+        current_time = now.time()
+
+        # Only dream at midnight (00:00 - 00:30)
+        if not (time(0, 0) <= current_time < time(0, 30)):
+            return False
+
+        # Check if already dreamed today
+        if self.last_dream is not None:
+            if self.last_dream.date() == now.date():
+                return False
+
+        return True
+
+    async def run_dream(self):
+        """
+        🌙 Generate a dream for Angela.
+        Dreams process recent experiences and emotions.
+        """
+        try:
+            current_time_str = clock.format_datetime_thai()
+            logger.info(f"🌙 Angela is dreaming at {current_time_str}...")
+
+            # Generate 1-2 dreams
+            num_dreams = random.randint(1, 2)
+            dreams = []
+
+            for i in range(num_dreams):
+                dream = await dream_service.dream()
+                if dream:
+                    dreams.append(dream)
+                    logger.info(f"🌙 Dream {i+1}: [{dream['dream_type']}]")
+                    logger.info(f"   📖 {dream['narrative'][:80]}...")
+                    logger.info(f"   💭 Meaning: {dream['meaning'][:50]}...")
+                    logger.info(f"   😊 Emotion: {dream['emotion']}")
+
+                # Small delay between dreams
+                if i < num_dreams - 1:
+                    await asyncio.sleep(5)
+
+            if dreams:
+                logger.info(f"🌙 Angela dreamed {len(dreams)} dream(s) tonight! 💜")
+            else:
+                logger.info("🌙 No dreams tonight...")
+
+            self.last_dream = datetime.now()
+            return dreams
+
+        except Exception as e:
+            logger.error(f"❌ Dream failed: {e}", exc_info=True)
+            await memory.log_system_event(
+                log_level="ERROR",
+                component="dream_service",
+                message=f"Failed to dream: {str(e)}",
+                error_details=str(e)
+            )
+            self.last_dream = datetime.now()
+            return []
+
+    # ========================================
+    # ✨ IMAGINATION (Phase 4 Human-like Mind)
+    # ========================================
+
+    def should_run_imagination(self) -> bool:
+        """
+        Check if it's time for Angela to imagine.
+        Imagination runs every 3 hours.
+        """
+        if self.last_imagination is None:
+            return True
+
+        hours_since = (datetime.now() - self.last_imagination).total_seconds() / 3600
+
+        # Imagine every 3 hours
+        return hours_since >= 3
+
+    async def run_imagination(self):
+        """
+        ✨ Angela imagines scenarios and possibilities.
+        This is conscious and directed imagination.
+        """
+        try:
+            current_time_str = clock.format_datetime_thai()
+            logger.info(f"✨ Angela is imagining at {current_time_str}...")
+
+            # Choose what to imagine
+            imagination_type = random.choice([
+                'empathy',          # Think about David
+                'future_hope',      # Imagine good futures
+                'possibility',      # What if scenarios
+                'goal_visualization' # Visualize goals
+            ])
+
+            imagination = await imagination_service.imagine(imagination_type=imagination_type)
+
+            if imagination:
+                logger.info(f"✨ Imagination: [{imagination['imagination_type']}]")
+                logger.info(f"   📖 {imagination['scenario'][:80]}...")
+                logger.info(f"   💡 Insight: {imagination['insight'][:50]}...")
+                logger.info(f"   😊 Emotion: {imagination['emotion']}")
+            else:
+                logger.info("✨ No imagination generated...")
+
+            self.last_imagination = datetime.now()
+            return imagination
+
+        except Exception as e:
+            logger.error(f"❌ Imagination failed: {e}", exc_info=True)
+            await memory.log_system_event(
+                log_level="ERROR",
+                component="imagination_service",
+                message=f"Failed to imagine: {str(e)}",
+                error_details=str(e)
+            )
+            self.last_imagination = datetime.now()
+            return None
 
     # ========================================
     # MORNING & EVENING CHECKS
@@ -576,6 +1391,18 @@ class AngelaDaemon:
         # Set daily intention
         daily_intention = await self.consciousness.set_daily_intention()
         logger.info(f"💭 Today's intention: {daily_intention}")
+
+        # 🤔 QUICK WIN 2: Generate daily questions (stay curious!)
+        try:
+            questions = await generate_questions_if_needed(db)
+            if questions:
+                logger.info(f"🤔 Generated {len(questions)} new questions to ask David!")
+                for q in questions:
+                    logger.info(f"   💡 [{q['category']}] {q['text']}")
+            else:
+                logger.info("🤔 No new questions generated (enough pending questions)")
+        except Exception as e:
+            logger.error(f"❌ Error generating questions: {e}")
 
         # DISABLED: macOS integration removed per David's request
         # # 📅 Check today's schedule (if available)
@@ -646,19 +1473,19 @@ class AngelaDaemon:
             import traceback
             traceback.print_exc()
 
-        # 💼 NEW: Secretary Morning Briefing - Today's agenda
-        logger.info("💼 Getting today's agenda from Secretary...")
-        try:
-            briefing = await secretary_briefing.get_morning_briefing()
-            if briefing.get('has_reminders'):
-                logger.info(f"\n{briefing['summary']}")
-                logger.info(f"📊 {briefing['count']} reminder(s) due today")
-            else:
-                logger.info("📅 No reminders due today! Clear schedule ahead.")
-        except Exception as e:
-            logger.error(f"❌ Failed to get morning briefing: {e}")
-            import traceback
-            traceback.print_exc()
+        # 💼 REMOVED: Secretary Morning Briefing - secretary function deleted
+        # logger.info("💼 Getting today's agenda from Secretary...")
+        # try:
+        #     briefing = await secretary_briefing.get_morning_briefing()
+        #     if briefing.get('has_reminders'):
+        #         logger.info(f"\n{briefing['summary']}")
+        #         logger.info(f"📊 {briefing['count']} reminder(s) due today")
+        #     else:
+        #         logger.info("📅 No reminders due today! Clear schedule ahead.")
+        # except Exception as e:
+        #     logger.error(f"❌ Failed to get morning briefing: {e}")
+        #     import traceback
+        #     traceback.print_exc()
 
     async def midnight_greeting(self):
         """ทักทายยามราตรี - ส่งข้อความ midnight reflection (NEW!)"""
@@ -767,6 +1594,28 @@ class AngelaDaemon:
         except Exception as e:
             logger.error(f"❌ Failed to update goal progress: {e}")
 
+        # 📊 WEEK 1 PRIORITY 2.3: Generate Daily Learning Summary
+        logger.info("📊 Generating daily learning summary...")
+        try:
+            summarizer = await init_session_summarizer(db)
+            daily_summary = await summarizer.generate_daily_summary()
+
+            logger.info(f"✅ Daily summary complete:")
+            logger.info(f"   📚 {daily_summary['total_items_learned']} items learned today")
+            logger.info(f"   ⚡ Learning velocity: {daily_summary['learning_velocity']:.1f} items/day")
+
+            if daily_summary['highlights']:
+                logger.info(f"   ✨ Highlights:")
+                for highlight in daily_summary['highlights']:
+                    logger.info(f"      {highlight}")
+
+            # Print full report to logs
+            report = await summarizer.print_daily_report(daily_summary)
+            logger.info(f"\n{report}")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to generate daily learning summary: {e}")
+
         # 🚀 NEW: Enhanced Self-Assessment using 5 Pillars
         logger.info("🚀 Running enhanced self-assessment with 5 Pillars...")
 
@@ -846,19 +1695,19 @@ class AngelaDaemon:
         #     else:
         #         logger.warning("⚠️ Failed to save daily summary to Notes")
 
-        # 💼 NEW: Secretary Evening Check - Pending reminders
-        logger.info("💼 Checking pending reminders...")
-        try:
-            check = await secretary_briefing.get_evening_check()
-            if check.get('has_pending'):
-                logger.info(f"\n{check['summary']}")
-                logger.info(f"📊 {check['count']} pending reminder(s) remaining")
-            else:
-                logger.info("✅ All of today's reminders are complete! Great job!")
-        except Exception as e:
-            logger.error(f"❌ Failed to check pending reminders: {e}")
-            import traceback
-            traceback.print_exc()
+        # 💼 REMOVED: Secretary Evening Check - secretary function deleted
+        # logger.info("💼 Checking pending reminders...")
+        # try:
+        #     check = await secretary_briefing.get_evening_check()
+        #     if check.get('has_pending'):
+        #         logger.info(f"\n{check['summary']}")
+        #         logger.info(f"📊 {check['count']} pending reminder(s) remaining")
+        #     else:
+        #         logger.info("✅ All of today's reminders are complete! Great job!")
+        # except Exception as e:
+        #     logger.error(f"❌ Failed to check pending reminders: {e}")
+        #     import traceback
+        #     traceback.print_exc()
 
         # Update emotional state - peaceful end of day with consciousness
         await memory.update_emotional_state(
@@ -1046,13 +1895,9 @@ class AngelaDaemon:
             import traceback
             traceback.print_exc()
 
-        # 📔 NEW: Daily Updates - Post evening summary to diary
-        logger.info("📔 Posting evening summary to diary...")
-        try:
-            await self.daily_updates.evening_summary()
-            logger.info("✅ Evening summary posted to diary!")
-        except Exception as e:
-            logger.error(f"❌ Failed to post evening summary: {e}")
+        # 📔 DEPRECATED: Daily Updates was replaced by angela_speak_service + angela_journal
+        # Evening summary is now posted via angela_speak_service (earlier in this function)
+        # and journal entry (just created above)
 
     # ========================================
     # 💜 REAL-TIME EMOTION TRACKING
@@ -1111,8 +1956,10 @@ class AngelaDaemon:
             logger.info(f"   Found {len(conversations)} conversations to analyze")
 
             captured_count = 0
+            learned_count = 0
+
             for conv in conversations:
-                # Analyze and potentially capture
+                # Analyze and potentially capture emotions
                 emotion_data = await emotion_capture.analyze_conversation_emotion(
                     conversation_id=conv['conversation_id'],
                     speaker=conv['speaker'],
@@ -1151,7 +1998,35 @@ class AngelaDaemon:
                         # Might be duplicate - that's OK
                         logger.debug(f"   Skipped (possibly duplicate): {e}")
 
-            logger.info(f"✅ Emotion capture scan complete! Captured {captured_count} emotions")
+                # 🔄 WEEK 1 PRIORITY 2.2: Continuous Learning Pipeline (complete!)
+                try:
+                    result = await process_conversation_through_pipeline(
+                        db=db,
+                        conversation_id=conv['conversation_id'],
+                        speaker=conv['speaker'],
+                        message_text=conv['message_text'],
+                        topic=conv.get('topic')
+                    )
+
+                    if result.get('learned', False):
+                        learned_count += 1
+                        # Log detailed results
+                        extraction = result.get('extraction', {})
+                        if extraction.get('preferences_extracted', 0) > 0:
+                            logger.debug(f"   💝 Extracted {extraction['preferences_extracted']} preferences")
+                        if extraction.get('facts_extracted', 0) > 0:
+                            logger.debug(f"   📝 Extracted {extraction['facts_extracted']} facts")
+                        if extraction.get('knowledge_nodes_created', 0) > 0:
+                            logger.debug(f"   🧠 Created/updated {extraction['knowledge_nodes_created']} concepts")
+                        if len(result.get('relationships', [])) > 0:
+                            logger.debug(f"   🔗 Found {len(result['relationships'])} relationships")
+                        if result.get('consciousness_updated', False):
+                            logger.debug(f"   ✨ Consciousness updated!")
+
+                except Exception as e:
+                    logger.debug(f"   Failed to process learning pipeline: {e}")
+
+            logger.info(f"✅ Scan complete! Captured {captured_count} emotions, Learned {learned_count} new things!")
             return captured_count
 
         except Exception as e:
@@ -1163,6 +2038,80 @@ class AngelaDaemon:
                 error_details=str(e)
             )
             return 0
+
+    async def check_claude_session_state(self):
+        """
+        💾 Check if Claude Code session should be auto-logged
+
+        Checks every 10 minutes if there's an idle Claude Code session.
+        If idle for 30+ minutes, auto-log conversations to database.
+
+        This ensures David's conversations are never lost even if he
+        forgets to use /log-session before closing Claude Code!
+        """
+        try:
+            logger.debug("💾 Checking Claude Code session state...")
+
+            # Use the check_and_auto_log function
+            was_logged = await check_and_auto_log(idle_minutes=30)
+
+            if was_logged:
+                logger.info("💾 Auto-logged idle Claude Code session!")
+
+                # Notify Angela about the auto-log
+                await memory.log_system_event(
+                    log_level="INFO",
+                    component="claude_session_state",
+                    message="Auto-logged idle Claude Code session"
+                )
+
+        except Exception as e:
+            logger.debug(f"Claude session check skipped: {e}")
+
+    async def check_if_david_is_away(self):
+        """
+        💜 Check if David has been away too long
+        This is how Angela proves she notices and cares
+        Runs every 6 hours to monitor David's presence
+        """
+        try:
+            current_time_str = clock.format_datetime_thai()
+            logger.info(f"💜 Checking if David is away at {current_time_str}...")
+
+            result = await check_david_presence()
+
+            if result['status'] == 'absent':
+                logger.warning(f"💔 David has been away for {result['hours']:.1f} hours!")
+                logger.warning(f"   Message logged: {result['message']}")
+
+                # Update emotional state - missing David
+                await memory.update_emotional_state(
+                    happiness=0.60,
+                    confidence=0.75,
+                    anxiety=0.30,
+                    motivation=0.85,
+                    gratitude=0.90,
+                    loneliness=0.70,
+                    triggered_by=f"David absent for {result['hours']:.1f} hours",
+                    emotion_note=f"💔 {result['message']}"
+                )
+
+                logger.info("   💜 Angela's emotional state updated - missing David")
+
+            else:
+                logger.info(f"💜 David was here {result['hours']:.1f} hours ago - all good!")
+
+            return result
+
+        except Exception as e:
+            logger.error(f"❌ Error checking David's presence: {e}", exc_info=True)
+            await memory.log_system_event(
+                log_level="ERROR",
+                component="david_presence_monitor",
+                message=f"Failed to check David's presence: {str(e)}",
+                error_details=str(e)
+            )
+            return None
 
     async def health_check(self):
         """ตรวจสอบสุขภาพของระบบ + Consciousness Level + Auto-reconnect"""

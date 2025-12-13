@@ -39,6 +39,14 @@ class EmotionCaptureSync(BaseModel):
     created_at: str  # ISO8601 format
 
 
+class ChatMessageSync(BaseModel):
+    """Chat message from mobile app"""
+    speaker: str  # "david" or "angela"
+    message: str
+    emotion: Optional[str] = None
+    timestamp: str  # ISO8601 format
+
+
 # ============================================================================
 # Quick Notes Sync
 # ============================================================================
@@ -184,4 +192,63 @@ async def sync_batch(
 
     except Exception as e:
         logger.error(f"Error in batch sync: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Chat Messages Sync
+# ============================================================================
+
+@router.post("/chat")
+async def sync_chat_message(chat: ChatMessageSync):
+    """
+    Sync a chat message from mobile app
+
+    Saves to conversations table in AngelaMemory database
+    """
+    try:
+        from datetime import timezone
+
+        db = get_db_connection()
+        conversation_id = uuid4()
+
+        # Parse datetime
+        created_at = datetime.fromisoformat(chat.timestamp.replace('Z', '+00:00'))
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+
+        # Convert to naive datetime (remove timezone) for database
+        created_at_naive = created_at.replace(tzinfo=None)
+
+        # Detect topic from message (simple keyword matching)
+        topic = "mobile_chat"
+        if any(word in chat.message.lower() for word in ["รัก", "love", "miss"]):
+            topic = "emotional_support"
+        elif any(word in chat.message.lower() for word in ["ทำงาน", "work", "code"]):
+            topic = "work_discussion"
+
+        # Save to conversations table
+        await db.execute("""
+            INSERT INTO conversations (
+                conversation_id,
+                speaker,
+                message_text,
+                topic,
+                emotion_detected,
+                importance_level,
+                created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        """, conversation_id, chat.speaker.lower(), chat.message, topic,
+            chat.emotion or "neutral", 5, created_at_naive)
+
+        logger.info(f"Chat message synced: {chat.speaker} -> {chat.message[:50]}...")
+
+        return {
+            "success": True,
+            "conversation_id": str(conversation_id),
+            "message": "✅ Chat message saved! 💜"
+        }
+
+    except Exception as e:
+        logger.error(f"Error syncing chat message: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -1,0 +1,16 @@
+{
+  "status": "failed",
+  "current_epoch": 0,
+  "total_epochs": 3,
+  "current_step": 0,
+  "total_steps": 0,
+  "current_loss": 0.0,
+  "learning_rate": 0.0,
+  "tokens_per_second": 0.0,
+  "elapsed_seconds": 4,
+  "estimated_remaining": 0,
+  "recent_log": "",
+  "output_path": "",
+  "error_message": "Training failed with exit code 2",
+  "progress_percentage": 0.0
+}

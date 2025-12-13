@@ -23,8 +23,21 @@ class LocationService: NSObject, ObservableObject {
     override init() {
         super.init()
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.distanceFilter = 10 // Update every 10 meters
+
+        // IMPORTANT: Maximum accuracy settings for precise GPS
+        locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation // Highest accuracy
+        locationManager.distanceFilter = kCLDistanceFilterNone // Get all location updates
+        locationManager.activityType = .fitness // Optimize for walking/stationary
+
+        // Request full accuracy (iOS 14+)
+        if #available(iOS 14.0, *) {
+            locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+        }
+
+        // Allow background location updates if needed
+        locationManager.allowsBackgroundLocationUpdates = false
+        locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.showsBackgroundLocationIndicator = false
     }
 
     // MARK: - Request Authorization
@@ -37,13 +50,13 @@ class LocationService: NSObject, ObservableObject {
 
     func startTracking() {
         guard locationStatus == .authorizedWhenInUse || locationStatus == .authorizedAlways else {
-            print("⚠️ Location permission not granted")
+            print("⚠️ Location permission not granted (status: \(locationStatus.rawValue))")
             requestPermission()
             return
         }
 
         locationManager.startUpdatingLocation()
-        print("📍 Started location tracking")
+        print("📍 Started location tracking with permission")
     }
 
     func stopTracking() {
@@ -54,23 +67,47 @@ class LocationService: NSObject, ObservableObject {
     // MARK: - Get Current Location
 
     func getCurrentLocation() async -> CLLocation? {
-        // If we already have a recent location, return it
+        // If we already have a recent AND accurate location, return it
         if let location = currentLocation,
-           location.timestamp.timeIntervalSinceNow > -60 { // Less than 1 minute old
+           location.timestamp.timeIntervalSinceNow > -30, // Less than 30 seconds old
+           location.horizontalAccuracy >= 0,
+           location.horizontalAccuracy < 20 { // Accuracy better than 20 meters
+            print("📍 Using cached accurate location (accuracy: \(location.horizontalAccuracy)m)")
             return location
         }
 
-        // Otherwise, request a new location
+        // Otherwise, request a new accurate location
+        print("📍 Starting one-time location fetch...")
         startTracking()
 
-        // Wait for location update (max 5 seconds)
-        for _ in 0..<50 {
-            if let location = currentLocation {
+        // Wait for accurate location update (max 15 seconds)
+        for i in 0..<150 {
+            if let location = currentLocation,
+               location.horizontalAccuracy >= 0,
+               location.horizontalAccuracy < 20 { // Wait for accuracy better than 20 meters
+                print("📍 Got accurate location after \(Double(i) * 0.1)s (accuracy: \(location.horizontalAccuracy)m)")
+                stopTracking()  // ✅ STOP tracking after getting location!
                 return location
             }
+
+            // After 5 seconds, accept lower accuracy if available
+            if i >= 50,
+               let location = currentLocation,
+               location.horizontalAccuracy >= 0,
+               location.horizontalAccuracy < 50 { // Accept 50m accuracy after 5 seconds
+                print("⚠️ Using moderate accuracy location after 5s (accuracy: \(location.horizontalAccuracy)m)")
+                stopTracking()  // ✅ STOP tracking after getting location!
+                return location
+            }
+
             try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
         }
 
+        // Last resort: return whatever we have
+        stopTracking()  // ✅ STOP tracking even on timeout!
+        if let location = currentLocation {
+            print("⚠️ Timeout: returning location with accuracy \(location.horizontalAccuracy)m")
+        }
         return currentLocation
     }
 
@@ -104,38 +141,57 @@ class LocationService: NSObject, ObservableObject {
     }
 
     func getArea(from location: CLLocation) async -> String? {
-        // Use MKLocalSearch to find nearby landmarks/areas
-        let request = MKLocalSearch.Request()
-        request.resultTypes = .pointOfInterest
-        request.region = MKCoordinateRegion(
-            center: location.coordinate,
-            latitudinalMeters: 500,
-            longitudinalMeters: 500
-        )
+        // Note: CLGeocoder is deprecated in iOS 26.0 (not released yet as of 2025)
+        // TODO: Migrate to MKReverseGeocodingRequest when iOS 26.0 is released
+        // Suppressing warning since iOS 26.0 doesn't exist yet
+        if #available(iOS 26.0, *) {
+            // TODO: Use MKReverseGeocodingRequest here when iOS 26 is released
+            return nil
+        } else {
+            let geocoder = CLGeocoder()
 
-        let search = MKLocalSearch(request: request)
+            do {
+                let placemarks = try await geocoder.reverseGeocodeLocation(location)
 
-        do {
-            let response = try await search.start()
+            if let placemark = placemarks.first {
+                // Build area name from available components
+                var areaComponents: [String] = []
 
-            // Get area name from first nearby point of interest
-            if let firstItem = response.mapItems.first {
-                // Try to extract area/locality from the name or use the name itself
-                if let name = firstItem.name {
-                    // Extract area part if available (e.g., "Cafe in Thonglor" -> "Thonglor")
-                    let components = name.components(separatedBy: " in ")
-                    if components.count > 1 {
-                        return components[1]
+                // Priority: subLocality (ย่าน) > locality (เมือง) > administrativeArea (จังหวัด)
+                if let subLocality = placemark.subLocality {
+                    areaComponents.append(subLocality)
+                }
+
+                if let locality = placemark.locality {
+                    // Only add locality if different from subLocality
+                    if !areaComponents.contains(locality) {
+                        areaComponents.append(locality)
                     }
-                    return name
+                }
+
+                if let administrativeArea = placemark.administrativeArea {
+                    // Only add if not already in components
+                    if !areaComponents.contains(administrativeArea) {
+                        areaComponents.append(administrativeArea)
+                    }
+                }
+
+                // Join components with ", "
+                let areaString = areaComponents.joined(separator: ", ")
+
+                if !areaString.isEmpty {
+                    print("📍 Got area from geocoder: \(areaString)")
+                    return areaString
                 }
             }
 
-            return nil
+                print("⚠️ No area information available from geocoder")
+                return nil
 
-        } catch {
-            print("❌ Failed to get area: \(error)")
-            return nil
+            } catch {
+                print("❌ Geocoding failed: \(error.localizedDescription)")
+                return nil
+            }
         }
     }
 
@@ -145,6 +201,45 @@ class LocationService: NSObject, ObservableObject {
         let latitude = String(format: "%.6f", location.coordinate.latitude)
         let longitude = String(format: "%.6f", location.coordinate.longitude)
         return "\(latitude), \(longitude)"
+    }
+
+    // MARK: - Accuracy Helpers
+
+    /// Get accuracy description for user display
+    func getAccuracyDescription(_ location: CLLocation) -> String {
+        let accuracy = location.horizontalAccuracy
+
+        if accuracy < 0 {
+            return "❌ Invalid"
+        } else if accuracy < 5 {
+            return "🎯 Excellent (<5m)"
+        } else if accuracy < 10 {
+            return "✅ Very Good (<10m)"
+        } else if accuracy < 20 {
+            return "✅ Good (<20m)"
+        } else if accuracy < 50 {
+            return "⚠️ Moderate (<50m)"
+        } else if accuracy < 100 {
+            return "⚠️ Fair (<100m)"
+        } else {
+            return "❌ Poor (>\(Int(accuracy))m)"
+        }
+    }
+
+    /// Check if location is acceptable for saving
+    func isLocationAcceptable(_ location: CLLocation) -> Bool {
+        // Must be recent (within 30 seconds)
+        guard location.timestamp.timeIntervalSinceNow > -30 else {
+            return false
+        }
+
+        // Must have valid accuracy
+        guard location.horizontalAccuracy >= 0 else {
+            return false
+        }
+
+        // For saving experiences, require at least 50m accuracy
+        return location.horizontalAccuracy < 50
     }
 }
 
@@ -167,9 +262,34 @@ extension LocationService: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
 
+        // Filter out invalid/inaccurate locations
+        // 1. Check if location is recent (not cached from past)
+        guard location.timestamp.timeIntervalSinceNow > -10 else {
+            print("⚠️ Rejected old location (age: \(abs(location.timestamp.timeIntervalSinceNow))s)")
+            return
+        }
+
+        // 2. Check horizontal accuracy (negative means invalid)
+        guard location.horizontalAccuracy >= 0 else {
+            print("⚠️ Rejected location with invalid accuracy")
+            return
+        }
+
+        // 3. Only update if accuracy is improving or location changed significantly
+        if let current = currentLocation {
+            let distance = location.distance(from: current)
+
+            // If new location is less accurate and very close, skip it
+            if location.horizontalAccuracy > current.horizontalAccuracy,
+               distance < 5 { // Less than 5 meters away
+                print("⚠️ Rejected less accurate nearby location (accuracy: \(location.horizontalAccuracy)m vs \(current.horizontalAccuracy)m)")
+                return
+            }
+        }
+
         DispatchQueue.main.async {
             self.currentLocation = location
-            print("📍 Location updated: \(self.formatLocation(location))")
+            print("📍 Location updated: \(self.formatLocation(location)) (accuracy: \(location.horizontalAccuracy)m, altitude: \(location.altitude)m)")
         }
     }
 

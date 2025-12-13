@@ -29,10 +29,11 @@ class PhotoManager {
     // MARK: - Save Photo
 
     func savePhoto(_ image: UIImage) -> String? {
-        // Generate unique filename
+        // Generate unique filename with UUID to prevent collisions
         let timestamp = ISO8601DateFormatter().string(from: Date())
             .replacingOccurrences(of: ":", with: "-")
-        let filename = "photo_\(timestamp).jpg"
+        let uniqueID = UUID().uuidString.prefix(8)  // First 8 chars of UUID
+        let filename = "photo_\(timestamp)_\(uniqueID).jpg"
         let fileURL = photoDirectory.appendingPathComponent(filename)
 
         // Convert to JPEG data

@@ -218,6 +218,34 @@ async def log_conversation(
         print(f"   ⭐ Importance: {importance}/10")
         print(f"   📊 Sentiment: {david_sentiment_label} ({david_sentiment:.1f})")
 
+        # 🚀 NEW: Queue for background deep analysis
+        try:
+            from angela_core.services.background_learning_workers import background_workers
+
+            # Check if workers are running
+            if background_workers.is_running:
+                # Queue this conversation for deep background analysis
+                task_id = await background_workers.queue_learning_task(
+                    conversation_data={
+                        'david_message': david_message,
+                        'angela_response': angela_response,
+                        'session_id': session_id,
+                        'topic': topic or 'claude_conversation',
+                        'emotion': emotion or 'neutral',
+                        'importance': importance,
+                        'timestamp': datetime.now(),
+                        'source': 'claude_code'
+                    },
+                    priority=importance  # Higher importance = higher priority
+                )
+                print(f"   🔄 Queued for background learning (Task: {task_id}, Priority: {importance})")
+            else:
+                logger.debug("Background workers not running - skipping queue")
+
+        except Exception as e:
+            logger.warning(f"Failed to queue background learning: {e}")
+            # Don't fail the whole operation if queueing fails
+
         # 🧠 Trigger self-learning for the 2 conversations just saved
         # TEMPORARILY DISABLED: Ollama endpoint issues
         # if SELF_LEARNING_AVAILABLE:
@@ -346,17 +374,26 @@ Emotions: {emotions_text}
 อารมณ์: {emotions_text}
 ความสำคัญ: {importance}/10"""
 
+                # ========================================================================
+                # GENERATE EMBEDDING for angela_messages - CRITICAL!
+                # ========================================================================
+                # IMPORTANT: NEVER insert NULL embeddings!
+                # ========================================================================
+                message_embedding = await embedding_service.generate_embedding(emotional_message)
+                message_emb_str = embedding_service.embedding_to_pgvector(message_embedding)
+
                 await db.execute("""
                     INSERT INTO angela_messages (
                         message_text, message_type, emotion,
-                        category, is_important, created_at
-                    ) VALUES ($1, $2, $3, $4, $5, $6)
+                        category, is_important, embedding, created_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6::vector, $7)
                 """,
                     emotional_message,
                     "reflection",
                     emotions[0] if emotions else "reflective",
                     "session_reflection",
                     True,  # Mark as important
+                    message_emb_str,
                     datetime.now()
                 )
                 print(f"   💜 Also saved to angela_messages (emotional reflection)")

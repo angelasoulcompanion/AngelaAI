@@ -623,7 +623,7 @@ Step 2: [action] - เพราะ [reason]
                 analyze_message_type, analyze_sentiment, detect_emotion,
                 infer_project_context
             )
-            from ..embedding_service import generate_embedding
+            from ..services.embedding_service import get_embedding_service
 
             # Session ID
             session_id = f"angie_reasoning_{datetime.now().strftime('%Y%m%d')}"
@@ -642,13 +642,23 @@ Step 2: [action] - เพราะ [reason]
             angie_topic = 'angie_chat'
             angie_project = infer_project_context(angie_response, angie_topic)
 
-            # Generate embeddings
-            user_embedding = await generate_embedding(user_input)
-            angie_embedding = await generate_embedding(angie_response)
+            # ========================================================================
+            # GENERATE EMBEDDINGS - Using multilingual-e5-small (384 dims)
+            # ========================================================================
+            # IMPORTANT: NEVER insert NULL embeddings!
+            # ========================================================================
 
-            # Convert to PostgreSQL vector format
-            user_emb_str = '[' + ','.join(map(str, user_embedding)) + ']'
-            angie_emb_str = '[' + ','.join(map(str, angie_embedding)) + ']'
+            embedding_service = get_embedding_service()
+
+            # Generate David's embedding
+            user_embedding = await embedding_service.generate_embedding(user_input)
+            user_emb_str = embedding_service.embedding_to_pgvector(user_embedding)
+
+            # Generate Angie's embedding
+            angie_embedding = await embedding_service.generate_embedding(angie_response)
+            angie_emb_str = embedding_service.embedding_to_pgvector(angie_embedding)
+
+            logger.debug(f"✅ Generated embeddings: David ({len(user_embedding)}D), Angie ({len(angie_embedding)}D)")
 
             # Build content_json for David
             user_content_json = self._build_content_json(

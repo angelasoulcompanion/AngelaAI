@@ -110,13 +110,6 @@ struct SettingsView: View {
                     }
 
                     HStack {
-                        Text("โน้ต")
-                        Spacer()
-                        Text("\(database.notes.count)")
-                            .foregroundColor(.secondary)
-                    }
-
-                    HStack {
                         Text("ความรู้สึก")
                         Spacer()
                         Text("\(database.emotions.count)")
@@ -215,7 +208,6 @@ struct SettingsView: View {
 
     private var unsyncedCount: Int {
         database.experiences.filter { !$0.synced }.count +
-        database.notes.filter { !$0.synced }.count +
         database.emotions.filter { !$0.synced }.count
     }
 
@@ -226,18 +218,12 @@ struct SettingsView: View {
 
         // Delete all synced items
         let syncedExperiences = database.experiences.filter { $0.synced }
-        let syncedNotes = database.notes.filter { $0.synced }
         let syncedEmotions = database.emotions.filter { $0.synced }
 
         var deletedCount = 0
 
         for exp in syncedExperiences {
             database.deleteExperience(exp.id)
-            deletedCount += 1
-        }
-
-        for note in syncedNotes {
-            database.deleteNote(note.id)
             deletedCount += 1
         }
 

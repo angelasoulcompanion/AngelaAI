@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Angela Tech Stack Graph</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1F1F28;
+            overflow: hidden;
+        }
+
+        #graph {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .node {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .node:hover {
+            filter: brightness(1.3);
+        }
+
+        .node-label {
+            font-size: 11px;
+            fill: #E5E7EB;
+            pointer-events: none;
+            user-select: none;
+            font-weight: 500;
+        }
+
+        .link {
+            stroke: #4B5563;
+            stroke-opacity: 0.4;
+            fill: none;
+        }
+
+        .link.project-tech {
+            stroke-opacity: 0.6;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: rgba(42, 42, 61, 0.98);
+            color: #E5E7EB;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1000;
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            max-width: 300px;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+
+        .tooltip-title {
+            font-weight: bold;
+            color: #C084FC;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .tooltip-type {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-bottom: 8px;
+        }
+
+        .tooltip-stat {
+            font-size: 12px;
+            color: #A1A1AA;
+            margin: 4px 0;
+        }
+
+        .tooltip-stat strong {
+            color: #E5E7EB;
+        }
+
+        .tooltip-projects {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(147, 51, 234, 0.2);
+        }
+
+        .tooltip-project-item {
+            font-size: 11px;
+            color: #A1A1AA;
+            margin: 2px 0;
+        }
+
+        /* Stats overlay */
+        .stats {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(42, 42, 61, 0.95);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            color: #E5E7EB;
+            font-size: 12px;
+            max-width: 200px;
+        }
+
+        .stats-title {
+            font-weight: bold;
+            color: #C084FC;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(147, 51, 234, 0.1);
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #A1A1AA;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #9333EA;
+        }
+
+        /* Legend */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(42, 42, 61, 0.95);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #E5E7EB;
+            font-size: 11px;
+        }
+
+        .legend-title {
+            font-weight: bold;
+            color: #C084FC;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        /* Controls */
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .control-btn {
+            background: rgba(42, 42, 61, 0.95);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            color: #C084FC;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: rgba(147, 51, 234, 0.2);
+            border-color: #9333EA;
+        }
+    </style>
+</head>
+<body>
+    <div id="graph"></div>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <!-- Stats Overlay -->
+    <div class="stats" id="stats">
+        <div class="stats-title">🛠️ Tech Stack</div>
+        <div class="stat-item">
+            <span class="stat-label">Technologies:</span>
+            <span class="stat-value" id="stat-techs">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Projects:</span>
+            <span class="stat-value" id="stat-projects">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Connections:</span>
+            <span class="stat-value" id="stat-connections">0</span>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend" id="legend">
+        <div class="legend-title">Tech Types</div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #8B5CF6;"></div>
+            <span>Language</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #3B82F6;"></div>
+            <span>Framework</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #10B981;"></div>
+            <span>Database</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #F59E0B;"></div>
+            <span>Tool</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #EC4899;"></div>
+            <span>Library</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #06B6D4;"></div>
+            <span>Service</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #9333EA; border-radius: 50%;"></div>
+            <span>Project</span>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <button class="control-btn" onclick="resetZoom()">🔄 Reset</button>
+        <button class="control-btn" onclick="centerGraph()">🎯 Center</button>
+    </div>
+
+    <script>
+        // Tech type colors
+        const techTypeColors = {
+            'language': '#8B5CF6',    // Purple
+            'framework': '#3B82F6',   // Blue
+            'database': '#10B981',    // Green
+            'tool': '#F59E0B',        // Orange
+            'library': '#EC4899',     // Pink
+            'service': '#06B6D4',     // Cyan
+            'project': '#9333EA',     // Primary Purple (for project nodes)
+            'default': '#6B7280'
+        };
+
+        function getTechColor(type) {
+            if (!type) return techTypeColors.default;
+            return techTypeColors[type.toLowerCase()] || techTypeColors.default;
+        }
+
+        // Graph dimensions
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        // Create SVG
+        const svg = d3.select('#graph')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+
+        // Create container for zoom/pan
+        const g = svg.append('g');
+
+        // Add zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 4])
+            .on('zoom', (event) => {
+                g.attr('transform', event.transform);
+            });
+
+        svg.call(zoom);
+
+        // Tooltip
+        const tooltip = d3.select('#tooltip');
+
+        let simulation;
+        let link, node;
+
+        // Function to render graph
+        function renderGraph(data) {
+            console.log('📊 Rendering tech stack graph with', data.nodes.length, 'nodes and', data.links.length, 'links');
+
+            // Count stats
+            const techNodes = data.nodes.filter(n => n.nodeType === 'tech');
+            const projectNodes = data.nodes.filter(n => n.nodeType === 'project');
+
+            document.getElementById('stat-techs').textContent = techNodes.length;
+            document.getElementById('stat-projects').textContent = projectNodes.length;
+            document.getElementById('stat-connections').textContent = data.links.length;
+
+            // Clear previous graph
+            g.selectAll('*').remove();
+
+            // Create links
+            link = g.append('g')
+                .selectAll('line')
+                .data(data.links)
+                .join('line')
+                .attr('class', 'link project-tech')
+                .attr('stroke', d => getTechColor(d.techType))
+                .attr('stroke-width', d => Math.max(1, (d.strength || 0.5) * 2));
+
+            // Create node groups
+            const nodeGroup = g.append('g')
+                .selectAll('g')
+                .data(data.nodes)
+                .join('g')
+                .attr('class', 'node')
+                .call(d3.drag()
+                    .on('start', dragStarted)
+                    .on('drag', dragged)
+                    .on('end', dragEnded));
+
+            // Add shapes (circle for projects, rounded rect for tech)
+            nodeGroup.each(function(d) {
+                const group = d3.select(this);
+
+                if (d.nodeType === 'project') {
+                    // Circle for projects
+                    group.append('circle')
+                        .attr('r', 20 + (d.techCount || 0) * 2)
+                        .attr('fill', techTypeColors.project)
+                        .attr('stroke', '#fff')
+                        .attr('stroke-width', 2)
+                        .attr('opacity', 0.9);
+                } else {
+                    // Rounded rectangle for tech
+                    const nodeSize = 12 + (d.projectCount || 0) * 3;
+                    group.append('rect')
+                        .attr('x', -nodeSize)
+                        .attr('y', -nodeSize / 2)
+                        .attr('width', nodeSize * 2)
+                        .attr('height', nodeSize)
+                        .attr('rx', 4)
+                        .attr('ry', 4)
+                        .attr('fill', getTechColor(d.techType))
+                        .attr('stroke', '#fff')
+                        .attr('stroke-width', 1.5);
+                }
+            });
+
+            // Add labels
+            nodeGroup.append('text')
+                .attr('class', 'node-label')
+                .attr('dx', d => d.nodeType === 'project' ? 25 : 20)
+                .attr('dy', 4)
+                .text(d => {
+                    const name = d.name || '';
+                    return name.length > 20 ? name.substring(0, 20) + '...' : name;
+                });
+
+            // Add event listeners
+            nodeGroup
+                .on('mouseenter', showTooltip)
+                .on('mouseleave', hideTooltip)
+                .on('click', handleNodeClick);
+
+            node = nodeGroup;
+
+            // Create force simulation
+            simulation = d3.forceSimulation(data.nodes)
+                .force('link', d3.forceLink(data.links)
+                    .id(d => d.id)
+                    .distance(d => d.source.nodeType === 'project' || d.target.nodeType === 'project' ? 150 : 80)
+                    .strength(0.5))
+                .force('charge', d3.forceManyBody()
+                    .strength(d => d.nodeType === 'project' ? -500 : -200))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide()
+                    .radius(d => d.nodeType === 'project' ? 50 : 30));
+
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+
+                node.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+        }
+
+        // Drag functions
+        function dragStarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+        }
+
+        function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+        }
+
+        function dragEnded(event) {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+        }
+
+        // Tooltip functions
+        function showTooltip(event, d) {
+            let html = '';
+
+            if (d.nodeType === 'project') {
+                html = `
+                    <div class="tooltip-title">📁 ${d.name}</div>
+                    <div class="tooltip-type" style="background: ${techTypeColors.project}20; color: ${techTypeColors.project};">Project</div>
+                    <div class="tooltip-stat"><strong>Technologies:</strong> ${d.techCount || 0}</div>
+                    ${d.status ? `<div class="tooltip-stat"><strong>Status:</strong> ${d.status}</div>` : ''}
+                `;
+            } else {
+                const typeColor = getTechColor(d.techType);
+                html = `
+                    <div class="tooltip-title">${d.name}</div>
+                    <div class="tooltip-type" style="background: ${typeColor}20; color: ${typeColor};">${d.techType || 'Unknown'}</div>
+                    ${d.version ? `<div class="tooltip-stat"><strong>Version:</strong> ${d.version}</div>` : ''}
+                    <div class="tooltip-stat"><strong>Used in:</strong> ${d.projectCount || 0} projects</div>
+                    ${d.purpose ? `<div class="tooltip-stat"><strong>Purpose:</strong> ${d.purpose}</div>` : ''}
+                `;
+
+                if (d.projects && d.projects.length > 0) {
+                    html += `<div class="tooltip-projects"><strong>Projects:</strong>`;
+                    d.projects.slice(0, 5).forEach(p => {
+                        html += `<div class="tooltip-project-item">• ${p}</div>`;
+                    });
+                    if (d.projects.length > 5) {
+                        html += `<div class="tooltip-project-item">... and ${d.projects.length - 5} more</div>`;
+                    }
+                    html += `</div>`;
+                }
+            }
+
+            tooltip.html(html)
+                .style('left', (event.pageX + 15) + 'px')
+                .style('top', (event.pageY - 15) + 'px')
+                .classed('show', true);
+        }
+
+        function hideTooltip() {
+            tooltip.classed('show', false);
+        }
+
+        function handleNodeClick(event, d) {
+            event.stopPropagation();
+            console.log('Node clicked:', d);
+
+            // Send message to Swift
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.techNodeClicked) {
+                window.webkit.messageHandlers.techNodeClicked.postMessage({
+                    id: d.id,
+                    name: d.name,
+                    nodeType: d.nodeType,
+                    techType: d.techType,
+                    projectCount: d.projectCount,
+                    projects: d.projects
+                });
+            }
+        }
+
+        // Control functions
+        function resetZoom() {
+            svg.transition()
+                .duration(750)
+                .call(zoom.transform, d3.zoomIdentity);
+        }
+
+        function centerGraph() {
+            if (simulation) {
+                simulation.force('center', d3.forceCenter(width / 2, height / 2));
+                simulation.alpha(0.3).restart();
+            }
+        }
+
+        // Function to update graph from Swift
+        window.updateGraph = function(graphData) {
+            console.log('📥 Received tech stack data from Swift:', graphData);
+            renderGraph(graphData);
+        };
+
+        // Initial empty state
+        renderGraph({ nodes: [], links: [] });
+
+        console.log('✅ Tech stack graph visualization ready');
+    </script>
+</body>
+</html>

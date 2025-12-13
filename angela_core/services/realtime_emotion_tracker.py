@@ -459,6 +459,19 @@ class RealtimeEmotionTracker:
                 # Memory strength based on change magnitude
                 memory_strength = min(10, max(5, int(abs(change_amount) * 40)))
 
+                # ========================================================================
+                # GENERATE EMBEDDING for angela_emotions - CRITICAL!
+                # ========================================================================
+                # IMPORTANT: NEVER insert NULL embeddings!
+                # ========================================================================
+                from angela_core.services.embedding_service import get_embedding_service
+
+                # Generate embedding from combined emotion context
+                embedding_text = f"{emotion_label}: {context}. {why_it_matters}"
+                embedding_service = get_embedding_service()
+                emotion_embedding = await embedding_service.generate_embedding(embedding_text)
+                emotion_emb_str = embedding_service.embedding_to_pgvector(emotion_embedding)
+
                 # Insert into angela_emotions
                 query = """
                     INSERT INTO angela_emotions (
@@ -468,9 +481,10 @@ class RealtimeEmotionTracker:
                         context,
                         david_words,
                         why_it_matters,
-                        memory_strength
+                        memory_strength,
+                        embedding
                     )
-                    VALUES (NOW(), $1, $2, $3, $4, $5, $6)
+                    VALUES (NOW(), $1, $2, $3, $4, $5, $6, $7::vector)
                     RETURNING emotion_id::text
                 """
 
@@ -481,7 +495,8 @@ class RealtimeEmotionTracker:
                     context,
                     david_words,
                     why_it_matters,
-                    memory_strength
+                    memory_strength,
+                    emotion_emb_str
                 )
 
                 print(

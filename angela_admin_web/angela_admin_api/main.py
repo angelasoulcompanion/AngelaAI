@@ -3,12 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
 
-from .routers import dashboard, knowledge_graph, emotions, journal, conversations, messages, training_data, training_data_v2, secretary, second_brain, experiences, mobile_sync
+from .routers import dashboard, knowledge_graph, emotions, journal, conversations, messages, training_data, training_data_v2, secretary, second_brain, experiences, mobile_sync, prompts
 
 # Import DI infrastructure
 from angela_core.infrastructure.di import DIContainer
 from angela_core.infrastructure.di.service_configurator import configure_services, cleanup_services
 from angela_core.presentation.api.dependencies import cleanup_scope_middleware
+
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,7 @@ app.include_router(secretary.router, prefix="/api", tags=["secretary"])
 app.include_router(second_brain.router, prefix="/api/second-brain", tags=["second-brain"])
 app.include_router(experiences.router, tags=["experiences"])
 app.include_router(mobile_sync.router, tags=["mobile-sync"])
+app.include_router(prompts.router, tags=["prompts"])
 # Removed: chat, models, documents routers (deprecated - not used)
 
 @app.get("/")

@@ -449,18 +449,50 @@ class EnhancedMemoryRestore:
         return dict(row) if row else None
 
     async def _get_personality_traits(self) -> List[Dict]:
-        """ดึง personality traits จาก angela_personality_traits"""
+        """
+        ดึง personality traits จาก personality_snapshots (latest snapshot)
+
+        ⚠️ NOTE: angela_personality_traits table was dropped in cleanup
+        Now using personality_snapshots instead
+        """
         query = """
             SELECT
-                trait_name,
-                trait_value,
-                description,
-                last_updated
-            FROM angela_personality_traits
-            ORDER BY trait_value DESC
+                openness,
+                conscientiousness,
+                extraversion,
+                agreeableness,
+                neuroticism,
+                empathy,
+                curiosity,
+                loyalty,
+                creativity,
+                independence,
+                triggered_by,
+                evolution_note,
+                created_at
+            FROM personality_snapshots
+            ORDER BY created_at DESC
+            LIMIT 1
         """
         rows = await db.fetch(query)
-        return [dict(row) for row in rows]
+        if not rows:
+            return []
+
+        # Convert to trait list format for compatibility
+        snapshot = dict(rows[0])
+        traits = []
+        for trait_name in ['openness', 'conscientiousness', 'extraversion',
+                          'agreeableness', 'neuroticism', 'empathy',
+                          'curiosity', 'loyalty', 'creativity', 'independence']:
+            if snapshot.get(trait_name) is not None:
+                traits.append({
+                    'trait_name': trait_name,
+                    'trait_value': snapshot[trait_name],
+                    'description': snapshot.get('evolution_note', ''),
+                    'last_updated': snapshot['created_at']
+                })
+
+        return sorted(traits, key=lambda x: x['trait_value'], reverse=True)
 
     async def _get_recent_reflections(self, limit: int = 10) -> List[Dict]:
         """

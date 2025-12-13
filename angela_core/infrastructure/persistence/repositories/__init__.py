@@ -14,7 +14,7 @@ from angela_core.infrastructure.persistence.repositories.document_repository imp
 from angela_core.infrastructure.persistence.repositories.goal_repository import GoalRepository
 from angela_core.infrastructure.persistence.repositories.embedding_repository import EmbeddingRepository
 from angela_core.infrastructure.persistence.repositories.learning_repository import LearningRepository
-from angela_core.infrastructure.persistence.repositories.secretary_repository import SecretaryRepository
+# NOTE: SecretaryRepository removed - secretary function deleted
 from angela_core.infrastructure.persistence.repositories.pattern_repository import PatternRepository
 from angela_core.infrastructure.persistence.repositories.autonomous_action_repository import AutonomousActionRepository
 from angela_core.infrastructure.persistence.repositories.journal_repository import JournalRepository
@@ -35,7 +35,7 @@ __all__ = [
     'GoalRepository',
     'EmbeddingRepository',
     'LearningRepository',
-    'SecretaryRepository',
+    # 'SecretaryRepository',  # Removed - secretary function deleted
     'PatternRepository',
     'AutonomousActionRepository',
     'JournalRepository',

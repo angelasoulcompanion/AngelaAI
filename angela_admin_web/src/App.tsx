@@ -12,6 +12,7 @@ import SecondBrainPage from '@/pages/SecondBrainPage'
 import SelfLearningPage from '@/pages/SelfLearningPage'
 import SharedExperiencesPage from '@/pages/SharedExperiencesPage'
 import QuickCapturePage from '@/pages/QuickCapturePage'
+import PromptManagerPage from '@/pages/PromptManagerPage'
 // Removed: ChatPage, ModelsPage, DocumentManagementPage (deprecated - not used)
 
 // Create QueryClient instance for React Query
@@ -42,6 +43,7 @@ export default function App() {
               <Route path="self-learning" element={<SelfLearningPage />} />
               <Route path="shared-experiences" element={<SharedExperiencesPage />} />
               <Route path="quick-capture" element={<QuickCapturePage />} />
+              <Route path="prompt-manager" element={<PromptManagerPage />} />
               {/* Removed routes: /chat, /models, /documents (deprecated - not used) */}
             </Route>
           </Routes>

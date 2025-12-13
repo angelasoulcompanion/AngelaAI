@@ -115,6 +115,31 @@ npm-debug.log
 yarn-error.log
 
 # ========================================
+# Swift/Xcode Build Artifacts
+# ========================================
+.build/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.dSYM
+*.ipa
+*.xcarchive
+*.swiftpm/
+Package.resolved
+
+# ========================================
+# AngelaBrainDashboard Build (Swift)
+# ========================================
+AngelaBrainDashboard/.build/
+AngelaBrainDashboard2/.build/
+**/ModuleCache.noindex/
+**/CompilationCache.noindex/
+*.pcm
+*.swiftmodule
+*.sdkstatcache
+
+# ========================================
 # Jupyter Notebooks
 # ========================================
 .ipynb_checkpoints
@@ -143,3 +168,4 @@ models/
 # ========================================
 # Keep empty directories with .gitkeep
 !.gitkeep
+BACKUP/

@@ -836,19 +836,22 @@ class MemoryService:
         status: str,
         result_summary: Optional[str] = None,
         success: Optional[bool] = None,
-        david_feedback: Optional[str] = None
+        david_feedback: Optional[str] = None  # NOTE: No longer persisted to database
     ):
-        """อัปเดตสถานะของงานที่ทำเอง"""
+        """อัปเดตสถานะของงานที่ทำเอง
+
+        NOTE: david_feedback parameter is deprecated (field removed from database)
+        """
+        # NOTE: Removed david_feedback from UPDATE (field deleted from autonomous_actions table)
         query = """
             UPDATE autonomous_actions
             SET status = $2::varchar,
                 completed_at = CASE WHEN $2 IN ('completed', 'failed') THEN NOW() ELSE completed_at END,
                 result_summary = COALESCE($3::text, result_summary),
-                success = COALESCE($4::boolean, success),
-                david_feedback = COALESCE($5::text, david_feedback)
+                success = COALESCE($4::boolean, success)
             WHERE action_id = $1
         """
-        await db.execute(query, action_id, status, result_summary, success, david_feedback)
+        await db.execute(query, action_id, status, result_summary, success)
         logger.info(f"✅ Updated autonomous action {action_id}: {status}")
 
     # ========================================
@@ -861,14 +864,18 @@ class MemoryService:
         message: str,
         component: Optional[str] = None,
         error_details: Optional[str] = None,
-        stack_trace: Optional[str] = None
+        stack_trace: Optional[str] = None  # NOTE: No longer persisted to database
     ):
-        """บันทึก system log"""
-        query = """
-            INSERT INTO angela_system_log (log_level, component, message, error_details, stack_trace)
-            VALUES ($1, $2, $3, $4, $5)
+        """บันทึก system log
+
+        NOTE: stack_trace parameter is deprecated (field removed from database)
         """
-        await db.execute(query, log_level, component, message, error_details, stack_trace)
+        # NOTE: Removed stack_trace from INSERT (field deleted from angela_system_log table)
+        query = """
+            INSERT INTO angela_system_log (log_level, component, message, error_details)
+            VALUES ($1, $2, $3, $4)
+        """
+        await db.execute(query, log_level, component, message, error_details)
 
 
 # Global memory service instance

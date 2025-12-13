@@ -68,7 +68,7 @@ async def configure_services(container: DIContainer, database_url: Optional[str]
         GoalRepository,
         LearningRepository,
         PatternRepository,
-        SecretaryRepository,
+        # SecretaryRepository,  # Removed - secretary function deleted
         AutonomousActionRepository,
         JournalRepository,
         MessageRepository,
@@ -142,12 +142,12 @@ async def configure_services(container: DIContainer, database_url: Optional[str]
         lifetime=ServiceLifetime.SCOPED
     )
 
-    # Secretary Repository
-    container.register_factory(
-        SecretaryRepository,
-        lambda c: SecretaryRepository(c.resolve(AngelaDatabase)),
-        lifetime=ServiceLifetime.SCOPED
-    )
+    # Secretary Repository - REMOVED (secretary function deleted)
+    # container.register_factory(
+    #     SecretaryRepository,
+    #     lambda c: SecretaryRepository(c.resolve(AngelaDatabase)),
+    #     lifetime=ServiceLifetime.SCOPED
+    # )
 
     # Autonomous Action Repository (Added for Batch-22 Repository Enhancement)
     container.register_factory(

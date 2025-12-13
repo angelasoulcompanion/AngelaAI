@@ -1,0 +1,5 @@
+# LoRA Configuration for Angela Training
+lora_parameters:
+  rank: 8
+  dropout: 0.05
+  scale: 4.0

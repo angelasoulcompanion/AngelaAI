@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Angela Knowledge Graph</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1F1F28;
+            overflow: hidden;
+        }
+
+        #graph {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .node {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .node:hover {
+            filter: brightness(1.3);
+        }
+
+        .node-label {
+            font-size: 11px;
+            fill: #E5E7EB;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .link {
+            stroke: #4B5563;
+            stroke-opacity: 0.6;
+            fill: none;
+        }
+
+        .link.strong {
+            stroke-opacity: 0.9;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { stroke-width: 1px; }
+            50% { stroke-width: 2px; }
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: rgba(42, 42, 61, 0.98);
+            color: #E5E7EB;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1000;
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            max-width: 300px;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+
+        .tooltip-title {
+            font-weight: bold;
+            color: #C084FC;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .tooltip-category {
+            display: inline-block;
+            background: rgba(147, 51, 234, 0.2);
+            color: #C084FC;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-bottom: 8px;
+        }
+
+        .tooltip-stat {
+            font-size: 12px;
+            color: #A1A1AA;
+            margin: 4px 0;
+        }
+
+        .tooltip-stat strong {
+            color: #E5E7EB;
+        }
+
+        /* Controls */
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .control-btn {
+            background: rgba(42, 42, 61, 0.95);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            color: #C084FC;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: rgba(147, 51, 234, 0.2);
+            border-color: #9333EA;
+        }
+
+        /* Stats overlay */
+        .stats {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(42, 42, 61, 0.95);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            color: #E5E7EB;
+            font-size: 12px;
+            max-width: 250px;
+        }
+
+        .stats-title {
+            font-weight: bold;
+            color: #C084FC;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(147, 51, 234, 0.1);
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #A1A1AA;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #9333EA;
+        }
+    </style>
+</head>
+<body>
+    <div id="graph"></div>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <!-- Stats Overlay -->
+    <div class="stats" id="stats">
+        <div class="stats-title">📊 Graph Stats</div>
+        <div class="stat-item">
+            <span class="stat-label">Nodes:</span>
+            <span class="stat-value" id="stat-nodes">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Connections:</span>
+            <span class="stat-value" id="stat-edges">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Categories:</span>
+            <span class="stat-value" id="stat-categories">0</span>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <button class="control-btn" onclick="resetZoom()">🔄 Reset</button>
+        <button class="control-btn" onclick="centerGraph()">🎯 Center</button>
+    </div>
+
+    <script>
+        // Category colors matching Angela theme
+        const categoryColors = {
+            'development': '#8B5CF6',
+            'core': '#3B82F6',
+            'database': '#10B981',
+            'phases': '#F59E0B',
+            'relationship': '#EC4899',
+            'training': '#06B6D4',
+            'reference': '#84CC16',
+            'technical': '#6366F1',
+            'architecture': '#8B5CF6',
+            'api': '#14B8A6',
+            'person': '#EC4899',
+            'concept': '#9333EA',
+            'skill': '#3B82F6',
+            'emotion': '#F59E0B',
+            'memory': '#10B981',
+            'goal': '#EF4444',
+            'preference': '#6366F1',
+            'default': '#6B7280'
+        };
+
+        function getCategoryColor(category) {
+            if (!category) return categoryColors.default;
+            const cat = category.toLowerCase();
+            return categoryColors[cat] || categoryColors.default;
+        }
+
+        // Graph dimensions
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        // Create SVG
+        const svg = d3.select('#graph')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+
+        // Create container for zoom/pan
+        const g = svg.append('g');
+
+        // Add zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 4])
+            .on('zoom', (event) => {
+                g.attr('transform', event.transform);
+            });
+
+        svg.call(zoom);
+
+        // Tooltip
+        const tooltip = d3.select('#tooltip');
+
+        let simulation;
+        let link, node, label;
+
+        // Function to render graph
+        function renderGraph(data) {
+            console.log('📊 Rendering graph with', data.nodes.length, 'nodes and', data.links.length, 'links');
+
+            // Update stats
+            document.getElementById('stat-nodes').textContent = data.nodes.length;
+            document.getElementById('stat-edges').textContent = data.links.length;
+            const categories = new Set(data.nodes.map(n => n.category).filter(c => c));
+            document.getElementById('stat-categories').textContent = categories.size;
+
+            // Clear previous graph
+            g.selectAll('*').remove();
+
+            // Create links
+            link = g.append('g')
+                .selectAll('line')
+                .data(data.links)
+                .join('line')
+                .attr('class', d => `link ${d.strength > 0.7 ? 'strong' : ''}`)
+                .attr('stroke-width', d => Math.max(1, (d.strength || 0.5) * 3));
+
+            // Create node groups
+            const nodeGroup = g.append('g')
+                .selectAll('g')
+                .data(data.nodes)
+                .join('g')
+                .attr('class', 'node')
+                .call(d3.drag()
+                    .on('start', dragStarted)
+                    .on('drag', dragged)
+                    .on('end', dragEnded));
+
+            // Add circles
+            nodeGroup.append('circle')
+                .attr('r', d => {
+                    const baseSize = 8;
+                    const refSize = Math.min(20, (d.references || 1) * 1.5);
+                    return Math.max(baseSize, refSize);
+                })
+                .attr('fill', d => getCategoryColor(d.category))
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2)
+                .on('mouseenter', showTooltip)
+                .on('mouseleave', hideTooltip)
+                .on('click', handleNodeClick);
+
+            // Add labels
+            nodeGroup.append('text')
+                .attr('class', 'node-label')
+                .attr('dx', 15)
+                .attr('dy', 4)
+                .text(d => d.name.length > 25 ? d.name.substring(0, 25) + '...' : d.name);
+
+            // Store references for simulation
+            node = nodeGroup;
+
+            // Create force simulation
+            simulation = d3.forceSimulation(data.nodes)
+                .force('link', d3.forceLink(data.links)
+                    .id(d => d.id)
+                    .distance(100)
+                    .strength(d => d.strength || 0.5))
+                .force('charge', d3.forceManyBody().strength(-300))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(30));
+
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+
+                node.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+        }
+
+        // Drag functions
+        function dragStarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+        }
+
+        function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+        }
+
+        function dragEnded(event) {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+        }
+
+        // Tooltip functions
+        function showTooltip(event, d) {
+            const understanding = d.understanding || d.understandingLevel || 0;
+            const understandingPercent = typeof understanding === 'number' && understanding <= 1
+                ? Math.round(understanding * 100)
+                : Math.round(understanding);
+
+            tooltip.html(`
+                <div class="tooltip-title">${d.name}</div>
+                <div class="tooltip-category">${d.category || 'Unknown'}</div>
+                <div class="tooltip-stat"><strong>Understanding:</strong> ${understandingPercent}%</div>
+                <div class="tooltip-stat"><strong>Referenced:</strong> ${d.references || 0} times</div>
+            `)
+            .style('left', (event.pageX + 15) + 'px')
+            .style('top', (event.pageY - 15) + 'px')
+            .classed('show', true);
+        }
+
+        function hideTooltip() {
+            tooltip.classed('show', false);
+        }
+
+        function handleNodeClick(event, d) {
+            event.stopPropagation();
+            console.log('Node clicked:', d);
+
+            // Send message to Swift
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nodeClicked) {
+                window.webkit.messageHandlers.nodeClicked.postMessage({
+                    id: d.id,
+                    name: d.name,
+                    category: d.category,
+                    understanding: d.understanding || d.understandingLevel,
+                    references: d.references
+                });
+            }
+        }
+
+        // Control functions
+        function resetZoom() {
+            svg.transition()
+                .duration(750)
+                .call(zoom.transform, d3.zoomIdentity);
+        }
+
+        function centerGraph() {
+            if (simulation) {
+                simulation.force('center', d3.forceCenter(width / 2, height / 2));
+                simulation.alpha(0.3).restart();
+            }
+        }
+
+        // Function to update graph from Swift
+        window.updateGraph = function(graphData) {
+            console.log('📥 Received graph data from Swift:', graphData);
+            renderGraph(graphData);
+        };
+
+        // Initial empty state
+        renderGraph({ nodes: [], links: [] });
+
+        console.log('✅ Knowledge graph visualization ready');
+    </script>
+</body>
+</html>

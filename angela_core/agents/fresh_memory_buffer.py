@@ -201,8 +201,19 @@ class FreshMemoryBuffer:
     async def _save_to_db(self, item: Dict):
         """Persist fresh memory item to database."""
         async with get_db_connection() as conn:
-            # Convert embedding list to PostgreSQL vector format
-            embedding_str = '[' + ','.join(map(str, item['embedding'])) + ']' if item['embedding'] else None
+            # ========================================================================
+            # IMPORTANT: NEVER insert NULL embeddings!
+            # ========================================================================
+            from ..services.embedding_service import get_embedding_service
+
+            if not item['embedding']:
+                # Generate embedding if missing
+                embedding_service = get_embedding_service()
+                item['embedding'] = await embedding_service.generate_embedding(item['content'])
+
+            # Convert embedding list to PostgreSQL vector format (384 dims)
+            embedding_service = get_embedding_service()
+            embedding_str = embedding_service.embedding_to_pgvector(item['embedding'])
 
             await conn.execute("""
                 INSERT INTO fresh_memory (

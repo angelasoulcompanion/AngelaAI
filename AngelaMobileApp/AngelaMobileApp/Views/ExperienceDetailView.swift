@@ -12,8 +12,10 @@ import MapKit
 struct ExperienceDetailView: View {
     let experience: Experience
 
+    @EnvironmentObject var database: DatabaseService
     @State private var selectedPhotoIndex = 0
     @State private var region = MKCoordinateRegion()
+    @State private var isFavorite = false
 
     var body: some View {
         ScrollView {
@@ -65,7 +67,7 @@ struct ExperienceDetailView: View {
                         .font(.title)
                         .fontWeight(.bold)
 
-                    // Ratings
+                    // Ratings and Favorite
                     HStack(spacing: 20) {
                         if let rating = experience.rating {
                             HStack {
@@ -86,6 +88,13 @@ struct ExperienceDetailView: View {
                         }
 
                         Spacer()
+
+                        // Favorite toggle (Feature 13)
+                        Button(action: toggleFavorite) {
+                            Image(systemName: isFavorite ? "heart.fill" : "heart")
+                                .font(.title2)
+                                .foregroundColor(isFavorite ? .red : .gray)
+                        }
 
                         // Sync status
                         if !experience.synced {
@@ -179,6 +188,23 @@ struct ExperienceDetailView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            isFavorite = experience.isFavorite
+        }
+    }
+
+    // MARK: - Favorite Toggle
+
+    func toggleFavorite() {
+        isFavorite.toggle()
+        // Update in database
+        updateFavoriteStatus()
+    }
+
+    func updateFavoriteStatus() {
+        // This would need a database update method
+        // For now, just print
+        print(isFavorite ? "❤️ Added to favorites" : "💔 Removed from favorites")
     }
 }
 

@@ -41,8 +41,9 @@ class GoalRepository(BaseRepository[Goal], IGoalRepository):
     - deadline (TIMESTAMP, nullable)
     - estimated_duration_hours (DOUBLE PRECISION, nullable)
     - success_criteria (TEXT)
-    - success_note (TEXT, nullable)
-    - lessons_learned (TEXT, nullable)
+    # NOTE: Fields removed from database (not persisted anymore):
+    # - success_note (TEXT, nullable) - kept in entity for in-memory use only
+    # - lessons_learned (TEXT, nullable) - kept in entity for in-memory use only
     - how_it_changed_me (TEXT, nullable)
     - related_conversation_id (UUID, nullable)
     - related_emotion_id (UUID, nullable)
@@ -123,8 +124,8 @@ class GoalRepository(BaseRepository[Goal], IGoalRepository):
             deadline=row.get('deadline'),
             estimated_duration_hours=row.get('estimated_duration_hours'),
             success_criteria=row.get('success_criteria', 'Goal is achieved when completed'),
-            success_note=row.get('success_note'),
-            lessons_learned=row.get('lessons_learned'),
+            success_note=None,  # Field removed from database
+            lessons_learned=None,  # Field removed from database
             how_it_changed_me=row.get('how_it_changed_me'),
             related_conversation_id=row.get('related_conversation_id'),
             related_emotion_id=row.get('related_emotion_id'),
@@ -161,8 +162,9 @@ class GoalRepository(BaseRepository[Goal], IGoalRepository):
             'deadline': entity.deadline,
             'estimated_duration_hours': entity.estimated_duration_hours,
             'success_criteria': entity.success_criteria,
-            'success_note': entity.success_note,
-            'lessons_learned': entity.lessons_learned,
+            # NOTE: Fields removed from database (not persisted):
+            # 'success_note': entity.success_note,
+            # 'lessons_learned': entity.lessons_learned,
             'how_it_changed_me': entity.how_it_changed_me,
             'related_conversation_id': entity.related_conversation_id,
             'related_emotion_id': entity.related_emotion_id,

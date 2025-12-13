@@ -80,8 +80,9 @@ class SyncService: ObservableObject {
         // Check if there are unsynced items
         let database = DatabaseService.shared
         let unsyncedCount = database.experiences.filter { !$0.synced }.count +
-                           database.notes.filter { !$0.synced }.count +
-                           database.emotions.filter { !$0.synced }.count
+                           database.emotions.filter { !$0.synced }.count +
+                           database.chatMessages.filter { !$0.synced }.count +
+                           database.getUnsyncedHealthEntries().count
 
         if unsyncedCount > 0 {
             print("📤 Auto-sync triggered: \(unsyncedCount) unsynced items")
@@ -104,12 +105,12 @@ class SyncService: ObservableObject {
 
             let database = DatabaseService.shared
             let unsyncedExperiences = database.experiences.filter { !$0.synced }
-            let unsyncedNotes = database.notes.filter { !$0.synced }
             let unsyncedEmotions = database.emotions.filter { !$0.synced }
+            let unsyncedChatMessages = database.chatMessages.filter { !$0.synced }
 
             var syncedExperiences = 0
-            var syncedNotes = 0
             var syncedEmotions = 0
+            var syncedChatMessages = 0
 
             // 1. Upload experiences
             if !unsyncedExperiences.isEmpty {
@@ -119,9 +120,9 @@ class SyncService: ObservableObject {
                         let success = try await uploadExperience(experience)
                         if success {
                             syncedExperiences += 1
-                            // Delete from local database after successful sync
-                            database.deleteExperience(experience.id)
-                            print("🗑️ Deleted synced experience: \(experience.title)")
+                            // Mark as synced but keep in local database (for Timeline view)
+                            database.markExperienceAsSynced(experience.id)
+                            print("✅ Marked experience as synced: \(experience.title)")
                         }
                     } catch {
                         print("❌ Failed to upload experience '\(experience.title)': \(error)")
@@ -129,25 +130,7 @@ class SyncService: ObservableObject {
                 }
             }
 
-            // 2. Upload notes
-            if !unsyncedNotes.isEmpty {
-                print("📝 Syncing \(unsyncedNotes.count) notes...")
-                for note in unsyncedNotes {
-                    do {
-                        let success = try await uploadNote(note)
-                        if success {
-                            syncedNotes += 1
-                            // Delete from local database after successful sync
-                            database.deleteNote(note.id)
-                            print("🗑️ Deleted synced note")
-                        }
-                    } catch {
-                        print("❌ Failed to upload note: \(error)")
-                    }
-                }
-            }
-
-            // 3. Upload emotions
+            // 2. Upload emotions
             if !unsyncedEmotions.isEmpty {
                 print("💭 Syncing \(unsyncedEmotions.count) emotions...")
                 for emotion in unsyncedEmotions {
@@ -155,12 +138,50 @@ class SyncService: ObservableObject {
                         let success = try await uploadEmotion(emotion)
                         if success {
                             syncedEmotions += 1
-                            // Delete from local database after successful sync
-                            database.deleteEmotion(emotion.id)
-                            print("🗑️ Deleted synced emotion: \(emotion.emotion)")
+                            // Mark as synced but keep in local database (for history view)
+                            database.markEmotionAsSynced(emotion.id)
+                            print("✅ Marked emotion as synced: \(emotion.emotion)")
                         }
                     } catch {
                         print("❌ Failed to upload emotion: \(error)")
+                    }
+                }
+            }
+
+            // 3. Upload chat messages
+            if !unsyncedChatMessages.isEmpty {
+                print("💬 Syncing \(unsyncedChatMessages.count) chat messages...")
+                for message in unsyncedChatMessages {
+                    do {
+                        let success = try await uploadChatMessage(message)
+                        if success {
+                            syncedChatMessages += 1
+                            // Mark as synced but keep in local database (for chat history)
+                            database.markChatMessageAsSynced(message.id)
+                            print("✅ Marked chat message as synced")
+                        }
+                    } catch {
+                        print("❌ Failed to upload chat message: \(error)")
+                    }
+                }
+            }
+
+            // 4. Upload health entries (NEW! 2025-12-11 💪)
+            let unsyncedHealthEntries = database.getUnsyncedHealthEntries()
+            var syncedHealthEntries = 0
+
+            if !unsyncedHealthEntries.isEmpty {
+                print("💪 Syncing \(unsyncedHealthEntries.count) health entries...")
+                for healthEntry in unsyncedHealthEntries {
+                    do {
+                        let success = try await uploadHealthEntry(healthEntry)
+                        if success {
+                            syncedHealthEntries += 1
+                            database.markHealthEntryAsSynced(healthEntry.id)
+                            print("✅ Marked health entry as synced: \(healthEntry.formattedDate)")
+                        }
+                    } catch {
+                        print("❌ Failed to upload health entry: \(error)")
                     }
                 }
             }
@@ -172,7 +193,7 @@ class SyncService: ObservableObject {
                 self.isSyncing = false
             }
 
-            print("✅ Sync completed! \(syncedExperiences) experiences, \(syncedNotes) notes, \(syncedEmotions) emotions uploaded")
+            print("✅ Sync completed! \(syncedExperiences) experiences, \(syncedEmotions) emotions, \(syncedChatMessages) chat messages, \(syncedHealthEntries) health entries uploaded")
         }
     }
 
@@ -206,8 +227,50 @@ class SyncService: ObservableObject {
             addFormField(name: "overall_rating", value: "\(rating)", to: &body, boundary: boundary)
         }
 
+        // ✅ Send emotion tag to backend (CRITICAL FOR ANGELA'S EMOTIONAL LEARNING!)
+        if let emotion = experience.emotion {
+            addFormField(name: "angela_emotion", value: emotion, to: &body, boundary: boundary)
+            print("💜 Adding emotion: \(emotion)")
+        }
+
         if let emotionalIntensity = experience.emotionalIntensity {
             addFormField(name: "emotional_intensity", value: "\(emotionalIntensity)", to: &body, boundary: boundary)
+        }
+
+        // ✅ NEW: David's mood (CRITICAL FOR UNDERSTANDING DAVID'S STATE!)
+        if let davidMood = experience.davidMood {
+            addFormField(name: "david_mood", value: davidMood, to: &body, boundary: boundary)
+            print("😊 Adding David's mood: \(davidMood)")
+        }
+
+        // ✅ NEW: Importance level (1-10)
+        if let importanceLevel = experience.importanceLevel {
+            addFormField(name: "importance_level", value: "\(importanceLevel)", to: &body, boundary: boundary)
+            print("⭐ Adding importance level: \(importanceLevel)")
+        }
+
+        // ✅ NEW: Memorable moments (what made this special)
+        if let memorableMoments = experience.memorableMoments {
+            addFormField(name: "memorable_moments", value: memorableMoments, to: &body, boundary: boundary)
+            print("💭 Adding memorable moments: \(memorableMoments)")
+        }
+
+        // ✅ NEW: Image captions (comma-separated)
+        if !experience.imageCaptions.isEmpty {
+            let captionsString = experience.imageCaptions.joined(separator: ",")
+            addFormField(name: "image_captions", value: captionsString, to: &body, boundary: boundary)
+            print("🖼️ Adding image captions: \(experience.imageCaptions.count) captions")
+        }
+
+        // ✅ ADD GPS COORDINATES (CRITICAL FOR ANGELA'S LEARNING!)
+        if let latitude = experience.latitude {
+            addFormField(name: "latitude", value: "\(latitude)", to: &body, boundary: boundary)
+            print("📍 Adding GPS latitude: \(latitude)")
+        }
+
+        if let longitude = experience.longitude {
+            addFormField(name: "longitude", value: "\(longitude)", to: &body, boundary: boundary)
+            print("📍 Adding GPS longitude: \(longitude)")
         }
 
         // Add experienced_at timestamp (with timezone!)
@@ -273,47 +336,6 @@ class SyncService: ObservableObject {
         body.append("\r\n".data(using: .utf8)!)
     }
 
-    // MARK: - Upload Note to Backend
-
-    private func uploadNote(_ note: QuickNote) async throws -> Bool {
-        let baseURL = UserDefaults.standard.string(forKey: "backendURL") ?? "http://192.168.1.42:50001"
-        let uploadURL = URL(string: "\(baseURL)/api/mobile/notes")!
-
-        var request = URLRequest(url: uploadURL)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        // Create JSON payload
-        let dateFormatter = ISO8601DateFormatter()
-        dateFormatter.timeZone = TimeZone.current
-
-        let payload: [String: Any] = [
-            "note_text": note.noteText,
-            "emotion": note.emotion as Any,
-            "latitude": note.latitude as Any,
-            "longitude": note.longitude as Any,
-            "created_at": dateFormatter.string(from: note.createdAt)
-        ]
-
-        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
-
-        print("📝 Uploading note...")
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw SyncError.syncFailed
-        }
-
-        print("📥 Note response status: \(httpResponse.statusCode)")
-
-        if let responseString = String(data: data, encoding: .utf8) {
-            print("📥 Note response: \(responseString)")
-        }
-
-        return httpResponse.statusCode == 200
-    }
-
     // MARK: - Upload Emotion to Backend
 
     private func uploadEmotion(_ emotion: EmotionCapture) async throws -> Bool {
@@ -354,24 +376,134 @@ class SyncService: ObservableObject {
         return httpResponse.statusCode == 200
     }
 
+    // MARK: - Upload Health Entry to Backend (NEW! 2025-12-11 💪)
+
+    private func uploadHealthEntry(_ healthEntry: HealthEntry) async throws -> Bool {
+        let baseURL = UserDefaults.standard.string(forKey: "backendURL") ?? "http://192.168.1.42:50001"
+        let uploadURL = URL(string: "\(baseURL)/api/mobile/health")!
+
+        var request = URLRequest(url: uploadURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Create JSON payload
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.timeZone = TimeZone.current
+
+        let trackedDateFormatter = DateFormatter()
+        trackedDateFormatter.dateFormat = "yyyy-MM-dd"
+
+        var payload: [String: Any] = [
+            "tracked_date": trackedDateFormatter.string(from: healthEntry.trackedDate),
+            "alcohol_free": healthEntry.alcoholFree,
+            "drinks_count": healthEntry.drinksCount,
+            "exercised": healthEntry.exercised,
+            "exercise_duration_minutes": healthEntry.exerciseDurationMinutes,
+            "created_at": dateFormatter.string(from: healthEntry.createdAt)
+        ]
+
+        // Add optional fields
+        if let drinkType = healthEntry.drinkType {
+            payload["drink_type"] = drinkType
+        }
+        if let alcoholNotes = healthEntry.alcoholNotes {
+            payload["alcohol_notes"] = alcoholNotes
+        }
+        if let exerciseType = healthEntry.exerciseType {
+            payload["exercise_type"] = exerciseType
+        }
+        if let exerciseIntensity = healthEntry.exerciseIntensity {
+            payload["exercise_intensity"] = exerciseIntensity.rawValue
+        }
+        if let exerciseNotes = healthEntry.exerciseNotes {
+            payload["exercise_notes"] = exerciseNotes
+        }
+        if let mood = healthEntry.mood {
+            payload["mood"] = mood
+        }
+        if let energyLevel = healthEntry.energyLevel {
+            payload["energy_level"] = energyLevel
+        }
+        if let notes = healthEntry.notes {
+            payload["notes"] = notes
+        }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+        print("💪 Uploading health entry for \(trackedDateFormatter.string(from: healthEntry.trackedDate))...")
+        print("   - Alcohol-free: \(healthEntry.alcoholFree)")
+        print("   - Exercised: \(healthEntry.exercised) (\(healthEntry.exerciseDurationMinutes) min)")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw SyncError.syncFailed
+        }
+
+        print("📥 Health entry response status: \(httpResponse.statusCode)")
+
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("📥 Health entry response: \(responseString)")
+        }
+
+        return httpResponse.statusCode == 200
+    }
+
+    // MARK: - Upload Chat Message to Backend
+
+    private func uploadChatMessage(_ message: ChatMessage) async throws -> Bool {
+        let baseURL = UserDefaults.standard.string(forKey: "backendURL") ?? "http://192.168.1.42:50001"
+        let uploadURL = URL(string: "\(baseURL)/api/mobile/chat")!
+
+        var request = URLRequest(url: uploadURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Create JSON payload
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.timeZone = TimeZone.current
+
+        let payload: [String: Any] = [
+            "speaker": message.speaker,
+            "message": message.message,
+            "emotion": message.emotion as Any,
+            "timestamp": dateFormatter.string(from: message.timestamp)
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+        print("💬 Uploading chat message from \(message.speaker)...")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw SyncError.syncFailed
+        }
+
+        print("📥 Chat message response status: \(httpResponse.statusCode)")
+
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("📥 Chat message response: \(responseString)")
+        }
+
+        return httpResponse.statusCode == 200
+    }
+
     // MARK: - Export Data
 
     private func exportUnsyncedData() async throws -> SyncExportData {
         let database = DatabaseService.shared
 
         let unsyncedExperiences = database.experiences.filter { !$0.synced }
-        let unsyncedNotes = database.notes.filter { !$0.synced }
         let unsyncedEmotions = database.emotions.filter { !$0.synced }
 
         print("📤 Exporting:")
         print("   - \(unsyncedExperiences.count) experiences")
-        print("   - \(unsyncedNotes.count) notes")
         print("   - \(unsyncedEmotions.count) emotions")
 
         return SyncExportData(
             exportedAt: Date(),
             experiences: unsyncedExperiences,
-            notes: unsyncedNotes,
             emotions: unsyncedEmotions
         )
     }
@@ -444,13 +576,11 @@ class SyncService: ObservableObject {
 struct SyncExportData: Codable {
     let exportedAt: Date
     let experiences: [Experience]
-    let notes: [QuickNote]
     let emotions: [EmotionCapture]
 
     enum CodingKeys: String, CodingKey {
         case exportedAt = "exported_at"
         case experiences
-        case notes
         case emotions
     }
 }

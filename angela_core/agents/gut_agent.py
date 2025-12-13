@@ -390,10 +390,17 @@ class GutAgent:
     async def _save_pattern(self, pattern: Dict):
         """Save detected pattern to database."""
         pattern_id = uuid4()
-        embedding = await generate_embedding(pattern['intuition_text'])
 
-        # Convert embedding list to PostgreSQL vector string format
-        embedding_str = '[' + ','.join(str(x) for x in embedding) + ']' if embedding else None
+        # ========================================================================
+        # GENERATE EMBEDDING - Using multilingual-e5-small (384 dims)
+        # ========================================================================
+        # IMPORTANT: NEVER insert NULL embeddings!
+        # ========================================================================
+        from ..services.embedding_service import get_embedding_service
+
+        embedding_service = get_embedding_service()
+        embedding = await embedding_service.generate_embedding(pattern['intuition_text'])
+        embedding_str = embedding_service.embedding_to_pgvector(embedding)
 
         async with get_db_connection() as conn:
             # Check if similar pattern exists

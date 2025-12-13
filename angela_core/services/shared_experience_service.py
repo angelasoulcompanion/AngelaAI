@@ -98,7 +98,7 @@ class SharedExperienceService:
         Args:
             place_name: Name of the place
             area: Area/district
-            **kwargs: Additional place attributes
+            **kwargs: Additional place attributes (including latitude, longitude)
 
         Returns:
             UUID of place (existing or new)
@@ -122,8 +122,33 @@ class SharedExperienceService:
                 """, place_name)
 
             if row:
-                logger.info(f"Found existing place: {place_name}")
-                return row['place_id']
+                place_id = row['place_id']
+                logger.info(f"Found existing place: {place_name} (ID: {place_id})")
+
+                # ✅ UPDATE GPS coordinates if provided (CRITICAL FIX!)
+                latitude = kwargs.get('latitude')
+                longitude = kwargs.get('longitude')
+
+                if latitude is not None and longitude is not None:
+                    # Update GPS for existing place
+                    google_maps_url = f"https://www.google.com/maps/search/?api=1&query={latitude},{longitude}"
+                    location_accuracy = 'high'
+
+                    await db.execute("""
+                        UPDATE places_visited
+                        SET latitude = $1,
+                            longitude = $2,
+                            location_accuracy = $3,
+                            google_maps_url = $4,
+                            updated_at = NOW()
+                        WHERE place_id = $5
+                    """, latitude, longitude, location_accuracy, google_maps_url, place_id)
+
+                    logger.info(f"📍 Updated GPS for existing place '{place_name}': lat={latitude}, lon={longitude}")
+                else:
+                    logger.info(f"⚠️ No GPS provided for existing place '{place_name}'")
+
+                return place_id
 
             # Create new place
             return await SharedExperienceService.create_place(
@@ -143,10 +168,10 @@ class SharedExperienceService:
         description: Optional[str] = None,
         david_mood: Optional[str] = None,
         angela_emotion: Optional[str] = None,
-        emotional_intensity: int = 5,
+        emotional_intensity: Optional[int] = None,
         memorable_moments: Optional[str] = None,
         what_angela_learned: Optional[str] = None,
-        importance_level: int = 5,
+        importance_level: Optional[int] = None,
         experienced_at: Optional[datetime] = None
     ) -> UUID:
         """
@@ -504,6 +529,7 @@ class SharedExperienceService:
                 return None
 
             # Get images for this experience
+            # NOTE: Removed gps_altitude and gps_timestamp (fields deleted from table)
             image_rows = await db.fetch("""
                 SELECT
                     image_id,
@@ -511,8 +537,6 @@ class SharedExperienceService:
                     image_caption,
                     gps_latitude,
                     gps_longitude,
-                    gps_altitude,
-                    gps_timestamp,
                     taken_at,
                     created_at
                 FROM shared_experience_images

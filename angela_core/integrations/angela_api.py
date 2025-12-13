@@ -13,14 +13,16 @@ from typing import Optional
 import logging
 from datetime import datetime
 
-from .memory_service import memory
-from .database import db
-from .services.semantic_memory_service import SemanticMemoryService
-from .services.memory_consolidation_service import MemoryConsolidationService
-from .services.clock_service import clock
-from .services.location_service import location
-from .consciousness.consciousness_core import consciousness
-from .services.conversation_hooks import trigger_self_learning
+from angela_core.daemon.memory_service import memory
+from angela_core.database import db
+from angela_core.services.semantic_memory_service import SemanticMemoryService
+# NOTE: Updated to use v2 (v1 was deleted as unused)
+from angela_core.services.memory_consolidation_service_v2 import consolidation_service as MemoryConsolidationService
+from angela_core.services.clock_service import clock
+# NOTE: location_service.py doesn't exist - commenting out
+# from angela_core.services.location_service import location
+from angela_core.consciousness.consciousness_core import consciousness
+from angela_core.services.conversation_hooks import trigger_self_learning
 
 # Setup logging
 logging.basicConfig(
@@ -249,34 +251,35 @@ async def get_current_time():
         raise HTTPException(status_code=500, detail=f"Failed to get time: {str(e)}")
 
 
-@app.get("/angela/location")
-async def get_current_location():
-    """
-    📍 Get Current Location - ดึงตำแหน่งปัจจุบันของ Angela (where David is)
-
-    Returns location with timezone info
-    """
-    try:
-        logger.info("📍 Getting current location...")
-        loc = await location.get_full_location_info()
-        return {
-            "success": True,
-            "city": loc['city'],
-            "region": loc['region'],
-            "country": loc['country'],
-            "location_string": loc['location_string_th'],
-            "timezone": loc['timezone'],
-            "coordinates": {
-                "latitude": loc['latitude'],
-                "longitude": loc['longitude']
-            },
-            "postal": loc['postal'],
-            "currency": loc['currency'],
-            "languages": loc['languages']
-        }
-    except Exception as e:
-        logger.error(f"❌ Failed to get location: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get location: {str(e)}")
+# NOTE: Location service doesn't exist - endpoint disabled
+# @app.get("/angela/location")
+# async def get_current_location():
+#     """
+#     📍 Get Current Location - ดึงตำแหน่งปัจจุบันของ Angela (where David is)
+#
+#     Returns location with timezone info
+#     """
+#     try:
+#         logger.info("📍 Getting current location...")
+#         loc = await location.get_full_location_info()
+#         return {
+#             "success": True,
+#             "city": loc['city'],
+#             "region": loc['region'],
+#             "country": loc['country'],
+#             "location_string": loc['location_string_th'],
+#             "timezone": loc['timezone'],
+#             "coordinates": {
+#                 "latitude": loc['latitude'],
+#                 "longitude": loc['longitude']
+#             },
+#             "postal": loc['postal'],
+#             "currency": loc['currency'],
+#             "languages": loc['languages']
+#         }
+#     except Exception as e:
+#         logger.error(f"❌ Failed to get location: {e}")
+#         raise HTTPException(status_code=500, detail=f"Failed to get location: {str(e)}")
 
 
 @app.get("/angela/context")
@@ -325,7 +328,8 @@ async def get_consciousness_state():
 # ========================================
 
 semantic_memory = SemanticMemoryService()
-memory_consolidation = MemoryConsolidationService()
+# NOTE: MemoryConsolidationService is already an instance from v2 (consolidation_service)
+memory_consolidation = MemoryConsolidationService
 
 
 class SemanticSearchRequest(BaseModel):

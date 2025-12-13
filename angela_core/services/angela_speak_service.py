@@ -508,14 +508,25 @@ class AngelaSpeakService:
             # Title is important context, so prepend it
             full_message = f"{title}\n\n{content}"
 
+            # ========================================================================
+            # GENERATE EMBEDDING for angela_messages - CRITICAL!
+            # ========================================================================
+            # IMPORTANT: NEVER insert NULL embeddings!
+            # ========================================================================
+            from angela_core.services.embedding_service import get_embedding_service
+
+            embedding_service = get_embedding_service()
+            message_embedding = await embedding_service.generate_embedding(full_message)
+            message_emb_str = embedding_service.embedding_to_pgvector(message_embedding)
+
             result = await db.fetchrow("""
                 INSERT INTO angela_messages (
                     message_text, message_type, emotion, category,
-                    is_important, is_pinned, created_at
+                    is_important, is_pinned, embedding, created_at
                 )
-                VALUES ($1, $2, $3, $4, $5, FALSE, NOW())
+                VALUES ($1, $2, $3, $4, $5, FALSE, $6::vector, NOW())
                 RETURNING message_id
-            """, full_message, message_type, emotion, category, is_important)
+            """, full_message, message_type, emotion, category, is_important, message_emb_str)
 
             if result:
                 message_id = result['message_id']

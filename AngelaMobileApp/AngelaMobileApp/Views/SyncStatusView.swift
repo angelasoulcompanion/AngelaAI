@@ -49,15 +49,6 @@ struct SyncStatusView: View {
                     }
 
                     HStack {
-                        Label("\(unsyncedNotesCount) โน้ต", systemImage: "note.text")
-                        Spacer()
-                        if unsyncedNotesCount > 0 {
-                            Image(systemName: "exclamationmark.circle.fill")
-                                .foregroundColor(.orange)
-                        }
-                    }
-
-                    HStack {
                         Label("\(unsyncedEmotionsCount) ความรู้สึก", systemImage: "heart.fill")
                         Spacer()
                         if unsyncedEmotionsCount > 0 {
@@ -123,16 +114,12 @@ struct SyncStatusView: View {
         database.experiences.filter { !$0.synced }.count
     }
 
-    private var unsyncedNotesCount: Int {
-        database.notes.filter { !$0.synced }.count
-    }
-
     private var unsyncedEmotionsCount: Int {
         database.emotions.filter { !$0.synced }.count
     }
 
     private var totalUnsyncedCount: Int {
-        unsyncedExperiencesCount + unsyncedNotesCount + unsyncedEmotionsCount
+        unsyncedExperiencesCount + unsyncedEmotionsCount
     }
 }
 

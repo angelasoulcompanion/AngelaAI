@@ -205,9 +205,28 @@ class ImageService:
         place_id: UUID,
         original_filename: Optional[str] = None,
         image_caption: Optional[str] = None,
-        taken_at: Optional[datetime] = None
+        taken_at: Optional[datetime] = None,
+        latitude: Optional[float] = None,
+        longitude: Optional[float] = None,
+        altitude: Optional[float] = None
     ) -> UUID:
-        """Save image to database with compression"""
+        """
+        Save image to database with compression
+
+        Args:
+            image_data: Raw image bytes
+            experience_id: Associated experience UUID
+            place_id: Associated place UUID
+            original_filename: Original filename
+            image_caption: Caption for the image
+            taken_at: When the photo was taken
+            latitude: GPS latitude (overrides EXIF if provided)
+            longitude: GPS longitude (overrides EXIF if provided)
+            altitude: GPS altitude (overrides EXIF if provided)
+
+        Returns:
+            UUID of created image
+        """
         try:
             # Get image info
             info = await ImageService.get_image_info(image_data)
@@ -228,8 +247,15 @@ class ImageService:
             image_id = uuid4()
 
             # Extract GPS and datetime from EXIF
-            gps_data = info.get('gps')
+            exif_gps_data = info.get('gps')
             exif_datetime = info.get('taken_at')
+
+            # Use provided GPS if available, otherwise use EXIF GPS
+            # Priority: 1) Provided parameters, 2) EXIF data
+            final_latitude = latitude if latitude is not None else (exif_gps_data['latitude'] if exif_gps_data else None)
+            final_longitude = longitude if longitude is not None else (exif_gps_data['longitude'] if exif_gps_data else None)
+            final_altitude = altitude if altitude is not None else (exif_gps_data['altitude'] if exif_gps_data else None)
+            final_gps_timestamp = exif_gps_data['timestamp'] if exif_gps_data else None
 
             # Use EXIF datetime if not provided
             if taken_at is None and exif_datetime:
@@ -260,10 +286,7 @@ class ImageService:
             """, image_id, experience_id, place_id,
                 image_data, info['format'], original_filename,
                 info['size_bytes'], info['width'], info['height'],
-                gps_data['latitude'] if gps_data else None,
-                gps_data['longitude'] if gps_data else None,
-                gps_data['altitude'] if gps_data else None,
-                gps_data['timestamp'] if gps_data else None,
+                final_latitude, final_longitude, final_altitude, final_gps_timestamp,
                 thumbnail_data, compressed_data,
                 image_caption, taken_at
             )
@@ -273,10 +296,11 @@ class ImageService:
             logger.info(f"  Thumbnail: {len(thumbnail_data):,} bytes")
             logger.info(f"  Compressed: {len(compressed_data):,} bytes")
 
-            if gps_data:
-                logger.info(f"  GPS: {gps_data['latitude']:.6f}, {gps_data['longitude']:.6f}")
-                if gps_data['altitude']:
-                    logger.info(f"  Altitude: {gps_data['altitude']:.1f}m")
+            if final_latitude is not None and final_longitude is not None:
+                source = "provided" if latitude is not None else "EXIF"
+                logger.info(f"  📍 GPS ({source}): {final_latitude:.6f}, {final_longitude:.6f}")
+                if final_altitude:
+                    logger.info(f"  📍 Altitude: {final_altitude:.1f}m")
 
             if taken_at:
                 logger.info(f"  Taken at: {taken_at}")
@@ -325,7 +349,6 @@ class ImageService:
                     width_px,
                     height_px,
                     image_caption,
-                    angela_observation,
                     taken_at,
                     uploaded_at
                 FROM shared_experience_images
@@ -352,7 +375,6 @@ class ImageService:
                     i.width_px,
                     i.height_px,
                     i.image_caption,
-                    i.angela_observation,
                     i.taken_at,
                     i.uploaded_at,
                     e.title as experience_title,
@@ -371,32 +393,14 @@ class ImageService:
             return []
 
     @staticmethod
-    async def add_angela_observation(image_id: UUID, observation: str) -> bool:
-        """Add Angela's observation/reaction to an image"""
-        try:
-            await db.execute("""
-                UPDATE shared_experience_images
-                SET angela_observation = $1
-                WHERE image_id = $2
-            """, observation, image_id)
-
-            logger.info(f"Added Angela's observation to image {image_id}")
-            return True
-
-        except Exception as e:
-            logger.error(f"Error adding observation to image {image_id}: {e}")
-            return False
-
-    @staticmethod
     async def search_images_by_caption(search_term: str, limit: int = 20) -> List[Dict]:
-        """Search images by caption or Angela's observation"""
+        """Search images by caption"""
         try:
             rows = await db.fetch("""
                 SELECT
                     i.image_id,
                     i.experience_id,
                     i.image_caption,
-                    i.angela_observation,
                     i.taken_at,
                     i.uploaded_at,
                     e.title as experience_title,
@@ -408,7 +412,6 @@ class ImageService:
                 LEFT JOIN places_visited p ON i.place_id = p.place_id
                 WHERE
                     i.image_caption ILIKE $1 OR
-                    i.angela_observation ILIKE $1 OR
                     e.title ILIKE $1 OR
                     p.place_name ILIKE $1
                 ORDER BY i.taken_at DESC NULLS LAST, i.uploaded_at DESC

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Heart, BookOpen, Network, BarChart3, MessageSquare, Brain, Lightbulb, Camera, Sparkles } from 'lucide-react'
+import { Heart, BookOpen, Network, BarChart3, MessageSquare, Brain, Lightbulb, Camera, Sparkles, Settings } from 'lucide-react'
 import ThemeToggle from '@/components/ThemeToggle'
 
 const navItems = [
@@ -13,6 +13,7 @@ const navItems = [
   { to: '/knowledge-graph', icon: Network, label: 'Knowledge Graph' },
   { to: '/journal', icon: BookOpen, label: 'Journal' },
   { to: '/conversations', icon: MessageSquare, label: 'Conversations' },
+  { to: '/prompt-manager', icon: Settings, label: 'Prompt Manager' },
   // Removed: Chat, Models, Documents (deprecated - not used)
 ]
 
