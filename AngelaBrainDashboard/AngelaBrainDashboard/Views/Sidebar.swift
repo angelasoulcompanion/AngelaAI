@@ -131,16 +131,32 @@ struct Sidebar: View {
     // MARK: - Connection Status
 
     private var connectionStatus: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(databaseService.isConnected ? AngelaTheme.successGreen : AngelaTheme.errorRed)
-                .frame(width: 8, height: 8)
+        VStack(spacing: 6) {
+            // 💜 Local PostgreSQL indicator
+            HStack(spacing: 6) {
+                Image(systemName: "house.fill")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.green)
 
-            Text(databaseService.isConnected ? "Connected" : "Disconnected")
-                .font(AngelaTheme.caption())
-                .foregroundColor(AngelaTheme.textSecondary)
+                Text("🏠 Local")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.green)
 
-            Spacer()
+                Spacer()
+            }
+
+            // Connection status
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(databaseService.isConnected ? AngelaTheme.successGreen : AngelaTheme.errorRed)
+                    .frame(width: 8, height: 8)
+
+                Text(databaseService.isConnected ? "Connected" : "Disconnected")
+                    .font(AngelaTheme.caption())
+                    .foregroundColor(AngelaTheme.textSecondary)
+
+                Spacer()
+            }
         }
         .padding(.horizontal, AngelaTheme.spacing)
         .padding(.vertical, AngelaTheme.smallSpacing)

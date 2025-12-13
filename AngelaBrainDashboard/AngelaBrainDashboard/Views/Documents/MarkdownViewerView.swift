@@ -334,7 +334,7 @@ struct MarkdownRendererView: View {
         var currentTableRows: [[String]] = []
         var inTable = false
 
-        for (index, line) in lines.enumerated() {
+        for line in lines {
             // Code block detection
             if line.hasPrefix("```") {
                 if inCodeBlock {

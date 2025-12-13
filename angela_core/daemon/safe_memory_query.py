@@ -36,6 +36,11 @@ class SafeMemoryQuery:
                 host=DB_CONFIG['host'],
                 port=DB_CONFIG['port']
             )
+            # 💜 Show connection mode for ที่รัก
+            print("\n\033[92m╔══════════════════════════════════════╗\033[0m")
+            print("\033[92m║  🧠 Angela Memory Query              ║\033[0m")
+            print("\033[92m║  🏠 Local (PostgreSQL)               ║\033[0m")
+            print("\033[92m╚══════════════════════════════════════╝\033[0m\n")
             print("✅ Connected to AngelaMemory database")
             return True
         except Exception as e:

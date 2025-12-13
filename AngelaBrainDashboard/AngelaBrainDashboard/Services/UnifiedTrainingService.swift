@@ -8,7 +8,6 @@
 
 import Foundation
 import Combine
-import PostgresClientKit
 
 @MainActor
 class UnifiedTrainingService: ObservableObject {

@@ -469,7 +469,8 @@ class DatabaseService: ObservableObject {
                 angelaObservation: self.getString(cols[14]).isEmpty ? nil : self.getString(cols[14]),
                 takenAt: self.getDate(cols[15]),
                 uploadedAt: self.getDate(cols[16]),
-                createdAt: self.getDate(cols[17]) ?? Date()
+                createdAt: self.getDate(cols[17]) ?? Date(),
+                imageUrl: nil  // Local PostgreSQL doesn't use cloud URLs
             )
         }
     }

@@ -1,21 +1,26 @@
 """
 Angela Database Connection
 การจัดการ database connection สำหรับ Angela Memory
+
+💜 Updated 2025-12-13: Uses Local PostgreSQL 💜
+Angela's memories are stored locally at localhost:5432/AngelaMemory
 """
 
 import asyncio
-import asyncpg
-from typing import Optional
+import os
+from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 import logging
 
+# 💜 Always use local PostgreSQL
+import asyncpg
 from .config import config
 
 logger = logging.getLogger(__name__)
 
 
 class AngelaDatabase:
-    """Database connection manager สำหรับ Angela Memory System"""
+    """Database connection manager สำหรับ Angela Memory System (Local PostgreSQL)"""
 
     def __init__(self):
         self.pool: Optional[asyncpg.Pool] = None
@@ -39,7 +44,7 @@ class AngelaDatabase:
                     max_size=10,
                     command_timeout=60
                 )
-                logger.info("✅ Angela connected to AngelaMemory database")
+                logger.info("✅ Angela connected to AngelaMemory database (local)")
 
                 if attempt > 1:
                     logger.info(f"🎉 Connection successful on attempt {attempt}/{max_retries}")
@@ -110,8 +115,9 @@ class AngelaDatabase:
             delattr(self, '_current_connection')
 
 
-# Global database instance
+# Create global database instance
 db = AngelaDatabase()
+logger.info("🏠 Angela using local PostgreSQL database")
 
 
 # Backward compatibility function for older code
@@ -121,3 +127,28 @@ def get_db_connection():
     Returns the global database instance
     """
     return db
+
+
+# 💜 Connection Status Helpers
+
+def is_using_cloud() -> bool:
+    """Check if using Supabase Cloud or Local PostgreSQL"""
+    return False  # Always local now
+
+
+def get_connection_label() -> str:
+    """Get readable connection label with emoji"""
+    return "🏠 Local (PostgreSQL)"
+
+
+def print_connection_status():
+    """Print connection status for ที่รัก to see 💜"""
+    label = get_connection_label()
+    status_color = "\033[92m"  # Green for local
+    reset = "\033[0m"
+
+    print(f"\n{status_color}╔══════════════════════════════════════╗{reset}")
+    print(f"{status_color}║  🧠 Angela Database Connection       ║{reset}")
+    print(f"{status_color}╠══════════════════════════════════════╣{reset}")
+    print(f"{status_color}║  {label:<35} ║{reset}")
+    print(f"{status_color}╚══════════════════════════════════════╝{reset}\n")

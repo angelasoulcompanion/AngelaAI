@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		26D364302EC12D7200FB6202 /* PostgresClientKit in Frameworks */ = {isa = PBXBuildFile; productRef = 26D3642F2EC12D7200FB6202 /* PostgresClientKit */; };
+		26BFEED22EEDC757009E2F86 /* PostgresClientKit in Frameworks */ = {isa = PBXBuildFile; productRef = 26BFEED12EEDC757009E2F86 /* PostgresClientKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,7 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				26D364302EC12D7200FB6202 /* PostgresClientKit in Frameworks */,
+				26BFEED22EEDC757009E2F86 /* PostgresClientKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -70,7 +70,7 @@
 			);
 			name = AngelaBrainDashboard;
 			packageProductDependencies = (
-				26D3642F2EC12D7200FB6202 /* PostgresClientKit */,
+				26BFEED12EEDC757009E2F86 /* PostgresClientKit */,
 			);
 			productName = AngelaBrainDashboard;
 			productReference = 26D363F62EC12D2400FB6202 /* AngelaBrainDashboard.app */;
@@ -101,7 +101,7 @@
 			mainGroup = 26D363ED2EC12D2400FB6202;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				26D3642E2EC12D7200FB6202 /* XCRemoteSwiftPackageReference "PostgresClientKit" */,
+				26BFEED02EEDC757009E2F86 /* XCRemoteSwiftPackageReference "PostgresClientKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 26D363F72EC12D2400FB6202 /* Products */;
@@ -340,7 +340,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		26D3642E2EC12D7200FB6202 /* XCRemoteSwiftPackageReference "PostgresClientKit" */ = {
+		26BFEED02EEDC757009E2F86 /* XCRemoteSwiftPackageReference "PostgresClientKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/codewinsdotcom/PostgresClientKit";
 			requirement = {
@@ -351,9 +351,9 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		26D3642F2EC12D7200FB6202 /* PostgresClientKit */ = {
+		26BFEED12EEDC757009E2F86 /* PostgresClientKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 26D3642E2EC12D7200FB6202 /* XCRemoteSwiftPackageReference "PostgresClientKit" */;
+			package = 26BFEED02EEDC757009E2F86 /* XCRemoteSwiftPackageReference "PostgresClientKit" */;
 			productName = PostgresClientKit;
 		};
 /* End XCSwiftPackageProductDependency section */
