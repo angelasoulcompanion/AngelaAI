@@ -7,9 +7,12 @@ Send and read emails from Angela's Gmail account (angelasoulcompanion@gmail.com)
 import asyncio
 import base64
 import json
+import mimetypes
 import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 from pathlib import Path
 from typing import Any
 
@@ -108,6 +111,11 @@ async def list_tools() -> list[Tool]:
                     "bcc": {
                         "type": "string",
                         "description": "BCC recipients (comma-separated)",
+                    },
+                    "attachments": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of file paths to attach (absolute paths)"
                     }
                 },
                 "required": ["to", "subject", "body"]
@@ -235,16 +243,61 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
 
 async def send_email(service, args: dict) -> list[TextContent]:
-    """Send an email."""
+    """Send an email with optional attachments."""
     to = args["to"]
     subject = args["subject"]
     body = args["body"]
     is_html = args.get("html", False)
     cc = args.get("cc", "")
     bcc = args.get("bcc", "")
+    attachments = args.get("attachments", [])
 
-    # Create message
-    if is_html:
+    # Create message - use multipart/mixed if we have attachments
+    if attachments:
+        message = MIMEMultipart('mixed')
+        # Add body as first part
+        if is_html:
+            body_part = MIMEMultipart('alternative')
+            body_part.attach(MIMEText(body, 'html'))
+            message.attach(body_part)
+        else:
+            message.attach(MIMEText(body, 'plain'))
+
+        # Add attachments
+        attached_files = []
+        for file_path in attachments:
+            path = Path(file_path)
+            if not path.exists():
+                return [TextContent(
+                    type="text",
+                    text=f"Error: Attachment file not found: {file_path}"
+                )]
+
+            # Guess MIME type
+            mime_type, _ = mimetypes.guess_type(str(path))
+            if mime_type is None:
+                mime_type = 'application/octet-stream'
+
+            main_type, sub_type = mime_type.split('/', 1)
+
+            # Read and attach file
+            with open(path, 'rb') as f:
+                file_data = f.read()
+
+            attachment = MIMEBase(main_type, sub_type)
+            attachment.set_payload(file_data)
+            encoders.encode_base64(attachment)
+
+            # Set filename header
+            attachment.add_header(
+                'Content-Disposition',
+                'attachment',
+                filename=path.name
+            )
+            message.attach(attachment)
+            attached_files.append(path.name)
+
+    elif is_html:
         message = MIMEMultipart('alternative')
         message.attach(MIMEText(body, 'html'))
     else:
@@ -267,13 +320,15 @@ async def send_email(service, args: dict) -> list[TextContent]:
         body={'raw': raw}
     ).execute()
 
-    return [TextContent(
-        type="text",
-        text=f"Email sent successfully!\n"
-             f"To: {to}\n"
-             f"Subject: {subject}\n"
-             f"Message ID: {result['id']}"
-    )]
+    # Build response
+    response = f"Email sent successfully!\n"
+    response += f"To: {to}\n"
+    response += f"Subject: {subject}\n"
+    if attachments:
+        response += f"Attachments: {', '.join(attached_files)}\n"
+    response += f"Message ID: {result['id']}"
+
+    return [TextContent(type="text", text=response)]
 
 
 async def read_inbox(service, args: dict) -> list[TextContent]:
