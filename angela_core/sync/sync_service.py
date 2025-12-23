@@ -1,6 +1,6 @@
 """
 Sync Service - Main Orchestrator
-Handles syncing from Local PostgreSQL to Supabase Cloud.
+Handles syncing from Local PostgreSQL to Neon Cloud.
 
 Usage:
     python -m angela_core.sync.sync_service --full
@@ -44,19 +44,19 @@ logger = logging.getLogger(__name__)
 class SyncService:
     """
     Main sync orchestrator.
-    Syncs data from Local PostgreSQL to Supabase Cloud.
+    Syncs data from Local PostgreSQL to Neon Cloud.
     """
-    
-    def __init__(self, supabase_url: Optional[str] = None):
+
+    def __init__(self, cloud_url: Optional[str] = None):
         """
         Initialize sync service.
-        
+
         Args:
-            supabase_url: Supabase PostgreSQL connection URL
-                         If not provided, reads from environment
+            cloud_url: Neon PostgreSQL connection URL
+                      If not provided, reads from environment
         """
-        self.supabase_url = supabase_url or os.getenv('SUPABASE_DB_URL', '')
-        self.supabase: Optional[SupabaseClient] = None
+        self.cloud_url = cloud_url or os.getenv('NEON_DB_URL', '')
+        self.cloud: Optional[SupabaseClient] = None  # Reusing client class
         self.queue_manager = QueueManager()
         self.stats = {
             'tables_synced': 0,
@@ -70,33 +70,34 @@ class SyncService:
         # Connect to local
         await db.connect()
         logger.info("✅ Connected to Local PostgreSQL")
-        
-        # Connect to Supabase
-        if not self.supabase_url:
-            logger.error("❌ SUPABASE_DB_URL not configured")
+
+        # Connect to Neon Cloud
+        if not self.cloud_url:
+            logger.error("❌ NEON_DB_URL not configured")
             return False
-        
-        self.supabase = SupabaseClient(self.supabase_url)
-        if not await self.supabase.connect():
-            logger.error("❌ Failed to connect to Supabase")
+
+        self.cloud = SupabaseClient(self.cloud_url)
+        if not await self.cloud.connect():
+            logger.error("❌ Failed to connect to Neon")
             return False
-        
+
+        logger.info("✅ Connected to Neon Cloud")
         return True
-    
+
     async def disconnect(self):
         """Disconnect from databases."""
-        if self.supabase:
-            await self.supabase.disconnect()
+        if self.cloud:
+            await self.cloud.disconnect()
         await db.disconnect()
     
     async def sync_full(self) -> Dict[str, Any]:
         """
         Perform full sync of all tables.
-        
+
         Returns:
             Sync statistics
         """
-        logger.info("🚀 Starting FULL SYNC to Supabase...")
+        logger.info("🚀 Starting FULL SYNC to Neon Cloud...")
         start_time = datetime.now()
         
         tables = get_tables_by_priority()
@@ -236,7 +237,7 @@ class SyncService:
                     # Convert to PostgreSQL vector format
                     record[config.vector_column] = self._vector_to_pg(vec)
         
-        await self.supabase.upsert_batch(
+        await self.cloud.upsert_batch(
             config.name,
             batch,
             config.primary_key,
