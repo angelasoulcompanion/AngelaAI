@@ -10,6 +10,18 @@
       "args": ["-m", "angela_gmail.server"],
       "cwd": "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp_servers/angela-gmail",
       "env": {}
+    },
+    "angela-calendar": {
+      "command": "python3",
+      "args": ["-m", "angela_calendar.server"],
+      "cwd": "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp_servers/angela-calendar",
+      "env": {}
+    },
+    "angela-sheets": {
+      "command": "python3",
+      "args": ["-m", "angela_sheets.server"],
+      "cwd": "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp_servers/angela-sheets",
+      "env": {}
     }
   }
 }
