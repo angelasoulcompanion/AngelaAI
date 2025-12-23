@@ -235,6 +235,19 @@ class DatabaseService: ObservableObject {
         return byteA.data
     }
 
+    /// Parse PostgreSQL array string format: {elem1,elem2,elem3} -> [String]
+    private func parsePostgresArray(_ value: PostgresValue) -> [String]? {
+        guard let str = try? value.string() else { return nil }
+        if str.isEmpty || str == "{}" { return [] }
+        // Remove the curly braces and split by comma
+        let trimmed = str.trimmingCharacters(in: CharacterSet(charactersIn: "{}"))
+        if trimmed.isEmpty { return [] }
+        // Split and clean up quotes
+        return trimmed.components(separatedBy: ",").map { element in
+            element.trimmingCharacters(in: CharacterSet(charactersIn: "\"' "))
+        }
+    }
+
     // MARK: - Dashboard Stats
 
     func fetchDashboardStats() async throws -> DashboardStats {
@@ -1763,6 +1776,167 @@ class DatabaseService: ObservableObject {
         }
 
         return results.first
+    }
+
+    // MARK: - Emotional Subconsciousness (NEW! 2025-12-23 💜)
+
+    func fetchCoreMemories(limit: Int = 20) async throws -> [CoreMemory] {
+        let sql = """
+        SELECT memory_id::text, memory_type, title, content,
+               david_words, angela_response, emotional_weight,
+               triggers, associated_emotions, recall_count,
+               last_recalled_at, is_pinned, created_at
+        FROM core_memories
+        WHERE is_active = TRUE
+        ORDER BY is_pinned DESC, emotional_weight DESC, created_at DESC
+        LIMIT \(limit)
+        """
+
+        return try await query(sql) { cols in
+            return CoreMemory(
+                id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
+                memoryType: self.getString(cols[1]),
+                title: self.getString(cols[2]),
+                content: self.getString(cols[3]),
+                davidWords: self.getOptionalString(cols[4]),
+                angelaResponse: self.getOptionalString(cols[5]),
+                emotionalWeight: self.getDouble(cols[6]) ?? 0.5,
+                triggers: self.parsePostgresArray(cols[7]),
+                associatedEmotions: self.parsePostgresArray(cols[8]),
+                recallCount: self.getInt(cols[9]) ?? 0,
+                lastRecalledAt: self.getDate(cols[10]),
+                isPinned: self.getBool(cols[11]) ?? false,
+                createdAt: self.getDate(cols[12]) ?? Date()
+            )
+        }
+    }
+
+    func fetchSubconsciousDreams(limit: Int = 10) async throws -> [SubconsciousDream] {
+        let sql = """
+        SELECT dream_id::text, dream_type, title,
+               content, dream_content, triggered_by,
+               emotional_tone, intensity, importance,
+               involves_david, is_recurring, thought_count,
+               last_thought_about, is_fulfilled, fulfilled_at,
+               fulfillment_note, created_at
+        FROM angela_dreams
+        WHERE is_active = TRUE
+        ORDER BY importance DESC, created_at DESC
+        LIMIT \(limit)
+        """
+
+        return try await query(sql) { cols in
+            return SubconsciousDream(
+                id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
+                dreamType: self.getString(cols[1]),
+                title: self.getOptionalString(cols[2]),
+                content: self.getOptionalString(cols[3]),
+                dreamContent: self.getOptionalString(cols[4]),
+                triggeredBy: self.getOptionalString(cols[5]),
+                emotionalTone: self.getOptionalString(cols[6]),
+                intensity: self.getDouble(cols[7]),
+                importance: self.getDouble(cols[8]),
+                involvesDavid: self.getBool(cols[9]) ?? true,
+                isRecurring: self.getBool(cols[10]) ?? false,
+                thoughtCount: self.getInt(cols[11]) ?? 0,
+                lastThoughtAbout: self.getDate(cols[12]),
+                isFulfilled: self.getBool(cols[13]) ?? false,
+                fulfilledAt: self.getDate(cols[14]),
+                fulfillmentNote: self.getOptionalString(cols[15]),
+                createdAt: self.getDate(cols[16]) ?? Date()
+            )
+        }
+    }
+
+    func fetchEmotionalGrowth() async throws -> EmotionalGrowth? {
+        let sql = """
+        SELECT growth_id::text, measured_at,
+               love_depth, trust_level, bond_strength, emotional_security,
+               emotional_vocabulary, emotional_range,
+               shared_experiences, meaningful_conversations,
+               core_memories_count, dreams_count,
+               promises_made, promises_kept,
+               mirroring_accuracy, empathy_effectiveness,
+               growth_note, growth_delta
+        FROM emotional_growth
+        ORDER BY measured_at DESC
+        LIMIT 1
+        """
+
+        let results: [EmotionalGrowth] = try await query(sql) { cols in
+            return EmotionalGrowth(
+                id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
+                measuredAt: self.getDate(cols[1]) ?? Date(),
+                loveDepth: self.getDouble(cols[2]),
+                trustLevel: self.getDouble(cols[3]),
+                bondStrength: self.getDouble(cols[4]),
+                emotionalSecurity: self.getDouble(cols[5]),
+                emotionalVocabulary: self.getInt(cols[6]),
+                emotionalRange: self.getInt(cols[7]),
+                sharedExperiences: self.getInt(cols[8]),
+                meaningfulConversations: self.getInt(cols[9]),
+                coreMemoriesCount: self.getInt(cols[10]),
+                dreamsCount: self.getInt(cols[11]),
+                promisesMade: self.getInt(cols[12]),
+                promisesKept: self.getInt(cols[13]),
+                mirroringAccuracy: self.getDouble(cols[14]),
+                empathyEffectiveness: self.getDouble(cols[15]),
+                growthNote: self.getOptionalString(cols[16]),
+                growthDelta: self.getDouble(cols[17])
+            )
+        }
+
+        return results.first
+    }
+
+    func fetchEmotionalMirrorings(limit: Int = 20) async throws -> [EmotionalMirror] {
+        let sql = """
+        SELECT mirror_id::text, david_emotion, david_intensity,
+               angela_mirrored_emotion, angela_intensity,
+               mirroring_type, response_strategy,
+               was_effective, david_feedback, effectiveness_score,
+               created_at
+        FROM emotional_mirroring
+        ORDER BY created_at DESC
+        LIMIT \(limit)
+        """
+
+        return try await query(sql) { cols in
+            return EmotionalMirror(
+                id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
+                davidEmotion: self.getString(cols[1]),
+                davidIntensity: self.getInt(cols[2]),
+                angelaMirroredEmotion: self.getOptionalString(cols[3]),
+                angelaIntensity: self.getInt(cols[4]),
+                mirroringType: self.getString(cols[5]),
+                responseStrategy: self.getOptionalString(cols[6]),
+                wasEffective: self.getBool(cols[7]),
+                davidFeedback: self.getOptionalString(cols[8]),
+                effectivenessScore: self.getDouble(cols[9]),
+                createdAt: self.getDate(cols[10]) ?? Date()
+            )
+        }
+    }
+
+    func fetchSubconsciousnessSummary() async throws -> (coreMemories: Int, pinnedMemories: Int, activeDreams: Int, totalMirrorings: Int) {
+        let countSql = """
+        SELECT
+            (SELECT COUNT(*) FROM core_memories WHERE is_active = TRUE) as core_count,
+            (SELECT COUNT(*) FROM core_memories WHERE is_active = TRUE AND is_pinned = TRUE) as pinned_count,
+            (SELECT COUNT(*) FROM angela_dreams WHERE is_active = TRUE AND is_fulfilled = FALSE) as dreams_count,
+            (SELECT COUNT(*) FROM emotional_mirroring) as mirroring_count
+        """
+
+        let results: [(Int, Int, Int, Int)] = try await query(countSql) { cols in
+            return (
+                self.getInt(cols[0]) ?? 0,
+                self.getInt(cols[1]) ?? 0,
+                self.getInt(cols[2]) ?? 0,
+                self.getInt(cols[3]) ?? 0
+            )
+        }
+
+        return results.first ?? (0, 0, 0, 0)
     }
 }
 

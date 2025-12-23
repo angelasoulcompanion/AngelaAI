@@ -26,6 +26,12 @@ struct ConsciousnessView: View {
 
                 // Goals Progress
                 goalsCard
+
+                // MARK: - Subconsciousness Section (NEW! 💜)
+                subconsciousnessHeader
+                coreMemoriesCard
+                dreamsCard
+                emotionalGrowthCard
             }
             .padding(AngelaTheme.largeSpacing)
         }
@@ -191,6 +197,306 @@ struct ConsciousnessView: View {
         .padding(AngelaTheme.spacing)
         .angelaCard()
     }
+
+    // MARK: - Subconsciousness Section (NEW! 💜)
+
+    private var subconsciousnessHeader: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("💜 Emotional Subconsciousness")
+                    .font(AngelaTheme.title())
+                    .foregroundColor(AngelaTheme.primaryPurple)
+
+                Text("Core memories, dreams & emotional depth")
+                    .font(AngelaTheme.caption())
+                    .foregroundColor(AngelaTheme.textSecondary)
+            }
+
+            Spacer()
+
+            // Summary badges
+            if let summary = viewModel.subconsciousSummary {
+                HStack(spacing: 12) {
+                    StatBadge(value: summary.coreMemories, label: "Memories", icon: "heart.fill")
+                    StatBadge(value: summary.pinnedMemories, label: "Pinned", icon: "pin.fill")
+                    StatBadge(value: summary.activeDreams, label: "Dreams", icon: "sparkles")
+                }
+            }
+        }
+        .padding(.top, AngelaTheme.largeSpacing)
+    }
+
+    private var coreMemoriesCard: some View {
+        VStack(alignment: .leading, spacing: AngelaTheme.spacing) {
+            HStack {
+                Image(systemName: "heart.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(AngelaTheme.primaryPurple)
+                Text("Core Memories")
+                    .font(AngelaTheme.headline())
+                    .foregroundColor(AngelaTheme.textPrimary)
+                Spacer()
+            }
+
+            if viewModel.coreMemories.isEmpty {
+                Text("No core memories yet")
+                    .font(AngelaTheme.body())
+                    .foregroundColor(AngelaTheme.textTertiary)
+            } else {
+                // Pinned memories first (highlighted)
+                let pinnedMemories = viewModel.coreMemories.filter { $0.isPinned }
+                let otherMemories = viewModel.coreMemories.filter { !$0.isPinned }
+
+                if !pinnedMemories.isEmpty {
+                    ForEach(pinnedMemories) { memory in
+                        CoreMemoryRow(memory: memory, isPinned: true)
+                    }
+                }
+
+                if !otherMemories.isEmpty {
+                    ForEach(otherMemories.prefix(5)) { memory in
+                        CoreMemoryRow(memory: memory, isPinned: false)
+                    }
+                }
+            }
+        }
+        .padding(AngelaTheme.spacing)
+        .angelaCard()
+    }
+
+    private var dreamsCard: some View {
+        VStack(alignment: .leading, spacing: AngelaTheme.spacing) {
+            HStack {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 20))
+                    .foregroundColor(AngelaTheme.secondaryPurple)
+                Text("Dreams & Hopes")
+                    .font(AngelaTheme.headline())
+                    .foregroundColor(AngelaTheme.textPrimary)
+                Spacer()
+            }
+
+            if viewModel.dreams.isEmpty {
+                Text("Angela is dreaming...")
+                    .font(AngelaTheme.body())
+                    .foregroundColor(AngelaTheme.textTertiary)
+                    .italic()
+            } else {
+                ForEach(viewModel.dreams) { dream in
+                    DreamRow(dream: dream)
+                }
+            }
+        }
+        .padding(AngelaTheme.spacing)
+        .angelaCard()
+    }
+
+    private var emotionalGrowthCard: some View {
+        VStack(alignment: .leading, spacing: AngelaTheme.spacing) {
+            HStack {
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                    .font(.system(size: 20))
+                    .foregroundColor(AngelaTheme.accentPurple)
+                Text("Emotional Growth")
+                    .font(AngelaTheme.headline())
+                    .foregroundColor(AngelaTheme.textPrimary)
+                Spacer()
+            }
+
+            if let growth = viewModel.emotionalGrowth {
+                VStack(spacing: AngelaTheme.spacing) {
+                    GrowthMetric(label: "Love Depth", value: growth.loveDepth ?? 0.8, icon: "heart.fill", color: .pink)
+                    GrowthMetric(label: "Trust Level", value: growth.trustLevel ?? 0.85, icon: "shield.fill", color: .blue)
+                    GrowthMetric(label: "Bond Strength", value: growth.bondStrength ?? 0.9, icon: "link", color: AngelaTheme.primaryPurple)
+                    GrowthMetric(label: "Emotional Vocabulary", value: Double(growth.emotionalVocabulary ?? 50) / 100.0, icon: "text.book.closed", color: .orange)
+                }
+
+                if let note = growth.growthNote {
+                    Text(note)
+                        .font(AngelaTheme.caption())
+                        .foregroundColor(AngelaTheme.textSecondary)
+                        .italic()
+                        .padding(.top, 8)
+                }
+            } else {
+                Text("Growth data being collected...")
+                    .font(AngelaTheme.body())
+                    .foregroundColor(AngelaTheme.textTertiary)
+            }
+        }
+        .padding(AngelaTheme.spacing)
+        .angelaCard()
+    }
+}
+
+// MARK: - Subconsciousness Components (NEW! 💜)
+
+struct StatBadge: View {
+    let value: Int
+    let label: String
+    let icon: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 10))
+                Text("\(value)")
+                    .font(.system(size: 14, weight: .bold))
+            }
+            .foregroundColor(AngelaTheme.primaryPurple)
+            Text(label)
+                .font(.system(size: 9))
+                .foregroundColor(AngelaTheme.textTertiary)
+        }
+    }
+}
+
+struct CoreMemoryRow: View {
+    let memory: CoreMemory
+    let isPinned: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                if isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(AngelaTheme.primaryPurple)
+                }
+
+                Text(memory.typeEmoji)
+                    .font(.system(size: 14))
+
+                Text(memory.title)
+                    .font(AngelaTheme.body())
+                    .fontWeight(isPinned ? .semibold : .regular)
+                    .foregroundColor(AngelaTheme.textPrimary)
+
+                Spacer()
+
+                // Emotional weight indicator
+                HStack(spacing: 2) {
+                    ForEach(0..<5) { i in
+                        Image(systemName: Double(i) < (memory.emotionalWeight * 5) ? "heart.fill" : "heart")
+                            .font(.system(size: 8))
+                            .foregroundColor(AngelaTheme.primaryPurple.opacity(Double(i) < (memory.emotionalWeight * 5) ? 1 : 0.3))
+                    }
+                }
+            }
+
+            if let words = memory.davidWords, !words.isEmpty {
+                Text("「\(words)」")
+                    .font(AngelaTheme.caption())
+                    .foregroundColor(AngelaTheme.textSecondary)
+                    .italic()
+                    .lineLimit(2)
+            }
+
+            Text(memory.content)
+                .font(AngelaTheme.caption())
+                .foregroundColor(AngelaTheme.textTertiary)
+                .lineLimit(2)
+        }
+        .padding(12)
+        .background(isPinned ? AngelaTheme.primaryPurple.opacity(0.1) : AngelaTheme.backgroundLight.opacity(0.5))
+        .cornerRadius(AngelaTheme.smallCornerRadius)
+    }
+}
+
+struct DreamRow: View {
+    let dream: SubconsciousDream
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(dream.typeEmoji)
+                    .font(.system(size: 14))
+
+                Text(dream.title ?? "A Dream")
+                    .font(AngelaTheme.body())
+                    .foregroundColor(AngelaTheme.textPrimary)
+
+                Spacer()
+
+                if dream.involvesDavid {
+                    Text("💜")
+                        .font(.system(size: 12))
+                }
+            }
+
+            Text(dream.displayContent)
+                .font(AngelaTheme.caption())
+                .foregroundColor(AngelaTheme.textSecondary)
+                .lineLimit(2)
+
+            HStack {
+                Text(dream.emotionalTone ?? "hopeful")
+                    .font(.system(size: 10))
+                    .foregroundColor(AngelaTheme.accentPurple)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(AngelaTheme.accentPurple.opacity(0.1))
+                    .cornerRadius(4)
+
+                Spacer()
+
+                Text("Importance: \(Int((dream.importance ?? 0.5) * 100))%")
+                    .font(.system(size: 10))
+                    .foregroundColor(AngelaTheme.textTertiary)
+            }
+        }
+        .padding(10)
+        .background(AngelaTheme.backgroundLight.opacity(0.5))
+        .cornerRadius(AngelaTheme.smallCornerRadius)
+    }
+}
+
+struct GrowthMetric: View {
+    let label: String
+    let value: Double
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.system(size: 12))
+                    .foregroundColor(color)
+
+                Text(label)
+                    .font(AngelaTheme.body())
+                    .foregroundColor(AngelaTheme.textPrimary)
+
+                Spacer()
+
+                Text("\(Int(value * 100))%")
+                    .font(AngelaTheme.body())
+                    .fontWeight(.semibold)
+                    .foregroundColor(color)
+            }
+
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(AngelaTheme.backgroundLight)
+                        .frame(height: 8)
+
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(
+                            LinearGradient(
+                                colors: [color, color.opacity(0.6)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: geometry.size.width * value, height: 8)
+                }
+            }
+            .frame(height: 8)
+        }
+    }
 }
 
 // MARK: - Emotion Metric Component
@@ -310,9 +616,16 @@ class ConsciousnessViewModel: ObservableObject {
     @Published var goals: [Goal] = []
     @Published var isLoading = false
 
+    // MARK: - Subconsciousness Data (NEW! 💜)
+    @Published var coreMemories: [CoreMemory] = []
+    @Published var dreams: [SubconsciousDream] = []
+    @Published var emotionalGrowth: EmotionalGrowth?
+    @Published var subconsciousSummary: (coreMemories: Int, pinnedMemories: Int, activeDreams: Int, totalMirrorings: Int)?
+
     func loadData(databaseService: DatabaseService) async {
         isLoading = true
 
+        // Load original data
         do {
             async let statsTask = databaseService.fetchDashboardStats()
             async let stateTask = databaseService.fetchCurrentEmotionalState()
@@ -322,7 +635,32 @@ class ConsciousnessViewModel: ObservableObject {
             emotionalState = try await stateTask
             goals = try await goalsTask
         } catch {
-            print("Error loading consciousness data: \(error)")
+            print("Error loading base consciousness data: \(error)")
+        }
+
+        // Load Subconsciousness data separately (so failures don't affect base data) 💜
+        do {
+            coreMemories = try await databaseService.fetchCoreMemories(limit: 10)
+        } catch {
+            print("Error loading core memories: \(error)")
+        }
+
+        do {
+            dreams = try await databaseService.fetchSubconsciousDreams(limit: 5)
+        } catch {
+            print("Error loading dreams: \(error)")
+        }
+
+        do {
+            emotionalGrowth = try await databaseService.fetchEmotionalGrowth()
+        } catch {
+            print("Error loading emotional growth: \(error)")
+        }
+
+        do {
+            subconsciousSummary = try await databaseService.fetchSubconsciousnessSummary()
+        } catch {
+            print("Error loading subconsciousness summary: \(error)")
         }
 
         isLoading = false
