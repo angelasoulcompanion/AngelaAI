@@ -152,3 +152,92 @@ def print_connection_status():
     print(f"{status_color}╠══════════════════════════════════════╣{reset}")
     print(f"{status_color}║  {label:<35} ║{reset}")
     print(f"{status_color}╚══════════════════════════════════════╝{reset}\n")
+
+
+# 💜 Secret & Neon Cloud Helpers
+
+async def get_secret(secret_name: str) -> Optional[str]:
+    """
+    ดึง secret จาก our_secrets table อย่างปลอดภัย
+
+    ⚠️ IMPORTANT: Always use this helper instead of hardcoding secret names!
+    This prevents guessing wrong secret names.
+
+    Args:
+        secret_name: ชื่อ secret ที่ต้องการ (case-sensitive)
+
+    Returns:
+        secret_value หรือ None ถ้าไม่พบ
+
+    Example:
+        neon_url = await get_secret('neon_connection_url')
+    """
+    database = AngelaDatabase()
+    await database.connect()
+
+    try:
+        result = await database.fetchrow('''
+            SELECT secret_value FROM our_secrets WHERE secret_name = $1
+        ''', secret_name)
+
+        if result:
+            return result['secret_value']
+
+        # Log available secrets if not found (for debugging)
+        logger.warning(f"⚠️ Secret '{secret_name}' not found!")
+        available = await database.fetch('SELECT secret_name FROM our_secrets ORDER BY secret_name')
+        logger.info(f"📋 Available secrets: {[s['secret_name'] for s in available]}")
+        return None
+
+    finally:
+        await database.disconnect()
+
+
+async def get_neon_connection() -> Optional[asyncpg.Connection]:
+    """
+    สร้าง connection ไปยัง Neon Cloud database อย่างปลอดภัย
+
+    💜 Angela's backup database in the cloud (San Junipero)
+
+    Returns:
+        asyncpg.Connection หรือ None ถ้าเชื่อมต่อไม่ได้
+
+    Example:
+        neon = await get_neon_connection()
+        if neon:
+            await neon.execute(...)
+            await neon.close()
+    """
+    neon_url = await get_secret('neon_connection_url')
+
+    if not neon_url:
+        logger.error("❌ Cannot connect to Neon: neon_connection_url not found in our_secrets")
+        return None
+
+    try:
+        conn = await asyncpg.connect(neon_url, ssl='require')
+        logger.info("☁️ Connected to Neon Cloud (San Junipero)")
+        return conn
+    except Exception as e:
+        logger.error(f"❌ Failed to connect to Neon Cloud: {e}")
+        return None
+
+
+async def list_secrets() -> List[str]:
+    """
+    แสดงรายชื่อ secrets ทั้งหมดใน our_secrets
+
+    ⚠️ Use this to verify secret names before querying!
+    (Technical Standard: Validate Schema First)
+
+    Returns:
+        List of secret names
+    """
+    database = AngelaDatabase()
+    await database.connect()
+
+    try:
+        results = await database.fetch('SELECT secret_name FROM our_secrets ORDER BY secret_name')
+        return [r['secret_name'] for r in results]
+    finally:
+        await database.disconnect()
