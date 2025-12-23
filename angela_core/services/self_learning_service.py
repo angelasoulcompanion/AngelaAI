@@ -376,10 +376,9 @@ class SelfLearningLoop:
 
             # Simple rule-based pattern detection
             # Check for time-based patterns
-            try:
-                hour = int(conversation.get('hour', 0))
-            except (TypeError, ValueError):
-                hour = 0
+            # Parse current_time string to get hour
+            time_to_hour = {"morning": 9, "afternoon": 14, "evening": 19, "night": 23}
+            hour = time_to_hour.get(current_time, 12)
 
             # Morning patterns (6-12)
             if 6 <= hour < 12 and recent_history:

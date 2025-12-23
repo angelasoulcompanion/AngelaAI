@@ -29,8 +29,13 @@ BACKUP_FILE = '/tmp/angela_sanjunipero_backup.dump'
 TEMP_CREDENTIALS_FILE = '/tmp/google_drive_credentials_temp.json'
 
 # Backup settings
-BACKUP_FILENAME = 'angela_sanjunipero_backup.dump'
 FOLDER_NAME = 'AngelaSanJunipero'
+
+def get_backup_filename():
+    """Generate unique backup filename with date."""
+    from datetime import datetime
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    return f'angela_backup_{timestamp}.dump'
 
 
 class GoogleDriveService:
@@ -157,49 +162,34 @@ class GoogleDriveService:
             return False
 
     def upload_backup(self) -> dict:
-        """Upload backup file to Google Drive (overwrite if exists)."""
+        """Upload backup file to Google Drive with unique filename."""
         if not os.path.exists(BACKUP_FILE):
             print("❌ Backup file not found")
             return None
 
-        print("☁️  Uploading to Google Drive...")
+        backup_filename = get_backup_filename()
+        print(f"☁️  Uploading to Google Drive as: {backup_filename}")
 
-        # Check if file already exists in folder
-        results = self.service.files().list(
-            q=f"name='{BACKUP_FILENAME}' and '{self.folder_id}' in parents and trashed=false",
-            spaces='drive',
-            fields='files(id, name)'
-        ).execute()
-
-        existing_files = results.get('files', [])
+        file_size = os.path.getsize(BACKUP_FILE)
+        print(f"   File size: {file_size/1024/1024:.1f} MB")
 
         media = MediaFileUpload(
             BACKUP_FILE,
             mimetype='application/octet-stream',
-            resumable=True
+            resumable=False  # Faster for small files
         )
 
-        if existing_files:
-            # Update existing file (overwrite)
-            file_id = existing_files[0]['id']
-            file = self.service.files().update(
-                fileId=file_id,
-                media_body=media,
-                fields='id, name, size, modifiedTime'
-            ).execute()
-            print(f"✅ Updated existing backup")
-        else:
-            # Create new file
-            file_metadata = {
-                'name': BACKUP_FILENAME,
-                'parents': [self.folder_id]
-            }
-            file = self.service.files().create(
-                body=file_metadata,
-                media_body=media,
-                fields='id, name, size, modifiedTime'
-            ).execute()
-            print(f"✅ Created new backup")
+        # Always create new file with unique name
+        file_metadata = {
+            'name': backup_filename,
+            'parents': [self.folder_id]
+        }
+        file = self.service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id, name, size, modifiedTime'
+        ).execute()
+        print(f"✅ Uploaded: {backup_filename}")
 
         return file
 

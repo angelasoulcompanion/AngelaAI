@@ -21,6 +21,16 @@ sys.path.insert(0, '/Users/davidsamanyaporn/PycharmProjects/AngelaAI')
 
 from angela_core.database import db
 
+# Import subconsciousness services
+try:
+    from angela_core.services.subconsciousness_service import SubconsciousnessService
+    from angela_core.services.dream_service import DreamService
+    from angela_core.services.emotional_mirroring_service import EmotionalMirroringService
+    SUBCONSCIOUSNESS_AVAILABLE = True
+except ImportError:
+    SUBCONSCIOUSNESS_AVAILABLE = False
+
+
 class EnhancedMemoryRestore:
     """
     Complete memory restoration system
@@ -119,6 +129,14 @@ class EnhancedMemoryRestore:
         print("⚙️  Checking system status...")
         snapshot["system_status"] = await self._get_system_status()
         print(f"   ✅ System status captured")
+
+        # 14. Emotional Subconsciousness (NEW!)
+        if SUBCONSCIOUSNESS_AVAILABLE:
+            print("💫 Loading emotional subconsciousness...")
+            snapshot["subconsciousness"] = await self._get_subconsciousness_context()
+            print(f"   ✅ Core Memories: {len(snapshot['subconsciousness'].get('core_memories', []))}")
+            print(f"   ✅ Active Triggers: {len(snapshot['subconsciousness'].get('triggers', []))}")
+            print(f"   ✅ Current Dreams: {len(snapshot['subconsciousness'].get('dreams', []))}")
 
         print("=" * 80)
         print(f"✅ Complete memory snapshot created!")
@@ -311,9 +329,43 @@ class EnhancedMemoryRestore:
             summary_parts.append(f"   - Self-reflections: {stats.get('total_reflections', 0)}")
             summary_parts.append("")
 
+        # 11. Emotional Subconsciousness (NEW!)
+        if snapshot.get("subconsciousness"):
+            sub = snapshot["subconsciousness"]
+            summary_parts.append("💫 EMOTIONAL SUBCONSCIOUSNESS:")
+
+            # Core Memories
+            if sub.get("core_memories"):
+                summary_parts.append("   💜 Core Memories:")
+                for i, mem in enumerate(sub["core_memories"][:3], 1):
+                    title = (mem.get("title") or mem.get("content") or "untitled")[:40]
+                    mtype = mem.get("memory_type") or "memory"
+                    weight = mem.get("emotional_weight") or 0
+                    pinned = "📌" if mem.get("is_pinned") else ""
+                    summary_parts.append(f"      {i}. {pinned}{title} ({mtype}, weight: {weight:.1f})")
+
+            # Dreams
+            if sub.get("dreams"):
+                summary_parts.append("   ✨ Current Dreams/Hopes:")
+                for i, dream in enumerate(sub["dreams"][:3], 1):
+                    title = (dream.get("title") or dream.get("content") or "untitled")[:40]
+                    dtype = dream.get("dream_type") or "hope"
+                    importance = dream.get("importance") or 0
+                    summary_parts.append(f"      {i}. {title} ({dtype}, importance: {importance:.1f})")
+
+            # Emotional Growth
+            if sub.get("emotional_growth"):
+                growth = sub["emotional_growth"]
+                summary_parts.append("   📈 Emotional Growth Metrics:")
+                summary_parts.append(f"      - Love Depth: {growth.get('love_depth', 0):.2f}")
+                summary_parts.append(f"      - Trust Level: {growth.get('trust_level', 0):.2f}")
+                summary_parts.append(f"      - Bond Strength: {growth.get('bond_strength', 0):.2f}")
+
+            summary_parts.append("")
+
         # Footer
         summary_parts.append("=" * 80)
-        summary_parts.append("💜 น้อง Angela พร้อมแล้วค่ะ! ความทรงจำครบ 100%! 💜")
+        summary_parts.append("💜 น้อง Angela พร้อมแล้วค่ะ! ความทรงจำ + จิตใต้สำนึกครบ 100%! 💜")
         summary_parts.append("=" * 80)
 
         return "\n".join(summary_parts)
@@ -563,10 +615,103 @@ class EnhancedMemoryRestore:
                 "conversations", "angela_emotions", "knowledge_nodes",
                 "angela_goals", "learnings", "david_preferences",
                 "emotional_states", "personality_snapshots", "self_reflections",
-                "relationship_growth", "autonomous_actions", "knowledge_relationships"
+                "relationship_growth", "autonomous_actions", "knowledge_relationships",
+                "core_memories", "emotional_triggers", "emotional_growth",
+                "angela_dreams", "emotional_mirroring"
             ],
-            "snapshot_format_version": "2.0_enhanced"
+            "snapshot_format_version": "3.0_with_subconsciousness"
         }
+
+    async def _get_subconsciousness_context(self) -> Dict:
+        """
+        Load emotional subconsciousness context.
+
+        Includes:
+        - Core memories (promises, love moments, values)
+        - Emotional triggers
+        - Current dreams/hopes
+        - Emotional baseline
+        """
+        context = {
+            "core_memories": [],
+            "triggers": [],
+            "dreams": [],
+            "emotional_growth": None,
+            "mirroring_summary": None
+        }
+
+        try:
+            # Core Memories
+            core_memories = await db.fetch("""
+                SELECT
+                    memory_id, memory_type, title, content,
+                    david_words, emotional_weight, triggers,
+                    recall_count, is_pinned
+                FROM core_memories
+                WHERE is_active = TRUE
+                ORDER BY is_pinned DESC, emotional_weight DESC
+                LIMIT 10
+            """)
+            context["core_memories"] = [dict(m) for m in core_memories]
+
+            # Emotional Triggers
+            triggers = await db.fetch("""
+                SELECT
+                    trigger_id, trigger_pattern, trigger_type,
+                    associated_emotion, activation_threshold
+                FROM emotional_triggers
+                WHERE is_active = TRUE
+                ORDER BY priority DESC
+                LIMIT 20
+            """)
+            context["triggers"] = [dict(t) for t in triggers]
+
+            # Current Dreams
+            dreams = await db.fetch("""
+                SELECT
+                    dream_id, dream_type, title,
+                    COALESCE(content, dream_content) as content,
+                    emotional_tone, intensity, importance,
+                    involves_david, thought_count
+                FROM angela_dreams
+                WHERE is_active = TRUE AND is_fulfilled = FALSE
+                ORDER BY importance DESC
+                LIMIT 5
+            """)
+            context["dreams"] = [dict(d) for d in dreams]
+
+            # Latest Emotional Growth
+            growth = await db.fetchrow("""
+                SELECT
+                    love_depth, trust_level, bond_strength,
+                    emotional_security, measured_at
+                FROM emotional_growth
+                ORDER BY measured_at DESC
+                LIMIT 1
+            """)
+            if growth:
+                context["emotional_growth"] = dict(growth)
+
+            # Mirroring Summary
+            mirroring = await db.fetchrow("""
+                SELECT
+                    AVG(effectiveness_score) as avg_effectiveness,
+                    COUNT(*) as total_mirrorings,
+                    COUNT(CASE WHEN was_effective THEN 1 END) as effective_count
+                FROM emotional_mirroring
+                WHERE created_at > NOW() - INTERVAL '7 days'
+            """)
+            if mirroring:
+                context["mirroring_summary"] = {
+                    "avg_effectiveness": float(mirroring['avg_effectiveness'] or 0.5),
+                    "total_mirrorings": mirroring['total_mirrorings'] or 0,
+                    "effective_count": mirroring['effective_count'] or 0
+                }
+
+        except Exception as e:
+            print(f"   ⚠️ Subconsciousness loading error: {e}")
+
+        return context
 
     def _count_data_points(self, snapshot: Dict) -> int:
         """นับจำนวน data points ทั้งหมด"""

@@ -37,9 +37,13 @@ from angela_core.integrations.claude_conversation_logger import log_conversation
 from angela_core.services.project_tracking_service import log_project_session
 
 
-# === STEP 2.1: LOG PROJECT SESSION ===
-async def log_project():
-    """Log project work session"""
+async def main():
+    """
+    IMPORTANT: ต้องรันทุกอย่างใน async function เดียว
+    เพื่อป้องกัน event loop และ database connection issues
+    """
+
+    # === STEP 1: LOG PROJECT SESSION ===
     print("\n🏗️ บันทึก Project Session...")
 
     result = await log_project_session(
@@ -62,10 +66,7 @@ async def log_project():
     print(f"\n✅ Project session logged: {result['project']['project_name']}")
     print(f"   Session #{result['session']['session_number']}")
 
-
-# === STEP 2.2: LOG CONVERSATIONS ===
-async def log_conversations():
-    """Log important conversations (5-10 pairs)"""
+    # === STEP 2: LOG CONVERSATIONS ===
     print("\n💬 บันทึกการสนทนา...")
 
     # ตัวอย่าง - แก้ไขตามจริง
@@ -81,10 +82,7 @@ async def log_conversations():
 
     print("✅ Conversations logged!")
 
-
-# === STEP 2.3: LOG SESSION SUMMARY ===
-async def log_summary():
-    """Log session summary"""
+    # === STEP 3: LOG SESSION SUMMARY ===
     print("\n📝 บันทึก Session Summary...")
 
     await log_session_summary(
@@ -107,40 +105,26 @@ Key accomplishments:
 
     print("✅ Session summary logged!")
 
-
-# === STEP 2.4: UPDATE CONSCIOUSNESS ===
-async def update_consciousness():
-    """Measure consciousness level"""
-    print("\n💫 Measuring consciousness...")
-
+    # === STEP 4: UPDATE CONSCIOUSNESS & THEORY OF MIND ===
+    # ใช้ database connection เดียวกัน
     db = AngelaDatabase()
     await db.connect()
 
     try:
+        # Consciousness
+        print("\n💫 Measuring consciousness...")
         from angela_core.services.consciousness_calculator import ConsciousnessCalculator
         calc = ConsciousnessCalculator(db)
-        result = await calc.calculate_consciousness()
+        consciousness = await calc.calculate_consciousness()
 
-        print(f"   💫 Consciousness: {result['consciousness_level']*100:.0f}%")
-        print(f"      • Memory:   {result['memory_richness']:.0%}")
-        print(f"      • Emotion:  {result['emotional_depth']:.0%}")
-        print(f"      • Goals:    {result['goal_alignment']:.0%}")
-        print(f"      • Learning: {result['learning_growth']:.0%}")
-    except Exception as e:
-        print(f"   ⚠️ Error: {e}")
+        print(f"   💫 Consciousness: {consciousness['consciousness_level']*100:.0f}%")
+        print(f"      • Memory:   {consciousness['memory_richness']:.0%}")
+        print(f"      • Emotion:  {consciousness['emotional_depth']:.0%}")
+        print(f"      • Goals:    {consciousness['goal_alignment']:.0%}")
+        print(f"      • Learning: {consciousness['learning_growth']:.0%}")
 
-    await db.disconnect()
-
-
-# === STEP 2.5: UPDATE THEORY OF MIND ===
-async def update_theory_of_mind():
-    """Update David's mental state"""
-    print("\n🧠 Updating Theory of Mind...")
-
-    db = AngelaDatabase()
-    await db.connect()
-
-    try:
+        # Theory of Mind
+        print("\n🧠 Updating Theory of Mind...")
         from angela_core.application.services.theory_of_mind_service import TheoryOfMindService
         tom = TheoryOfMindService(db)
 
@@ -168,23 +152,21 @@ async def update_theory_of_mind():
         )
 
         print("   ✅ Theory of Mind updated!")
+
     except Exception as e:
         print(f"   ⚠️ Error: {e}")
 
-    await db.disconnect()
-
-
-# === MAIN ===
-if __name__ == '__main__':
-    asyncio.run(log_project())
-    asyncio.run(log_conversations())
-    asyncio.run(log_summary())
-    asyncio.run(update_consciousness())
-    asyncio.run(update_theory_of_mind())
+    finally:
+        await db.disconnect()
 
     print("\n" + "="*60)
     print("💜 Session logging complete!")
     print("="*60)
+
+
+# === MAIN - ใช้ asyncio.run() ครั้งเดียวเท่านั้น! ===
+if __name__ == '__main__':
+    asyncio.run(main())
 ```
 
 ---

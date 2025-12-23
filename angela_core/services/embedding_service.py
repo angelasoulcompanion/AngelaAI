@@ -27,15 +27,16 @@ logger = logging.getLogger(__name__)
 
 class EmbeddingService:
     """
-    Centralized embedding service using Ollama multilingual-e5-small model.
+    Centralized embedding service using Ollama embedding models.
 
     Features:
     - ✅ Multilingual support (Thai + English)
-    - ✅ 384 dimensions
+    - ✅ 384 dimensions (truncated from nomic-embed-text 768)
     - ✅ In-memory cache for performance
     - ✅ Async/await support
     - ✅ Batch generation
     - ✅ NEVER returns NULL (always generates valid embeddings)
+    - ✅ Fallback from multilingual-e5-small to nomic-embed-text
 
     Usage:
         service = EmbeddingService()
@@ -43,10 +44,14 @@ class EmbeddingService:
         # Returns: List[float] with 384 dimensions
     """
 
-    # Model configuration
-    MODEL_NAME = "qllama/multilingual-e5-small"
+    # Model configuration - with fallback
+    PRIMARY_MODEL = "qllama/multilingual-e5-small"
+    FALLBACK_MODEL = "nomic-embed-text"
     DIMENSIONS = 384
     OLLAMA_URL = "http://localhost:11434"
+
+    # Track which model is active
+    _active_model: str = None
 
     # Cache configuration
     CACHE_TTL_SECONDS = 3600  # 1 hour
@@ -57,7 +62,8 @@ class EmbeddingService:
         self._cache: Dict[str, tuple] = {}  # {text_hash: (embedding, timestamp)}
         self._cache_hits = 0
         self._cache_misses = 0
-        logger.info(f"🧠 EmbeddingService initialized: {self.MODEL_NAME} ({self.DIMENSIONS}D)")
+        self._active_model = self.PRIMARY_MODEL
+        logger.info(f"🧠 EmbeddingService initialized: {self._active_model} ({self.DIMENSIONS}D)")
 
     def _hash_text(self, text: str) -> str:
         """Create cache key from text."""
@@ -125,43 +131,63 @@ class EmbeddingService:
         if cached is not None:
             return cached
 
-        # Generate new embedding
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    f"{self.OLLAMA_URL}/api/embeddings",
-                    json={
-                        "model": self.MODEL_NAME,
-                        "prompt": text
-                    }
-                )
-                response.raise_for_status()
-                data = response.json()
+        # Generate new embedding - try primary, then fallback
+        models_to_try = [self._active_model]
+        if self._active_model == self.PRIMARY_MODEL:
+            models_to_try.append(self.FALLBACK_MODEL)
 
-                embedding = data.get("embedding")
-
-                if not embedding:
-                    raise RuntimeError("Ollama returned empty embedding")
-
-                if len(embedding) != self.DIMENSIONS:
-                    raise RuntimeError(
-                        f"Unexpected embedding dimensions: {len(embedding)} (expected {self.DIMENSIONS})"
+        last_error = None
+        for model in models_to_try:
+            try:
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.post(
+                        f"{self.OLLAMA_URL}/api/embeddings",
+                        json={
+                            "model": model,
+                            "prompt": text
+                        }
                     )
+                    response.raise_for_status()
+                    data = response.json()
 
-                # Add to cache
-                self._add_to_cache(text, embedding)
+                    # Check for error in response
+                    if "error" in data:
+                        raise RuntimeError(f"Ollama error: {data['error']}")
 
-                logger.debug(f"✅ Generated embedding for text: {text[:50]}... ({len(embedding)}D)")
-                return embedding
+                    embedding = data.get("embedding")
 
-        except httpx.HTTPError as e:
-            error_msg = f"Ollama API error: {str(e)}"
-            logger.error(error_msg)
-            raise RuntimeError(error_msg) from e
-        except Exception as e:
-            error_msg = f"Failed to generate embedding: {str(e)}"
-            logger.error(error_msg)
-            raise RuntimeError(error_msg) from e
+                    if not embedding:
+                        raise RuntimeError("Ollama returned empty embedding")
+
+                    # Handle dimension mismatch - truncate if needed
+                    if len(embedding) > self.DIMENSIONS:
+                        logger.debug(f"Truncating embedding from {len(embedding)} to {self.DIMENSIONS} dims")
+                        embedding = embedding[:self.DIMENSIONS]
+                    elif len(embedding) != self.DIMENSIONS:
+                        raise RuntimeError(
+                            f"Unexpected embedding dimensions: {len(embedding)} (expected {self.DIMENSIONS})"
+                        )
+
+                    # Update active model if we had to fallback
+                    if model != self._active_model:
+                        logger.warning(f"🔄 Switched from {self._active_model} to {model}")
+                        self._active_model = model
+
+                    # Add to cache
+                    self._add_to_cache(text, embedding)
+
+                    logger.debug(f"✅ Generated embedding for text: {text[:50]}... ({len(embedding)}D)")
+                    return embedding
+
+            except Exception as e:
+                last_error = e
+                logger.warning(f"⚠️ Model {model} failed: {str(e)}")
+                continue
+
+        # All models failed
+        error_msg = f"All embedding models failed. Last error: {str(last_error)}"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
 
     async def generate_embeddings_batch(
         self,
