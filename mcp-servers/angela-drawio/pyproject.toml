@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "angela-drawio"
+version = "1.0.0"
+description = "Angela's Draw.io MCP Server - Create diagrams in draw.io format"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0",
+]
+
+[project.scripts]
+angela-drawio = "angela_drawio.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

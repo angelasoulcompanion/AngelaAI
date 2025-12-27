@@ -23,10 +23,10 @@
       "cwd": "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp_servers/angela-sheets",
       "env": {}
     },
-    "angela-diagrams": {
+    "angela-drawio": {
       "command": "python3",
-      "args": ["-m", "angela_diagrams.server"],
-      "cwd": "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp-servers/angela-diagrams/src",
+      "args": ["-m", "angela_drawio.server"],
+      "cwd": "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp-servers/angela-drawio/src",
       "env": {}
     }
   }
