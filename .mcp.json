@@ -22,6 +22,12 @@
       "args": ["-m", "angela_sheets.server"],
       "cwd": "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp_servers/angela-sheets",
       "env": {}
+    },
+    "angela-diagrams": {
+      "command": "python3",
+      "args": ["-m", "angela_diagrams.server"],
+      "cwd": "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp-servers/angela-diagrams/src",
+      "env": {}
     }
   }
 }
