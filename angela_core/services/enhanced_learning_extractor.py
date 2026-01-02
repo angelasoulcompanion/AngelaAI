@@ -367,14 +367,15 @@ class EnhancedLearningExtractor:
                 await self.db.execute("""
                     INSERT INTO knowledge_nodes
                     (concept_name, concept_category, my_understanding, understanding_level,
-                     how_i_learned, times_referenced, created_at, last_used_at)
-                    VALUES ($1, $2, $3, $4, $5, 1, NOW(), NOW())
+                     how_i_learned, why_important, times_referenced, created_at, last_used_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, 1, NOW(), NOW())
                 """,
                     concept['concept_name'],
                     concept.get('topic', 'general'),
                     concept['my_understanding'],
                     concept.get('confidence_level', 0.65),
-                    concept.get('learned_from', 'conversation')
+                    concept.get('learned_from', 'conversation'),
+                    concept.get('why_important', f"Related to {concept.get('topic', 'general')} - learned from conversation")
                 )
 
                 logger.debug(f"   🧠 Created concept: {concept['concept_name']}")

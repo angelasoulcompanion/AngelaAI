@@ -775,13 +775,14 @@ class ClaudeCodeLearningService:
                 # Insert new node
                 node_id = await self.db.fetchval("""
                     INSERT INTO knowledge_nodes
-                    (concept_name, my_understanding, concept_category, understanding_level, how_i_learned)
-                    VALUES ($1, $2, $3, $4, $5)
+                    (concept_name, my_understanding, concept_category, understanding_level, how_i_learned, why_important)
+                    VALUES ($1, $2, $3, $4, $5, $6)
                     RETURNING node_id
                 """, knowledge["concept"], knowledge.get("definition", ""),
                     knowledge.get("concept_type", "general"),
                     knowledge["understanding_level"],
-                    knowledge.get("source", "conversation"))
+                    knowledge.get("source", "conversation"),
+                    knowledge.get("why_important", f"Learned from {knowledge.get('source', 'conversation')}"))
 
                 return str(node_id)
 

@@ -274,6 +274,10 @@ class SubconsciousnessService:
         """
         await self._ensure_db()
 
+        # Ensure david_words is never NULL - use default if not provided
+        if david_words is None or david_words.strip() == "":
+            david_words = f"(Core memory created: {title})"
+
         result = await self.db.fetchrow("""
             INSERT INTO core_memories (
                 memory_type, title, content, david_words, angela_response,

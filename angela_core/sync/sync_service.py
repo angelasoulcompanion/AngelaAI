@@ -14,8 +14,9 @@ import argparse
 import logging
 import os
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
+from dateutil import parser as date_parser
 
 # Load .env file
 try:
@@ -39,6 +40,40 @@ from .table_configs import (
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def _ensure_naive_datetime(dt: Optional[datetime]) -> Optional[datetime]:
+    """Convert timezone-aware datetime to naive (remove timezone info)."""
+    if dt is None:
+        return None
+    if dt.tzinfo is not None:
+        # Convert to UTC then remove timezone info
+        return dt.replace(tzinfo=None)
+    return dt
+
+
+def _convert_datetime_strings(record: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert ISO datetime strings back to datetime objects."""
+    result = {}
+    datetime_columns = ['created_at', 'updated_at', 'felt_at', 'learned_at',
+                        'last_reinforced_at', 'measured_at', 'occurred_at',
+                        'last_updated', 'session_date', 'started_at', 'ended_at',
+                        'achieved_at', 'decided_at', 'last_discussed', 'first_seen',
+                        'last_seen', 'first_demonstrated_at', 'last_used_at']
+
+    for key, value in record.items():
+        if key in datetime_columns and isinstance(value, str):
+            try:
+                # Parse ISO format datetime string
+                parsed = date_parser.parse(value)
+                # Make it naive (no timezone) for PostgreSQL compatibility
+                result[key] = parsed.replace(tzinfo=None) if parsed.tzinfo else parsed
+            except (ValueError, TypeError):
+                result[key] = value
+        else:
+            result[key] = value
+
+    return result
 
 
 class SyncService:
@@ -187,30 +222,32 @@ class SyncService:
         return synced
     
     async def _get_records_to_sync(
-        self, 
-        config: TableConfig, 
+        self,
+        config: TableConfig,
         last_sync: Optional[datetime]
     ) -> List[Dict]:
         """Get records that need syncing."""
         # Get column names
         columns = await db.fetch("""
-            SELECT column_name 
-            FROM information_schema.columns 
+            SELECT column_name
+            FROM information_schema.columns
             WHERE table_name = $1
             ORDER BY ordinal_position
         """, config.name)
-        
+
         col_names = [c['column_name'] for c in columns]
         col_select = ", ".join(col_names)
-        
+
         if last_sync:
+            # Ensure datetime is naive (no timezone) for comparison
+            last_sync_naive = _ensure_naive_datetime(last_sync)
             query = f"""
                 SELECT {col_select}
                 FROM {config.name}
                 WHERE {config.timestamp_column} > $1
                 ORDER BY {config.timestamp_column} ASC
             """
-            rows = await db.fetch(query, last_sync)
+            rows = await db.fetch(query, last_sync_naive)
         else:
             # First sync - get all
             query = f"""
@@ -219,7 +256,7 @@ class SyncService:
                 ORDER BY {config.timestamp_column} ASC
             """
             rows = await db.fetch(query)
-        
+
         return [dict(row) for row in rows]
     
     async def _sync_batch(self, config: TableConfig, batch: List[Dict]):
@@ -273,33 +310,36 @@ class SyncService:
     async def retry_queue(self) -> int:
         """Retry failed items from the queue."""
         logger.info("🔄 Processing sync queue...")
-        
+
         items = await self.queue_manager.get_pending_items()
-        
+
         if not items:
             logger.info("   No pending items")
             return 0
-        
+
         logger.info(f"   Found {len(items)} pending items")
-        
+
         retried = 0
         for item in items:
             config = get_table_config(item['table_name'])
             if not config:
                 continue
-            
+
             try:
                 record = item['record_data']
                 if isinstance(record, str):
                     import json
                     record = json.loads(record)
-                
+
+                # Convert datetime strings back to datetime objects
+                record = _convert_datetime_strings(record)
+
                 await self._sync_batch(config, [record])
                 await self.queue_manager.mark_synced(item['queue_id'])
                 retried += 1
             except Exception as e:
                 await self.queue_manager.mark_failed(item['queue_id'], str(e))
-        
+
         logger.info(f"   ✅ Retried {retried}/{len(items)} items")
         return retried
     

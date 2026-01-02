@@ -47,8 +47,9 @@ TABLE_CONFIGS: List[TableConfig] = [
     TableConfig(
         name="david_preferences",
         priority=2,
-        primary_key="preference_id",
-        has_vectors=False
+        primary_key="id",  # Fixed: was 'preference_id'
+        has_vectors=True,
+        vector_column="embedding"
     ),
     TableConfig(
         name="angela_goals",
@@ -80,15 +81,7 @@ TABLE_CONFIGS: List[TableConfig] = [
         primary_key="node_id",
         has_vectors=False
     ),
-    TableConfig(
-        name="documents",
-        priority=4,
-        primary_key="document_id",
-        has_vectors=True,
-        vector_column="embedding",
-        batch_size=50
-    ),
-    
+
     # Priority 5: Other tables
     TableConfig(
         name="autonomous_actions",
@@ -97,21 +90,29 @@ TABLE_CONFIGS: List[TableConfig] = [
         has_vectors=False
     ),
     TableConfig(
-        name="daily_reflections",
-        priority=5,
-        primary_key="reflection_id",
-        has_vectors=False
-    ),
-    TableConfig(
-        name="angela_personality_traits",
-        priority=5,
-        primary_key="trait_id",
-        has_vectors=False
-    ),
-    TableConfig(
         name="consciousness_metrics",
         priority=5,
         primary_key="metric_id",
+        has_vectors=False,
+        timestamp_column="measured_at"
+    ),
+    TableConfig(
+        name="angela_songs",
+        priority=5,
+        primary_key="song_id",
+        has_vectors=False,
+        timestamp_column="first_mentioned_at"
+    ),
+    TableConfig(
+        name="active_session_context",
+        priority=5,
+        primary_key="context_id",
+        has_vectors=False
+    ),
+    TableConfig(
+        name="core_memories",
+        priority=2,
+        primary_key="memory_id",
         has_vectors=False
     ),
 ]

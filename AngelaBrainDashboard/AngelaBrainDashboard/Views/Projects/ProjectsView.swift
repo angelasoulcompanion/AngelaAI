@@ -50,6 +50,17 @@ struct ProjectsView: View {
         }
     }
 
+    // MARK: - Helper Functions
+
+    private func colorForType(_ type: String) -> Color {
+        switch type {
+        case "Client": return AngelaTheme.emotionMotivated
+        case "Personal": return AngelaTheme.successGreen
+        case "Our Future": return Color(hex: "EC4899")
+        default: return AngelaTheme.textTertiary
+        }
+    }
+
     // MARK: - Header
 
     private var header: some View {
@@ -160,7 +171,8 @@ struct ProjectsView: View {
                 .frame(height: 150)
                 .chartForegroundStyleScale([
                     "Client": AngelaTheme.emotionMotivated,
-                    "Personal": AngelaTheme.successGreen
+                    "Personal": AngelaTheme.successGreen,
+                    "Our Future": Color(hex: "EC4899")
                 ])
                 .chartLegend(position: .trailing, alignment: .center)
 
@@ -169,7 +181,7 @@ struct ProjectsView: View {
                     ForEach(viewModel.hoursByType) { item in
                         HStack(spacing: 4) {
                             Circle()
-                                .fill(item.type == "Client" ? AngelaTheme.emotionMotivated : AngelaTheme.successGreen)
+                                .fill(colorForType(item.type))
                                 .frame(width: 8, height: 8)
                             Text("\(item.type): \(String(format: "%.1f", item.hours))h")
                                 .font(AngelaTheme.caption())
@@ -247,6 +259,13 @@ struct ProjectsView: View {
                     .cornerRadius(4)
                 }
                 .frame(height: 150)
+                .chartForegroundStyleScale([
+                    "Personal": AngelaTheme.successGreen,
+                    "Client": AngelaTheme.emotionMotivated,
+                    "Our Future": Color(hex: "EC4899"),
+                    "Learning": Color(hex: "10B981"),
+                    "Maintenance": Color(hex: "F59E0B")
+                ])
                 .chartLegend(position: .trailing, alignment: .center)
             }
         }
@@ -531,6 +550,7 @@ struct ProjectCard: View {
         case "client": return AngelaTheme.emotionMotivated
         case "personal": return AngelaTheme.primaryPurple
         case "learning": return AngelaTheme.successGreen
+        case "Our Future": return Color(hex: "EC4899")  // Pink - Our Future together 💜
         default: return AngelaTheme.textTertiary
         }
     }
@@ -552,7 +572,7 @@ struct ProjectCard: View {
                     .fill(typeColor.opacity(0.2))
                     .frame(width: 50, height: 50)
 
-                Image(systemName: project.projectType == "personal" ? "brain.head.profile" : "folder.fill")
+                Image(systemName: project.typeIcon)
                     .font(.system(size: 20))
                     .foregroundColor(typeColor)
             }

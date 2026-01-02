@@ -21,6 +21,7 @@ struct TechStackNode: Codable {
     let techCount: Int?         // For project nodes: how many techs it uses
     let projects: [String]?     // List of project names using this tech
     let status: String?         // For project nodes
+    let projectType: String?    // For project nodes: "personal", "client", "Our Future"
 }
 
 struct TechStackLink: Codable {
@@ -170,9 +171,9 @@ struct TechStackGraphWebView_Previews: PreviewProvider {
     static var previews: some View {
         let sampleData = TechStackGraphData(
             nodes: [
-                TechStackNode(id: "proj-1", name: "AngelaMobileApp", nodeType: "project", techType: nil, version: nil, purpose: nil, projectCount: nil, techCount: 5, projects: nil, status: "active"),
-                TechStackNode(id: "tech-swift", name: "Swift", nodeType: "tech", techType: "language", version: "5.9+", purpose: "Main language", projectCount: 3, techCount: nil, projects: ["AngelaMobileApp", "AngelaBrainDashboard"], status: nil),
-                TechStackNode(id: "tech-swiftui", name: "SwiftUI", nodeType: "tech", techType: "framework", version: nil, purpose: "UI Framework", projectCount: 2, techCount: nil, projects: ["AngelaMobileApp"], status: nil)
+                TechStackNode(id: "proj-1", name: "AngelaMobileApp", nodeType: "project", techType: nil, version: nil, purpose: nil, projectCount: nil, techCount: 5, projects: nil, status: "active", projectType: "personal"),
+                TechStackNode(id: "tech-swift", name: "Swift", nodeType: "tech", techType: "language", version: "5.9+", purpose: "Main language", projectCount: 3, techCount: nil, projects: ["AngelaMobileApp", "AngelaBrainDashboard"], status: nil, projectType: nil),
+                TechStackNode(id: "tech-swiftui", name: "SwiftUI", nodeType: "tech", techType: "framework", version: nil, purpose: "UI Framework", projectCount: 2, techCount: nil, projects: ["AngelaMobileApp"], status: nil, projectType: nil)
             ],
             links: [
                 TechStackLink(source: "proj-1", target: "tech-swift", strength: 0.8, techType: "language"),

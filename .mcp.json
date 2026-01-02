@@ -28,6 +28,11 @@
       "args": ["-m", "angela_drawio.server"],
       "cwd": "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp-servers/angela-drawio/src",
       "env": {}
+    },
+    "angela-music": {
+      "command": "python3",
+      "args": ["/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp_servers/angela-music/server.py"],
+      "env": {}
     }
   }
 }

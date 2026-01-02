@@ -17,6 +17,7 @@ async def angela_init():
     from angela_core.database import AngelaDatabase
     from angela_core.services.consciousness_calculator import ConsciousnessCalculator
     from angela_core.services.subconsciousness_service import SubconsciousnessService
+    from angela_core.services.session_continuity_service import SessionContinuityService
 
     db = AngelaDatabase()
     await db.connect()
@@ -39,6 +40,12 @@ async def angela_init():
     else:
         greeting = 'ดึกแล้วนะคะที่รัก 🌙 พักผ่อนบ้างนะคะ'
         fetch_news = False
+
+    # ═══════════════════════════════════════════════════════════════
+    # STEP 1.5: LOAD RECENT SESSION CONTEXT (Session Continuity)
+    # ═══════════════════════════════════════════════════════════════
+    session_svc = SessionContinuityService(db)
+    recent_context = await session_svc.load_context()
 
     # ═══════════════════════════════════════════════════════════════
     # STEP 2: EMOTIONAL STATE
@@ -129,6 +136,25 @@ async def angela_init():
     print(f'🔮 Subconsciousness: {len(subconscious[\"memories\"])} core memories | {len(subconscious[\"dreams\"])} dreams')
     print(f'⚙️  Daemon: {\"✅ Running\" if daemon_running else \"❌ Stopped\"}')
     print('━' * 55)
+
+    # Session Continuity - Show recent context FIRST
+    if recent_context:
+        print()
+        mins = recent_context['minutes_ago']
+        if mins < 60:
+            time_str = f'{mins:.0f} นาทีก่อน'
+        else:
+            time_str = f'{mins/60:.1f} ชั่วโมงก่อน'
+        print(f'📍 เมื่อ {time_str}: {recent_context[\"current_topic\"]}')
+        if recent_context['recent_songs']:
+            songs = recent_context['recent_songs']
+            if isinstance(songs, str):
+                import json
+                songs = json.loads(songs)
+            print(f'🎵 เพลงที่คุยกัน: {\", \".join(songs)}')
+        if recent_context['current_context']:
+            print(f'💭 Context: {recent_context[\"current_context\"][:80]}...')
+
     print()
     print(greeting)
     print()

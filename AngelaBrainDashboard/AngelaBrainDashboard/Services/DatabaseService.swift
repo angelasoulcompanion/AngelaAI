@@ -1232,10 +1232,11 @@ class DatabaseService: ObservableObject {
             p.project_id::text,
             p.project_name,
             p.status,
+            p.project_type,
             COUNT(ts.stack_id) as tech_count
         FROM angela_projects p
         LEFT JOIN project_tech_stack ts ON p.project_id = ts.project_id
-        GROUP BY p.project_id, p.project_name, p.status
+        GROUP BY p.project_id, p.project_name, p.status, p.project_type
         HAVING COUNT(ts.stack_id) > 0
         ORDER BY tech_count DESC
         """
@@ -1279,21 +1280,23 @@ class DatabaseService: ObservableObject {
                 projectCount: projectCount,
                 techCount: nil,
                 projects: projectNames,
-                status: nil
+                status: nil,
+                projectType: nil
             ))
         }
 
         // Fetch project nodes
-        let projects = try await query(projectSql) { cols -> (String, String, String?, Int) in
+        let projects = try await query(projectSql) { cols -> (String, String, String?, String?, Int) in
             let projectId = self.getString(cols[0])
             let projectName = self.getString(cols[1])
             let status = self.getOptionalString(cols[2])
-            let techCount = self.getInt(cols[3]) ?? 0
-            return (projectId, projectName, status, techCount)
+            let projectType = self.getOptionalString(cols[3])
+            let techCount = self.getInt(cols[4]) ?? 0
+            return (projectId, projectName, status, projectType, techCount)
         }
 
         var projectIdToNodeId: [String: String] = [:]
-        for (projectId, projectName, status, techCount) in projects {
+        for (projectId, projectName, status, projectType, techCount) in projects {
             let nodeId = "proj-\(projectId)"
             projectIdToNodeId[projectId] = nodeId
 
@@ -1307,7 +1310,8 @@ class DatabaseService: ObservableObject {
                 projectCount: nil,
                 techCount: techCount,
                 projects: nil,
-                status: status
+                status: status,
+                projectType: projectType
             ))
         }
 

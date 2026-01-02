@@ -272,10 +272,11 @@ class ContinuousLearningPipeline:
         node_id = await self.db.fetchval("""
             INSERT INTO knowledge_nodes
             (concept_name, my_understanding, understanding_level,
-             how_i_learned, created_at, last_used_at)
-            VALUES ($1, $2, 0.5, 'relationship_detection', NOW(), NOW())
+             how_i_learned, why_important, created_at, last_used_at)
+            VALUES ($1, $2, 0.5, 'relationship_detection', $3, NOW(), NOW())
             RETURNING node_id
-        """, concept_name, f"Concept discovered: {concept_name}")
+        """, concept_name, f"Concept discovered: {concept_name}",
+            f"Related to {concept_name} - discovered through relationship detection")
 
         return {'node_id': node_id}
 

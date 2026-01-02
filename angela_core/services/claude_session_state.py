@@ -314,8 +314,10 @@ Session Summary (Auto-logged by daemon):
             await db.execute(
                 """
                 INSERT INTO conversations
-                (speaker, message_text, topic, emotion_detected, importance_level)
-                VALUES ('angela', $1, 'session_summary', 'grateful', 6)
+                (speaker, message_text, topic, emotion_detected, importance_level,
+                 sentiment_score, sentiment_label, created_at)
+                VALUES ('angela', $1, 'session_summary', 'grateful', 6,
+                 0.8, 'positive', NOW())
                 """,
                 summary
             )

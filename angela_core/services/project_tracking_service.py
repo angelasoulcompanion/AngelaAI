@@ -285,15 +285,30 @@ class ProjectTrackingService:
         )
         session_number = max_num + 1
 
-        # Calculate times
-        if started_at is None:
-            # Assume session started when project was last updated or 2 hours ago
-            started_at = datetime.now() - timedelta(hours=2)
+        # Calculate times from conversation timestamps
+        if started_at is None or duration_minutes is None:
+            # Query first and last conversation of today
+            time_range = await self.db.fetchrow(
+                """
+                SELECT
+                    MIN(created_at) as first_msg,
+                    MAX(created_at) as last_msg
+                FROM conversations
+                WHERE DATE(created_at) = CURRENT_DATE
+                """
+            )
+
+            if time_range and time_range['first_msg']:
+                started_at = time_range['first_msg']
+                ended_at = time_range['last_msg'] or datetime.now()
+                duration_minutes = int((ended_at - started_at).total_seconds() / 60)
+            else:
+                # Fallback: no conversations today, use 30 min default
+                started_at = datetime.now() - timedelta(minutes=30)
+                ended_at = datetime.now()
+                duration_minutes = 30
 
         ended_at = datetime.now()
-
-        if duration_minutes is None:
-            duration_minutes = int((ended_at - started_at).total_seconds() / 60)
 
         # Get git commits from this session
         git_commits = await self._get_session_git_commits(project_id, started_at)

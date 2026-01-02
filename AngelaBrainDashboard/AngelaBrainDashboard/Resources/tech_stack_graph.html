@@ -280,13 +280,28 @@
             'tool': '#F59E0B',        // Orange
             'library': '#EC4899',     // Pink
             'service': '#06B6D4',     // Cyan
-            'project': '#9333EA',     // Primary Purple (for project nodes)
+            'project': '#9333EA',     // Default Purple (fallback for project nodes)
             'default': '#6B7280'
+        };
+
+        // Project type colors (matching chart colors)
+        const projectTypeColors = {
+            'personal': '#10B981',    // Green (same as charts)
+            'client': '#3B82F6',      // Blue (same as charts)
+            'our future': '#EC4899',  // Pink (Our Future projects)
+            'learning': '#10B981',    // Green
+            'maintenance': '#F59E0B', // Orange
+            'default': '#9333EA'      // Purple fallback
         };
 
         function getTechColor(type) {
             if (!type) return techTypeColors.default;
             return techTypeColors[type.toLowerCase()] || techTypeColors.default;
+        }
+
+        function getProjectColor(projectType) {
+            if (!projectType) return projectTypeColors.default;
+            return projectTypeColors[projectType.toLowerCase()] || projectTypeColors.default;
         }
 
         // Graph dimensions
@@ -357,10 +372,11 @@
                 const group = d3.select(this);
 
                 if (d.nodeType === 'project') {
-                    // Circle for projects
+                    // Circle for projects - use projectType color
+                    const projectColor = getProjectColor(d.projectType);
                     group.append('circle')
                         .attr('r', 20 + (d.techCount || 0) * 2)
-                        .attr('fill', techTypeColors.project)
+                        .attr('fill', projectColor)
                         .attr('stroke', '#fff')
                         .attr('stroke-width', 2)
                         .attr('opacity', 0.9);
@@ -444,9 +460,11 @@
             let html = '';
 
             if (d.nodeType === 'project') {
+                const projectColor = getProjectColor(d.projectType);
+                const projectTypeLabel = d.projectType ? d.projectType.charAt(0).toUpperCase() + d.projectType.slice(1) : 'Project';
                 html = `
                     <div class="tooltip-title">📁 ${d.name}</div>
-                    <div class="tooltip-type" style="background: ${techTypeColors.project}20; color: ${techTypeColors.project};">Project</div>
+                    <div class="tooltip-type" style="background: ${projectColor}20; color: ${projectColor};">${projectTypeLabel}</div>
                     <div class="tooltip-stat"><strong>Technologies:</strong> ${d.techCount || 0}</div>
                     ${d.status ? `<div class="tooltip-stat"><strong>Status:</strong> ${d.status}</div>` : ''}
                 `;
