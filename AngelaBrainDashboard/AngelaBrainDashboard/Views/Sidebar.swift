@@ -193,6 +193,11 @@ struct Sidebar: View {
                 Text("by Angela AI")
                     .font(AngelaTheme.caption())
                     .foregroundColor(AngelaTheme.primaryPurple)
+
+                // Version display
+                Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"))")
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundColor(AngelaTheme.textTertiary.opacity(0.6))
             }
         }
         .padding(.vertical, AngelaTheme.spacing)
