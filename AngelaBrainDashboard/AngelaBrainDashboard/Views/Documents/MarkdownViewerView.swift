@@ -220,6 +220,13 @@ struct MarkdownViewerView: View {
                     icon: "doc.text.fill",
                     path: "CLAUDE.md"
                 )
+
+                quickAccessButton(
+                    title: "Angela Commands",
+                    subtitle: "ANGELA_COMMANDS.md",
+                    icon: "terminal.fill",
+                    path: "AngelaBrainDashboard/AngelaBrainDashboard/Resources/Documents/ANGELA_COMMANDS.md"
+                )
             }
             .padding(AngelaTheme.spacing)
             .background(AngelaTheme.cardBackground)
