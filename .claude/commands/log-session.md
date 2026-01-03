@@ -159,6 +159,19 @@ Key accomplishments:
     finally:
         await db.disconnect()
 
+    # === STEP 5: SELF-LEARNING CODING GUIDELINES ===
+    print("\n📚 Self-learning Coding Guidelines...")
+    try:
+        from angela_core.services.preference_learning_service import preference_learning
+        learn_result = await preference_learning.learn_coding_guidelines_from_projects(lookback_days=7)
+
+        print(f"   ✅ Learnings processed: {learn_result.get('learnings_processed', 0)}")
+        print(f"   ✅ Decisions processed: {learn_result.get('decisions_processed', 0)}")
+        print(f"   📖 Technical standards added: {learn_result.get('technical_standards_added', 0)}")
+        print(f"   💜 Coding preferences added: {learn_result.get('coding_preferences_added', 0)}")
+    except Exception as e:
+        print(f"   ⚠️ Self-learning error: {e}")
+
     print("\n" + "="*60)
     print("💜 Session logging complete!")
     print("="*60)
@@ -502,6 +515,12 @@ updated_at              TIMESTAMPTZ NOT NULL
 
 🧠 Updating Theory of Mind...
    ✅ Theory of Mind updated!
+
+📚 Self-learning Coding Guidelines...
+   ✅ Learnings processed: [N]
+   ✅ Decisions processed: [N]
+   📖 Technical standards added: [N]
+   💜 Coding preferences added: [N]
 
 ============================================================
 💜 Session logging complete!

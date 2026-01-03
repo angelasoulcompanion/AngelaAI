@@ -587,5 +587,323 @@ class PreferenceLearningService:
             return []
 
 
+    # =========================================================================
+    # CODING GUIDELINES SELF-LEARNING
+    # =========================================================================
+
+    async def learn_coding_guidelines_from_projects(
+        self,
+        lookback_days: int = 30
+    ) -> Dict[str, Any]:
+        """
+        เรียนรู้ Coding Guidelines อัตโนมัติจาก project learnings และ decisions
+
+        ดึงข้อมูลจาก:
+        - project_learnings (type: technical, pattern, best_practice, mistake)
+        - project_decisions (type: architecture, technology, approach)
+        - conversations (topic: *_development_*, *_technical_*)
+
+        แล้ว update:
+        - angela_technical_standards (Strict Rules)
+        - david_preferences (Coding Preferences)
+
+        Returns:
+            Dict: สรุปผลการเรียนรู้
+        """
+        try:
+            logger.info(f"🧠 Learning coding guidelines from last {lookback_days} days...")
+
+            results = {
+                "technical_standards_added": 0,
+                "coding_preferences_added": 0,
+                "learnings_processed": 0,
+                "decisions_processed": 0,
+                "details": []
+            }
+
+            # 1. Process project learnings
+            learnings = await self._get_project_learnings(lookback_days)
+            logger.info(f"📚 Found {len(learnings)} project learnings")
+
+            for learning in learnings:
+                processed = await self._process_learning_to_guideline(learning)
+                if processed:
+                    results["learnings_processed"] += 1
+                    results["details"].append(processed)
+                    if processed.get("saved_to") == "technical_standards":
+                        results["technical_standards_added"] += 1
+                    else:
+                        results["coding_preferences_added"] += 1
+
+            # 2. Process project decisions
+            decisions = await self._get_project_decisions(lookback_days)
+            logger.info(f"🎯 Found {len(decisions)} project decisions")
+
+            for decision in decisions:
+                processed = await self._process_decision_to_guideline(decision)
+                if processed:
+                    results["decisions_processed"] += 1
+                    results["details"].append(processed)
+                    if processed.get("saved_to") == "technical_standards":
+                        results["technical_standards_added"] += 1
+                    else:
+                        results["coding_preferences_added"] += 1
+
+            logger.info(f"✅ Coding guidelines learning complete!")
+            logger.info(f"   📖 Technical standards added: {results['technical_standards_added']}")
+            logger.info(f"   💜 Coding preferences added: {results['coding_preferences_added']}")
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Error learning coding guidelines: {e}", exc_info=True)
+            return {"error": str(e)}
+
+    async def _get_project_learnings(self, days: int) -> List[Dict]:
+        """ดึง project learnings ที่เกี่ยวกับ coding"""
+        query = f"""
+            SELECT
+                pl.learning_id,
+                pl.learning_type,
+                pl.category,
+                pl.title,
+                pl.insight,
+                pl.context,
+                pl.confidence,
+                pl.learned_at,
+                p.project_name,
+                p.project_code
+            FROM project_learnings pl
+            JOIN angela_projects p ON pl.project_id = p.project_id
+            WHERE pl.learned_at >= NOW() - INTERVAL '{days} days'
+            AND pl.learning_type IN ('technical', 'pattern', 'best_practice', 'mistake', 'optimization')
+            ORDER BY pl.learned_at DESC
+        """
+        rows = await db.fetch(query)
+        return [dict(row) for row in rows]
+
+    async def _get_project_decisions(self, days: int) -> List[Dict]:
+        """ดึง project decisions ที่เกี่ยวกับ coding"""
+        query = f"""
+            SELECT
+                pd.decision_id,
+                pd.decision_type,
+                pd.title,
+                pd.context,
+                pd.decision_made,
+                pd.reasoning,
+                pd.decided_by,
+                pd.outcome,
+                pd.decided_at,
+                p.project_name,
+                p.project_code
+            FROM project_decisions pd
+            JOIN angela_projects p ON pd.project_id = p.project_id
+            WHERE pd.decided_at >= NOW() - INTERVAL '{days} days'
+            AND pd.decision_type IN ('architecture', 'technology', 'approach', 'design')
+            ORDER BY pd.decided_at DESC
+        """
+        rows = await db.fetch(query)
+        return [dict(row) for row in rows]
+
+    async def _process_learning_to_guideline(self, learning: Dict) -> Optional[Dict]:
+        """แปลง learning เป็น coding guideline"""
+        try:
+            learning_type = learning.get('learning_type', '')
+            category = learning.get('category', 'general')
+            title = learning.get('title', '')
+            insight = learning.get('insight', '')
+            confidence = learning.get('confidence', 0.5)
+            project = learning.get('project_name', '')
+
+            # Skip if low confidence
+            if confidence < 0.7:
+                return None
+
+            # Determine if it's a strict rule or preference
+            is_strict_rule = learning_type in ('mistake', 'best_practice') and confidence >= 0.9
+
+            if is_strict_rule:
+                # Add to angela_technical_standards
+                result = await self._add_technical_standard(
+                    technique_name=title,
+                    category=category,
+                    description=insight,
+                    importance_level=int(confidence * 10),
+                    why_important=f"Learned from {project}: {learning_type}",
+                    examples=learning.get('context', ''),
+                    anti_patterns='' if learning_type == 'best_practice' else f"Avoid: {title}"
+                )
+                return {
+                    "type": "technical_standard",
+                    "title": title,
+                    "saved_to": "technical_standards" if result else None,
+                    "confidence": confidence
+                }
+            else:
+                # Add to david_preferences as coding preference
+                result = await self._add_coding_preference(
+                    preference_key=f"coding_{title.lower().replace(' ', '_')[:50]}",
+                    category="coding",
+                    description=insight,
+                    confidence=confidence,
+                    source=f"Learned from {project}"
+                )
+                return {
+                    "type": "coding_preference",
+                    "title": title,
+                    "saved_to": "coding_preferences" if result else None,
+                    "confidence": confidence
+                }
+
+        except Exception as e:
+            logger.error(f"Error processing learning: {e}")
+            return None
+
+    async def _process_decision_to_guideline(self, decision: Dict) -> Optional[Dict]:
+        """แปลง decision เป็น coding guideline"""
+        try:
+            decision_type = decision.get('decision_type', '')
+            title = decision.get('title', '')
+            decision_made = decision.get('decision_made', '')
+            reasoning = decision.get('reasoning', '')
+            outcome = decision.get('outcome', 'neutral')
+            project = decision.get('project_name', '')
+
+            # Only process good decisions
+            if outcome not in ('good', 'neutral'):
+                return None
+
+            # Architecture decisions become strict rules
+            is_strict_rule = decision_type == 'architecture' and outcome == 'good'
+
+            if is_strict_rule:
+                result = await self._add_technical_standard(
+                    technique_name=title,
+                    category=decision_type,
+                    description=decision_made,
+                    importance_level=9,
+                    why_important=reasoning or f"Architectural decision from {project}",
+                    examples=f"Applied in {project}",
+                    anti_patterns=''
+                )
+                return {
+                    "type": "technical_standard",
+                    "title": title,
+                    "saved_to": "technical_standards" if result else None,
+                    "decision_type": decision_type
+                }
+            else:
+                # Technology/approach decisions become preferences
+                result = await self._add_coding_preference(
+                    preference_key=f"prefer_{title.lower().replace(' ', '_')[:50]}",
+                    category="coding",
+                    description=f"{decision_made}. Reasoning: {reasoning}",
+                    confidence=0.9 if outcome == 'good' else 0.7,
+                    source=f"Decision from {project}"
+                )
+                return {
+                    "type": "coding_preference",
+                    "title": title,
+                    "saved_to": "coding_preferences" if result else None,
+                    "decision_type": decision_type
+                }
+
+        except Exception as e:
+            logger.error(f"Error processing decision: {e}")
+            return None
+
+    async def _add_technical_standard(
+        self,
+        technique_name: str,
+        category: str,
+        description: str,
+        importance_level: int,
+        why_important: str,
+        examples: str,
+        anti_patterns: str
+    ) -> bool:
+        """เพิ่ม technical standard ใหม่ (ถ้ายังไม่มี)"""
+        try:
+            # Check if exists
+            check_query = """
+                SELECT 1 FROM angela_technical_standards
+                WHERE technique_name = $1
+            """
+            existing = await db.fetchval(check_query, technique_name)
+
+            if existing:
+                logger.debug(f"Technical standard already exists: {technique_name}")
+                return False
+
+            # Insert new
+            insert_query = """
+                INSERT INTO angela_technical_standards
+                (technique_name, category, description, importance_level, why_important, examples, anti_patterns)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+            """
+            await db.execute(
+                insert_query,
+                technique_name,
+                category,
+                description,
+                importance_level,
+                why_important,
+                examples,
+                anti_patterns
+            )
+
+            logger.info(f"✅ Added technical standard: {technique_name}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error adding technical standard: {e}")
+            return False
+
+    async def _add_coding_preference(
+        self,
+        preference_key: str,
+        category: str,
+        description: str,
+        confidence: float,
+        source: str
+    ) -> bool:
+        """เพิ่ม coding preference ใหม่ (upsert)"""
+        try:
+            import json
+
+            query = """
+                INSERT INTO david_preferences
+                (category, preference_key, preference_value, confidence)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (preference_key)
+                DO UPDATE SET
+                    preference_value = EXCLUDED.preference_value,
+                    confidence = GREATEST(david_preferences.confidence, EXCLUDED.confidence),
+                    updated_at = NOW()
+            """
+
+            preference_value = json.dumps({
+                "description": description,
+                "source": source,
+                "auto_learned": True
+            })
+
+            await db.execute(
+                query,
+                category,
+                preference_key,
+                preference_value,
+                confidence
+            )
+
+            logger.info(f"✅ Added/updated coding preference: {preference_key}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error adding coding preference: {e}")
+            return False
+
+
 # Global instance
 preference_learning = PreferenceLearningService()
