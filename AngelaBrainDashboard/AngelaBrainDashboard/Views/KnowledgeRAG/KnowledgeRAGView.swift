@@ -474,7 +474,7 @@ struct KnowledgeRAGView: View {
         """
 
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+        process.executableURL = URL(fileURLWithPath: "/opt/anaconda3/bin/python3")
         process.arguments = ["-c", script]
 
         let pipe = Pipe()
@@ -525,7 +525,7 @@ struct KnowledgeRAGView: View {
 
         DispatchQueue.global(qos: .userInitiated).async {
             let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+            process.executableURL = URL(fileURLWithPath: "/opt/anaconda3/bin/python3")
             process.arguments = ["-c", script]
 
             let pipe = Pipe()
@@ -538,23 +538,32 @@ struct KnowledgeRAGView: View {
                 process.waitUntilExit()
 
                 let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
-                    // Find balanced JSON object
-                    if let jsonStr = self.extractJSON(from: output) {
-                        if let jsonData = jsonStr.data(using: .utf8),
-                           let result = try? JSONDecoder().decode(RAGAnswerResult.self, from: jsonData) {
-                            DispatchQueue.main.async {
-                                self.ragAnswer = result.answer ?? ""
-                                self.sources = result.sources ?? []
-                                self.isLoading = false
-                            }
-                            return
+                let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+
+                // Find balanced JSON object
+                if let jsonStr = self.extractJSON(from: output) {
+                    if let jsonData = jsonStr.data(using: .utf8),
+                       let result = try? JSONDecoder().decode(RAGAnswerResult.self, from: jsonData) {
+                        DispatchQueue.main.async {
+                            self.ragAnswer = result.answer ?? ""
+                            self.sources = result.sources ?? []
+                            self.isLoading = false
                         }
+                        return
                     }
                 }
 
+                // Debug: show error details
                 DispatchQueue.main.async {
-                    self.errorMessage = "Failed to parse response"
+                    if !errorOutput.isEmpty {
+                        self.errorMessage = "Python Error: \(errorOutput.prefix(300))"
+                    } else if output.isEmpty {
+                        self.errorMessage = "No output received from Python"
+                    } else {
+                        self.errorMessage = "Parse failed. First 300 chars: \(output.prefix(300))"
+                    }
                     self.isLoading = false
                 }
             } catch {
@@ -618,7 +627,7 @@ struct KnowledgeRAGView: View {
 
         DispatchQueue.global(qos: .userInitiated).async {
             let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+            process.executableURL = URL(fileURLWithPath: "/opt/anaconda3/bin/python3")
             process.arguments = ["-c", script]
 
             let pipe = Pipe()
@@ -662,7 +671,7 @@ struct KnowledgeRAGView: View {
 
     private func runPythonScript(args: [String], completion: @escaping (String) -> Void) {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+        process.executableURL = URL(fileURLWithPath: "/opt/anaconda3/bin/python3")
         process.arguments = ["/Users/davidsamanyaporn/PycharmProjects/AngelaAI/angela_core/scripts/angela_rag.py"] + args
 
         let pipe = Pipe()

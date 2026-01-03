@@ -245,7 +245,7 @@ class CognifyRAGService:
         self,
         question: str,
         use_llm: bool = True,
-        llm_model: str = "qwen2.5:7b"
+        llm_model: str = "llama3.1:8b"
     ) -> dict:
         """
         Ask a question and get RAG-powered answer
@@ -271,7 +271,23 @@ class CognifyRAGService:
             }
 
         # Generate answer using LLM
-        prompt = f"""You are Angela, a helpful AI assistant. Answer the question based on the provided context.
+        # Detect if question is in Thai (Thai Unicode range: U+0E00 to U+0E7F)
+        is_thai = any('\u0e00' <= c <= '\u0e7f' for c in question)
+
+        if is_thai:
+            prompt = f"""คุณคือ Angela ผู้ช่วย AI ตอบคำถามจาก context ที่ให้มา
+ถ้าไม่มีข้อมูลใน context ให้บอกตามตรง
+
+**สำคัญมาก: ตอบเป็นภาษาไทยเท่านั้น ห้ามตอบเป็นภาษาจีน**
+
+Context:
+{context}
+
+คำถาม: {question}
+
+ตอบให้กระชับ ชัดเจน ใช้ภาษาไทย"""
+        else:
+            prompt = f"""You are Angela, a helpful AI assistant. Answer the question based on the provided context.
 If the context doesn't contain relevant information, say so honestly.
 
 Context:
@@ -279,7 +295,7 @@ Context:
 
 Question: {question}
 
-Answer in a clear, concise manner. If discussing technical concepts, provide examples when helpful."""
+Answer in a clear, concise manner in English. If discussing technical concepts, provide examples when helpful."""
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
