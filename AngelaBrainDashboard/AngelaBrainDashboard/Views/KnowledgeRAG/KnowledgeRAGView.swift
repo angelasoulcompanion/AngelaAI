@@ -539,11 +539,8 @@ struct KnowledgeRAGView: View {
 
                 let data = pipe.fileHandleForReading.readDataToEndOfFile()
                 if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
-                    // Find JSON in output (might have other prints)
-                    if let jsonStart = output.range(of: "{"),
-                       let jsonEnd = output.range(of: "}", options: .backwards) {
-                        let jsonStr = String(output[jsonStart.lowerBound...jsonEnd.upperBound])
-
+                    // Find balanced JSON object
+                    if let jsonStr = self.extractJSON(from: output) {
                         if let jsonData = jsonStr.data(using: .utf8),
                            let result = try? JSONDecoder().decode(RAGAnswerResult.self, from: jsonData) {
                             DispatchQueue.main.async {
@@ -567,6 +564,32 @@ struct KnowledgeRAGView: View {
                 }
             }
         }
+    }
+
+    // Helper to extract balanced JSON from output
+    private func extractJSON(from text: String) -> String? {
+        guard let startIndex = text.firstIndex(of: "{") else { return nil }
+
+        var braceCount = 0
+        var endIndex = startIndex
+
+        for index in text.indices[startIndex...] {
+            let char = text[index]
+            if char == "{" {
+                braceCount += 1
+            } else if char == "}" {
+                braceCount -= 1
+                if braceCount == 0 {
+                    endIndex = index
+                    break
+                }
+            }
+        }
+
+        if braceCount == 0 {
+            return String(text[startIndex...endIndex])
+        }
+        return nil
     }
 
     private func performSearch() {
