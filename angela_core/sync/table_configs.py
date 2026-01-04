@@ -115,6 +115,34 @@ TABLE_CONFIGS: List[TableConfig] = [
         primary_key="memory_id",
         has_vectors=False
     ),
+
+    # Priority 6: Theory of Mind & Patterns
+    TableConfig(
+        name="david_mental_state",
+        priority=6,
+        primary_key="state_id",
+        has_vectors=False,
+        timestamp_column="last_updated"
+    ),
+    TableConfig(
+        name="empathy_moments",
+        priority=6,
+        primary_key="empathy_id",
+        has_vectors=False,
+        timestamp_column="occurred_at"
+    ),
+    TableConfig(
+        name="pattern_detections",
+        priority=6,
+        primary_key="pattern_id",
+        has_vectors=False
+    ),
+    TableConfig(
+        name="angela_personality_traits",
+        priority=6,
+        primary_key="trait_id",
+        has_vectors=False
+    ),
 ]
 
 def get_table_config(table_name: str) -> Optional[TableConfig]:
