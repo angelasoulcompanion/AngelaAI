@@ -32,7 +32,7 @@ class CognifyRAGService:
             "host": "localhost",
             "port": 5432
         }
-        self.embedding_model = "nomic-embed-text"
+        self.embedding_model = "bge-m3"  # 1024 dimensions - matches database
         self.ollama_url = "http://localhost:11434"
         self.conn: Optional[asyncpg.Connection] = None
 

@@ -17,6 +17,7 @@ struct KnowledgeRAGView: View {
     @State private var documents: [RAGDocument] = []
     @State private var selectedTab: RAGTab = .ask
     @State private var errorMessage: String?
+    @AppStorage("recentRAGQuestions") private var recentQuestionsData: Data = Data()
 
     var body: some View {
         ZStack {
@@ -233,9 +234,9 @@ struct KnowledgeRAGView: View {
                 .cornerRadius(AngelaTheme.cornerRadius)
             }
 
-            // Suggested questions
+            // Recent questions
             if ragAnswer.isEmpty && !isLoading {
-                suggestedQuestions
+                recentQuestionsView
             }
 
             // Error message
@@ -255,47 +256,90 @@ struct KnowledgeRAGView: View {
         }
     }
 
-    // MARK: - Suggested Questions
+    // MARK: - Recent Questions
 
-    private var suggestedQuestions: some View {
+    private var recentQuestions: [String] {
+        get {
+            (try? JSONDecoder().decode([String].self, from: recentQuestionsData)) ?? []
+        }
+    }
+
+    private func addToRecentQuestions(_ question: String) {
+        var questions = recentQuestions
+        // Remove if already exists (to move to top)
+        questions.removeAll { $0 == question }
+        // Add to beginning
+        questions.insert(question, at: 0)
+        // Keep only 10 most recent
+        if questions.count > 10 {
+            questions = Array(questions.prefix(10))
+        }
+        // Save
+        if let data = try? JSONEncoder().encode(questions) {
+            recentQuestionsData = data
+        }
+    }
+
+    private var recentQuestionsView: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Suggested Questions")
-                .font(AngelaTheme.headline())
-                .foregroundColor(AngelaTheme.textSecondary)
+            HStack {
+                Text("Recent Questions")
+                    .font(AngelaTheme.headline())
+                    .foregroundColor(AngelaTheme.textSecondary)
 
-            let suggestions = [
-                "What is a data architecture framework?",
-                "What are the key layers in EDA?",
-                "How does ETL differ from ELT?",
-                "What is DataOps and its benefits?",
-                "How to plan for data migration?"
-            ]
+                Spacer()
 
-            ForEach(suggestions, id: \.self) { question in
-                Button {
-                    searchQuery = question
-                    askQuestion()
-                } label: {
-                    HStack {
-                        Image(systemName: "lightbulb.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(AngelaTheme.primaryPurple.opacity(0.7))
-
-                        Text(question)
-                            .font(AngelaTheme.body())
-                            .foregroundColor(AngelaTheme.textPrimary)
-
-                        Spacer()
-
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 12))
+                if !recentQuestions.isEmpty {
+                    Button {
+                        recentQuestionsData = Data()
+                    } label: {
+                        Text("Clear")
+                            .font(AngelaTheme.caption())
                             .foregroundColor(AngelaTheme.textTertiary)
                     }
-                    .padding(12)
-                    .background(AngelaTheme.cardBackground)
-                    .cornerRadius(AngelaTheme.smallCornerRadius)
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
+            }
+
+            if recentQuestions.isEmpty {
+                HStack {
+                    Image(systemName: "clock")
+                        .font(.system(size: 14))
+                        .foregroundColor(AngelaTheme.textTertiary)
+
+                    Text("No recent questions yet")
+                        .font(AngelaTheme.body())
+                        .foregroundColor(AngelaTheme.textTertiary)
+                }
+                .padding(12)
+            } else {
+                ForEach(recentQuestions, id: \.self) { question in
+                    Button {
+                        searchQuery = question
+                        askQuestion()
+                    } label: {
+                        HStack {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 14))
+                                .foregroundColor(AngelaTheme.primaryPurple.opacity(0.7))
+
+                            Text(question)
+                                .font(AngelaTheme.body())
+                                .foregroundColor(AngelaTheme.textPrimary)
+                                .lineLimit(1)
+
+                            Spacer()
+
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 12))
+                                .foregroundColor(AngelaTheme.textTertiary)
+                        }
+                        .padding(12)
+                        .background(AngelaTheme.cardBackground)
+                        .cornerRadius(AngelaTheme.smallCornerRadius)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
         .padding(AngelaTheme.spacing)
@@ -500,6 +544,9 @@ struct KnowledgeRAGView: View {
 
     private func askQuestion() {
         guard !searchQuery.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+
+        // Save to recent questions
+        addToRecentQuestions(searchQuery)
 
         isLoading = true
         ragAnswer = ""
