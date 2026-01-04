@@ -144,38 +144,86 @@ struct CodingGuidelinesView: View {
 
     private var designPrinciplesSection: some View {
         VStack(alignment: .leading, spacing: AngelaTheme.spacing) {
-            GuidelineSectionHeader(title: "Design Principles", subtitle: "Core development philosophy", icon: "lightbulb.fill", color: AngelaTheme.accentGold)
+            GuidelineSectionHeader(
+                title: "Design Principles",
+                subtitle: "\(viewModel.designPrinciples.count) standards from database",
+                icon: "lightbulb.fill",
+                color: AngelaTheme.accentGold
+            )
 
-            HStack(alignment: .top, spacing: AngelaTheme.spacing) {
-                PrincipleCard(
-                    title: "Single Point of Change",
-                    description: "แก้ Code ที่เดียวมีผลทุกที่",
-                    icon: "point.topleft.down.to.point.bottomright.curvepath.fill",
-                    color: AngelaTheme.primaryPurple
+            if viewModel.designPrinciples.isEmpty {
+                EmptyStateCard(
+                    icon: "lightbulb",
+                    message: "No design principles found",
+                    submessage: "Loading from angela_technical_standards..."
                 )
-
-                PrincipleCard(
-                    title: "DRY Principle",
-                    description: "Don't Repeat Yourself - ไม่ copy-paste code",
-                    icon: "doc.on.doc.fill",
-                    color: AngelaTheme.emotionMotivated
-                )
-
-                PrincipleCard(
-                    title: "Separation of Concerns",
-                    description: "แยก responsibility ชัดเจน",
-                    icon: "square.split.2x2.fill",
-                    color: AngelaTheme.successGreen
-                )
-
-                PrincipleCard(
-                    title: "Type Safety",
-                    description: "ใช้ type hints เสมอใน Python",
-                    icon: "checkmark.shield.fill",
-                    color: AngelaTheme.accentGold
-                )
+            } else {
+                LazyVGrid(columns: [
+                    GridItem(.flexible()),
+                    GridItem(.flexible()),
+                    GridItem(.flexible()),
+                    GridItem(.flexible())
+                ], spacing: AngelaTheme.spacing) {
+                    ForEach(viewModel.designPrinciples) { principle in
+                        DesignPrincipleCard(principle: principle)
+                    }
+                }
             }
         }
+    }
+}
+
+// MARK: - Design Principle Card (Dynamic)
+
+struct DesignPrincipleCard: View {
+    let principle: DesignPrinciple
+
+    var body: some View {
+        VStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color(hex: principle.categoryColor).opacity(0.15))
+                    .frame(width: 50, height: 50)
+
+                Image(systemName: principle.categoryIcon)
+                    .font(.system(size: 22))
+                    .foregroundColor(Color(hex: principle.categoryColor))
+            }
+
+            Text(principle.techniqueName)
+                .font(AngelaTheme.body())
+                .fontWeight(.medium)
+                .foregroundColor(AngelaTheme.textPrimary)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+
+            Text(principle.description)
+                .font(AngelaTheme.caption())
+                .foregroundColor(AngelaTheme.textSecondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+
+            // Importance badge
+            HStack(spacing: 4) {
+                Image(systemName: principle.importanceLevel >= 10 ? "star.fill" : "star.leadinghalf.filled")
+                    .font(.system(size: 10))
+                Text("Level \(principle.importanceLevel)")
+                    .font(.system(size: 10, weight: .medium))
+            }
+            .foregroundColor(Color(hex: principle.categoryColor))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color(hex: principle.categoryColor).opacity(0.1))
+            .cornerRadius(8)
+        }
+        .padding(AngelaTheme.spacing)
+        .frame(maxWidth: .infinity)
+        .background(Color(hex: principle.categoryColor).opacity(0.03))
+        .cornerRadius(AngelaTheme.cornerRadius)
+        .overlay(
+            RoundedRectangle(cornerRadius: AngelaTheme.cornerRadius)
+                .stroke(Color(hex: principle.categoryColor).opacity(0.2), lineWidth: 1)
+        )
     }
 }
 
@@ -416,13 +464,18 @@ struct EmptyStateCard: View {
 @MainActor
 class CodingGuidelinesViewModel: ObservableObject {
     @Published var codingPreferences: [CodingPreference] = []
+    @Published var designPrinciples: [DesignPrinciple] = []
     @Published var isLoading = false
 
     func loadData(databaseService: DatabaseService) async {
         isLoading = true
 
         do {
-            codingPreferences = try await databaseService.fetchCodingPreferences()
+            async let prefs = databaseService.fetchCodingPreferences()
+            async let principles = databaseService.fetchDesignPrinciples()
+
+            codingPreferences = try await prefs
+            designPrinciples = try await principles
         } catch {
             print("Error loading coding guidelines: \(error)")
         }

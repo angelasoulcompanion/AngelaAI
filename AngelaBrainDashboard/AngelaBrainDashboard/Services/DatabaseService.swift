@@ -1546,7 +1546,7 @@ class DatabaseService: ObservableObject {
                 preference_value::text,
                 confidence
             FROM david_preferences
-            WHERE category LIKE 'coding_%'
+            WHERE category LIKE 'coding%'
             ORDER BY confidence DESC
         """
 
@@ -1576,6 +1576,42 @@ class DatabaseService: ObservableObject {
                 description: description,
                 reason: reason,
                 confidence: confidence
+            )
+        }
+    }
+
+    // MARK: - Design Principles (from angela_technical_standards)
+
+    /// Fetch design principles for display - importance_level >= 9
+    func fetchDesignPrinciples() async throws -> [DesignPrinciple] {
+        let sql = """
+            SELECT
+                standard_id::text,
+                technique_name,
+                description,
+                category,
+                importance_level,
+                why_important,
+                examples,
+                anti_patterns
+            FROM angela_technical_standards
+            WHERE importance_level >= 9
+            ORDER BY importance_level DESC, category
+        """
+
+        return try await query(sql) { cols -> DesignPrinciple in
+            let idStr = self.getString(cols[0])
+            let id = UUID(uuidString: idStr) ?? UUID()
+
+            return DesignPrinciple(
+                id: id,
+                techniqueName: self.getString(cols[1]),
+                description: self.getString(cols[2]),
+                category: self.getString(cols[3]),
+                importanceLevel: self.getInt(cols[4]) ?? 0,
+                whyImportant: self.getOptionalString(cols[5]),
+                examples: self.getOptionalString(cols[6]),
+                antiPatterns: self.getOptionalString(cols[7])
             )
         }
     }
