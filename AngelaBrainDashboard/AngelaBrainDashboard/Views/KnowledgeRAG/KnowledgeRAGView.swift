@@ -642,8 +642,11 @@ struct KnowledgeRAGView: View {
                 if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
                     // Find JSON array
                     if let jsonStart = output.range(of: "["),
-                       let jsonEnd = output.range(of: "]", options: .backwards) {
-                        let jsonStr = String(output[jsonStart.lowerBound...jsonEnd.upperBound])
+                       let jsonEnd = output.range(of: "]", options: .backwards),
+                       jsonStart.lowerBound < jsonEnd.upperBound {
+                        // Use ..<upperBound (half-open range) instead of ...upperBound (closed range)
+                        // because upperBound is already past the ] character
+                        let jsonStr = String(output[jsonStart.lowerBound..<jsonEnd.upperBound])
 
                         if let jsonData = jsonStr.data(using: .utf8),
                            let results = try? JSONDecoder().decode([RAGSearchResult].self, from: jsonData) {
