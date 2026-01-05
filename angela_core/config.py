@@ -3,19 +3,43 @@ Angela Configuration
 การตั้งค่าสำหรับ Angela Core System
 
 Centralized configuration for all services to avoid hardcoded values
+
+Updated: 2026-01-05 - Added Neon Cloud support (San Junipero)
 """
 
 import os
 from typing import Optional
 
+# Try to import machine-specific settings
+try:
+    from config import ANGELA_MACHINE, NEON_DATABASE_URL, RUN_DAEMONS
+except ImportError:
+    ANGELA_MACHINE = os.getenv("ANGELA_MACHINE", "unknown")
+    NEON_DATABASE_URL = os.getenv("NEON_DATABASE_URL", "")
+    RUN_DAEMONS = os.getenv("RUN_DAEMONS", "false").lower() == "true"
+
+
 class AngelaConfig:
     """Configuration สำหรับ Angela Memory System"""
 
-    # Database Configuration
+    # Machine Configuration (M3 Home vs M4 Work)
+    ANGELA_MACHINE: str = ANGELA_MACHINE
+    RUN_DAEMONS: bool = RUN_DAEMONS
+
+    # Primary Database: Neon Cloud (San Junipero)
+    NEON_DATABASE_URL: str = NEON_DATABASE_URL
+
+    # Use Neon as primary database (True = Neon, False = Local)
+    USE_NEON: bool = bool(NEON_DATABASE_URL)
+
+    # Database Configuration - Neon first, local fallback
     DATABASE_URL: str = os.getenv(
         "ANGELA_DATABASE_URL",
-        "postgresql://davidsamanyaporn@localhost:5432/AngelaMemory"
+        NEON_DATABASE_URL if NEON_DATABASE_URL else "postgresql://davidsamanyaporn@localhost:5432/AngelaMemory"
     )
+
+    # Local Database (for our_secrets and backup)
+    LOCAL_DATABASE_URL: str = "postgresql://davidsamanyaporn@localhost:5432/AngelaMemory"
 
     # Alternative database names (for compatibility)
     DATABASE_HOST: str = "localhost"

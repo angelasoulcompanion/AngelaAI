@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
 
-from database import AngelaDatabase
+from database import AngelaDatabase, get_secret
 
 
 @dataclass
@@ -44,20 +44,15 @@ class TelegramService:
     async def initialize(self):
         """Initialize the service"""
         if not self.bot_token:
+            # Get token from LOCAL our_secrets (secrets stay local for security)
+            self.bot_token = await get_secret('telegram_bot_token')
+
+            if not self.bot_token:
+                raise ValueError("Telegram bot token not found in local database!")
+
+            # Initialize database connection for message storage (Neon)
             self._db = AngelaDatabase()
             await self._db.connect()
-
-            # Get token from our_secrets
-            result = await self._db.fetchrow("""
-                SELECT secret_value FROM our_secrets
-                WHERE secret_name = 'telegram_bot_token'
-                AND is_active = TRUE
-            """)
-
-            if result:
-                self.bot_token = result['secret_value']
-            else:
-                raise ValueError("Telegram bot token not found in database!")
 
         self.api_base = self.API_BASE.format(token=self.bot_token)
         self._client = httpx.AsyncClient(timeout=60.0)
