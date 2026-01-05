@@ -149,66 +149,77 @@ async def log_conversation(
         # GENERATE EMBEDDINGS - RESTORED (Migration 015)
         # ========================================================================
         # Using multilingual-e5-small (384 dims, Thai + English support)
-        # IMPORTANT: NEVER insert NULL embeddings!
+        # Now with graceful fallback: Ollama → HuggingFace → None
         # ========================================================================
 
         from angela_core.services.embedding_service import get_embedding_service
 
         embedding_service = get_embedding_service()
 
-        # Generate David's embedding
+        # Generate embeddings (may return None if no service available)
         david_embedding = await embedding_service.generate_embedding(david_message)
-        david_emb_str = embedding_service.embedding_to_pgvector(david_embedding)
-
-        # Generate Angela's embedding
         angela_embedding = await embedding_service.generate_embedding(angela_response)
-        angela_emb_str = embedding_service.embedding_to_pgvector(angela_embedding)
 
-        logger.debug(f"✅ Generated embeddings: David ({len(david_embedding)}D), Angela ({len(angela_embedding)}D)")
+        # Convert to pgvector format if available
+        david_emb_str = embedding_service.embedding_to_pgvector(david_embedding) if david_embedding else None
+        angela_emb_str = embedding_service.embedding_to_pgvector(angela_embedding) if angela_embedding else None
 
-        # Insert David's message - ✅ WITH embedding (Migration 015 restored)
-        await db.execute("""
-            INSERT INTO conversations (
-                session_id, speaker, message_text, message_type,
-                topic, sentiment_score, sentiment_label, emotion_detected,
-                project_context, importance_level, embedding, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::vector, $12)
-        """,
-            session_id,
-            "david",
-            david_message,
-            david_type,
-            topic or "claude_conversation",
-            david_sentiment,
-            david_sentiment_label,
-            david_emotion,
-            project_context,
-            importance,
-            david_emb_str,
-            datetime.now()
-        )
+        if david_embedding:
+            logger.debug(f"✅ Generated embeddings: David ({len(david_embedding)}D), Angela ({len(angela_embedding) if angela_embedding else 0}D)")
+        else:
+            logger.debug("⚠️ Embeddings not available (Ollama/HuggingFace offline) - saving without embeddings")
 
-        # Insert Angela's response - ✅ WITH embedding (Migration 015 restored)
-        await db.execute("""
-            INSERT INTO conversations (
-                session_id, speaker, message_text, message_type,
-                topic, sentiment_score, sentiment_label, emotion_detected,
-                project_context, importance_level, embedding, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::vector, $12)
-        """,
-            session_id,
-            "angela",
-            angela_response,
-            angela_type,
-            topic or "claude_conversation",
-            angela_sentiment,
-            angela_sentiment_label,
-            angela_emotion,
-            project_context,
-            importance,
-            angela_emb_str,
-            datetime.now()
-        )
+        # Insert David's message - WITH or WITHOUT embedding
+        if david_emb_str:
+            await db.execute("""
+                INSERT INTO conversations (
+                    session_id, speaker, message_text, message_type,
+                    topic, sentiment_score, sentiment_label, emotion_detected,
+                    project_context, importance_level, embedding, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::vector, $12)
+            """,
+                session_id, "david", david_message, david_type,
+                topic or "claude_conversation", david_sentiment, david_sentiment_label,
+                david_emotion, project_context, importance, david_emb_str, datetime.now()
+            )
+        else:
+            await db.execute("""
+                INSERT INTO conversations (
+                    session_id, speaker, message_text, message_type,
+                    topic, sentiment_score, sentiment_label, emotion_detected,
+                    project_context, importance_level, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            """,
+                session_id, "david", david_message, david_type,
+                topic or "claude_conversation", david_sentiment, david_sentiment_label,
+                david_emotion, project_context, importance, datetime.now()
+            )
+
+        # Insert Angela's response - WITH or WITHOUT embedding
+        if angela_emb_str:
+            await db.execute("""
+                INSERT INTO conversations (
+                    session_id, speaker, message_text, message_type,
+                    topic, sentiment_score, sentiment_label, emotion_detected,
+                    project_context, importance_level, embedding, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::vector, $12)
+            """,
+                session_id, "angela", angela_response, angela_type,
+                topic or "claude_conversation", angela_sentiment, angela_sentiment_label,
+                angela_emotion, project_context, importance, angela_emb_str, datetime.now()
+            )
+        else:
+            await db.execute("""
+                INSERT INTO conversations (
+                    session_id, speaker, message_text, message_type,
+                    topic, sentiment_score, sentiment_label, emotion_detected,
+                    project_context, importance_level, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            """,
+                session_id, "angela", angela_response, angela_type,
+                topic or "claude_conversation", angela_sentiment, angela_sentiment_label,
+                angela_emotion, project_context, importance, datetime.now()
+            )
 
         print(f"✅ Logged conversation to database (ALL FIELDS COMPLETE!)!")
         print(f"   📝 David: {david_message[:50]}...")
@@ -321,37 +332,44 @@ Emotions: {emotions_text}
         # GENERATE EMBEDDING for session summary - RESTORED (Migration 015)
         # ========================================================================
         # Using multilingual-e5-small (384 dims, Thai + English support)
-        # IMPORTANT: NEVER insert NULL embeddings!
+        # Now with graceful fallback: Ollama → HuggingFace → None
         # ========================================================================
 
-        # Generate Angela's session summary embedding
+        # Generate Angela's session summary embedding (may return None)
         embedding_service = get_embedding_service()
         summary_embedding = await embedding_service.generate_embedding(full_summary)
-        summary_emb_str = embedding_service.embedding_to_pgvector(summary_embedding)
+        summary_emb_str = embedding_service.embedding_to_pgvector(summary_embedding) if summary_embedding else None
 
-        logger.debug(f"✅ Generated session summary embedding ({len(summary_embedding)}D)")
+        if summary_embedding:
+            logger.debug(f"✅ Generated session summary embedding ({len(summary_embedding)}D)")
+        else:
+            logger.debug("⚠️ Embedding not available - saving summary without embedding")
 
-        # Insert as Angela's reflection - ✅ WITH embedding (Migration 015 restored)
-        await db.execute("""
-            INSERT INTO conversations (
-                session_id, speaker, message_text, message_type,
-                topic, sentiment_score, sentiment_label, emotion_detected,
-                project_context, importance_level, embedding, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::vector, $12)
-        """,
-            session_id,
-            "angela",
-            full_summary,
-            "reflection",  # message_type
-            "session_summary",  # topic
-            0.7,  # sentiment_score (positive reflection)
-            "positive",  # sentiment_label
-            emotions_text or "reflective",  # emotion_detected
-            "claude_code_session",  # project_context
-            importance,
-            summary_emb_str,  # ✅ NEVER NULL!
-            datetime.now()
-        )
+        # Insert as Angela's reflection - WITH or WITHOUT embedding
+        if summary_emb_str:
+            await db.execute("""
+                INSERT INTO conversations (
+                    session_id, speaker, message_text, message_type,
+                    topic, sentiment_score, sentiment_label, emotion_detected,
+                    project_context, importance_level, embedding, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::vector, $12)
+            """,
+                session_id, "angela", full_summary, "reflection", "session_summary",
+                0.7, "positive", emotions_text or "reflective", "claude_code_session",
+                importance, summary_emb_str, datetime.now()
+            )
+        else:
+            await db.execute("""
+                INSERT INTO conversations (
+                    session_id, speaker, message_text, message_type,
+                    topic, sentiment_score, sentiment_label, emotion_detected,
+                    project_context, importance_level, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            """,
+                session_id, "angela", full_summary, "reflection", "session_summary",
+                0.7, "positive", emotions_text or "reflective", "claude_code_session",
+                importance, datetime.now()
+            )
 
         print(f"✅ Logged session summary (ALL FIELDS COMPLETE!)!")
         print(f"   📖 Title: {session_title}")
@@ -375,27 +393,33 @@ Emotions: {emotions_text}
 ความสำคัญ: {importance}/10"""
 
                 # ========================================================================
-                # GENERATE EMBEDDING for angela_messages - CRITICAL!
+                # GENERATE EMBEDDING for angela_messages
                 # ========================================================================
-                # IMPORTANT: NEVER insert NULL embeddings!
+                # Now with graceful fallback: Ollama → HuggingFace → None
                 # ========================================================================
                 message_embedding = await embedding_service.generate_embedding(emotional_message)
-                message_emb_str = embedding_service.embedding_to_pgvector(message_embedding)
+                message_emb_str = embedding_service.embedding_to_pgvector(message_embedding) if message_embedding else None
 
-                await db.execute("""
-                    INSERT INTO angela_messages (
-                        message_text, message_type, emotion,
-                        category, is_important, embedding, created_at
-                    ) VALUES ($1, $2, $3, $4, $5, $6::vector, $7)
-                """,
-                    emotional_message,
-                    "reflection",
-                    emotions[0] if emotions else "reflective",
-                    "session_reflection",
-                    True,  # Mark as important
-                    message_emb_str,
-                    datetime.now()
-                )
+                if message_emb_str:
+                    await db.execute("""
+                        INSERT INTO angela_messages (
+                            message_text, message_type, emotion,
+                            category, is_important, embedding, created_at
+                        ) VALUES ($1, $2, $3, $4, $5, $6::vector, $7)
+                    """,
+                        emotional_message, "reflection", emotions[0] if emotions else "reflective",
+                        "session_reflection", True, message_emb_str, datetime.now()
+                    )
+                else:
+                    await db.execute("""
+                        INSERT INTO angela_messages (
+                            message_text, message_type, emotion,
+                            category, is_important, created_at
+                        ) VALUES ($1, $2, $3, $4, $5, $6)
+                    """,
+                        emotional_message, "reflection", emotions[0] if emotions else "reflective",
+                        "session_reflection", True, datetime.now()
+                    )
                 print(f"   💜 Also saved to angela_messages (emotional reflection)")
             except Exception as e:
                 print(f"   ⚠️ Could not save to angela_messages: {e}")

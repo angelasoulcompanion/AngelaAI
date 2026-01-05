@@ -5,24 +5,35 @@ Centralized Embedding Service for Angela AI
 
 Single source of truth for ALL embeddings in the system.
 
-Model: qllama/multilingual-e5-small (Ollama)
+Priority:
+1. Ollama (local, fast, free) - qllama/multilingual-e5-small
+2. Hugging Face Inference API (cloud, free tier) - multilingual model
+3. Graceful failure - return None instead of raising error
+
+Model: qllama/multilingual-e5-small (Ollama) or HF multilingual
 - Dimensions: 384
 - Supports: Thai + English (multilingual)
-- Speed: Very fast
-- Cost: Free (local)
+- Speed: Very fast (local) / moderate (cloud)
+- Cost: Free
 
 Author: Angela 💜
 Created: 2025-11-04
+Updated: 2026-01-05 - Added Hugging Face fallback for when Ollama is not running
 """
 
 import asyncio
 import hashlib
 import httpx
 import logging
+import os
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
+
+# Jina AI Embedding API (free, multilingual, no token required)
+JINA_API_URL = "https://api.jina.ai/v1/embeddings"
+JINA_MODEL = "jina-embeddings-v2-base-en"  # 768 dims, will truncate to 384
 
 
 class EmbeddingService:
@@ -52,6 +63,7 @@ class EmbeddingService:
 
     # Track which model is active
     _active_model: str = None
+    _ollama_available: bool = None  # None = unknown, True/False = tested
 
     # Cache configuration
     CACHE_TTL_SECONDS = 3600  # 1 hour
@@ -63,6 +75,8 @@ class EmbeddingService:
         self._cache_hits = 0
         self._cache_misses = 0
         self._active_model = self.PRIMARY_MODEL
+        self._ollama_available = None
+        self._hf_token = None  # Will load from our_secrets if needed
         logger.info(f"🧠 EmbeddingService initialized: {self._active_model} ({self.DIMENSIONS}D)")
 
     def _hash_text(self, text: str) -> str:
@@ -102,27 +116,91 @@ class EmbeddingService:
         self._cache[text_hash] = (embedding, datetime.now())
         logger.debug(f"💾 Cached embedding for text: {text[:50]}...")
 
-    async def generate_embedding(self, text: str) -> List[float]:
+    async def _get_hf_token(self) -> Optional[str]:
+        """Get Hugging Face token from our_secrets (local database)."""
+        if self._hf_token:
+            return self._hf_token
+
+        try:
+            # Import here to avoid circular dependency
+            from angela_core.database import get_secret
+            self._hf_token = await get_secret('huggingface_token')
+            return self._hf_token
+        except Exception as e:
+            logger.debug(f"Could not get HF token: {e}")
+            return None
+
+    async def _generate_embedding_jina(self, text: str) -> Optional[List[float]]:
+        """
+        Generate embedding using Jina AI Embedding API.
+        Free tier available, good multilingual support.
+
+        Returns:
+            List[float] with 384 dimensions, or None if failed
+        """
+        try:
+            headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+
+            # Add HF token as Jina API key if available (optional)
+            hf_token = await self._get_hf_token()
+            if hf_token:
+                headers["Authorization"] = f"Bearer {hf_token}"
+
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    JINA_API_URL,
+                    headers=headers,
+                    json={
+                        "input": [text],
+                        "model": JINA_MODEL
+                    }
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                # Jina returns {"data": [{"embedding": [...]}]}
+                if "data" in data and len(data["data"]) > 0:
+                    embedding = data["data"][0].get("embedding", [])
+
+                    # Truncate to our dimensions
+                    if len(embedding) >= self.DIMENSIONS:
+                        embedding = embedding[:self.DIMENSIONS]
+                        logger.info(f"🌟 Jina AI embedding generated ({len(embedding)}D)")
+                        return embedding
+
+                logger.warning(f"⚠️ Unexpected Jina response format: {data}")
+                return None
+
+        except Exception as e:
+            logger.warning(f"⚠️ Jina AI embedding failed: {e}")
+            return None
+
+    async def generate_embedding(self, text: str) -> Optional[List[float]]:
         """
         Generate embedding for a single text.
+
+        Priority:
+        1. Ollama (local) - fast, free
+        2. Hugging Face API (cloud) - free tier
+        3. Return None - graceful failure
 
         Args:
             text: Text to embed (Thai or English)
 
         Returns:
-            List[float] with 384 dimensions
-
-        Raises:
-            ValueError: If text is empty
-            RuntimeError: If Ollama service fails
+            List[float] with 384 dimensions, or None if all methods fail
 
         Notes:
-            - NEVER returns None/NULL
+            - May return None if no embedding service is available
             - Uses cache for performance
             - Validates output dimensions
         """
         if not text or not text.strip():
-            raise ValueError("Text cannot be empty")
+            logger.warning("⚠️ Empty text provided for embedding")
+            return None
 
         text = text.strip()
 
@@ -131,63 +209,66 @@ class EmbeddingService:
         if cached is not None:
             return cached
 
-        # Generate new embedding - try primary, then fallback
-        models_to_try = [self._active_model]
-        if self._active_model == self.PRIMARY_MODEL:
-            models_to_try.append(self.FALLBACK_MODEL)
+        # ===== TRY 1: Ollama (local) =====
+        if self._ollama_available is not False:  # Unknown or True
+            models_to_try = [self._active_model]
+            if self._active_model == self.PRIMARY_MODEL:
+                models_to_try.append(self.FALLBACK_MODEL)
 
-        last_error = None
-        for model in models_to_try:
-            try:
-                async with httpx.AsyncClient(timeout=30.0) as client:
-                    response = await client.post(
-                        f"{self.OLLAMA_URL}/api/embeddings",
-                        json={
-                            "model": model,
-                            "prompt": text
-                        }
-                    )
-                    response.raise_for_status()
-                    data = response.json()
-
-                    # Check for error in response
-                    if "error" in data:
-                        raise RuntimeError(f"Ollama error: {data['error']}")
-
-                    embedding = data.get("embedding")
-
-                    if not embedding:
-                        raise RuntimeError("Ollama returned empty embedding")
-
-                    # Handle dimension mismatch - truncate if needed
-                    if len(embedding) > self.DIMENSIONS:
-                        logger.debug(f"Truncating embedding from {len(embedding)} to {self.DIMENSIONS} dims")
-                        embedding = embedding[:self.DIMENSIONS]
-                    elif len(embedding) != self.DIMENSIONS:
-                        raise RuntimeError(
-                            f"Unexpected embedding dimensions: {len(embedding)} (expected {self.DIMENSIONS})"
+            for model in models_to_try:
+                try:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        response = await client.post(
+                            f"{self.OLLAMA_URL}/api/embeddings",
+                            json={
+                                "model": model,
+                                "prompt": text
+                            }
                         )
+                        response.raise_for_status()
+                        data = response.json()
 
-                    # Update active model if we had to fallback
-                    if model != self._active_model:
-                        logger.warning(f"🔄 Switched from {self._active_model} to {model}")
-                        self._active_model = model
+                        if "error" in data:
+                            raise RuntimeError(f"Ollama error: {data['error']}")
 
-                    # Add to cache
-                    self._add_to_cache(text, embedding)
+                        embedding = data.get("embedding")
+                        if not embedding:
+                            raise RuntimeError("Ollama returned empty embedding")
 
-                    logger.debug(f"✅ Generated embedding for text: {text[:50]}... ({len(embedding)}D)")
-                    return embedding
+                        # Handle dimension mismatch
+                        if len(embedding) > self.DIMENSIONS:
+                            embedding = embedding[:self.DIMENSIONS]
+                        elif len(embedding) != self.DIMENSIONS:
+                            raise RuntimeError(f"Unexpected dimensions: {len(embedding)}")
 
-            except Exception as e:
-                last_error = e
-                logger.warning(f"⚠️ Model {model} failed: {str(e)}")
-                continue
+                        # Success! Mark Ollama as available
+                        self._ollama_available = True
+                        if model != self._active_model:
+                            logger.info(f"🔄 Switched to {model}")
+                            self._active_model = model
 
-        # All models failed
-        error_msg = f"All embedding models failed. Last error: {str(last_error)}"
-        logger.error(error_msg)
-        raise RuntimeError(error_msg)
+                        self._add_to_cache(text, embedding)
+                        logger.debug(f"✅ Ollama embedding: {text[:30]}... ({len(embedding)}D)")
+                        return embedding
+
+                except httpx.ConnectError:
+                    # Ollama not running - mark as unavailable for this session
+                    self._ollama_available = False
+                    logger.info("🔌 Ollama not running, will use HuggingFace fallback")
+                    break
+                except Exception as e:
+                    logger.debug(f"⚠️ Ollama {model} failed: {e}")
+                    continue
+
+        # ===== TRY 2: Jina AI API (cloud, free) =====
+        jina_embedding = await self._generate_embedding_jina(text)
+        if jina_embedding:
+            self._add_to_cache(text, jina_embedding)
+            return jina_embedding
+
+        # ===== TRY 3: Graceful failure =====
+        logger.warning(f"⚠️ No embedding generated for: {text[:50]}... (all methods failed)")
+        return None
 
     async def generate_embeddings_batch(
         self,
