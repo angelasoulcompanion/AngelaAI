@@ -1642,6 +1642,38 @@ class DatabaseService: ObservableObject {
         }
     }
 
+    /// Fetch news searches for a specific date
+    func fetchNewsSearches(forDate date: Date) async throws -> [NewsSearch] {
+        // Use Gregorian calendar components to build the date string
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Bangkok")!
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        let dateString = String(format: "%04d-%02d-%02d", components.year!, components.month!, components.day!)
+
+        print("📰 fetchNewsSearches: date=\(date), dateString=\(dateString)")
+
+        let sql = """
+        SELECT search_id::text, search_query, search_type, language,
+               category, country, articles_count, searched_at
+        FROM news_searches
+        WHERE searched_at::date = $1::date
+        ORDER BY searched_at DESC
+        """
+
+        return try await query(sql, parameters: [dateString]) { cols in
+            NewsSearch(
+                id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
+                searchQuery: self.getString(cols[1]),
+                searchType: self.getString(cols[2]),
+                language: self.getString(cols[3]),
+                category: self.getString(cols[4]).isEmpty ? nil : self.getString(cols[4]),
+                country: self.getString(cols[5]),
+                articlesCount: self.getInt(cols[6]) ?? 0,
+                searchedAt: self.getDate(cols[7]) ?? Date()
+            )
+        }
+    }
+
     /// Fetch articles for a specific search
     func fetchNewsArticles(searchId: UUID) async throws -> [NewsArticle] {
         let sql = """
@@ -1708,6 +1740,31 @@ class DatabaseService: ObservableObject {
         let articles = try await querySingleInt("SELECT COUNT(*) FROM news_articles")
         let read = try await querySingleInt("SELECT COUNT(*) FROM news_articles WHERE is_read = TRUE")
         return (searches, articles, read)
+    }
+
+    /// Fetch today's news searches only (for News Today view)
+    func fetchTodayNewsSearches() async throws -> [NewsSearch] {
+        // Use Bangkok timezone for date comparison to match data storage
+        let sql = """
+        SELECT search_id::text, search_query, search_type, language,
+               category, country, articles_count, searched_at
+        FROM news_searches
+        WHERE (searched_at AT TIME ZONE 'Asia/Bangkok')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date
+        ORDER BY searched_at DESC
+        """
+
+        return try await query(sql, parameters: []) { cols in
+            NewsSearch(
+                id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
+                searchQuery: self.getString(cols[1]),
+                searchType: self.getString(cols[2]),
+                language: self.getString(cols[3]),
+                category: self.getString(cols[4]).isEmpty ? nil : self.getString(cols[4]),
+                country: self.getString(cols[5]),
+                articlesCount: self.getInt(cols[6]) ?? 0,
+                searchedAt: self.getDate(cols[7]) ?? Date()
+            )
+        }
     }
 
     // MARK: - David's Health Tracking (NEW! 2025-12-11 💪)

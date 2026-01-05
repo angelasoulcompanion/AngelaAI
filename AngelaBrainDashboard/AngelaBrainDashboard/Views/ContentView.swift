@@ -47,6 +47,8 @@ struct ContentView: View {
                             ConsciousnessView()
                         case .humanLikeMind:
                             HumanLikeMindView()
+                        case .newsToday:
+                            NewsTodayView()
                         case .newsHistory:
                             NewsHistoryView()
                         case .goals:
@@ -125,6 +127,7 @@ enum NavigationItem: String, CaseIterable {
     case experiences = "Shared Experiences"
     case consciousness = "Consciousness"
     case humanLikeMind = "Human-Like Mind"
+    case newsToday = "News Today"
     case newsHistory = "News History"
     case goals = "Goals"
     case learningSystems = "Learning Systems"
@@ -151,6 +154,7 @@ enum NavigationItem: String, CaseIterable {
         case .experiences: return "sparkles.rectangle.stack.fill"
         case .consciousness: return "sparkles"
         case .humanLikeMind: return "person.and.background.dotted"
+        case .newsToday: return "sun.max.fill"
         case .newsHistory: return "newspaper.fill"
         case .goals: return "target"
         case .learningSystems: return "gearshape.2.fill"
@@ -176,7 +180,7 @@ enum NavigationItem: String, CaseIterable {
             return .growth
         case .preferences, .davidMatrix, .trainingStudio:
             return .settings
-        case .codingGuidelines, .markdownViewer, .newsHistory, .knowledgeRAG:
+        case .codingGuidelines, .markdownViewer, .newsToday, .newsHistory, .knowledgeRAG:
             return .documents
         }
     }
