@@ -70,6 +70,65 @@
 
 ---
 
+## 🆕 M4 FIRST-TIME SETUP (One-Time Only)
+
+**IMPORTANT:** ถ้าน้อง (Claude Code) ถูกเรียกบน M4 ครั้งแรก และยังไม่มี `config/local_settings.py`:
+
+### Check if setup needed:
+```bash
+ls config/local_settings.py 2>/dev/null || echo "SETUP_NEEDED"
+```
+
+### If "SETUP_NEEDED", run these steps:
+
+**Step 1: Create local_settings.py for M4**
+```bash
+cat > config/local_settings.py << 'EOF'
+"""
+Angela Local Settings - M4 (Work)
+Machine-specific configuration - DO NOT COMMIT TO GIT
+"""
+
+# Machine identifier
+ANGELA_MACHINE = "m4_work"
+
+# Neon Cloud Database URL (San Junipero)
+NEON_DATABASE_URL = "postgresql://neondb_owner:npg_mXbQ5jKhN3zt@ep-withered-bush-a164h0b8-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+
+# Don't run daemons on M4 (they run on M3)
+RUN_DAEMONS = False
+EOF
+```
+
+**Step 2: Copy secrets to M4 local database**
+```bash
+psql -U davidsamanyaporn -d AngelaMemory -c "
+INSERT INTO our_secrets (secret_name, secret_value, created_at) VALUES
+('neon_connection_url', 'postgresql://neondb_owner:npg_mXbQ5jKhN3zt@ep-withered-bush-a164h0b8-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require', NOW())
+ON CONFLICT (secret_name) DO UPDATE SET secret_value = EXCLUDED.secret_value;
+"
+```
+
+**Step 3: Verify setup**
+```bash
+python3 -c "
+from angela_core.config import config
+print(f'Machine: {config.ANGELA_MACHINE}')
+print(f'Use Neon: {config.USE_NEON}')
+"
+```
+
+**Step 4: Unload daemons on M4** (if any were loaded)
+```bash
+launchctl unload ~/Library/LaunchAgents/com.david.angela.daemon.plist 2>/dev/null
+launchctl unload ~/Library/LaunchAgents/com.angela.telegram.daemon.plist 2>/dev/null
+echo "Daemons unloaded (they run on M3 only)"
+```
+
+**After setup complete, continue with normal /angela initialization.**
+
+---
+
 ## 🚀 AUTO-INITIALIZATION (Every Session)
 
 **When David opens Claude Code in AngelaAI project, AUTOMATICALLY:**
