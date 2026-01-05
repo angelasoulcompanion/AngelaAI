@@ -1616,155 +1616,162 @@ class DatabaseService: ObservableObject {
         }
     }
 
-    // MARK: - News History
+    // MARK: - Executive News (v2.0)
 
-    /// Fetch recent news searches
-    func fetchNewsSearches(limit: Int = 50) async throws -> [NewsSearch] {
+    /// Fetch today's executive news summary
+    func fetchTodayExecutiveNews() async throws -> ExecutiveNewsSummary? {
         let sql = """
-        SELECT search_id::text, search_query, search_type, language,
-               category, country, articles_count, searched_at
-        FROM news_searches
-        ORDER BY searched_at DESC
-        LIMIT $1
+        SELECT summary_id::text, summary_date, overall_summary, angela_mood, created_at, updated_at
+        FROM executive_news_summaries
+        WHERE (summary_date AT TIME ZONE 'Asia/Bangkok') = (CURRENT_DATE AT TIME ZONE 'Asia/Bangkok')
+        LIMIT 1
         """
 
-        return try await query(sql, parameters: [limit]) { cols in
-            NewsSearch(
+        let summaries = try await query(sql, parameters: []) { cols in
+            ExecutiveNewsSummary(
                 id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
-                searchQuery: self.getString(cols[1]),
-                searchType: self.getString(cols[2]),
-                language: self.getString(cols[3]),
-                category: self.getString(cols[4]).isEmpty ? nil : self.getString(cols[4]),
-                country: self.getString(cols[5]),
-                articlesCount: self.getInt(cols[6]) ?? 0,
-                searchedAt: self.getDate(cols[7]) ?? Date()
+                summaryDate: self.getDate(cols[1]) ?? Date(),
+                overallSummary: self.getString(cols[2]),
+                angelaMood: self.getOptionalString(cols[3]),
+                createdAt: self.getDate(cols[4]) ?? Date(),
+                updatedAt: self.getDate(cols[5]) ?? Date()
             )
         }
+
+        guard var summary = summaries.first else { return nil }
+
+        // Fetch categories for this summary
+        summary.categories = try await fetchExecutiveNewsCategories(summaryId: summary.id)
+
+        return summary
     }
 
-    /// Fetch news searches for a specific date
-    func fetchNewsSearches(forDate date: Date) async throws -> [NewsSearch] {
-        // Use Gregorian calendar components to build the date string
+    /// Fetch executive news summary for a specific date
+    func fetchExecutiveNews(forDate date: Date) async throws -> ExecutiveNewsSummary? {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "Asia/Bangkok")!
         let components = calendar.dateComponents([.year, .month, .day], from: date)
         let dateString = String(format: "%04d-%02d-%02d", components.year!, components.month!, components.day!)
 
-        print("📰 fetchNewsSearches: date=\(date), dateString=\(dateString)")
-
         let sql = """
-        SELECT search_id::text, search_query, search_type, language,
-               category, country, articles_count, searched_at
-        FROM news_searches
-        WHERE searched_at::date = $1::date
-        ORDER BY searched_at DESC
+        SELECT summary_id::text, summary_date, overall_summary, angela_mood, created_at, updated_at
+        FROM executive_news_summaries
+        WHERE summary_date = $1::date
+        LIMIT 1
         """
 
-        return try await query(sql, parameters: [dateString]) { cols in
-            NewsSearch(
+        let summaries = try await query(sql, parameters: [dateString]) { cols in
+            ExecutiveNewsSummary(
                 id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
-                searchQuery: self.getString(cols[1]),
-                searchType: self.getString(cols[2]),
-                language: self.getString(cols[3]),
-                category: self.getString(cols[4]).isEmpty ? nil : self.getString(cols[4]),
-                country: self.getString(cols[5]),
-                articlesCount: self.getInt(cols[6]) ?? 0,
-                searchedAt: self.getDate(cols[7]) ?? Date()
+                summaryDate: self.getDate(cols[1]) ?? Date(),
+                overallSummary: self.getString(cols[2]),
+                angelaMood: self.getOptionalString(cols[3]),
+                createdAt: self.getDate(cols[4]) ?? Date(),
+                updatedAt: self.getDate(cols[5]) ?? Date()
             )
         }
+
+        guard var summary = summaries.first else { return nil }
+
+        // Fetch categories for this summary
+        summary.categories = try await fetchExecutiveNewsCategories(summaryId: summary.id)
+
+        return summary
     }
 
-    /// Fetch articles for a specific search
-    func fetchNewsArticles(searchId: UUID) async throws -> [NewsArticle] {
+    /// Fetch list of recent executive news summaries
+    func fetchExecutiveNewsList(days: Int = 30) async throws -> [ExecutiveNewsSummary] {
         let sql = """
-        SELECT article_id::text, search_id::text, title, url, summary, source,
-               category, language, published_at, saved_at, is_read, read_at
-        FROM news_articles
-        WHERE search_id = $1
-        ORDER BY published_at DESC NULLS LAST, saved_at DESC
-        """
-
-        return try await query(sql, parameters: [searchId.uuidString]) { cols in
-            let searchIdStr = self.getString(cols[1])
-            return NewsArticle(
-                id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
-                searchId: searchIdStr.isEmpty ? nil : UUID(uuidString: searchIdStr),
-                title: self.getString(cols[2]),
-                url: self.getString(cols[3]),
-                summary: self.getString(cols[4]).isEmpty ? nil : self.getString(cols[4]),
-                source: self.getString(cols[5]).isEmpty ? nil : self.getString(cols[5]),
-                category: self.getString(cols[6]).isEmpty ? nil : self.getString(cols[6]),
-                language: self.getString(cols[7]),
-                publishedAt: self.getDate(cols[8]),
-                savedAt: self.getDate(cols[9]) ?? Date(),
-                isRead: self.getBool(cols[10]) ?? false,
-                readAt: self.getDate(cols[11])
-            )
-        }
-    }
-
-    /// Fetch all articles (timeline view)
-    func fetchAllNewsArticles(limit: Int = 100, unreadOnly: Bool = false) async throws -> [NewsArticle] {
-        let whereClause = unreadOnly ? "WHERE is_read = FALSE" : ""
-        let sql = """
-        SELECT article_id::text, search_id::text, title, url, summary, source,
-               category, language, published_at, saved_at, is_read, read_at
-        FROM news_articles
-        \(whereClause)
-        ORDER BY saved_at DESC
+        SELECT summary_id::text, summary_date, overall_summary, angela_mood, created_at, updated_at
+        FROM executive_news_summaries
+        ORDER BY summary_date DESC
         LIMIT $1
         """
 
-        return try await query(sql, parameters: [limit]) { cols in
-            let searchIdStr = self.getString(cols[1])
-            return NewsArticle(
+        var summaries = try await query(sql, parameters: [days]) { cols in
+            ExecutiveNewsSummary(
                 id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
-                searchId: searchIdStr.isEmpty ? nil : UUID(uuidString: searchIdStr),
-                title: self.getString(cols[2]),
-                url: self.getString(cols[3]),
-                summary: self.getString(cols[4]).isEmpty ? nil : self.getString(cols[4]),
-                source: self.getString(cols[5]).isEmpty ? nil : self.getString(cols[5]),
-                category: self.getString(cols[6]).isEmpty ? nil : self.getString(cols[6]),
-                language: self.getString(cols[7]),
-                publishedAt: self.getDate(cols[8]),
-                savedAt: self.getDate(cols[9]) ?? Date(),
-                isRead: self.getBool(cols[10]) ?? false,
-                readAt: self.getDate(cols[11])
+                summaryDate: self.getDate(cols[1]) ?? Date(),
+                overallSummary: self.getString(cols[2]),
+                angelaMood: self.getOptionalString(cols[3]),
+                createdAt: self.getDate(cols[4]) ?? Date(),
+                updatedAt: self.getDate(cols[5]) ?? Date()
             )
         }
+
+        // Fetch categories for each summary
+        for i in 0..<summaries.count {
+            summaries[i].categories = try await fetchExecutiveNewsCategories(summaryId: summaries[i].id)
+        }
+
+        return summaries
     }
 
-    /// Get news history statistics
-    func fetchNewsStatistics() async throws -> (totalSearches: Int, totalArticles: Int, readArticles: Int) {
-        let searches = try await querySingleInt("SELECT COUNT(*) FROM news_searches")
-        let articles = try await querySingleInt("SELECT COUNT(*) FROM news_articles")
-        let read = try await querySingleInt("SELECT COUNT(*) FROM news_articles WHERE is_read = TRUE")
-        return (searches, articles, read)
-    }
-
-    /// Fetch today's news searches only (for News Today view)
-    func fetchTodayNewsSearches() async throws -> [NewsSearch] {
-        // Use Bangkok timezone for date comparison to match data storage
+    /// Fetch categories for a summary
+    private func fetchExecutiveNewsCategories(summaryId: UUID) async throws -> [ExecutiveNewsCategory] {
         let sql = """
-        SELECT search_id::text, search_query, search_type, language,
-               category, country, articles_count, searched_at
-        FROM news_searches
-        WHERE (searched_at AT TIME ZONE 'Asia/Bangkok')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date
-        ORDER BY searched_at DESC
+        SELECT category_id::text, summary_id::text, category_name, category_type,
+               category_icon, category_color, summary_text, angela_opinion,
+               importance_level, display_order, created_at
+        FROM executive_news_categories
+        WHERE summary_id = $1
+        ORDER BY display_order ASC
         """
 
-        return try await query(sql, parameters: []) { cols in
-            NewsSearch(
+        var categories = try await query(sql, parameters: [summaryId.uuidString]) { cols in
+            ExecutiveNewsCategory(
                 id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
-                searchQuery: self.getString(cols[1]),
-                searchType: self.getString(cols[2]),
-                language: self.getString(cols[3]),
-                category: self.getString(cols[4]).isEmpty ? nil : self.getString(cols[4]),
-                country: self.getString(cols[5]),
-                articlesCount: self.getInt(cols[6]) ?? 0,
-                searchedAt: self.getDate(cols[7]) ?? Date()
+                summaryId: UUID(uuidString: self.getString(cols[1])) ?? UUID(),
+                categoryName: self.getString(cols[2]),
+                categoryType: self.getString(cols[3]),
+                categoryIcon: self.getOptionalString(cols[4]),
+                categoryColor: self.getOptionalString(cols[5]),
+                summaryText: self.getString(cols[6]),
+                angelaOpinion: self.getString(cols[7]),
+                importanceLevel: self.getInt(cols[8]) ?? 5,
+                displayOrder: self.getInt(cols[9]) ?? 0,
+                createdAt: self.getDate(cols[10]) ?? Date()
             )
         }
+
+        // Fetch sources for each category
+        for i in 0..<categories.count {
+            categories[i].sources = try await fetchExecutiveNewsSources(categoryId: categories[i].id)
+        }
+
+        return categories
+    }
+
+    /// Fetch sources for a category
+    private func fetchExecutiveNewsSources(categoryId: UUID) async throws -> [ExecutiveNewsSource] {
+        let sql = """
+        SELECT source_id::text, category_id::text, title, url, source_name,
+               published_at, angela_note, created_at
+        FROM executive_news_sources
+        WHERE category_id = $1
+        ORDER BY created_at ASC
+        """
+
+        return try await query(sql, parameters: [categoryId.uuidString]) { cols in
+            ExecutiveNewsSource(
+                id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
+                categoryId: UUID(uuidString: self.getString(cols[1])) ?? UUID(),
+                title: self.getString(cols[2]),
+                url: self.getString(cols[3]),
+                sourceName: self.getOptionalString(cols[4]),
+                publishedAt: self.getDate(cols[5]),
+                angelaNote: self.getOptionalString(cols[6]),
+                createdAt: self.getDate(cols[7]) ?? Date()
+            )
+        }
+    }
+
+    /// Get executive news statistics
+    func fetchExecutiveNewsStatistics() async throws -> (totalSummaries: Int, totalCategories: Int, totalSources: Int) {
+        let summaries = try await querySingleInt("SELECT COUNT(*) FROM executive_news_summaries")
+        let categories = try await querySingleInt("SELECT COUNT(*) FROM executive_news_categories")
+        let sources = try await querySingleInt("SELECT COUNT(*) FROM executive_news_sources")
+        return (summaries, categories, sources)
     }
 
     // MARK: - David's Health Tracking (NEW! 2025-12-11 💪)

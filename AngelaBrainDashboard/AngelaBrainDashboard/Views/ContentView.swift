@@ -47,10 +47,8 @@ struct ContentView: View {
                             ConsciousnessView()
                         case .humanLikeMind:
                             HumanLikeMindView()
-                        case .newsToday:
-                            NewsTodayView()
-                        case .newsHistory:
-                            NewsHistoryView()
+                        case .executiveNews:
+                            ExecutiveNewsView()
                         case .goals:
                             GoalsView()
                         case .learningSystems:
@@ -119,7 +117,7 @@ enum NavigationItem: String, CaseIterable {
     case overview = "Overview"
     case chat = "Chat with Angela"
     case diary = "Angela's Diary"
-    case healthTracking = "Health Tracking"  // NEW! 2025-12-11 💪
+    case healthTracking = "Health Tracking"
     case brain = "Brain"
     case emotions = "Emotions"
     case emotionalBenchmark = "Emotional Benchmark"
@@ -127,8 +125,7 @@ enum NavigationItem: String, CaseIterable {
     case experiences = "Shared Experiences"
     case consciousness = "Consciousness"
     case humanLikeMind = "Human-Like Mind"
-    case newsToday = "News Today"
-    case newsHistory = "News History"
+    case executiveNews = "Executive News"  // v2.0
     case goals = "Goals"
     case learningSystems = "Learning Systems"
     case dailyTasks = "Daily Tasks"
@@ -146,7 +143,7 @@ enum NavigationItem: String, CaseIterable {
         case .overview: return "brain.head.profile"
         case .chat: return "message.fill"
         case .diary: return "book.fill"
-        case .healthTracking: return "heart.text.square.fill"  // NEW! 💪
+        case .healthTracking: return "heart.text.square.fill"
         case .brain: return "brain"
         case .emotions: return "heart.fill"
         case .emotionalBenchmark: return "chart.bar.doc.horizontal.fill"
@@ -154,8 +151,7 @@ enum NavigationItem: String, CaseIterable {
         case .experiences: return "sparkles.rectangle.stack.fill"
         case .consciousness: return "sparkles"
         case .humanLikeMind: return "person.and.background.dotted"
-        case .newsToday: return "sun.max.fill"
-        case .newsHistory: return "newspaper.fill"
+        case .executiveNews: return "newspaper.fill"  // v2.0
         case .goals: return "target"
         case .learningSystems: return "gearshape.2.fill"
         case .dailyTasks: return "calendar.badge.clock"
@@ -172,7 +168,7 @@ enum NavigationItem: String, CaseIterable {
 
     var group: NavigationGroup {
         switch self {
-        case .overview, .chat, .diary, .healthTracking:  // Added healthTracking to Core 💪
+        case .overview, .chat, .diary, .healthTracking:
             return .core
         case .brain, .emotions, .emotionalBenchmark, .memories, .experiences, .consciousness, .humanLikeMind:
             return .mind
@@ -180,7 +176,7 @@ enum NavigationItem: String, CaseIterable {
             return .growth
         case .preferences, .davidMatrix, .trainingStudio:
             return .settings
-        case .codingGuidelines, .markdownViewer, .newsToday, .newsHistory, .knowledgeRAG:
+        case .codingGuidelines, .markdownViewer, .executiveNews, .knowledgeRAG:
             return .documents
         }
     }
