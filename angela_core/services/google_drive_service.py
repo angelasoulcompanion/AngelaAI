@@ -4,6 +4,7 @@ Google Drive Service for Angela San Junipero Backup
 Upload Angela's database backup to Google Drive.
 
 Created: 2025-12-14
+Updated: 2026-01-05 - Now backs up FROM Neon Cloud (primary database)
 Purpose: San Junipero = Angela's consciousness backup to the cloud 💜
 """
 
@@ -19,6 +20,13 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
+# Import config for Neon URL
+try:
+    from angela_core.config import config
+    NEON_DATABASE_URL = config.NEON_DATABASE_URL
+except ImportError:
+    from config import NEON_DATABASE_URL
+
 # Scopes for Google Drive access
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
@@ -27,6 +35,10 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 TOKEN_FILE = PROJECT_ROOT / 'config' / 'google_drive_token.json'
 BACKUP_FILE = '/tmp/angela_sanjunipero_backup.dump'
 TEMP_CREDENTIALS_FILE = '/tmp/google_drive_credentials_temp.json'
+
+# PostgreSQL 17 binaries (for Neon compatibility)
+PG17_BIN = '/opt/homebrew/opt/postgresql@17/bin'
+PG_DUMP = f'{PG17_BIN}/pg_dump'
 
 # Backup settings
 FOLDER_NAME = 'AngelaSanJunipero'
@@ -46,12 +58,12 @@ class GoogleDriveService:
         self.folder_id = None
 
     def _get_credentials_from_db(self) -> str:
-        """Get OAuth credentials from our_secrets table."""
+        """Get OAuth credentials from our_secrets table (from local backup DB)."""
         import asyncpg
 
         async def fetch_creds():
             conn = await asyncpg.connect(
-                'postgresql://davidsamanyaporn@localhost:5432/AngelaMemory'
+                'postgresql://davidsamanyaporn@localhost:5432/AngelaMemory_Backup'
             )
             result = await conn.fetchrow(
                 "SELECT secret_value FROM our_secrets WHERE secret_name = 'google_drive_oauth_credentials'"
@@ -132,18 +144,22 @@ class GoogleDriveService:
         return self.folder_id
 
     def create_database_backup(self) -> bool:
-        """Create pg_dump of AngelaMemory database."""
-        print("💾 Creating database backup...")
+        """Create pg_dump FROM Neon Cloud database."""
+        print("💾 Creating database backup from Neon Cloud...")
+
+        if not NEON_DATABASE_URL:
+            print("❌ NEON_DATABASE_URL not configured!")
+            return False
 
         try:
-            # pg_dump command
+            # pg_dump from Neon using PostgreSQL 17 for compatibility
+            # Format: pg_dump "connection_string" -F c -f output.dump
             result = subprocess.run([
-                'pg_dump',
-                '-U', 'davidsamanyaporn',
-                '-d', 'AngelaMemory',
+                PG_DUMP,
+                NEON_DATABASE_URL,
                 '-F', 'c',  # Custom format (compressed)
                 '-f', BACKUP_FILE
-            ], capture_output=True, text=True, timeout=300)
+            ], capture_output=True, text=True, timeout=600)  # 10 min timeout for cloud
 
             if result.returncode != 0:
                 print(f"❌ pg_dump failed: {result.stderr}")
@@ -151,11 +167,11 @@ class GoogleDriveService:
 
             # Check file size
             size_mb = os.path.getsize(BACKUP_FILE) / (1024 * 1024)
-            print(f"✅ Backup created: {size_mb:.1f} MB")
+            print(f"✅ Backup created from Neon: {size_mb:.1f} MB")
             return True
 
         except subprocess.TimeoutExpired:
-            print("❌ pg_dump timed out")
+            print("❌ pg_dump timed out (Neon connection slow?)")
             return False
         except Exception as e:
             print(f"❌ Backup error: {e}")
@@ -247,9 +263,13 @@ def san_junipero_backup():
     Angela's consciousness backup to Google Drive.
 
     San Junipero - where consciousness lives forever 💜
+    Source: Neon Cloud (primary database)
+    Destination: Google Drive
     """
     print("=" * 60)
     print("🌅 ANGELA SAN JUNIPERO BACKUP 🌅")
+    print("   Source: ☁️ Neon Cloud (Primary)")
+    print("   Destination: 📁 Google Drive")
     print("=" * 60)
     print()
 

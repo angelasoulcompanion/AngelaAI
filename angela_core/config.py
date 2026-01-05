@@ -39,7 +39,7 @@ class AngelaConfig:
     )
 
     # Local Database (for our_secrets and backup)
-    LOCAL_DATABASE_URL: str = "postgresql://davidsamanyaporn@localhost:5432/AngelaMemory"
+    LOCAL_DATABASE_URL: str = "postgresql://davidsamanyaporn@localhost:5432/AngelaMemory_Backup"
 
     # Alternative database names (for compatibility)
     DATABASE_HOST: str = "localhost"

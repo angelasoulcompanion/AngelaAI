@@ -38,7 +38,7 @@ DATABASE_URL = (
 )
 
 # Local database URL (for secrets only)
-LOCAL_DATABASE_URL = "postgresql://davidsamanyaporn@localhost:5432/AngelaMemory"
+LOCAL_DATABASE_URL = "postgresql://davidsamanyaporn@localhost:5432/AngelaMemory_Backup"
 
 # Determine if using Neon
 USE_NEON = "neon.tech" in DATABASE_URL
