@@ -33,6 +33,23 @@
       "command": "python3",
       "args": ["/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp_servers/angela-music/server.py"],
       "env": {}
+    },
+    "angela-telegram": {
+      "command": "python3",
+      "args": ["-m", "angela_telegram.server"],
+      "cwd": "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp-servers/angela-telegram/src",
+      "env": {}
+    },
+    "mcp-hfspace": {
+      "command": "npx",
+      "args": [
+        "-y", "@llmindset/mcp-hfspace",
+        "--work-dir=/Users/davidsamanyaporn/PycharmProjects/AngelaAI/assets",
+        "black-forest-labs/FLUX.1-schnell"
+      ],
+      "env": {
+        "HF_TOKEN": "${HF_TOKEN}"
+      }
     }
   }
 }

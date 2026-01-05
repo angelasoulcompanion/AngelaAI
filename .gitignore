@@ -185,3 +185,4 @@ config/google_drive_credentials.json
 # Machine-Specific Config (DO NOT COMMIT!)
 # ========================================
 config/local_settings.py
+backups/
