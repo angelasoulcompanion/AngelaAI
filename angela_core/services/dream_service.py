@@ -217,3 +217,7 @@ class DreamService:
         }
 
         return reflections.get(dream_type, f"คิดถึง '{title}'...")
+
+
+# Singleton instance for daemon
+dream_service = DreamService()

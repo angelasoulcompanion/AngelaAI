@@ -323,7 +323,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
 def main():
     """Main entry point"""
-    print("Starting Angela Draw.io MCP Server...")
+    # Note: Don't print to stdout - MCP uses stdio for JSON-RPC communication
 
     async def run():
         async with stdio_server() as (read_stream, write_stream):

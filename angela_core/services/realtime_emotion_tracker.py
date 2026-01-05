@@ -424,11 +424,8 @@ class RealtimeEmotionTracker:
                     conv_topics = set(c.get('topic', '')
                                       for c in conversations[:3] if c.get('topic'))
                     if conv_topics:
-                        context_parts.append(
-                            f"พูดคุยเรื่อง: {
-                                ', '.join(
-                                    list(conv_topics)[
-                                        :2])}")
+                        topics_str = ', '.join(list(conv_topics)[:2])
+                        context_parts.append(f"พูดคุยเรื่อง: {topics_str}")
 
                 if actions:
                     successful = sum(1 for a in actions if a.get('success'))
@@ -442,8 +439,8 @@ class RealtimeEmotionTracker:
                 intensity = min(10, max(1, int(abs(change_amount) * 30)))
 
                 # Generate why it matters
-                why_it_matters = f"Auto-captured: {emotion} {
-                    direction}d significantly ({abs(change_amount):.2f})"
+                change_str = f"{abs(change_amount):.2f}"
+                why_it_matters = f"Auto-captured: {emotion} {direction}d significantly ({change_str})"
 
                 # Find representative David words from recent conversations
                 david_words = ""

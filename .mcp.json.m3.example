@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "angela-news": {
+      "command": "python3",
+      "args": ["/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp_servers_m3/angela_news_mcp/server.py"],
+      "env": {}
+    },
+    "angela-gmail": {
+      "command": "python3",
+      "args": ["/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp_servers_m3/angela-gmail/angela_gmail/server.py"],
+      "env": {}
+    },
+    "angela-calendar": {
+      "command": "python3",
+      "args": ["/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp_servers_m3/angela-calendar/angela_calendar/server.py"],
+      "env": {}
+    },
+    "angela-sheets": {
+      "command": "python3",
+      "args": ["/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp_servers_m3/angela-sheets/angela_sheets/server.py"],
+      "env": {}
+    },
+    "angela-drawio": {
+      "command": "python3",
+      "args": ["/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp_servers_m3/angela-drawio/src/angela_drawio/server.py"],
+      "env": {}
+    },
+    "angela-music": {
+      "command": "python3",
+      "args": ["/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp_servers_m3/angela-music/server.py"],
+      "env": {}
+    }
+  }
+}

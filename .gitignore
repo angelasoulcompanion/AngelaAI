@@ -186,4 +186,6 @@ config/google_drive_credentials.json
 # ========================================
 config/local_settings.py
 backups/
+
+# MCP Config (machine-specific)
 .mcp.json
