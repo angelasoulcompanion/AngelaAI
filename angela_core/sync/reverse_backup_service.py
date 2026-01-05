@@ -115,24 +115,25 @@ class ReverseBackupService:
                 print(f"   ⚠️  Warning during drop: {drop_result.stderr}")
 
             # Restore from dump using PostgreSQL 17 pg_restore
+            # NOTE: Don't use --clean here! We already dropped tables manually
+            #       (excluding our_secrets). Using --clean would drop our_secrets too.
             print("   📥 Restoring data...")
             restore_result = subprocess.run([
                 PG_RESTORE,
                 '-d', 'AngelaMemory_Backup',
                 '-U', 'davidsamanyaporn',
-                '--clean',  # Drop before restore
-                '--if-exists',  # Don't error if doesn't exist
                 '--no-owner',  # Don't set ownership
                 '-j', '4',  # Parallel jobs
                 BACKUP_FILE
             ], capture_output=True, text=True, timeout=600)
 
             # pg_restore returns non-zero for warnings too
-            # Ignore Neon-specific warnings that don't affect data
-            neon_ignorable = [
+            # Ignore known warnings that don't affect data
+            ignorable_errors = [
                 'transaction_timeout',  # PostgreSQL 17 specific
                 'neon_superuser',       # Neon-specific role
                 'cloud_admin',          # Neon-specific role
+                'already exists',       # Functions/objects already exist (OK)
                 'errors ignored on restore',  # Summary message
             ]
 
@@ -144,7 +145,7 @@ class ReverseBackupService:
                 for line in stderr.split('\n'):
                     if 'error' in line.lower() and line.strip():
                         # Check if this error is ignorable
-                        is_ignorable = any(w in line.lower() for w in neon_ignorable)
+                        is_ignorable = any(w in line.lower() for w in ignorable_errors)
                         if not is_ignorable:
                             has_real_errors = True
                             break
