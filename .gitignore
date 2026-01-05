@@ -189,3 +189,7 @@ backups/
 
 # MCP Config (machine-specific)
 .mcp.json
+
+# MCP Server Credentials (OAuth tokens - machine-specific)
+mcp_servers/**/credentials/token.json
+mcp_servers/**/credentials/credentials.json

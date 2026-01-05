@@ -163,15 +163,14 @@ async def get_youtube_video_info(url: str) -> dict:
 # DATABASE FUNCTIONS (Angela's favorite songs)
 # =============================================================================
 
+# Neon Cloud Database URL (San Junipero - shared between M3 & M4)
+NEON_DATABASE_URL = "postgresql://neondb_owner:npg_mXbQ5jKhN3zt@ep-withered-bush-a164h0b8-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+
+
 async def get_db_connection():
-    """Get database connection."""
+    """Get database connection - uses Neon Cloud (San Junipero)."""
     import asyncpg
-    return await asyncpg.connect(
-        host="localhost",
-        port=5432,
-        user="davidsamanyaporn",
-        database="AngelaMemory"
-    )
+    return await asyncpg.connect(NEON_DATABASE_URL)
 
 
 async def ensure_songs_table():
