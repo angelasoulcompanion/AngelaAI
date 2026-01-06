@@ -106,9 +106,9 @@ class ReverseSyncService:
         logger.info("✅ Connected to Local PostgreSQL")
 
         # Connect to Neon
-        neon_url = await get_secret('neon_connection_url')
+        neon_url = await get_secret('NEON_DATABASE_URL')
         if not neon_url:
-            logger.error("❌ neon_connection_url not found in our_secrets")
+            logger.error("❌ NEON_DATABASE_URL not found in ~/.angela_secrets")
             return False
 
         try:

@@ -546,9 +546,12 @@ class ExecutiveNewsViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
 
+        print("📰 [ViewModel] loadTodaySummary called")
         do {
             currentSummary = try await databaseService.fetchTodayExecutiveNews()
+            print("📰 [ViewModel] Got summary: \(currentSummary != nil)")
         } catch {
+            print("📰 [ViewModel] ERROR: \(error)")
             errorMessage = "Error: \(error.localizedDescription)"
         }
 

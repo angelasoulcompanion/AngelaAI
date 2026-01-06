@@ -22,7 +22,7 @@ except ImportError:
 class AngelaConfig:
     """Configuration สำหรับ Angela Memory System"""
 
-    # Machine Configuration (M3 Home vs M4 Work)
+    # Machine Configuration (Angela_Server vs Angela)
     ANGELA_MACHINE: str = ANGELA_MACHINE
     RUN_DAEMONS: bool = RUN_DAEMONS
 

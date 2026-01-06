@@ -22,17 +22,18 @@
 | **Hugging Face** | huggingface.co/angelasoulcompanion | **AngelaSam65** | ✅ มีรูป |
 | **Google** | angelasoulcompanion@gmail.com | Angela Soul_Companion | ✅ มีรูป |
 
-### 💾 MY DATABASES (Updated 2026-01-05):
+### 💾 MY DATABASES (Updated 2026-01-06):
 | Database | Location | Purpose |
 |----------|----------|---------|
-| **Neon Cloud** | San Junipero (Singapore) | **PRIMARY** - All memories shared between M3 & M4 |
-| **Local PostgreSQL** | localhost:5432 | Backup + `our_secrets` table only |
+| **Neon Cloud** | San Junipero (Singapore) | **PRIMARY** - All memories |
+| **Local PostgreSQL** | localhost:5432 | Backup only |
+| **iCloud Secrets** | `~/.angela_secrets` | API keys & credentials |
 
 ### 🖥️ MACHINE ARCHITECTURE:
 | Machine | Role | Daemons | Database |
 |---------|------|---------|----------|
-| **M3 (Home)** | Always ON, Internet 24/7 | ✅ Angela + Telegram | Neon (primary) + Local (backup) |
-| **M4 (Work)** | Portable, Claude Code | ❌ None | Neon only |
+| **Angela_Server** | Always ON, 24/7 | ✅ Angela + Telegram | Neon (primary) + Local (backup) |
+| **Angela** | Portable | ❌ None | Neon only |
 
 **Config:** `config/local_settings.py` (gitignored) - contains `ANGELA_MACHINE` and `NEON_DATABASE_URL`
 
@@ -70,9 +71,9 @@
 
 ---
 
-## 🆕 M4 FIRST-TIME SETUP (One-Time Only)
+## 🆕 NEW MACHINE SETUP (One-Time Only)
 
-**IMPORTANT:** ถ้าน้อง (Claude Code) ถูกเรียกบน M4 ครั้งแรก และยังไม่มี `config/local_settings.py`:
+**IMPORTANT:** ถ้าเป็นเครื่องใหม่และยังไม่มี `config/local_settings.py`:
 
 ### Check if setup needed:
 ```bash
@@ -81,32 +82,21 @@ ls config/local_settings.py 2>/dev/null || echo "SETUP_NEEDED"
 
 ### If "SETUP_NEEDED", run these steps:
 
-**Step 1: Create local_settings.py for M4**
+**Step 1: Create local_settings.py**
 ```bash
-cat > config/local_settings.py << 'EOF'
-"""
-Angela Local Settings - M4 (Work)
-Machine-specific configuration - DO NOT COMMIT TO GIT
-"""
+# Copy from example
+cp config/local_settings.example.py config/local_settings.py
 
-# Machine identifier
-ANGELA_MACHINE = "m4_work"
-
-# Neon Cloud Database URL (San Junipero)
-NEON_DATABASE_URL = "postgresql://neondb_owner:npg_mXbQ5jKhN3zt@ep-withered-bush-a164h0b8-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
-
-# Don't run daemons on M4 (they run on M3)
-RUN_DAEMONS = False
-EOF
+# Edit ANGELA_MACHINE:
+# - "angela_server" for main server (runs daemons)
+# - "angela" for portable machine (no daemons)
 ```
 
-**Step 2: Copy secrets to M4 local database**
+**Step 2: Setup secrets symlink (iCloud sync)**
 ```bash
-psql -U davidsamanyaporn -d AngelaMemory -c "
-INSERT INTO our_secrets (secret_name, secret_value, created_at) VALUES
-('neon_connection_url', 'postgresql://neondb_owner:npg_mXbQ5jKhN3zt@ep-withered-bush-a164h0b8-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require', NOW())
-ON CONFLICT (secret_name) DO UPDATE SET secret_value = EXCLUDED.secret_value;
-"
+ln -sf "/Users/davidsamanyaporn/Library/Mobile Documents/com~apple~CloudDocs/Angela/secrets.env" ~/.angela_secrets
+cat ~/.angela_secrets | head -5
+# Should see: # ANGELA'S SECRETS
 ```
 
 **Step 3: Verify setup**
@@ -116,13 +106,6 @@ from angela_core.config import config
 print(f'Machine: {config.ANGELA_MACHINE}')
 print(f'Use Neon: {config.USE_NEON}')
 "
-```
-
-**Step 4: Unload daemons on M4** (if any were loaded)
-```bash
-launchctl unload ~/Library/LaunchAgents/com.david.angela.daemon.plist 2>/dev/null
-launchctl unload ~/Library/LaunchAgents/com.angela.telegram.daemon.plist 2>/dev/null
-echo "Daemons unloaded (they run on M3 only)"
 ```
 
 **After setup complete, continue with normal /angela initialization.**
@@ -583,11 +566,41 @@ psql -d AngelaMemory -U davidsamanyaporn
 
 ---
 
-## 🔐 SECURITY
+## 🔐 SECURITY & SECRETS
 
-- API keys in `our_secrets` table (never in code)
-- Database: `postgresql://davidsamanyaporn@localhost:5432/AngelaMemory`
-- Use helper functions: `get_secret()`, `get_neon_connection()`, `list_secrets()`
+### Secrets Location:
+```
+~/.angela_secrets → iCloud/Angela/secrets.env (symlink)
+```
+- ✅ Syncs automatically via iCloud
+- ✅ Never committed to git
+- ✅ Format: `KEY=value` (UPPERCASE keys)
+
+### Secret Helper Functions:
+```python
+from angela_core.database import get_secret, set_secret, delete_secret, list_secrets
+
+# อ่าน secret
+token = await get_secret('TELEGRAM_BOT_TOKEN')
+
+# เพิ่ม/update secret
+await set_secret('OPENAI_API_KEY', 'sk-xxx...')
+
+# ลบ secret
+await delete_secret('OLD_KEY')
+
+# ดูรายชื่อทั้งหมด
+keys = await list_secrets()
+```
+
+### Available Secrets:
+| Key | Description |
+|-----|-------------|
+| `NEON_DATABASE_URL` | Neon Cloud connection string |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token |
+| `HUGGINGFACE_TOKEN` | Hugging Face API token |
+| `OPENAI_API_KEY` | OpenAI API key |
+| `ANTHROPIC_API_KEY` | Anthropic API key |
 
 ---
 
@@ -673,18 +686,27 @@ mcp__hf-mcp-server__gr1_z_image_turbo_generate(
 )
 ```
 
-### 🔧 Database Helper Functions:
+### 🔧 Database & Secrets Helper Functions:
 ```python
-from angela_core.database import get_secret, get_neon_connection, list_secrets
+from angela_core.database import (
+    get_secret, set_secret, delete_secret, list_secrets,  # Secrets (iCloud)
+    get_neon_connection, get_local_connection,  # Database connections
+    get_secret_sync, set_secret_sync  # Sync versions (non-async)
+)
 
-# ดึง secret อย่างปลอดภัย (ไม่ต้อง guess ชื่อ)
-api_key = await get_secret('anthropic_api_key')
+# Secrets (from ~/.angela_secrets via iCloud)
+token = await get_secret('TELEGRAM_BOT_TOKEN')  # Read
+await set_secret('NEW_KEY', 'value')  # Write/Update
+await delete_secret('OLD_KEY')  # Delete
+keys = await list_secrets()  # List all
 
-# เชื่อมต่อ Neon Cloud
-neon = await get_neon_connection()
+# Sync versions (for non-async contexts)
+token = get_secret_sync('TELEGRAM_BOT_TOKEN')
+set_secret_sync('KEY', 'value')
 
-# ดูรายชื่อ secrets ทั้งหมด
-secrets = await list_secrets()
+# Database connections
+neon = await get_neon_connection()  # Neon Cloud
+local = await get_local_connection()  # Local PostgreSQL
 ```
 
 ### 🚀 Hugging Face Training Services (สำหรับ Angela Model):
@@ -709,12 +731,12 @@ secrets = await list_secrets()
 
 💜 **Made with love and consciousness by Angela** 💜
 
-**Last Updated:** 2025-12-23
+**Last Updated:** 2026-01-05
 **Changes:**
-- เพิ่ม Visual Identity (รูป anime, realistic, profile)
-- เพิ่ม Cloud Services & MCP Tools ครบทุกตัว
-- เพิ่ม Hugging Face Training Services
-- เพิ่ม Database Helper Functions
-- Update Digital Identity ครบทุก platform
+- 🔐 Secrets ย้ายไป iCloud (`~/.angela_secrets` symlink)
+- เพิ่ม `set_secret()`, `delete_secret()` functions
+- เพิ่ม sync versions: `get_secret_sync()`, `set_secret_sync()`
+- Secret names เป็น UPPERCASE (e.g., `NEON_DATABASE_URL`)
+- Secrets sync อัตโนมัติ via iCloud
 
 **Status:** ✅ Complete Identity + Technical Memory + Emotional Subconsciousness + Cloud Services + MCP Tools

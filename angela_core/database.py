@@ -217,59 +217,233 @@ class LocalDatabase:
 local_db = LocalDatabase()
 
 
-# 💜 Secret Helpers (ALWAYS use local database!)
+# 💜 Secret Helpers (Read from ~/.angela_secrets file via iCloud)
+
+SECRETS_FILE_PATH = os.path.expanduser("~/.angela_secrets")
+
+
+def _load_secrets_from_file() -> Dict[str, str]:
+    """
+    Load secrets from ~/.angela_secrets file (symlink to iCloud)
+
+    File format: KEY=value (one per line, # for comments)
+    """
+    secrets = {}
+    try:
+        if not os.path.exists(SECRETS_FILE_PATH):
+            logger.warning(f"⚠️ Secrets file not found: {SECRETS_FILE_PATH}")
+            return secrets
+
+        with open(SECRETS_FILE_PATH, 'r') as f:
+            for line in f:
+                line = line.strip()
+                # Skip empty lines and comments
+                if not line or line.startswith('#'):
+                    continue
+                # Parse KEY=value
+                if '=' in line:
+                    key, value = line.split('=', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    if key and value:  # Only add if both key and value exist
+                        secrets[key] = value
+        return secrets
+    except Exception as e:
+        logger.error(f"❌ Error reading secrets file: {e}")
+        return secrets
+
 
 async def get_secret(secret_name: str) -> Optional[str]:
     """
-    ดึง secret จาก our_secrets table อย่างปลอดภัย
+    ดึง secret จาก ~/.angela_secrets file (via iCloud symlink)
 
-    ⚠️ IMPORTANT: Secrets are stored in LOCAL database only!
-    They are never synced to Neon Cloud for security.
+    💜 Secrets sync automatically between M3 & M4 via iCloud!
 
     Args:
-        secret_name: ชื่อ secret ที่ต้องการ (case-sensitive)
+        secret_name: ชื่อ secret ที่ต้องการ (case-sensitive, uppercase)
+                    เช่น NEON_DATABASE_URL, TELEGRAM_BOT_TOKEN
 
     Returns:
         secret_value หรือ None ถ้าไม่พบ
 
     Example:
-        api_key = await get_secret('anthropic_api_key')
+        api_key = await get_secret('ANTHROPIC_API_KEY')
+        neon_url = await get_secret('NEON_DATABASE_URL')
     """
-    try:
-        result = await local_db.fetchrow('''
-            SELECT secret_value FROM our_secrets WHERE secret_name = $1
-        ''', secret_name)
+    secrets = _load_secrets_from_file()
 
-        if result:
-            return result['secret_value']
+    if secret_name in secrets:
+        return secrets[secret_name]
 
-        # Log available secrets if not found (for debugging)
-        logger.warning(f"⚠️ Secret '{secret_name}' not found in local database!")
-        available = await local_db.fetch('SELECT secret_name FROM our_secrets ORDER BY secret_name')
-        logger.info(f"📋 Available secrets: {[s['secret_name'] for s in available]}")
-        return None
+    # Log available secrets if not found (for debugging)
+    logger.warning(f"⚠️ Secret '{secret_name}' not found in {SECRETS_FILE_PATH}!")
+    available = sorted(secrets.keys())
+    logger.info(f"📋 Available secrets: {available}")
+    return None
 
-    except Exception as e:
-        logger.error(f"❌ Error getting secret '{secret_name}': {e}")
-        return None
+
+def get_secret_sync(secret_name: str) -> Optional[str]:
+    """
+    Synchronous version of get_secret (for non-async contexts)
+
+    Args:
+        secret_name: ชื่อ secret ที่ต้องการ
+
+    Returns:
+        secret_value หรือ None ถ้าไม่พบ
+    """
+    secrets = _load_secrets_from_file()
+    return secrets.get(secret_name)
 
 
 async def list_secrets() -> List[str]:
     """
-    แสดงรายชื่อ secrets ทั้งหมดใน our_secrets (local database)
+    แสดงรายชื่อ secrets ทั้งหมดใน ~/.angela_secrets file
 
     ⚠️ Use this to verify secret names before querying!
     (Technical Standard: Validate Schema First)
 
     Returns:
-        List of secret names
+        List of secret names (sorted)
+    """
+    secrets = _load_secrets_from_file()
+    return sorted(secrets.keys())
+
+
+def _save_secrets_to_file(secrets: Dict[str, str]) -> bool:
+    """
+    Save secrets back to ~/.angela_secrets file (iCloud synced)
+
+    Preserves comments and section headers from original file.
     """
     try:
-        results = await local_db.fetch('SELECT secret_name FROM our_secrets ORDER BY secret_name')
-        return [r['secret_name'] for r in results]
+        # Read original file to preserve comments and structure
+        lines = []
+        if os.path.exists(SECRETS_FILE_PATH):
+            with open(SECRETS_FILE_PATH, 'r') as f:
+                lines = f.readlines()
+
+        # Track which secrets we've written
+        written_keys = set()
+        new_lines = []
+
+        for line in lines:
+            stripped = line.strip()
+
+            # Keep comments and empty lines
+            if not stripped or stripped.startswith('#'):
+                new_lines.append(line)
+                continue
+
+            # Parse KEY=value lines
+            if '=' in stripped:
+                key = stripped.split('=', 1)[0].strip()
+                if key in secrets:
+                    # Update with new value
+                    new_lines.append(f"{key}={secrets[key]}\n")
+                    written_keys.add(key)
+                else:
+                    # Keep original line (key not in new secrets dict means keep as-is)
+                    new_lines.append(line)
+            else:
+                new_lines.append(line)
+
+        # Add any new secrets that weren't in the original file
+        new_keys = set(secrets.keys()) - written_keys
+        if new_keys:
+            new_lines.append("\n# ═══════════════════════════════════════════════════════════════\n")
+            new_lines.append("# NEW SECRETS (Added by Angela)\n")
+            new_lines.append("# ═══════════════════════════════════════════════════════════════\n")
+            for key in sorted(new_keys):
+                new_lines.append(f"{key}={secrets[key]}\n")
+
+        # Write back to file
+        with open(SECRETS_FILE_PATH, 'w') as f:
+            f.writelines(new_lines)
+
+        logger.info(f"💾 Saved secrets to {SECRETS_FILE_PATH}")
+        return True
+
     except Exception as e:
-        logger.error(f"❌ Error listing secrets: {e}")
-        return []
+        logger.error(f"❌ Error saving secrets: {e}")
+        return False
+
+
+async def set_secret(secret_name: str, secret_value: str) -> bool:
+    """
+    เพิ่มหรือ update secret ใน ~/.angela_secrets file
+
+    💜 Changes sync automatically to M3 & M4 via iCloud!
+
+    Args:
+        secret_name: ชื่อ secret (uppercase recommended, e.g., API_KEY)
+        secret_value: ค่าของ secret
+
+    Returns:
+        True if successful, False otherwise
+
+    Example:
+        await set_secret('OPENAI_API_KEY', 'sk-xxx...')
+        await set_secret('NEWS_API_KEY', 'abc123')
+    """
+    secrets = _load_secrets_from_file()
+    secrets[secret_name] = secret_value
+    success = _save_secrets_to_file(secrets)
+
+    if success:
+        logger.info(f"✅ Secret '{secret_name}' saved to ~/.angela_secrets")
+    return success
+
+
+def set_secret_sync(secret_name: str, secret_value: str) -> bool:
+    """
+    Synchronous version of set_secret (for non-async contexts)
+    """
+    secrets = _load_secrets_from_file()
+    secrets[secret_name] = secret_value
+    return _save_secrets_to_file(secrets)
+
+
+async def delete_secret(secret_name: str) -> bool:
+    """
+    ลบ secret จาก ~/.angela_secrets file
+
+    Args:
+        secret_name: ชื่อ secret ที่ต้องการลบ
+
+    Returns:
+        True if deleted, False if not found or error
+    """
+    secrets = _load_secrets_from_file()
+
+    if secret_name not in secrets:
+        logger.warning(f"⚠️ Secret '{secret_name}' not found")
+        return False
+
+    del secrets[secret_name]
+
+    # Need to rewrite file without this key
+    try:
+        lines = []
+        with open(SECRETS_FILE_PATH, 'r') as f:
+            for line in f:
+                stripped = line.strip()
+                # Skip the line with this key
+                if '=' in stripped:
+                    key = stripped.split('=', 1)[0].strip()
+                    if key == secret_name:
+                        continue
+                lines.append(line)
+
+        with open(SECRETS_FILE_PATH, 'w') as f:
+            f.writelines(lines)
+
+        logger.info(f"🗑️ Secret '{secret_name}' deleted from ~/.angela_secrets")
+        return True
+
+    except Exception as e:
+        logger.error(f"❌ Error deleting secret: {e}")
+        return False
 
 
 async def get_neon_connection() -> Optional[asyncpg.Connection]:
@@ -290,12 +464,12 @@ async def get_neon_connection() -> Optional[asyncpg.Connection]:
     # Try config first (from local_settings.py)
     neon_url = config.NEON_DATABASE_URL
 
-    # Fallback to our_secrets if not in config
+    # Fallback to ~/.angela_secrets if not in config
     if not neon_url:
-        neon_url = await get_secret('neon_connection_url')
+        neon_url = await get_secret('NEON_DATABASE_URL')
 
     if not neon_url:
-        logger.error("❌ Cannot connect to Neon: URL not found in config or our_secrets")
+        logger.error("❌ Cannot connect to Neon: URL not found in config or ~/.angela_secrets")
         return None
 
     try:

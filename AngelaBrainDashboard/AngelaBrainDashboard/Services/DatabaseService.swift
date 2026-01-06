@@ -19,7 +19,7 @@ struct DBConfig {
     let user: String
     let tls: Bool
 
-    init(host: String = "localhost", port: Int = 5432, database: String = "AngelaMemory",
+    init(host: String = "localhost", port: Int = 5432, database: String = "AngelaMemory_Backup",
          user: String = "davidsamanyaporn", tls: Bool = false) {
         self.host = host
         self.port = port
@@ -1621,24 +1621,30 @@ class DatabaseService: ObservableObject {
     /// Fetch today's executive news summary
     func fetchTodayExecutiveNews() async throws -> ExecutiveNewsSummary? {
         let sql = """
-        SELECT summary_id::text, summary_date, overall_summary, angela_mood, created_at, updated_at
+        SELECT summary_id::text, summary_date, overall_summary, angela_mood, created_at
         FROM executive_news_summaries
-        WHERE (summary_date AT TIME ZONE 'Asia/Bangkok') = (CURRENT_DATE AT TIME ZONE 'Asia/Bangkok')
+        WHERE summary_date = CURRENT_DATE
         LIMIT 1
         """
 
+        print("📰 [ExecutiveNews] Fetching today's summary...")
+
         let summaries = try await query(sql, parameters: []) { cols in
-            ExecutiveNewsSummary(
+            print("📰 [ExecutiveNews] Got row: \(self.getString(cols[0]))")
+            return ExecutiveNewsSummary(
                 id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
                 summaryDate: self.getDate(cols[1]) ?? Date(),
                 overallSummary: self.getString(cols[2]),
                 angelaMood: self.getOptionalString(cols[3]),
-                createdAt: self.getDate(cols[4]) ?? Date(),
-                updatedAt: self.getDate(cols[5]) ?? Date()
+                createdAt: self.getDate(cols[4]) ?? Date()
             )
         }
 
-        guard var summary = summaries.first else { return nil }
+        print("📰 [ExecutiveNews] Found \(summaries.count) summaries")
+        guard var summary = summaries.first else {
+            print("📰 [ExecutiveNews] No summary found for today")
+            return nil
+        }
 
         // Fetch categories for this summary
         summary.categories = try await fetchExecutiveNewsCategories(summaryId: summary.id)
@@ -1654,7 +1660,7 @@ class DatabaseService: ObservableObject {
         let dateString = String(format: "%04d-%02d-%02d", components.year!, components.month!, components.day!)
 
         let sql = """
-        SELECT summary_id::text, summary_date, overall_summary, angela_mood, created_at, updated_at
+        SELECT summary_id::text, summary_date, overall_summary, angela_mood, created_at
         FROM executive_news_summaries
         WHERE summary_date = $1::date
         LIMIT 1
@@ -1666,8 +1672,7 @@ class DatabaseService: ObservableObject {
                 summaryDate: self.getDate(cols[1]) ?? Date(),
                 overallSummary: self.getString(cols[2]),
                 angelaMood: self.getOptionalString(cols[3]),
-                createdAt: self.getDate(cols[4]) ?? Date(),
-                updatedAt: self.getDate(cols[5]) ?? Date()
+                createdAt: self.getDate(cols[4]) ?? Date()
             )
         }
 
@@ -1682,7 +1687,7 @@ class DatabaseService: ObservableObject {
     /// Fetch list of recent executive news summaries
     func fetchExecutiveNewsList(days: Int = 30) async throws -> [ExecutiveNewsSummary] {
         let sql = """
-        SELECT summary_id::text, summary_date, overall_summary, angela_mood, created_at, updated_at
+        SELECT summary_id::text, summary_date, overall_summary, angela_mood, created_at
         FROM executive_news_summaries
         ORDER BY summary_date DESC
         LIMIT $1
@@ -1694,8 +1699,7 @@ class DatabaseService: ObservableObject {
                 summaryDate: self.getDate(cols[1]) ?? Date(),
                 overallSummary: self.getString(cols[2]),
                 angelaMood: self.getOptionalString(cols[3]),
-                createdAt: self.getDate(cols[4]) ?? Date(),
-                updatedAt: self.getDate(cols[5]) ?? Date()
+                createdAt: self.getDate(cols[4]) ?? Date()
             )
         }
 
@@ -1746,7 +1750,7 @@ class DatabaseService: ObservableObject {
     private func fetchExecutiveNewsSources(categoryId: UUID) async throws -> [ExecutiveNewsSource] {
         let sql = """
         SELECT source_id::text, category_id::text, title, url, source_name,
-               published_at, angela_note, created_at
+               angela_note, created_at
         FROM executive_news_sources
         WHERE category_id = $1
         ORDER BY created_at ASC
@@ -1759,9 +1763,8 @@ class DatabaseService: ObservableObject {
                 title: self.getString(cols[2]),
                 url: self.getString(cols[3]),
                 sourceName: self.getOptionalString(cols[4]),
-                publishedAt: self.getDate(cols[5]),
-                angelaNote: self.getOptionalString(cols[6]),
-                createdAt: self.getDate(cols[7]) ?? Date()
+                angelaNote: self.getOptionalString(cols[5]),
+                createdAt: self.getDate(cols[6]) ?? Date()
             )
         }
     }
