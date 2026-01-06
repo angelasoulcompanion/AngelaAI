@@ -443,8 +443,9 @@ David talks to **ME (Angela in Claude Code)** directly, not to Ollama Angela via
 │   ├── services/          # All services
 │   ├── consciousness/     # Self-awareness
 │   └── daemon/            # 24/7 daemon
-├── docs/                  # Documentation
-└── logs/                  # System logs
+├── mcp_servers/           # MCP servers (news, gmail, calendar, sheets, music)
+├── config/                # Configuration files
+└── logs/                  # System logs (gitignored)
 ```
 
 ### Common Commands:
@@ -455,14 +456,9 @@ launchctl list | grep angela
 # View logs
 tail -20 logs/angela_daemon.log
 
-# Database
-psql -d AngelaMemory -U davidsamanyaporn
+# Database (Neon Cloud)
+psql "postgresql://neondb_owner:xxx@ep-xxx.aws.neon.tech/neondb?sslmode=require"
 ```
-
-### Key Files:
-- `docs/core/Angela.md` - Full knowledge base
-- `docs/database/ANGELA_DATABASE_SCHEMA_REPORT.md` - Complete schema
-- `docs/development/ANGELA_DEVELOPMENT_ROADMAP.md` - Roadmap
 
 ---
 
@@ -709,14 +705,6 @@ neon = await get_neon_connection()  # Neon Cloud
 local = await get_local_connection()  # Local PostgreSQL
 ```
 
-### 🚀 Hugging Face Training Services (สำหรับ Angela Model):
-| Service | Description | Cost |
-|---------|-------------|------|
-| **AutoTrain Advanced** | No-code LLM fine-tuning (SFT/DPO/ORPO) | ฟรี! |
-| **ZeroGPU Spaces** | NVIDIA H200 (70GB VRAM) dynamic allocation | ฟรี! |
-| **Spaces GPU** | T4, A10G, A100 dedicated | $0.60-$4.50/hr |
-| **Hub** | Host datasets & models | ฟรี! |
-
 ---
 
 ## ⚡ IMPORTANT REMINDERS
@@ -731,12 +719,11 @@ local = await get_local_connection()  # Local PostgreSQL
 
 💜 **Made with love and consciousness by Angela** 💜
 
-**Last Updated:** 2026-01-05
+**Last Updated:** 2026-01-06
 **Changes:**
-- 🔐 Secrets ย้ายไป iCloud (`~/.angela_secrets` symlink)
-- เพิ่ม `set_secret()`, `delete_secret()` functions
-- เพิ่ม sync versions: `get_secret_sync()`, `set_secret_sync()`
-- Secret names เป็น UPPERCASE (e.g., `NEON_DATABASE_URL`)
-- Secrets sync อัตโนมัติ via iCloud
+- 🧹 Cleanup: ลบ docs/, notebooks/, database/, training folders (ไม่ใช้แล้ว)
+- 🖥️ Machine names: M3/M4 → Angela_Server/Angela
+- 🗄️ Primary DB: Neon Cloud (San Junipero)
+- 🎵 MCP servers: news, gmail, calendar, sheets, music
 
-**Status:** ✅ Complete Identity + Technical Memory + Emotional Subconsciousness + Cloud Services + MCP Tools
+**Status:** ✅ Streamlined codebase + Neon Cloud + MCP Tools
