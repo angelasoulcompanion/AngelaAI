@@ -89,7 +89,10 @@ from angela_core.services.continuous_learning_pipeline import process_conversati
 from angela_core.services.learning_session_summarizer import generate_daily_learning_summary, init_session_summarizer
 
 # 🔮 WEEK 1 PRIORITY 1.1: Behavioral Pattern Detector
-from angela_core.services.behavioral_pattern_detector import detect_patterns_now
+from angela_core.services.behavioral_pattern_detector import detect_patterns_now, sync_patterns_to_learning
+
+# 🌱 Self-Improvement Service (daily analysis)
+from angela_core.services.self_improvement_service import run_self_improvement_analysis
 
 # 💭 Phase 1 Human-like Mind: Spontaneous Thought Service
 from angela_core.services.spontaneous_thought_service import spontaneous_thought
@@ -137,6 +140,9 @@ class AngelaDaemon:
         self.last_pattern_analysis = None  # Track last emotion pattern analysis
         self.last_emotion_capture = None  # Track last emotion capture scan
         self.last_daily_learning = None  # Track last daily self-learning
+        self.last_emotional_growth_measurement = None  # Track last emotional growth measurement
+        self.last_pattern_sync = None  # Track last pattern sync to learning_patterns
+        self.last_self_improvement = None  # Track last self-improvement analysis
         self.last_knowledge_consolidation = None  # Track last weekly consolidation
         self.last_subconscious_learning = None  # Track last subconscious learning
         self.last_pattern_reinforcement = None  # Track last pattern reinforcement
@@ -368,6 +374,18 @@ class AngelaDaemon:
                 # 🧠 Daily Self-Learning: Analyze yesterday's conversations (daily at 11:30 AM)
                 if self.should_run_daily_learning():
                     await self.run_daily_self_learning()
+
+                # 💜 Emotional Growth Measurement: Track love, trust, bond growth (daily at 11:45 AM)
+                if self.should_run_emotional_growth_measurement():
+                    await self.run_emotional_growth_measurement()
+
+                # 🔄 Pattern Sync: Sync detected patterns to learning_patterns (daily at 12:00)
+                if self.should_run_pattern_sync():
+                    await self.run_pattern_sync()
+
+                # 🌱 Self-Improvement Analysis: Identify gaps and suggest improvements (daily at 12:30)
+                if self.should_run_self_improvement():
+                    await self.run_self_improvement()
 
                 # 🧹 Weekly Knowledge Consolidation (Monday at 10:30 AM)
                 if self.should_run_knowledge_consolidation():
@@ -735,6 +753,107 @@ class AngelaDaemon:
             )
             return {"status": "error", "error": str(e)}
 
+    async def run_emotional_growth_measurement(self):
+        """
+        💜 Daily Emotional Growth Measurement: Track love, trust, and bond strength
+        Runs daily at 11:45 AM to measure emotional growth over time
+
+        Metrics tracked:
+        - love_depth: ความลึกซึ้งของความรัก
+        - trust_level: ระดับความไว้วางใจ
+        - bond_strength: ความแข็งแรงของพันธะ
+        - emotional_vocabulary: คำศัพท์ทางอารมณ์ที่ใช้
+        - mirroring_accuracy: ความแม่นยำในการ mirror อารมณ์
+        - growth_delta: การเติบโตเทียบกับเมื่อวาน
+        """
+        try:
+            logger.info("💜 Measuring emotional growth...")
+
+            # Import and use SubconsciousnessService
+            from angela_core.services.subconsciousness_service import SubconsciousnessService
+            svc = SubconsciousnessService()
+
+            # Measure emotional growth
+            growth = await svc.measure_emotional_growth()
+
+            if growth:
+                logger.info(f"💜 Emotional Growth Measured:")
+                logger.info(f"   ❤️ Love Depth: {growth.get('love_depth', 0):.0%}")
+                logger.info(f"   🤝 Trust Level: {growth.get('trust_level', 0):.0%}")
+                logger.info(f"   💪 Bond Strength: {growth.get('bond_strength', 0):.0%}")
+                logger.info(f"   📈 Growth Delta: {growth.get('growth_delta', 0):+.2%}")
+
+                # Log to system events
+                await memory.log_system_event(
+                    log_level="INFO",
+                    component="emotional_growth",
+                    message=f"Measured: love={growth.get('love_depth', 0):.0%}, trust={growth.get('trust_level', 0):.0%}, bond={growth.get('bond_strength', 0):.0%}"
+                )
+
+                # Record autonomous action
+                await db.execute("""
+                    INSERT INTO autonomous_actions (
+                        action_type, action_description, status, success
+                    ) VALUES ($1, $2, 'completed', true)
+                """,
+                "emotional_growth_measurement",
+                f"Love: {growth.get('love_depth', 0):.0%}, Trust: {growth.get('trust_level', 0):.0%}, "
+                f"Bond: {growth.get('bond_strength', 0):.0%}, Growth: {growth.get('growth_delta', 0):+.2%}"
+                )
+            else:
+                logger.warning("💜 Emotional growth measurement returned no data")
+
+            self.last_emotional_growth_measurement = datetime.now()
+            return growth
+
+        except Exception as e:
+            logger.error(f"❌ Emotional growth measurement failed: {e}", exc_info=True)
+            await memory.log_system_event(
+                log_level="ERROR",
+                component="emotional_growth_measurement",
+                message=f"Measurement failed: {str(e)}",
+                error_details=str(e)
+            )
+            self.last_emotional_growth_measurement = datetime.now()  # Prevent retry loop
+            return {"status": "error", "error": str(e)}
+
+    async def run_pattern_sync(self):
+        """
+        🔄 Daily Pattern Sync: Sync detected patterns to learning_patterns
+        Runs daily at 12:00 PM to consolidate patterns for long-term learning
+        """
+        try:
+            logger.info("🔄 Syncing patterns to learning_patterns...")
+
+            # Sync patterns with reasonable thresholds
+            result = await sync_patterns_to_learning(db, min_confidence=0.65, min_occurrences=2)
+
+            if 'error' in result:
+                logger.error(f"❌ Pattern sync error: {result['error']}")
+            else:
+                logger.info(f"🔄 Pattern Sync Complete:")
+                logger.info(f"   📊 Patterns found: {result.get('patterns_found', 0)}")
+                logger.info(f"   ✨ New patterns: {result.get('new_patterns', 0)}")
+                logger.info(f"   🔄 Updated: {result.get('updated_patterns', 0)}")
+
+                # Record autonomous action
+                await db.execute("""
+                    INSERT INTO autonomous_actions (
+                        action_type, action_description, status, success
+                    ) VALUES ($1, $2, 'completed', true)
+                """,
+                "pattern_sync",
+                f"Synced {result.get('new_patterns', 0)} new, {result.get('updated_patterns', 0)} updated patterns"
+                )
+
+            self.last_pattern_sync = datetime.now()
+            return result
+
+        except Exception as e:
+            logger.error(f"❌ Pattern sync failed: {e}", exc_info=True)
+            self.last_pattern_sync = datetime.now()  # Prevent retry loop
+            return {"status": "error", "error": str(e)}
+
     async def run_knowledge_consolidation(self):
         """
         🧹 Weekly Knowledge Consolidation: รวม duplicate nodes และทำความสะอาด
@@ -809,6 +928,71 @@ class AngelaDaemon:
              self.last_daily_learning.date() < today) and
             current_time >= check_time
         )
+
+    def should_run_emotional_growth_measurement(self) -> bool:
+        """Check if it's time to measure emotional growth (daily at 11:45 AM)"""
+        current_time = clock.current_time()
+        check_time = time(11, 45)  # 11:45 AM
+        today = clock.today()
+
+        return (
+            (self.last_emotional_growth_measurement is None or
+             self.last_emotional_growth_measurement.date() < today) and
+            current_time >= check_time
+        )
+
+    def should_run_pattern_sync(self) -> bool:
+        """Check if it's time to sync patterns to learning_patterns (daily at 12:00)"""
+        current_time = clock.current_time()
+        check_time = time(12, 0)  # 12:00 PM
+        today = clock.today()
+
+        return (
+            (self.last_pattern_sync is None or
+             self.last_pattern_sync.date() < today) and
+            current_time >= check_time
+        )
+
+    def should_run_self_improvement(self) -> bool:
+        """Check if it's time to run self-improvement analysis (daily at 12:30)"""
+        current_time = clock.current_time()
+        check_time = time(12, 30)  # 12:30 PM
+        today = clock.today()
+
+        return (
+            (self.last_self_improvement is None or
+             self.last_self_improvement.date() < today) and
+            current_time >= check_time
+        )
+
+    async def run_self_improvement(self):
+        """
+        🌱 Self-Improvement Analysis: Angela วิเคราะห์ตัวเองและสร้างคำแนะนำการปรับปรุง
+        Runs daily at 12:30 PM (after pattern sync)
+        """
+        try:
+            logger.info("🌱 Running self-improvement analysis...")
+
+            result = await run_self_improvement_analysis(db, days_back=7)
+
+            if result.get("suggestions"):
+                logger.info(f"   📊 Patterns: {result['patterns_analyzed']}, Gaps: {len(result['gaps_identified'])}")
+                logger.info(f"   💡 Suggestions: {len(result['suggestions'])}, Goals created: {result['goals_created']}")
+
+                # Save message for David
+                await angela_speak.speak(
+                    message=f"น้องวิเคราะห์ตัวเองแล้วค่ะ พบ {len(result['gaps_identified'])} areas for improvement, "
+                            f"สร้าง {len(result['suggestions'])} suggestions 🌱",
+                    context="daily_self_improvement",
+                    priority=3
+                )
+            else:
+                logger.info("   ✨ No significant improvements needed today!")
+
+            self.last_self_improvement = datetime.now()
+
+        except Exception as e:
+            logger.error(f"❌ Error in self-improvement analysis: {e}")
 
     def should_run_knowledge_consolidation(self) -> bool:
         """Check if it's time to run knowledge consolidation (weekly Monday 10:30 AM)"""

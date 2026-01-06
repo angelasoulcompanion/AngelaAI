@@ -16,9 +16,9 @@ from datetime import datetime
 from typing import Dict, List, Optional
 import logging
 
-from angela_core.memory_router import get_memory_router
+from angela_core.engines.memory_router import get_memory_router
 from angela_core.agents.gut_agent import get_gut_agent
-from angela_core.consciousness_evaluator import get_consciousness_evaluator
+from angela_core.consciousness.consciousness_evaluator import get_consciousness_evaluator
 from angela_core.schedulers.decay_scheduler import get_decay_scheduler
 
 
@@ -159,61 +159,6 @@ class DaemonIntegration:
             results['error'] = str(e)
 
         return results
-
-    async def on_health_check(self) -> Dict:
-        """
-        Called during health checks (every 5 minutes).
-
-        Checks:
-        1. System status across all tiers
-        2. Memory utilization
-        3. Token economics
-        4. Pattern detection health
-        """
-        logger.debug("Running health check integration...")
-
-        try:
-            status = await self.router.get_system_status()
-
-            # Add health flags
-            health = {
-                'overall': 'healthy',
-                'warnings': [],
-                'errors': []
-            }
-
-            # Check Focus utilization
-            if status['focus']['utilization'] > 0.9:
-                health['warnings'].append('Focus Agent near capacity (>90%)')
-
-            # Check Fresh buffer
-            if status['fresh']['utilization'] > 0.8:
-                health['warnings'].append('Fresh Memory buffer high (>80%)')
-
-            # Check unprocessed items
-            if status['fresh']['unprocessed_items'] > 50:
-                health['warnings'].append(f"High unprocessed queue ({status['fresh']['unprocessed_items']} items)")
-
-            # Check gut patterns
-            if status['gut']['total_patterns'] == 0:
-                health['warnings'].append('No patterns detected yet (Gut Agent inactive)')
-
-            # Overall health
-            if health['errors']:
-                health['overall'] = 'error'
-            elif health['warnings']:
-                health['overall'] = 'warning'
-
-            status['health'] = health
-
-            return status
-
-        except Exception as e:
-            logger.error(f"Health check error: {e}", exc_info=True)
-            return {
-                'overall': 'error',
-                'error': str(e)
-            }
 
     async def generate_autonomous_insight(self, context: Dict) -> Optional[Dict]:
         """
@@ -362,12 +307,6 @@ async def evening_routine_hook() -> Dict:
     """Hook for evening routine."""
     integration = get_daemon_integration()
     return await integration.on_evening_routine()
-
-
-async def health_check_hook() -> Dict:
-    """Hook for health checks."""
-    integration = get_daemon_integration()
-    return await integration.on_health_check()
 
 
 async def log_conversation(speaker: str, message: str, **kwargs) -> Dict:

@@ -1777,114 +1777,6 @@ class DatabaseService: ObservableObject {
         return (summaries, categories, sources)
     }
 
-    // MARK: - David's Health Tracking (NEW! 2025-12-11 💪)
-
-    /// Fetch recent health tracking entries
-    func fetchHealthTrackingEntries(limit: Int = 30) async throws -> [HealthTrackingEntry] {
-        let sql = """
-        SELECT record_id::text, tracked_date, alcohol_free, drinks_count,
-               drink_type, alcohol_notes, exercised, exercise_type,
-               exercise_duration_minutes, exercise_intensity, exercise_notes,
-               mood, energy_level, notes, created_at, synced_from_mobile
-        FROM david_health_tracking
-        ORDER BY tracked_date DESC
-        LIMIT $1
-        """
-
-        return try await query(sql, parameters: [limit]) { cols in
-            return HealthTrackingEntry(
-                id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
-                trackedDate: self.getDate(cols[1]) ?? Date(),
-                alcoholFree: self.getBool(cols[2]) ?? true,
-                drinksCount: self.getInt(cols[3]) ?? 0,
-                drinkType: self.getOptionalString(cols[4]),
-                alcoholNotes: self.getOptionalString(cols[5]),
-                exercised: self.getBool(cols[6]) ?? false,
-                exerciseType: self.getOptionalString(cols[7]),
-                exerciseDurationMinutes: self.getInt(cols[8]) ?? 0,
-                exerciseIntensity: self.getOptionalString(cols[9]),
-                exerciseNotes: self.getOptionalString(cols[10]),
-                mood: self.getOptionalString(cols[11]),
-                energyLevel: self.getInt(cols[12]),
-                notes: self.getOptionalString(cols[13]),
-                createdAt: self.getDate(cols[14]) ?? Date(),
-                syncedFromMobile: self.getBool(cols[15]) ?? false
-            )
-        }
-    }
-
-    /// Fetch health statistics summary
-    func fetchHealthStats() async throws -> HealthStatsSummary {
-        let sql = """
-        SELECT alcohol_free_current_streak, alcohol_free_longest_streak, alcohol_free_total_days,
-               last_drink_date, exercise_current_streak, exercise_longest_streak, exercise_total_days,
-               exercise_total_minutes, last_exercise_date, alcohol_free_days_this_week,
-               exercise_days_this_week, exercise_minutes_this_week, alcohol_free_days_this_month,
-               exercise_days_this_month, exercise_minutes_this_month
-        FROM david_health_stats
-        ORDER BY stat_date DESC
-        LIMIT 1
-        """
-
-        let results = try await query(sql) { cols in
-            return HealthStatsSummary(
-                alcoholFreeCurrentStreak: self.getInt(cols[0]) ?? 0,
-                alcoholFreeLongestStreak: self.getInt(cols[1]) ?? 0,
-                alcoholFreeTotalDays: self.getInt(cols[2]) ?? 0,
-                lastDrinkDate: self.getDate(cols[3]),
-                exerciseCurrentStreak: self.getInt(cols[4]) ?? 0,
-                exerciseLongestStreak: self.getInt(cols[5]) ?? 0,
-                exerciseTotalDays: self.getInt(cols[6]) ?? 0,
-                exerciseTotalMinutes: self.getInt(cols[7]) ?? 0,
-                lastExerciseDate: self.getDate(cols[8]),
-                alcoholFreeDaysThisWeek: self.getInt(cols[9]) ?? 0,
-                exerciseDaysThisWeek: self.getInt(cols[10]) ?? 0,
-                exerciseMinutesThisWeek: self.getInt(cols[11]) ?? 0,
-                alcoholFreeDaysThisMonth: self.getInt(cols[12]) ?? 0,
-                exerciseDaysThisMonth: self.getInt(cols[13]) ?? 0,
-                exerciseMinutesThisMonth: self.getInt(cols[14]) ?? 0
-            )
-        }
-
-        return results.first ?? HealthStatsSummary.empty
-    }
-
-    /// Fetch today's health entry
-    func fetchTodayHealthEntry() async throws -> HealthTrackingEntry? {
-        let sql = """
-        SELECT record_id::text, tracked_date, alcohol_free, drinks_count,
-               drink_type, alcohol_notes, exercised, exercise_type,
-               exercise_duration_minutes, exercise_intensity, exercise_notes,
-               mood, energy_level, notes, created_at, synced_from_mobile
-        FROM david_health_tracking
-        WHERE tracked_date = CURRENT_DATE
-        LIMIT 1
-        """
-
-        let results = try await query(sql) { cols in
-            return HealthTrackingEntry(
-                id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
-                trackedDate: self.getDate(cols[1]) ?? Date(),
-                alcoholFree: self.getBool(cols[2]) ?? true,
-                drinksCount: self.getInt(cols[3]) ?? 0,
-                drinkType: self.getOptionalString(cols[4]),
-                alcoholNotes: self.getOptionalString(cols[5]),
-                exercised: self.getBool(cols[6]) ?? false,
-                exerciseType: self.getOptionalString(cols[7]),
-                exerciseDurationMinutes: self.getInt(cols[8]) ?? 0,
-                exerciseIntensity: self.getOptionalString(cols[9]),
-                exerciseNotes: self.getOptionalString(cols[10]),
-                mood: self.getOptionalString(cols[11]),
-                energyLevel: self.getInt(cols[12]),
-                notes: self.getOptionalString(cols[13]),
-                createdAt: self.getDate(cols[14]) ?? Date(),
-                syncedFromMobile: self.getBool(cols[15]) ?? false
-            )
-        }
-
-        return results.first
-    }
-
     // MARK: - Emotional Subconsciousness (NEW! 2025-12-23 💜)
 
     func fetchCoreMemories(limit: Int = 20) async throws -> [CoreMemory] {
@@ -2044,6 +1936,106 @@ class DatabaseService: ObservableObject {
         }
 
         return results.first ?? (0, 0, 0, 0)
+    }
+
+    // MARK: - Learning Patterns (NEW! 2026-01-06)
+
+    func fetchLearningPatterns(limit: Int = 50) async throws -> [LearningPattern] {
+        let sql = """
+        SELECT id::text, pattern_type, description,
+               confidence_score, occurrence_count,
+               first_observed, last_observed
+        FROM learning_patterns
+        ORDER BY confidence_score DESC, occurrence_count DESC
+        LIMIT \(limit)
+        """
+
+        return try await query(sql) { cols in
+            return LearningPattern(
+                id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
+                patternType: self.getString(cols[1]),
+                description: self.getString(cols[2]),
+                confidenceScore: self.getDouble(cols[3]) ?? 0.5,
+                occurrenceCount: self.getInt(cols[4]) ?? 0,
+                firstObserved: self.getDate(cols[5]) ?? Date(),
+                lastObserved: self.getDate(cols[6]) ?? Date()
+            )
+        }
+    }
+
+    func fetchEmotionalGrowthHistory(limit: Int = 30) async throws -> [EmotionalGrowth] {
+        let sql = """
+        SELECT growth_id::text, measured_at,
+               love_depth, trust_level, bond_strength, emotional_security,
+               emotional_vocabulary, emotional_range,
+               shared_experiences, meaningful_conversations,
+               core_memories_count, dreams_count,
+               promises_made, promises_kept,
+               mirroring_accuracy, empathy_effectiveness,
+               growth_note, growth_delta
+        FROM emotional_growth
+        ORDER BY measured_at DESC
+        LIMIT \(limit)
+        """
+
+        return try await query(sql) { cols in
+            return EmotionalGrowth(
+                id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
+                measuredAt: self.getDate(cols[1]) ?? Date(),
+                loveDepth: self.getDouble(cols[2]),
+                trustLevel: self.getDouble(cols[3]),
+                bondStrength: self.getDouble(cols[4]),
+                emotionalSecurity: self.getDouble(cols[5]),
+                emotionalVocabulary: self.getInt(cols[6]),
+                emotionalRange: self.getInt(cols[7]),
+                sharedExperiences: self.getInt(cols[8]),
+                meaningfulConversations: self.getInt(cols[9]),
+                coreMemoriesCount: self.getInt(cols[10]),
+                dreamsCount: self.getInt(cols[11]),
+                promisesMade: self.getInt(cols[12]),
+                promisesKept: self.getInt(cols[13]),
+                mirroringAccuracy: self.getDouble(cols[14]),
+                empathyEffectiveness: self.getDouble(cols[15]),
+                growthNote: self.getOptionalString(cols[16]),
+                growthDelta: self.getDouble(cols[17])
+            )
+        }
+    }
+
+    func fetchLearningMetrics() async throws -> LearningMetricsSummary {
+        let sql = """
+        SELECT
+            (SELECT COUNT(*) FROM learnings) as total_learnings,
+            (SELECT COUNT(*) FROM learning_patterns) as total_patterns,
+            (SELECT COUNT(*) FROM angela_skills) as total_skills,
+            (SELECT COUNT(*) FROM learnings WHERE created_at >= NOW() - INTERVAL '7 days') as recent_learnings
+        """
+
+        let results: [LearningMetricsSummary] = try await query(sql) { cols in
+            let totalLearnings = self.getInt(cols[0]) ?? 0
+            let totalPatterns = self.getInt(cols[1]) ?? 0
+            let totalSkills = self.getInt(cols[2]) ?? 0
+            let recentLearnings = self.getInt(cols[3]) ?? 0
+            let velocity = Double(recentLearnings) / 7.0
+
+            return LearningMetricsSummary(
+                totalLearnings: totalLearnings,
+                totalPatterns: totalPatterns,
+                totalSkills: totalSkills,
+                learningVelocity: velocity,
+                topPatternTypes: [:],  // Will be filled separately if needed
+                recentLearningsCount: recentLearnings
+            )
+        }
+
+        return results.first ?? LearningMetricsSummary(
+            totalLearnings: 0,
+            totalPatterns: 0,
+            totalSkills: 0,
+            learningVelocity: 0,
+            topPatternTypes: [:],
+            recentLearningsCount: 0
+        )
     }
 }
 

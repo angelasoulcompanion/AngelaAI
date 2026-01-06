@@ -17,6 +17,8 @@ struct LearningSystemsView: View {
     @State private var knowledgeStats: (total: Int, categories: Int, avgUnderstanding: Double) = (0, 0, 0.0)
     @State private var conversationStats: (total: Int, last24h: Int, avgImportance: Double) = (0, 0, 0.0)
     @State private var workerMetrics: BackgroundWorkerMetrics? = nil
+    @State private var learningPatterns: [LearningPattern] = []  // NEW: Learning Patterns
+    @State private var learningMetrics: LearningMetricsSummary?  // NEW: Learning Metrics
     @State private var isLoading = true
     @State private var autoRefresh = true
     @State private var lastRefreshTime = Date()
@@ -35,6 +37,9 @@ struct LearningSystemsView: View {
                 } else {
                     // Background Workers Status (Priority 1)
                     backgroundWorkersSection
+
+                    // Learning Patterns (NEW! 2026-01-06)
+                    learningPatternsSection
 
                     // Knowledge Graph Stats
                     knowledgeGraphSection
@@ -436,6 +441,120 @@ struct LearningSystemsView: View {
         .angelaCard()
     }
 
+    // MARK: - Learning Patterns Section (NEW! 2026-01-06)
+
+    private var learningPatternsSection: some View {
+        VStack(alignment: .leading, spacing: AngelaTheme.spacing) {
+            HStack {
+                Image(systemName: "brain.head.profile")
+                    .foregroundColor(AngelaTheme.primaryPurple)
+                Text("Learning Patterns")
+                    .font(AngelaTheme.headline())
+                    .foregroundColor(AngelaTheme.textPrimary)
+                Spacer()
+                if let metrics = learningMetrics {
+                    Text("\(metrics.totalPatterns) patterns detected")
+                        .font(AngelaTheme.caption())
+                        .foregroundColor(AngelaTheme.textSecondary)
+                }
+            }
+
+            Text("Behavioral patterns recognized from David's interactions")
+                .font(AngelaTheme.body())
+                .foregroundColor(AngelaTheme.textSecondary)
+
+            Divider()
+                .background(AngelaTheme.textTertiary.opacity(0.3))
+
+            // Metrics Row
+            if let metrics = learningMetrics {
+                HStack(spacing: AngelaTheme.largeSpacing) {
+                    StatCard(
+                        title: "Total Learnings",
+                        value: "\(metrics.totalLearnings)",
+                        icon: "lightbulb.fill",
+                        color: Color(hex: "FBBF24")
+                    )
+                    StatCard(
+                        title: "Total Skills",
+                        value: "\(metrics.totalSkills)",
+                        icon: "star.fill",
+                        color: AngelaTheme.successGreen
+                    )
+                    StatCard(
+                        title: "Learning Velocity",
+                        value: String(format: "%.1f/day", metrics.learningVelocity),
+                        icon: "speedometer",
+                        color: AngelaTheme.primaryPurple
+                    )
+                    StatCard(
+                        title: "Recent (7d)",
+                        value: "\(metrics.recentLearningsCount)",
+                        icon: "clock.fill",
+                        color: Color(hex: "3B82F6")
+                    )
+                }
+            }
+
+            // Patterns List
+            if learningPatterns.isEmpty {
+                Text("No learning patterns detected yet")
+                    .font(AngelaTheme.body())
+                    .foregroundColor(AngelaTheme.textTertiary)
+                    .padding()
+            } else {
+                VStack(spacing: AngelaTheme.smallSpacing) {
+                    ForEach(learningPatterns.prefix(8)) { pattern in
+                        HStack(spacing: AngelaTheme.spacing) {
+                            Image(systemName: pattern.typeIcon)
+                                .foregroundColor(Color(hex: pattern.typeColor))
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(pattern.description)
+                                    .font(AngelaTheme.body())
+                                    .foregroundColor(AngelaTheme.textPrimary)
+                                    .lineLimit(2)
+
+                                HStack(spacing: 8) {
+                                    Text(pattern.patternType.capitalized)
+                                        .font(AngelaTheme.caption())
+                                        .foregroundColor(Color(hex: pattern.typeColor))
+
+                                    Text("Confidence: \(pattern.confidenceLabel)")
+                                        .font(AngelaTheme.caption())
+                                        .foregroundColor(AngelaTheme.textSecondary)
+
+                                    Text("\(pattern.occurrenceCount) occurrences")
+                                        .font(AngelaTheme.caption())
+                                        .foregroundColor(AngelaTheme.textTertiary)
+                                }
+                            }
+
+                            Spacer()
+
+                            // Confidence indicator (percentage badge)
+                            Text("\(Int(pattern.confidenceScore * 100))%")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color(hex: pattern.typeColor).opacity(0.8))
+                                .cornerRadius(8)
+                        }
+                        .padding(.vertical, 6)
+
+                        if pattern.id != learningPatterns.prefix(8).last?.id {
+                            Divider()
+                                .background(AngelaTheme.textTertiary.opacity(0.2))
+                        }
+                    }
+                }
+            }
+        }
+        .angelaCard()
+    }
+
     // MARK: - Conversation Stats Section
 
     private var conversationStatsSection: some View {
@@ -491,14 +610,22 @@ struct LearningSystemsView: View {
         async let knowledgeTask = databaseService.fetchKnowledgeStats()
         async let conversationTask = databaseService.fetchConversationStats()
         async let workerMetricsTask = databaseService.fetchBackgroundWorkerMetrics()
+        // NEW: Learning patterns
+        async let learningPatternsTask = try? databaseService.fetchLearningPatterns(limit: 20)
+        async let learningMetricsTask = try? databaseService.fetchLearningMetrics()
 
-        let (patterns, activities, knowledge, conversations, metrics) = await (patternsTask, activitiesTask, knowledgeTask, conversationTask, workerMetricsTask)
+        let (patterns, activities, knowledge, conversations, metrics, lPatterns, lMetrics) = await (
+            patternsTask, activitiesTask, knowledgeTask, conversationTask, workerMetricsTask,
+            learningPatternsTask, learningMetricsTask
+        )
 
         self.subconsciousPatterns = patterns
         self.recentActivities = activities
         self.knowledgeStats = knowledge
         self.conversationStats = conversations
         self.workerMetrics = metrics
+        self.learningPatterns = lPatterns ?? []
+        self.learningMetrics = lMetrics
 
         isLoading = false
         lastRefreshTime = Date()

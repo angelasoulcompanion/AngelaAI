@@ -424,7 +424,7 @@ class SubconsciousnessService:
                 mirroring_accuracy, growth_delta,
                 triggered_by
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        """, (
+        """,
             love_depth, trust_level, bond_strength,
             emotion_vocab['count'] or 0,
             shared_exp['count'] or 0,
@@ -434,8 +434,8 @@ class SubconsciousnessService:
             promises['count'] or 0,
             mirroring['avg_score'] if mirroring and mirroring['avg_score'] else 0.5,
             growth_delta,
-            'manual_measurement'
-        ))
+            'daemon_measurement'
+        )
 
         return {
             'love_depth': love_depth,

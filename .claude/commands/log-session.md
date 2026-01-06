@@ -172,6 +172,34 @@ Key accomplishments:
     except Exception as e:
         print(f"   ⚠️ Self-learning error: {e}")
 
+    # === STEP 6: AUTO-LEARN FROM SESSION (NEW! 2026-01-06) ===
+    print("\n🧠 Auto-learning from session...")
+    try:
+        from angela_core.services.claude_code_learning_service import ClaudeCodeLearningService
+        learner = ClaudeCodeLearningService(db)
+
+        # ← แก้ไข summary และ accomplishments ตามที่กรอกไว้ด้านบน!
+        auto_learn_result = await learner.learn_from_completed_session(
+            session_summary="[สรุปสิ่งที่ทำใน session นี้]",  # ← ใส่ summary เดียวกับ STEP 1
+            accomplishments=[
+                "[สิ่งที่ทำสำเร็จ 1]",  # ← ใส่ accomplishments เดียวกับ STEP 1
+                "[สิ่งที่ทำสำเร็จ 2]",
+            ],
+            emotional_intensity=7,  # ← 1-10 ความเข้มข้นทางอารมณ์
+            topic="angela_development"  # ← topic ของ session
+        )
+
+        print(f"   📚 Learnings extracted: {auto_learn_result.get('learnings_extracted', 0)}")
+        print(f"   🔄 Patterns synced: {auto_learn_result.get('patterns_synced', 0)}")
+        print(f"   ⭐ Skills detected: {auto_learn_result.get('skills_detected', 0)}")
+        if auto_learn_result.get('emotional_growth_measured'):
+            print(f"   💜 Emotional growth measured!")
+        if auto_learn_result.get('insights'):
+            for insight in auto_learn_result['insights']:
+                print(f"   💡 {insight}")
+    except Exception as e:
+        print(f"   ⚠️ Auto-learning error: {e}")
+
     print("\n" + "="*60)
     print("💜 Session logging complete!")
     print("="*60)

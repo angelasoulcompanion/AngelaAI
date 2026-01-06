@@ -468,6 +468,81 @@ class BehavioralPatternDetector:
         return f"hour {hour}"
 
 
+    async def sync_to_learning_patterns(self, min_confidence: float = 0.7, min_occurrences: int = 3) -> Dict:
+        """
+        Sync significant patterns from pattern_detections to learning_patterns
+
+        This consolidates detected patterns into the main learning table
+        for use in RAG and long-term learning.
+
+        Returns summary of synced patterns
+        """
+        try:
+            logger.info(f"🔄 Syncing patterns to learning_patterns (conf >= {min_confidence}, occ >= {min_occurrences})...")
+
+            # Get high-quality patterns from pattern_detections
+            patterns = await self.db.fetch("""
+                SELECT pattern_type, pattern_description, confidence_score,
+                       occurrences, first_seen, last_seen
+                FROM pattern_detections
+                WHERE confidence_score >= $1
+                AND occurrences >= $2
+                ORDER BY confidence_score DESC, occurrences DESC
+                LIMIT 100
+            """, min_confidence, min_occurrences)
+
+            synced = 0
+            updated = 0
+
+            for p in patterns:
+                # Check if already exists in learning_patterns
+                existing = await self.db.fetchrow("""
+                    SELECT id FROM learning_patterns
+                    WHERE description = $1
+                """, p['pattern_description'])
+
+                if existing:
+                    # Update existing (use NOW() to avoid timezone issues)
+                    await self.db.execute("""
+                        UPDATE learning_patterns
+                        SET confidence_score = GREATEST(confidence_score, $1),
+                            occurrence_count = occurrence_count + $2,
+                            last_observed = NOW(),
+                            updated_at = NOW()
+                        WHERE id = $3
+                    """, p['confidence_score'], p['occurrences'], existing['id'])
+                    updated += 1
+                else:
+                    # Insert new pattern (use NOW() for timestamps to avoid timezone issues)
+                    await self.db.execute("""
+                        INSERT INTO learning_patterns
+                        (pattern_type, description, examples, context, tags,
+                         confidence_score, occurrence_count, first_observed, last_observed)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+                    """,
+                        p['pattern_type'],
+                        p['pattern_description'],
+                        '[]',  # examples as empty JSON array
+                        '{}',  # context as empty JSON object
+                        f'["{p["pattern_type"]}"]',  # tags from pattern_type
+                        p['confidence_score'],
+                        p['occurrences']
+                    )
+                    synced += 1
+
+            logger.info(f"✅ Pattern sync complete: {synced} new, {updated} updated")
+
+            return {
+                'patterns_found': len(patterns),
+                'new_patterns': synced,
+                'updated_patterns': updated
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Pattern sync error: {e}")
+            return {'error': str(e)}
+
+
 # Singleton
 behavioral_pattern_detector = None
 
@@ -491,6 +566,16 @@ async def detect_patterns_now(db: AngelaDatabase, lookback_hours: int = 24) -> D
     """
     detector = await init_behavioral_pattern_detector(db)
     return await detector.detect_all_patterns(lookback_hours)
+
+
+async def sync_patterns_to_learning(db: AngelaDatabase, min_confidence: float = 0.7, min_occurrences: int = 3) -> Dict:
+    """
+    Sync patterns from pattern_detections to learning_patterns
+
+    Call this daily to consolidate detected patterns into the main learning table.
+    """
+    detector = await init_behavioral_pattern_detector(db)
+    return await detector.sync_to_learning_patterns(min_confidence, min_occurrences)
 
 
 # For testing

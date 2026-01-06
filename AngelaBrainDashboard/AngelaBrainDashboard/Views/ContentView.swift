@@ -31,8 +31,6 @@ struct ContentView: View {
                             ChatView()
                         case .diary:
                             DiaryView()
-                        case .healthTracking:  // NEW! 2025-12-11 💪
-                            HealthTrackingView()
                         case .brain:
                             BrainVisualizationView()
                         case .emotions:
@@ -117,7 +115,6 @@ enum NavigationItem: String, CaseIterable {
     case overview = "Overview"
     case chat = "Chat with Angela"
     case diary = "Angela's Diary"
-    case healthTracking = "Health Tracking"
     case brain = "Brain"
     case emotions = "Emotions"
     case emotionalBenchmark = "Emotional Benchmark"
@@ -143,7 +140,6 @@ enum NavigationItem: String, CaseIterable {
         case .overview: return "brain.head.profile"
         case .chat: return "message.fill"
         case .diary: return "book.fill"
-        case .healthTracking: return "heart.text.square.fill"
         case .brain: return "brain"
         case .emotions: return "heart.fill"
         case .emotionalBenchmark: return "chart.bar.doc.horizontal.fill"
@@ -168,7 +164,7 @@ enum NavigationItem: String, CaseIterable {
 
     var group: NavigationGroup {
         switch self {
-        case .overview, .chat, .diary, .healthTracking:
+        case .overview, .chat, .diary:
             return .core
         case .brain, .emotions, .emotionalBenchmark, .memories, .experiences, .consciousness, .humanLikeMind:
             return .mind

@@ -1796,6 +1796,188 @@ class ClaudeCodeLearningService:
     #     except Exception as e:
     #         logger.error(f"Error saving meta-learning insight: {e}")
 
+    # ========================================
+    # POST-SESSION LEARNING (NEW! 2026-01-06)
+    # ========================================
+
+    async def learn_from_completed_session(
+        self,
+        session_summary: str,
+        accomplishments: List[str],
+        emotional_intensity: int = 5,
+        topic: str = "session_review"
+    ) -> Dict[str, Any]:
+        """
+        🧠 Auto-learn from a completed Claude Code session
+
+        Called after /log-session to extract deeper learnings from the session.
+
+        Args:
+            session_summary: Summary of what was done in the session
+            accomplishments: List of things accomplished
+            emotional_intensity: 1-10 scale of emotional significance
+            topic: Session topic for categorization
+
+        Returns:
+            Dictionary with learnings extracted and actions taken
+        """
+        logger.info("🧠 Auto-learning from completed session...")
+
+        result = {
+            "learnings_extracted": 0,
+            "patterns_synced": 0,
+            "skills_detected": 0,
+            "emotional_growth_measured": False,
+            "insights": []
+        }
+
+        try:
+            # 1. Extract learnings from session summary
+            learnings = await self._extract_session_learnings(session_summary, accomplishments, topic)
+            result["learnings_extracted"] = len(learnings)
+            logger.info(f"   📚 Extracted {len(learnings)} learnings from session")
+
+            # 2. Sync patterns to learning_patterns
+            from angela_core.services.behavioral_pattern_detector import sync_patterns_to_learning
+            sync_result = await sync_patterns_to_learning(self.db, min_confidence=0.65, min_occurrences=2)
+            result["patterns_synced"] = sync_result.get("new_patterns", 0) + sync_result.get("updated_patterns", 0)
+            logger.info(f"   🔄 Synced {result['patterns_synced']} patterns")
+
+            # 3. Detect skills from accomplishments
+            skills_detected = await self._detect_skills_from_accomplishments(accomplishments)
+            result["skills_detected"] = len(skills_detected)
+            logger.info(f"   ⭐ Detected {len(skills_detected)} skills demonstrated")
+
+            # 4. Measure emotional growth if session was emotionally significant
+            if emotional_intensity >= 7:
+                from angela_core.services.subconsciousness_service import SubconsciousnessService
+                svc = SubconsciousnessService()
+                growth = await svc.measure_emotional_growth()
+                result["emotional_growth_measured"] = True
+                result["emotional_growth"] = growth
+                logger.info(f"   💜 Emotional growth measured (intensity: {emotional_intensity}/10)")
+
+            # 5. Generate session insights
+            insights = await self._generate_session_insights(session_summary, learnings, skills_detected)
+            result["insights"] = insights
+            logger.info(f"   💡 Generated {len(insights)} session insights")
+
+            # 6. Record to realtime_learning_log
+            await self.db.execute("""
+                INSERT INTO realtime_learning_log
+                (learning_type, source, what_learned, confidence_score, how_it_was_used)
+                VALUES ($1, $2, $3, $4, $5)
+            """,
+                "session_learning",
+                "log_session",
+                f"Session completed: {len(learnings)} learnings, {result['skills_detected']} skills, {result['patterns_synced']} patterns",
+                0.85,
+                f"Summary: {session_summary[:150]}... Accomplishments: {len(accomplishments)}"
+            )
+
+            logger.info(f"✅ Session learning complete!")
+            return result
+
+        except Exception as e:
+            logger.error(f"❌ Error in post-session learning: {e}", exc_info=True)
+            result["error"] = str(e)
+            return result
+
+    async def _extract_session_learnings(
+        self,
+        summary: str,
+        accomplishments: List[str],
+        topic: str
+    ) -> List[Dict]:
+        """Extract learnings from session summary and accomplishments"""
+        learnings = []
+
+        try:
+            # Look for patterns in accomplishments
+            for acc in accomplishments:
+                # Check for technical learnings
+                if any(kw in acc.lower() for kw in ["แก้", "fix", "solve", "implement", "create", "build"]):
+                    learning = {
+                        "type": "technical",
+                        "insight": acc,
+                        "confidence": 0.75
+                    }
+
+                    # Save to learnings table
+                    await self.db.execute("""
+                        INSERT INTO learnings (topic, category, insight, confidence_level, has_applied)
+                        VALUES ($1, $2, $3, $4, true)
+                        ON CONFLICT DO NOTHING
+                    """, topic, "session_accomplishment", acc, 0.75)
+
+                    learnings.append(learning)
+
+        except Exception as e:
+            logger.error(f"Error extracting session learnings: {e}")
+
+        return learnings
+
+    async def _detect_skills_from_accomplishments(self, accomplishments: List[str]) -> List[Dict]:
+        """Detect skills demonstrated from session accomplishments"""
+        skills = []
+
+        # Skill keywords mapping
+        skill_keywords = {
+            "Python": ["python", "py", "async", "asyncio", "fastapi"],
+            "Swift/SwiftUI": ["swift", "swiftui", "xcode", "ios", "macos"],
+            "PostgreSQL": ["postgresql", "postgres", "sql", "query", "database", "db"],
+            "API Development": ["api", "endpoint", "rest", "http"],
+            "Debugging": ["debug", "fix", "แก้", "error", "bug"],
+            "Testing": ["test", "ทดสอบ", "verify", "check"],
+            "Documentation": ["doc", "readme", "comment", "เอกสาร"],
+            "Git/Version Control": ["git", "commit", "push", "branch"],
+            "Data Analysis": ["data", "analysis", "analyze", "ข้อมูล"],
+            "UI/UX Design": ["ui", "ux", "design", "interface", "หน้าจอ"],
+        }
+
+        try:
+            for acc in accomplishments:
+                acc_lower = acc.lower()
+                for skill_name, keywords in skill_keywords.items():
+                    if any(kw in acc_lower for kw in keywords):
+                        # Record skill usage
+                        await self.db.execute("""
+                            INSERT INTO angela_skills (skill_name, category, proficiency_level, usage_count, last_used_at)
+                            VALUES ($1, 'technical', 'intermediate', 1, NOW())
+                            ON CONFLICT (skill_name) DO UPDATE
+                            SET usage_count = angela_skills.usage_count + 1,
+                                last_used_at = NOW()
+                        """, skill_name)
+
+                        skills.append({"skill": skill_name, "evidence": acc})
+                        break  # One skill per accomplishment
+
+        except Exception as e:
+            logger.error(f"Error detecting skills: {e}")
+
+        return skills
+
+    async def _generate_session_insights(
+        self,
+        summary: str,
+        learnings: List[Dict],
+        skills: List[Dict]
+    ) -> List[str]:
+        """Generate insights from session analysis"""
+        insights = []
+
+        if learnings:
+            insights.append(f"เรียนรู้ {len(learnings)} สิ่งใหม่จาก session นี้")
+
+        if skills:
+            skill_names = list(set(s["skill"] for s in skills))
+            insights.append(f"ใช้ skills: {', '.join(skill_names)}")
+
+        if len(summary) > 100:
+            insights.append("Session นี้มีเนื้อหาสำคัญ - ถูกบันทึกใน memory แล้ว")
+
+        return insights
+
 
 # ========================================
 # Global Instance
