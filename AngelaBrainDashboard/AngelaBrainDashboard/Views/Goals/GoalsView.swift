@@ -77,8 +77,8 @@ struct GoalsView: View {
 
             if viewModel.activeGoals.isEmpty {
                 EmptyStateView(
-                    icon: "target",
-                    message: "No active goals yet"
+                    message: "No active goals yet",
+                    icon: "target"
                 )
             } else {
                 VStack(spacing: AngelaTheme.spacing) {
@@ -318,26 +318,7 @@ struct CompletedGoalRow: View {
     }
 }
 
-// MARK: - Empty State View
-
-struct EmptyStateView: View {
-    let icon: String
-    let message: String
-
-    var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.system(size: 48))
-                .foregroundColor(AngelaTheme.textTertiary)
-
-            Text(message)
-                .font(AngelaTheme.body())
-                .foregroundColor(AngelaTheme.textTertiary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
-    }
-}
+// MARK: - Empty State (using shared EmptyStateView from SharedComponents)
 
 // MARK: - View Model
 

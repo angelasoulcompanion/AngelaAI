@@ -98,7 +98,7 @@ struct TrainingStudioView: View {
 
     private var systemStatusSection: some View {
         HStack(spacing: 20) {
-            SystemStatusBadge(
+            SystemStatusVerticalBadge(
                 title: "MLX",
                 isAvailable: trainingService.mlxAvailable,
                 icon: "cpu"
@@ -107,7 +107,7 @@ struct TrainingStudioView: View {
             Divider()
                 .frame(height: 40)
 
-            SystemStatusBadge(
+            SystemStatusVerticalBadge(
                 title: "Ollama",
                 isAvailable: trainingService.ollamaAvailable,
                 icon: "server.rack"
@@ -116,7 +116,7 @@ struct TrainingStudioView: View {
             Divider()
                 .frame(height: 40)
 
-            SystemStatusBadge(
+            SystemStatusVerticalBadge(
                 title: "Database",
                 isAvailable: true, // Assume connected if we're here
                 icon: "cylinder.split.1x2"
@@ -485,36 +485,7 @@ struct TrainingStudioView: View {
     }
 }
 
-// MARK: - Supporting Views
-
-struct SystemStatusBadge: View {
-    let title: String
-    let isAvailable: Bool
-    let icon: String
-
-    var body: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .fill(isAvailable ? AngelaTheme.successGreen.opacity(0.2) : AngelaTheme.errorRed.opacity(0.2))
-                    .frame(width: 50, height: 50)
-
-                Image(systemName: icon)
-                    .font(.system(size: 24))
-                    .foregroundColor(isAvailable ? AngelaTheme.successGreen : AngelaTheme.errorRed)
-            }
-
-            Text(title)
-                .font(AngelaTheme.caption())
-                .foregroundColor(AngelaTheme.textSecondary)
-
-            Text(isAvailable ? "Ready" : "Not Available")
-                .font(AngelaTheme.caption().weight(.semibold))
-                .foregroundColor(isAvailable ? AngelaTheme.successGreen : AngelaTheme.errorRed)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
+// MARK: - Supporting Views (using shared SystemStatusVerticalBadge from SharedComponents)
 
 struct StepIndicator: View {
     let step: TrainingStep
