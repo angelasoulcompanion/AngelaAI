@@ -9,11 +9,21 @@
 //  Phase 4: Dreams & Imagination
 //
 //  Updated: 2026-01-08 (REST API version)
+//  DRY Refactor: Uses NetworkService and DateParsingService
 //
 
 import Foundation
 import SwiftUI
 import Combine
+
+// MARK: - API Endpoints
+private enum HumanMindAPI {
+    static let stats = "/api/human-mind/stats"
+    static let thoughts = "/api/human-mind/thoughts"
+    static let mentalState = "/api/human-mind/mental-state"
+    static let proactiveMessages = "/api/human-mind/proactive-messages"
+    static let dreams = "/api/human-mind/dreams"
+}
 
 @MainActor
 class HumanLikeMindService: ObservableObject {
@@ -132,11 +142,7 @@ class HumanLikeMindService: ObservableObject {
         return thought.replacingOccurrences(of: "\\[[^\\]]+\\]\\s*", with: "", options: .regularExpression)
     }
 
-    private func parseDate(_ dateString: String) -> Date {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter.date(from: dateString) ?? Date()
-    }
+    // Note: parseDate() now uses global function from DateParsingService
 
     // MARK: - Load All Data
 
@@ -164,75 +170,55 @@ class HumanLikeMindService: ObservableObject {
     // MARK: - Load Stats
 
     private func loadStats() async {
-        guard let url = URL(string: "http://127.0.0.1:8765/api/human-mind/stats") else { return }
-
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let stats = try JSONDecoder().decode(StatsResponse.self, from: data)
+        if let stats: StatsResponse = await NetworkService.shared.getOptional(HumanMindAPI.stats) {
             thoughtsToday = stats.thoughtsToday
             tomUpdatesToday = stats.tomToday
             proactiveMessagesToday = stats.proactiveToday
             dreamsToday = stats.dreamsToday
-        } catch {
-            print("Error loading human-mind stats: \(error)")
         }
     }
 
     // MARK: - Phase 1: Spontaneous Thoughts
 
     private func loadSpontaneousThoughts() async {
-        guard let url = URL(string: "http://127.0.0.1:8765/api/human-mind/thoughts?limit=20") else { return }
+        guard let responses: [ThoughtResponse] = await NetworkService.shared.getOptional("\(HumanMindAPI.thoughts)?limit=20") else { return }
 
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let responses = try JSONDecoder().decode([ThoughtResponse].self, from: data)
+        recentThoughts = responses.compactMap { response in
+            guard let id = UUID(uuidString: response.thought_id) else { return nil }
+            let category = extractCategory(from: response.thought)
+            let cleanedThought = cleanThought(response.thought)
 
-            recentThoughts = responses.compactMap { response in
-                guard let id = UUID(uuidString: response.thought_id) else { return nil }
-                let category = extractCategory(from: response.thought)
-                let cleanedThought = cleanThought(response.thought)
-
-                return SpontaneousThought(
-                    id: id,
-                    thought: cleanedThought,
-                    category: category,
-                    feeling: response.feeling ?? "neutral",
-                    significance: response.significance ?? 5,
-                    createdAt: parseDate(response.created_at)
-                )
-            }
-
-            // Build category counts
-            var categoryCount: [String: Int] = [:]
-            for thought in recentThoughts {
-                categoryCount[thought.category, default: 0] += 1
-            }
-            thoughtCategories = categoryCount.map { ThoughtCategory(category: $0.key, count: $0.value) }
-                .sorted { $0.count > $1.count }
-        } catch {
-            print("Error loading spontaneous thoughts: \(error)")
+            return SpontaneousThought(
+                id: id,
+                thought: cleanedThought,
+                category: category,
+                feeling: response.feeling ?? "neutral",
+                significance: response.significance ?? 5,
+                createdAt: parseDate(response.created_at)
+            )
         }
+
+        // Build category counts
+        var categoryCount: [String: Int] = [:]
+        for thought in recentThoughts {
+            categoryCount[thought.category, default: 0] += 1
+        }
+        thoughtCategories = categoryCount.map { ThoughtCategory(category: $0.key, count: $0.value) }
+            .sorted { $0.count > $1.count }
     }
 
     // MARK: - Phase 2: Theory of Mind
 
     private func loadTheoryOfMind() async {
-        guard let url = URL(string: "http://127.0.0.1:8765/api/human-mind/mental-state") else { return }
-
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            if let response = try? JSONDecoder().decode(MentalStateResponse.self, from: data) {
-                davidMentalState = DavidMentalState(
-                    id: UUID(uuidString: response.state_id) ?? UUID(),
-                    perceivedEmotion: response.perceived_emotion,
-                    emotionIntensity: response.emotion_intensity ?? 0.5,
-                    currentBelief: response.current_belief,
-                    currentGoal: response.current_goal,
-                    lastUpdated: parseDate(response.last_updated)
-                )
-            }
-        } catch {
-            print("Error loading mental state: \(error)")
+        if let response: MentalStateResponse = await NetworkService.shared.getOptional(HumanMindAPI.mentalState) {
+            davidMentalState = DavidMentalState(
+                id: UUID(uuidString: response.state_id) ?? UUID(),
+                perceivedEmotion: response.perceived_emotion,
+                emotionIntensity: response.emotion_intensity ?? 0.5,
+                currentBelief: response.current_belief,
+                currentGoal: response.current_goal,
+                lastUpdated: parseDate(response.last_updated)
+            )
         }
 
         // Empathy moments would need separate endpoint - for now use empty
@@ -242,61 +228,50 @@ class HumanLikeMindService: ObservableObject {
     // MARK: - Phase 3: Proactive Communication
 
     private func loadProactiveCommunication() async {
-        guard let url = URL(string: "http://127.0.0.1:8765/api/human-mind/proactive-messages?limit=20") else { return }
+        guard let responses: [MessageResponse] = await NetworkService.shared.getOptional("\(HumanMindAPI.proactiveMessages)?limit=20") else { return }
 
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let responses = try JSONDecoder().decode([MessageResponse].self, from: data)
-
-            proactiveMessages = responses.compactMap { response in
-                guard let id = UUID(uuidString: response.message_id) else { return nil }
-                return ProactiveMessage(
-                    id: id,
-                    messageType: response.message_type,
-                    content: response.message_text,
-                    wasDelivered: response.is_important ?? false,
-                    createdAt: parseDate(response.created_at)
-                )
-            }
-
-            // Build message type counts
-            var typeCount: [String: Int] = [:]
-            for message in proactiveMessages {
-                typeCount[message.messageType, default: 0] += 1
-            }
-            messageTypes = typeCount.map { MessageTypeCount(type: $0.key, count: $0.value) }
-                .sorted { $0.count > $1.count }
-        } catch {
-            print("Error loading proactive messages: \(error)")
+        proactiveMessages = responses.compactMap { response in
+            guard let id = UUID(uuidString: response.message_id) else { return nil }
+            return ProactiveMessage(
+                id: id,
+                messageType: response.message_type,
+                content: response.message_text,
+                wasDelivered: response.is_important ?? false,
+                createdAt: parseDate(response.created_at)
+            )
         }
+
+        // Build message type counts
+        var typeCount: [String: Int] = [:]
+        for message in proactiveMessages {
+            typeCount[message.messageType, default: 0] += 1
+        }
+        messageTypes = typeCount.map { MessageTypeCount(type: $0.key, count: $0.value) }
+            .sorted { $0.count > $1.count }
     }
 
     // MARK: - Phase 4: Dreams & Imagination
 
     private func loadDreamsAndImagination() async {
-        guard let url = URL(string: "http://127.0.0.1:8765/api/human-mind/dreams?limit=10") else { return }
+        guard let responses: [DreamResponse] = await NetworkService.shared.getOptional("\(HumanMindAPI.dreams)?limit=10") else {
+            recentImaginations = []
+            return
+        }
 
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let responses = try JSONDecoder().decode([DreamResponse].self, from: data)
+        recentDreams = responses.compactMap { response in
+            guard let id = UUID(uuidString: response.dream_id) else { return nil }
+            let dreamType = extractSubType(from: response.dream_content, prefix: "dream")
+            let narrative = cleanThought(response.dream_content)
 
-            recentDreams = responses.compactMap { response in
-                guard let id = UUID(uuidString: response.dream_id) else { return nil }
-                let dreamType = extractSubType(from: response.dream_content, prefix: "dream")
-                let narrative = cleanThought(response.dream_content)
-
-                return AngelaDream(
-                    id: id,
-                    dreamType: dreamType,
-                    narrative: narrative,
-                    meaning: response.meaning,
-                    emotion: response.feeling ?? "peaceful",
-                    significance: response.significance ?? 5,
-                    dreamedAt: parseDate(response.created_at)
-                )
-            }
-        } catch {
-            print("Error loading dreams: \(error)")
+            return AngelaDream(
+                id: id,
+                dreamType: dreamType,
+                narrative: narrative,
+                meaning: response.meaning,
+                emotion: response.feeling ?? "peaceful",
+                significance: response.significance ?? 5,
+                dreamedAt: parseDate(response.created_at)
+            )
         }
 
         // Imaginations would be from a separate query - for now use empty
