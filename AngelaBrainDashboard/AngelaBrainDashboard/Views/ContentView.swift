@@ -84,6 +84,8 @@ struct ContentView: View {
                             MarkdownViewerView()
                         case .knowledgeRAG:
                             KnowledgeRAGView()
+                        case .davidResume:
+                            ResumeView()
                         }
                     }
                     .transition(.opacity)
@@ -145,6 +147,7 @@ enum NavigationItem: String, CaseIterable {
     case trainingStudio = "Training Studio"
     case markdownViewer = "Markdown Viewer"
     case knowledgeRAG = "Knowledge RAG"
+    case davidResume = "David's Resume"
 
     var icon: String {
         switch self {
@@ -170,6 +173,7 @@ enum NavigationItem: String, CaseIterable {
         case .trainingStudio: return "cpu.fill"
         case .markdownViewer: return "doc.richtext.fill"
         case .knowledgeRAG: return "books.vertical.fill"
+        case .davidResume: return "doc.text.fill"
         }
     }
 
@@ -185,6 +189,8 @@ enum NavigationItem: String, CaseIterable {
             return .settings
         case .codingGuidelines, .markdownViewer, .executiveNews, .knowledgeRAG:
             return .documents
+        case .davidResume:
+            return .settings
         }
     }
 }
