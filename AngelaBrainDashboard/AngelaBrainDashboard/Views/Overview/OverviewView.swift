@@ -343,17 +343,26 @@ class OverviewViewModel: ObservableObject {
     func loadData(databaseService: DatabaseService) async {
         isLoading = true
 
+        // Load stats
         do {
-            // Load all data in parallel
-            async let statsTask = databaseService.fetchDashboardStats()
-            async let emotionalStateTask = databaseService.fetchCurrentEmotionalState()
-            async let emotionsTask = databaseService.fetchRecentEmotions(limit: 10)
-
-            stats = try await statsTask
-            emotionalState = try await emotionalStateTask
-            recentEmotions = try await emotionsTask
+            stats = try await databaseService.fetchDashboardStats()
         } catch {
-            print("Error loading overview data: \(error)")
+            print("❌ Error loading stats: \(error)")
+        }
+
+        // Load emotional state
+        do {
+            emotionalState = try await databaseService.fetchCurrentEmotionalState()
+        } catch {
+            print("❌ Error loading emotional state: \(error)")
+        }
+
+        // Load recent emotions
+        do {
+            recentEmotions = try await databaseService.fetchRecentEmotions(limit: 10)
+            print("✅ Loaded \(recentEmotions.count) recent emotions")
+        } catch {
+            print("❌ Error loading recent emotions: \(error)")
         }
 
         isLoading = false

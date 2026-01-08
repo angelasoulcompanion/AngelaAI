@@ -248,7 +248,7 @@ async def get_active_goals():
 # ============================================================
 
 @app.get("/api/preferences/david")
-async def get_david_preferences(limit: int = Query(20, ge=1, le=100)):
+async def get_david_preferences(limit: int = Query(20, ge=1, le=200)):
     """Fetch David's preferences"""
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
@@ -256,6 +256,20 @@ async def get_david_preferences(limit: int = Query(20, ge=1, le=100)):
                    confidence, created_at
             FROM david_preferences
             ORDER BY confidence DESC, created_at DESC
+            LIMIT $1
+        """, limit)
+        return [dict(r) for r in rows]
+
+
+@app.get("/api/certifications")
+async def get_certifications(limit: int = Query(20, ge=1, le=100)):
+    """Fetch David's certifications"""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT cert_id::text, course_name, provider, platform,
+                   completion_date, verify_url, skill_category, created_at
+            FROM david_certifications
+            ORDER BY completion_date DESC
             LIMIT $1
         """, limit)
         return [dict(r) for r in rows]
