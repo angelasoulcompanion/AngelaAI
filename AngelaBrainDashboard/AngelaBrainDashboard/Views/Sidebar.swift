@@ -132,15 +132,15 @@ struct Sidebar: View {
 
     private var connectionStatus: some View {
         VStack(spacing: 6) {
-            // 💜 Local PostgreSQL indicator
+            // ☁️ Neon Cloud indicator
             HStack(spacing: 6) {
-                Image(systemName: "house.fill")
+                Image(systemName: "cloud.fill")
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.green)
+                    .foregroundColor(.cyan)
 
-                Text("🏠 Local")
+                Text("☁️ Neon Cloud")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.green)
+                    .foregroundColor(.cyan)
 
                 Spacer()
             }

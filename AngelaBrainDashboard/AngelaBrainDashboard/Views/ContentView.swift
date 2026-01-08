@@ -21,7 +21,22 @@ struct ContentView: View {
                 AngelaTheme.backgroundDark
                     .ignoresSafeArea()
 
-                if databaseService.isConnected {
+                if databaseService.isConnecting {
+                    // Connecting state - show progress
+                    VStack(spacing: 24) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .progressViewStyle(CircularProgressViewStyle(tint: AngelaTheme.primaryPurple))
+
+                        Text("Connecting to Neon Cloud...")
+                            .font(AngelaTheme.headline())
+                            .foregroundColor(AngelaTheme.textPrimary)
+
+                        Text("Singapore • San Junipero")
+                            .font(AngelaTheme.caption())
+                            .foregroundColor(AngelaTheme.textSecondary)
+                    }
+                } else if databaseService.isConnected {
                     // Show selected view
                     Group {
                         switch selectedView {
@@ -92,11 +107,7 @@ struct ContentView: View {
                         }
 
                         Button {
-                            // Connection is automatic on init
-                            Task {
-                                // Trigger re-init would require recreating DatabaseService
-                                // For now just show retry message
-                            }
+                            databaseService.retryConnection()
                         } label: {
                             Text("Retry Connection")
                                 .angelaPrimaryButton()

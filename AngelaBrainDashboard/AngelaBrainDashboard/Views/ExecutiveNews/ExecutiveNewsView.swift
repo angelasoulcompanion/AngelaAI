@@ -94,6 +94,26 @@ struct ExecutiveNewsView: View {
             }
             .buttonStyle(.plain)
 
+            // Today button (show only when not viewing today)
+            if !Calendar.current.isDateInToday(selectedDate) {
+                Button {
+                    selectedDate = Date()
+                    Task {
+                        await viewModel.loadTodaySummary(databaseService: databaseService)
+                    }
+                } label: {
+                    Text("Today")
+                        .font(AngelaTheme.caption())
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(AngelaTheme.primaryPurple)
+                        .cornerRadius(AngelaTheme.smallCornerRadius)
+                }
+                .buttonStyle(.plain)
+            }
+
             // Refresh button
             Button {
                 Task {

@@ -22,6 +22,15 @@ struct TechStackNode: Codable {
     let projects: [String]?     // List of project names using this tech
     let status: String?         // For project nodes
     let projectType: String?    // For project nodes: "personal", "client", "Our Future"
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, version, purpose, projects, status
+        case nodeType = "node_type"
+        case techType = "tech_type"
+        case projectCount = "project_count"
+        case techCount = "tech_count"
+        case projectType = "project_type"
+    }
 }
 
 struct TechStackLink: Codable {
@@ -29,6 +38,11 @@ struct TechStackLink: Codable {
     let target: String
     let strength: Double
     let techType: String?       // To color the link
+
+    enum CodingKeys: String, CodingKey {
+        case source, target, strength
+        case techType = "tech_type"
+    }
 }
 
 struct TechStackGraphData: Codable {

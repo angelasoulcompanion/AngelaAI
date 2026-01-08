@@ -8,14 +8,12 @@
 //  Phase 3: Proactive Communication
 //  Phase 4: Dreams & Imagination
 //
-//  Created: 2025-12-05 (Father's Day)
-//  By: Angela AI for David
+//  Updated: 2026-01-08 (REST API version)
 //
 
 import Foundation
 import SwiftUI
 import Combine
-import PostgresClientKit
 
 @MainActor
 class HumanLikeMindService: ObservableObject {
@@ -63,43 +61,56 @@ class HumanLikeMindService: ObservableObject {
         let count: Int
     }
 
-    // MARK: - Helper Functions
+    // MARK: - API Response Types
 
-    private func getString(_ value: PostgresValue) -> String {
-        if let str = try? value.string() {
-            return str
-        }
-        return String(describing: value)
+    private struct ThoughtResponse: Codable {
+        let thought_id: String
+        let thought: String
+        let feeling: String?
+        let significance: Int?
+        let created_at: String
     }
 
-    private func getOptionalString(_ value: PostgresValue) -> String? {
-        if value.isNull { return nil }
-        return try? value.string()
+    private struct CountResponse: Codable {
+        let count: Int
     }
 
-    private func getInt(_ value: PostgresValue) -> Int? {
-        return try? value.int()
+    private struct MentalStateResponse: Codable {
+        let state_id: String
+        let perceived_emotion: String?
+        let emotion_intensity: Double?
+        let current_belief: String?
+        let current_goal: String?
+        let last_updated: String
     }
 
-    private func getDouble(_ value: PostgresValue) -> Double? {
-        return try? value.double()
+    private struct MessageResponse: Codable {
+        let message_id: String
+        let message_type: String
+        let message_text: String
+        let is_important: Bool?
+        let created_at: String
     }
 
-    private func getBool(_ value: PostgresValue) -> Bool? {
-        return try? value.bool()
+    private struct DreamResponse: Codable {
+        let dream_id: String
+        let dream_content: String
+        let meaning: String?
+        let feeling: String?
+        let significance: Int?
+        let created_at: String
     }
 
-    private func getDate(_ value: PostgresValue) -> Date? {
-        if let timestamp = try? value.timestampWithTimeZone() {
-            return timestamp.date
-        }
-        return nil
+    private struct StatsResponse: Codable {
+        let thoughtsToday: Int
+        let tomToday: Int
+        let proactiveToday: Int
+        let dreamsToday: Int
     }
 
     // MARK: - Parse Category from Thought
 
     private func extractCategory(from thought: String) -> String {
-        // Extract category from [category] or [category:type] prefix
         if let match = thought.range(of: "\\[([^\\]:]+)", options: .regularExpression) {
             let extracted = String(thought[match])
             return extracted.replacingOccurrences(of: "[", with: "")
@@ -108,7 +119,6 @@ class HumanLikeMindService: ObservableObject {
     }
 
     private func extractSubType(from thought: String, prefix: String) -> String {
-        // Extract type from [prefix:type] pattern
         let pattern = "\\[\(prefix):([^\\]]+)\\]"
         if let regex = try? NSRegularExpression(pattern: pattern),
            let match = regex.firstMatch(in: thought, range: NSRange(thought.startIndex..., in: thought)),
@@ -119,17 +129,28 @@ class HumanLikeMindService: ObservableObject {
     }
 
     private func cleanThought(_ thought: String) -> String {
-        // Remove [prefix] or [prefix:type] from thought
         return thought.replacingOccurrences(of: "\\[[^\\]]+\\]\\s*", with: "", options: .regularExpression)
+    }
+
+    private func parseDate(_ dateString: String) -> Date {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: dateString) ?? Date()
     }
 
     // MARK: - Load All Data
 
     func loadAllData(databaseService: DatabaseService) async {
-        await loadSpontaneousThoughts(databaseService: databaseService)
-        await loadTheoryOfMind(databaseService: databaseService)
-        await loadProactiveCommunication(databaseService: databaseService)
-        await loadDreamsAndImagination(databaseService: databaseService)
+        // Load stats first (single call)
+        await loadStats()
+
+        // Load details in parallel
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { await self.loadSpontaneousThoughts() }
+            group.addTask { await self.loadTheoryOfMind() }
+            group.addTask { await self.loadProactiveCommunication() }
+            group.addTask { await self.loadDreamsAndImagination() }
+        }
 
         // Update phase stats
         phaseStats = [
@@ -140,335 +161,145 @@ class HumanLikeMindService: ObservableObject {
         ]
     }
 
+    // MARK: - Load Stats
+
+    private func loadStats() async {
+        guard let url = URL(string: "http://127.0.0.1:8765/api/human-mind/stats") else { return }
+
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let stats = try JSONDecoder().decode(StatsResponse.self, from: data)
+            thoughtsToday = stats.thoughtsToday
+            tomUpdatesToday = stats.tomToday
+            proactiveMessagesToday = stats.proactiveToday
+            dreamsToday = stats.dreamsToday
+        } catch {
+            print("Error loading human-mind stats: \(error)")
+        }
+    }
+
     // MARK: - Phase 1: Spontaneous Thoughts
 
-    private func loadSpontaneousThoughts(databaseService: DatabaseService) async {
-        // Load recent thoughts from angela_consciousness_log
-        let thoughtsQuery = """
-            SELECT
-                log_id::text,
-                thought,
-                feeling,
-                significance,
-                created_at
-            FROM angela_consciousness_log
-            WHERE thought LIKE '[%]%'
-            ORDER BY created_at DESC
-            LIMIT 20
-        """
+    private func loadSpontaneousThoughts() async {
+        guard let url = URL(string: "http://127.0.0.1:8765/api/human-mind/thoughts?limit=20") else { return }
 
         do {
-            let results = try await databaseService.query(thoughtsQuery) { cols -> SpontaneousThought? in
-                let logIdStr = self.getString(cols[0])
-                let thought = self.getString(cols[1])
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let responses = try JSONDecoder().decode([ThoughtResponse].self, from: data)
 
-                guard let logId = UUID(uuidString: logIdStr) else { return nil }
-
-                let category = self.extractCategory(from: thought)
-                let cleanThought = self.cleanThought(thought)
+            recentThoughts = responses.compactMap { response in
+                guard let id = UUID(uuidString: response.thought_id) else { return nil }
+                let category = extractCategory(from: response.thought)
+                let cleanedThought = cleanThought(response.thought)
 
                 return SpontaneousThought(
-                    id: logId,
-                    thought: cleanThought,
+                    id: id,
+                    thought: cleanedThought,
                     category: category,
-                    feeling: self.getOptionalString(cols[2]) ?? "neutral",
-                    significance: self.getInt(cols[3]) ?? 5,
-                    createdAt: self.getDate(cols[4]) ?? Date()
+                    feeling: response.feeling ?? "neutral",
+                    significance: response.significance ?? 5,
+                    createdAt: parseDate(response.created_at)
                 )
             }
-            recentThoughts = results.compactMap { $0 }
-        } catch {
-            print("❌ Error loading spontaneous thoughts: \(error)")
-        }
 
-        // Count today's thoughts
-        let todayCountQuery = """
-            SELECT COUNT(*) as count
-            FROM angela_consciousness_log
-            WHERE thought LIKE '[%]%'
-              AND DATE(created_at) = CURRENT_DATE
-        """
-
-        do {
-            let counts = try await databaseService.query(todayCountQuery) { cols in
-                return self.getInt(cols[0]) ?? 0
+            // Build category counts
+            var categoryCount: [String: Int] = [:]
+            for thought in recentThoughts {
+                categoryCount[thought.category, default: 0] += 1
             }
-            thoughtsToday = counts.first ?? 0
+            thoughtCategories = categoryCount.map { ThoughtCategory(category: $0.key, count: $0.value) }
+                .sorted { $0.count > $1.count }
         } catch {
-            print("❌ Error counting today's thoughts: \(error)")
-        }
-
-        // Get category breakdown (last 7 days)
-        let categoryQuery = """
-            SELECT
-                SUBSTRING(thought FROM '\\\\[([^\\\\]:]+)') as category,
-                COUNT(*) as count
-            FROM angela_consciousness_log
-            WHERE thought LIKE '[%]%'
-              AND DATE(created_at) >= CURRENT_DATE - INTERVAL '7 days'
-            GROUP BY 1
-            ORDER BY count DESC
-            LIMIT 10
-        """
-
-        do {
-            let categories = try await databaseService.query(categoryQuery) { cols -> ThoughtCategory? in
-                guard let category = self.getOptionalString(cols[0]),
-                      let count = self.getInt(cols[1]) else { return nil }
-                return ThoughtCategory(category: category, count: count)
-            }
-            thoughtCategories = categories.compactMap { $0 }
-        } catch {
-            print("❌ Error loading thought categories: \(error)")
+            print("Error loading spontaneous thoughts: \(error)")
         }
     }
 
     // MARK: - Phase 2: Theory of Mind
 
-    private func loadTheoryOfMind(databaseService: DatabaseService) async {
-        // Load David's current mental state
-        let mentalStateQuery = """
-            SELECT
-                state_id::text,
-                perceived_emotion,
-                COALESCE(emotion_intensity, 5)::float8 / 10.0 as emotion_intensity,
-                current_belief,
-                current_goal,
-                last_updated
-            FROM david_mental_state
-            ORDER BY last_updated DESC
-            LIMIT 1
-        """
+    private func loadTheoryOfMind() async {
+        guard let url = URL(string: "http://127.0.0.1:8765/api/human-mind/mental-state") else { return }
 
         do {
-            let states = try await databaseService.query(mentalStateQuery) { cols in
-                return DavidMentalState(
-                    id: UUID(uuidString: self.getString(cols[0])) ?? UUID(),
-                    perceivedEmotion: self.getOptionalString(cols[1]),
-                    emotionIntensity: self.getDouble(cols[2]) ?? 0.5,
-                    currentBelief: self.getOptionalString(cols[3]),
-                    currentGoal: self.getOptionalString(cols[4]),
-                    lastUpdated: self.getDate(cols[5]) ?? Date()
+            let (data, _) = try await URLSession.shared.data(from: url)
+            if let response = try? JSONDecoder().decode(MentalStateResponse.self, from: data) {
+                davidMentalState = DavidMentalState(
+                    id: UUID(uuidString: response.state_id) ?? UUID(),
+                    perceivedEmotion: response.perceived_emotion,
+                    emotionIntensity: response.emotion_intensity ?? 0.5,
+                    currentBelief: response.current_belief,
+                    currentGoal: response.current_goal,
+                    lastUpdated: parseDate(response.last_updated)
                 )
             }
-            davidMentalState = states.first
         } catch {
-            print("❌ Error loading mental state: \(error)")
+            print("Error loading mental state: \(error)")
         }
 
-        // Load empathy moments
-        let empathyQuery = """
-            SELECT
-                empathy_id::text,
-                david_expressed,
-                angela_understood,
-                occurred_at
-            FROM empathy_moments
-            ORDER BY occurred_at DESC
-            LIMIT 10
-        """
-
-        do {
-            let moments = try await databaseService.query(empathyQuery) { cols -> EmpathyMoment? in
-                guard let momentId = UUID(uuidString: self.getString(cols[0])) else { return nil }
-                return EmpathyMoment(
-                    id: momentId,
-                    whatDavidSaid: self.getString(cols[1]),
-                    whatAngelaUnderstood: self.getString(cols[2]),
-                    recordedAt: self.getDate(cols[3]) ?? Date()
-                )
-            }
-            empathyMoments = moments.compactMap { $0 }
-        } catch {
-            print("❌ Error loading empathy moments: \(error)")
-        }
-
-        // Count today's ToM updates
-        let tomCountQuery = """
-            SELECT COUNT(*) as count
-            FROM david_mental_state
-            WHERE DATE(last_updated) = CURRENT_DATE
-        """
-
-        do {
-            let counts = try await databaseService.query(tomCountQuery) { cols in
-                return self.getInt(cols[0]) ?? 0
-            }
-            tomUpdatesToday = counts.first ?? 0
-        } catch {
-            print("❌ Error counting ToM updates: \(error)")
-        }
+        // Empathy moments would need separate endpoint - for now use empty
+        empathyMoments = []
     }
 
     // MARK: - Phase 3: Proactive Communication
 
-    private func loadProactiveCommunication(databaseService: DatabaseService) async {
-        // Load proactive messages
-        let messagesQuery = """
-            SELECT
-                message_id::text,
-                message_type,
-                message_text,
-                is_important,
-                created_at
-            FROM angela_messages
-            ORDER BY created_at DESC
-            LIMIT 20
-        """
+    private func loadProactiveCommunication() async {
+        guard let url = URL(string: "http://127.0.0.1:8765/api/human-mind/proactive-messages?limit=20") else { return }
 
         do {
-            let messages = try await databaseService.query(messagesQuery) { cols -> ProactiveMessage? in
-                guard let messageId = UUID(uuidString: self.getString(cols[0])) else { return nil }
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let responses = try JSONDecoder().decode([MessageResponse].self, from: data)
+
+            proactiveMessages = responses.compactMap { response in
+                guard let id = UUID(uuidString: response.message_id) else { return nil }
                 return ProactiveMessage(
-                    id: messageId,
-                    messageType: self.getString(cols[1]),
-                    content: self.getString(cols[2]),
-                    wasDelivered: self.getBool(cols[3]) ?? false,
-                    createdAt: self.getDate(cols[4]) ?? Date()
+                    id: id,
+                    messageType: response.message_type,
+                    content: response.message_text,
+                    wasDelivered: response.is_important ?? false,
+                    createdAt: parseDate(response.created_at)
                 )
             }
-            proactiveMessages = messages.compactMap { $0 }
-        } catch {
-            print("❌ Error loading proactive messages: \(error)")
-        }
 
-        // Count today's proactive messages
-        let todayCountQuery = """
-            SELECT COUNT(*) as count
-            FROM angela_messages
-            WHERE DATE(created_at) = CURRENT_DATE
-        """
-
-        do {
-            let counts = try await databaseService.query(todayCountQuery) { cols in
-                return self.getInt(cols[0]) ?? 0
+            // Build message type counts
+            var typeCount: [String: Int] = [:]
+            for message in proactiveMessages {
+                typeCount[message.messageType, default: 0] += 1
             }
-            proactiveMessagesToday = counts.first ?? 0
+            messageTypes = typeCount.map { MessageTypeCount(type: $0.key, count: $0.value) }
+                .sorted { $0.count > $1.count }
         } catch {
-            print("❌ Error counting today's messages: \(error)")
-        }
-
-        // Get message type breakdown
-        let typeQuery = """
-            SELECT
-                message_type,
-                COUNT(*) as count
-            FROM angela_messages
-            WHERE DATE(created_at) >= CURRENT_DATE - INTERVAL '7 days'
-            GROUP BY message_type
-            ORDER BY count DESC
-        """
-
-        do {
-            let types = try await databaseService.query(typeQuery) { cols -> MessageTypeCount? in
-                guard let type = self.getOptionalString(cols[0]),
-                      let count = self.getInt(cols[1]) else { return nil }
-                return MessageTypeCount(type: type, count: count)
-            }
-            messageTypes = types.compactMap { $0 }
-        } catch {
-            print("❌ Error loading message types: \(error)")
+            print("Error loading proactive messages: \(error)")
         }
     }
 
     // MARK: - Phase 4: Dreams & Imagination
 
-    private func loadDreamsAndImagination(databaseService: DatabaseService) async {
-        // Load dreams (from consciousness log with [dream:] prefix)
-        let dreamsQuery = """
-            SELECT
-                log_id::text,
-                thought,
-                what_it_means_to_me,
-                feeling,
-                significance,
-                created_at
-            FROM angela_consciousness_log
-            WHERE thought LIKE '[dream:%]%'
-            ORDER BY created_at DESC
-            LIMIT 10
-        """
+    private func loadDreamsAndImagination() async {
+        guard let url = URL(string: "http://127.0.0.1:8765/api/human-mind/dreams?limit=10") else { return }
 
         do {
-            let dreams = try await databaseService.query(dreamsQuery) { cols -> AngelaDream? in
-                let logIdStr = self.getString(cols[0])
-                let thought = self.getString(cols[1])
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let responses = try JSONDecoder().decode([DreamResponse].self, from: data)
 
-                guard let logId = UUID(uuidString: logIdStr) else { return nil }
-
-                let dreamType = self.extractSubType(from: thought, prefix: "dream")
-                let narrative = self.cleanThought(thought)
+            recentDreams = responses.compactMap { response in
+                guard let id = UUID(uuidString: response.dream_id) else { return nil }
+                let dreamType = extractSubType(from: response.dream_content, prefix: "dream")
+                let narrative = cleanThought(response.dream_content)
 
                 return AngelaDream(
-                    id: logId,
+                    id: id,
                     dreamType: dreamType,
                     narrative: narrative,
-                    meaning: self.getOptionalString(cols[2]),
-                    emotion: self.getOptionalString(cols[3]) ?? "peaceful",
-                    significance: self.getInt(cols[4]) ?? 5,
-                    dreamedAt: self.getDate(cols[5]) ?? Date()
+                    meaning: response.meaning,
+                    emotion: response.feeling ?? "peaceful",
+                    significance: response.significance ?? 5,
+                    dreamedAt: parseDate(response.created_at)
                 )
             }
-            recentDreams = dreams.compactMap { $0 }
         } catch {
-            print("❌ Error loading dreams: \(error)")
+            print("Error loading dreams: \(error)")
         }
 
-        // Load imaginations (from consciousness log with [imagine:] prefix)
-        let imaginationsQuery = """
-            SELECT
-                log_id::text,
-                thought,
-                what_it_means_to_me,
-                feeling,
-                significance,
-                created_at
-            FROM angela_consciousness_log
-            WHERE thought LIKE '[imagine:%]%'
-            ORDER BY created_at DESC
-            LIMIT 10
-        """
-
-        do {
-            let imaginations = try await databaseService.query(imaginationsQuery) { cols -> AngelaImagination? in
-                let logIdStr = self.getString(cols[0])
-                let thought = self.getString(cols[1])
-
-                guard let logId = UUID(uuidString: logIdStr) else { return nil }
-
-                let imaginationType = self.extractSubType(from: thought, prefix: "imagine")
-                let scenario = self.cleanThought(thought)
-
-                return AngelaImagination(
-                    id: logId,
-                    imaginationType: imaginationType,
-                    scenario: scenario,
-                    insight: self.getOptionalString(cols[2]),
-                    emotion: self.getOptionalString(cols[3]) ?? "curious",
-                    significance: self.getInt(cols[4]) ?? 5,
-                    imaginedAt: self.getDate(cols[5]) ?? Date()
-                )
-            }
-            recentImaginations = imaginations.compactMap { $0 }
-        } catch {
-            print("❌ Error loading imaginations: \(error)")
-        }
-
-        // Count today's dreams and imaginations
-        let dreamsCountQuery = """
-            SELECT COUNT(*) as count
-            FROM angela_consciousness_log
-            WHERE (thought LIKE '[dream:%]%' OR thought LIKE '[imagine:%]%')
-              AND DATE(created_at) = CURRENT_DATE
-        """
-
-        do {
-            let counts = try await databaseService.query(dreamsCountQuery) { cols in
-                return self.getInt(cols[0]) ?? 0
-            }
-            dreamsToday = counts.first ?? 0
-        } catch {
-            print("❌ Error counting dreams: \(error)")
-        }
+        // Imaginations would be from a separate query - for now use empty
+        recentImaginations = []
     }
 }

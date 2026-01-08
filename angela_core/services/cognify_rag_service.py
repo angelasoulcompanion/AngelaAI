@@ -245,7 +245,7 @@ class CognifyRAGService:
         self,
         question: str,
         use_llm: bool = True,
-        llm_model: str = "llama3.1:8b"
+        llm_model: str = "llama3.2:latest"
     ) -> dict:
         """
         Ask a question and get RAG-powered answer

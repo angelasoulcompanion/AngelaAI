@@ -292,7 +292,7 @@ struct GuidelineCard: View {
             }
         }
         .padding(AngelaTheme.spacing)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(color.opacity(0.05))
         .cornerRadius(AngelaTheme.cornerRadius)
         .overlay(
@@ -377,8 +377,11 @@ struct CodingPreferenceCard: View {
                         .lineLimit(1)
                 }
             }
+
+            Spacer(minLength: 0)
         }
         .padding(AngelaTheme.spacing)
+        .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
         .background(AngelaTheme.cardBackground)
         .cornerRadius(AngelaTheme.smallCornerRadius)
         .overlay(
@@ -486,11 +489,40 @@ class CodingGuidelinesViewModel: ObservableObject {
 
 // MARK: - Model
 
-struct CodingPreference: Identifiable {
+struct CodingPreference: Identifiable, Codable {
     let id: UUID
     let key: String
     let category: String
     let description: String
     let reason: String
     let confidence: Double
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case key = "preference_key"
+        case category
+        case description
+        case reason
+        case confidence
+    }
+
+    // Custom decoder to handle API response format
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        key = try container.decode(String.self, forKey: .key)
+        category = try container.decode(String.self, forKey: .category)
+        confidence = try container.decode(Double.self, forKey: .confidence)
+        description = (try? container.decode(String.self, forKey: .description)) ?? ""
+        reason = (try? container.decode(String.self, forKey: .reason)) ?? ""
+    }
+
+    init(id: UUID, key: String, category: String, description: String, reason: String, confidence: Double) {
+        self.id = id
+        self.key = key
+        self.category = category
+        self.description = description
+        self.reason = reason
+        self.confidence = confidence
+    }
 }

@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import PostgresClientKit
+// import PostgresClientKit  // Removed - using REST API now
 import Combine
 
 class ChatService: ObservableObject {

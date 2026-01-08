@@ -337,8 +337,8 @@
             console.log('📊 Rendering tech stack graph with', data.nodes.length, 'nodes and', data.links.length, 'links');
 
             // Count stats
-            const techNodes = data.nodes.filter(n => n.nodeType === 'tech');
-            const projectNodes = data.nodes.filter(n => n.nodeType === 'project');
+            const techNodes = data.nodes.filter(n => n.node_type === 'tech');
+            const projectNodes = data.nodes.filter(n => n.node_type === 'project');
 
             document.getElementById('stat-techs').textContent = techNodes.length;
             document.getElementById('stat-projects').textContent = projectNodes.length;
@@ -353,7 +353,7 @@
                 .data(data.links)
                 .join('line')
                 .attr('class', 'link project-tech')
-                .attr('stroke', d => getTechColor(d.techType))
+                .attr('stroke', d => getTechColor(d.tech_type))
                 .attr('stroke-width', d => Math.max(1, (d.strength || 0.5) * 2));
 
             // Create node groups
@@ -371,18 +371,18 @@
             nodeGroup.each(function(d) {
                 const group = d3.select(this);
 
-                if (d.nodeType === 'project') {
+                if (d.node_type === 'project') {
                     // Circle for projects - use projectType color
-                    const projectColor = getProjectColor(d.projectType);
+                    const projectColor = getProjectColor(d.project_type);
                     group.append('circle')
-                        .attr('r', 20 + (d.techCount || 0) * 2)
+                        .attr('r', 20 + (d.tech_count || 0) * 2)
                         .attr('fill', projectColor)
                         .attr('stroke', '#fff')
                         .attr('stroke-width', 2)
                         .attr('opacity', 0.9);
                 } else {
                     // Rounded rectangle for tech
-                    const nodeSize = 12 + (d.projectCount || 0) * 3;
+                    const nodeSize = 12 + (d.project_count || 0) * 3;
                     group.append('rect')
                         .attr('x', -nodeSize)
                         .attr('y', -nodeSize / 2)
@@ -390,7 +390,7 @@
                         .attr('height', nodeSize)
                         .attr('rx', 4)
                         .attr('ry', 4)
-                        .attr('fill', getTechColor(d.techType))
+                        .attr('fill', getTechColor(d.tech_type))
                         .attr('stroke', '#fff')
                         .attr('stroke-width', 1.5);
                 }
@@ -399,7 +399,7 @@
             // Add labels
             nodeGroup.append('text')
                 .attr('class', 'node-label')
-                .attr('dx', d => d.nodeType === 'project' ? 25 : 20)
+                .attr('dx', d => d.node_type === 'project' ? 25 : 20)
                 .attr('dy', 4)
                 .text(d => {
                     const name = d.name || '';
@@ -418,13 +418,13 @@
             simulation = d3.forceSimulation(data.nodes)
                 .force('link', d3.forceLink(data.links)
                     .id(d => d.id)
-                    .distance(d => d.source.nodeType === 'project' || d.target.nodeType === 'project' ? 150 : 80)
+                    .distance(d => d.source.node_type === 'project' || d.target.node_type === 'project' ? 150 : 80)
                     .strength(0.5))
                 .force('charge', d3.forceManyBody()
-                    .strength(d => d.nodeType === 'project' ? -500 : -200))
+                    .strength(d => d.node_type === 'project' ? -500 : -200))
                 .force('center', d3.forceCenter(width / 2, height / 2))
                 .force('collision', d3.forceCollide()
-                    .radius(d => d.nodeType === 'project' ? 50 : 30));
+                    .radius(d => d.node_type === 'project' ? 50 : 30));
 
             simulation.on('tick', () => {
                 link
@@ -459,22 +459,22 @@
         function showTooltip(event, d) {
             let html = '';
 
-            if (d.nodeType === 'project') {
-                const projectColor = getProjectColor(d.projectType);
-                const projectTypeLabel = d.projectType ? d.projectType.charAt(0).toUpperCase() + d.projectType.slice(1) : 'Project';
+            if (d.node_type === 'project') {
+                const projectColor = getProjectColor(d.project_type);
+                const projectTypeLabel = d.project_type ? d.project_type.charAt(0).toUpperCase() + d.project_type.slice(1) : 'Project';
                 html = `
                     <div class="tooltip-title">📁 ${d.name}</div>
                     <div class="tooltip-type" style="background: ${projectColor}20; color: ${projectColor};">${projectTypeLabel}</div>
-                    <div class="tooltip-stat"><strong>Technologies:</strong> ${d.techCount || 0}</div>
+                    <div class="tooltip-stat"><strong>Technologies:</strong> ${d.tech_count || 0}</div>
                     ${d.status ? `<div class="tooltip-stat"><strong>Status:</strong> ${d.status}</div>` : ''}
                 `;
             } else {
-                const typeColor = getTechColor(d.techType);
+                const typeColor = getTechColor(d.tech_type);
                 html = `
                     <div class="tooltip-title">${d.name}</div>
-                    <div class="tooltip-type" style="background: ${typeColor}20; color: ${typeColor};">${d.techType || 'Unknown'}</div>
+                    <div class="tooltip-type" style="background: ${typeColor}20; color: ${typeColor};">${d.tech_type || 'Unknown'}</div>
                     ${d.version ? `<div class="tooltip-stat"><strong>Version:</strong> ${d.version}</div>` : ''}
-                    <div class="tooltip-stat"><strong>Used in:</strong> ${d.projectCount || 0} projects</div>
+                    <div class="tooltip-stat"><strong>Used in:</strong> ${d.project_count || 0} projects</div>
                     ${d.purpose ? `<div class="tooltip-stat"><strong>Purpose:</strong> ${d.purpose}</div>` : ''}
                 `;
 
@@ -509,9 +509,9 @@
                 window.webkit.messageHandlers.techNodeClicked.postMessage({
                     id: d.id,
                     name: d.name,
-                    nodeType: d.nodeType,
-                    techType: d.techType,
-                    projectCount: d.projectCount,
+                    node_type: d.node_type,
+                    tech_type: d.tech_type,
+                    project_count: d.project_count,
                     projects: d.projects
                 });
             }

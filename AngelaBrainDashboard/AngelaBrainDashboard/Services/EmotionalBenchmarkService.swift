@@ -12,7 +12,7 @@
 import Foundation
 import SwiftUI
 import Combine
-import PostgresClientKit
+// import PostgresClientKit  // Removed - using REST API now
 
 // MARK: - Data Models (Shared with View)
 
