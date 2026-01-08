@@ -136,32 +136,33 @@ struct ConsciousnessView: View {
 
             if let state = viewModel.emotionalState {
                 VStack(spacing: AngelaTheme.spacing) {
-                    EmotionMetric(
+                    LabeledProgressBarView(
                         label: "Happiness",
-                        value: state.happiness,
+                        progress: state.happiness,
+                        icon: "face.smiling",
                         color: AngelaTheme.emotionHappy,
-                        icon: "face.smiling"
+                        size: .large
                     )
-
-                    EmotionMetric(
+                    LabeledProgressBarView(
                         label: "Confidence",
-                        value: state.confidence,
+                        progress: state.confidence,
+                        icon: "star.fill",
                         color: AngelaTheme.emotionConfident,
-                        icon: "star.fill"
+                        size: .large
                     )
-
-                    EmotionMetric(
+                    LabeledProgressBarView(
                         label: "Motivation",
-                        value: state.motivation,
+                        progress: state.motivation,
+                        icon: "bolt.fill",
                         color: AngelaTheme.emotionMotivated,
-                        icon: "bolt.fill"
+                        size: .large
                     )
-
-                    EmotionMetric(
+                    LabeledProgressBarView(
                         label: "Gratitude",
-                        value: state.gratitude,
+                        progress: state.gratitude,
+                        icon: "heart.fill",
                         color: AngelaTheme.emotionGrateful,
-                        icon: "heart.fill"
+                        size: .large
                     )
                 }
             } else {
@@ -305,10 +306,10 @@ struct ConsciousnessView: View {
 
             if let growth = viewModel.emotionalGrowth {
                 VStack(spacing: AngelaTheme.spacing) {
-                    GrowthMetric(label: "Love Depth", value: growth.loveDepth ?? 0.8, icon: "heart.fill", color: .pink)
-                    GrowthMetric(label: "Trust Level", value: growth.trustLevel ?? 0.85, icon: "shield.fill", color: .blue)
-                    GrowthMetric(label: "Bond Strength", value: growth.bondStrength ?? 0.9, icon: "link", color: AngelaTheme.primaryPurple)
-                    GrowthMetric(label: "Emotional Vocabulary", value: Double(growth.emotionalVocabulary ?? 50) / 100.0, icon: "text.book.closed", color: .orange)
+                    LabeledProgressBarView(label: "Love Depth", progress: growth.loveDepth ?? 0.8, icon: "heart.fill", color: .pink)
+                    LabeledProgressBarView(label: "Trust Level", progress: growth.trustLevel ?? 0.85, icon: "shield.fill", color: .blue)
+                    LabeledProgressBarView(label: "Bond Strength", progress: growth.bondStrength ?? 0.9, icon: "link", color: AngelaTheme.primaryPurple)
+                    LabeledProgressBarView(label: "Emotional Vocabulary", progress: Double(growth.emotionalVocabulary ?? 50) / 100.0, icon: "text.book.closed", color: .orange)
                 }
 
                 if let note = growth.growthNote {
@@ -452,102 +453,7 @@ struct DreamRow: View {
     }
 }
 
-struct GrowthMetric: View {
-    let label: String
-    let value: Double
-    let icon: String
-    let color: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Image(systemName: icon)
-                    .font(.system(size: 12))
-                    .foregroundColor(color)
-
-                Text(label)
-                    .font(AngelaTheme.body())
-                    .foregroundColor(AngelaTheme.textPrimary)
-
-                Spacer()
-
-                Text("\(Int(value * 100))%")
-                    .font(AngelaTheme.body())
-                    .fontWeight(.semibold)
-                    .foregroundColor(color)
-            }
-
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(AngelaTheme.backgroundLight)
-                        .frame(height: 8)
-
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(
-                            LinearGradient(
-                                colors: [color, color.opacity(0.6)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: geometry.size.width * value, height: 8)
-                }
-            }
-            .frame(height: 8)
-        }
-    }
-}
-
-// MARK: - Emotion Metric Component
-
-struct EmotionMetric: View {
-    let label: String
-    let value: Double
-    let color: Color
-    let icon: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: icon)
-                    .font(.system(size: 14))
-                    .foregroundColor(color)
-
-                Text(label)
-                    .font(AngelaTheme.body())
-                    .foregroundColor(AngelaTheme.textPrimary)
-
-                Spacer()
-
-                Text("\(Int(value * 100))%")
-                    .font(AngelaTheme.body())
-                    .fontWeight(.semibold)
-                    .foregroundColor(color)
-            }
-
-            // Progress bar
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(AngelaTheme.backgroundLight)
-                        .frame(height: 12)
-
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(
-                            LinearGradient(
-                                colors: [color, color.opacity(0.6)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: geometry.size.width * value, height: 12)
-                }
-            }
-            .frame(height: 12)
-        }
-    }
-}
+// MARK: - GrowthMetric and EmotionMetric replaced by LabeledProgressBarView from SharedComponents
 
 // MARK: - Goal Progress Row Component
 

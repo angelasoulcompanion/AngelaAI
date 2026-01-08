@@ -62,9 +62,7 @@ struct EmotionsView: View {
                 .foregroundColor(AngelaTheme.textPrimary)
 
             if viewModel.emotionCounts.isEmpty {
-                Text("No emotion data available")
-                    .font(AngelaTheme.body())
-                    .foregroundColor(AngelaTheme.textTertiary)
+                InlineEmptyStateView(message: "No emotion data available")
             } else {
                 // Emotion bars
                 VStack(spacing: 12) {
@@ -91,9 +89,7 @@ struct EmotionsView: View {
                 .foregroundColor(AngelaTheme.textPrimary)
 
             if viewModel.emotions.isEmpty {
-                Text("No emotions recorded yet")
-                    .font(AngelaTheme.body())
-                    .foregroundColor(AngelaTheme.textTertiary)
+                InlineEmptyStateView(message: "No emotions recorded yet")
             } else {
                 VStack(spacing: AngelaTheme.spacing) {
                     ForEach(viewModel.emotions) { emotion in

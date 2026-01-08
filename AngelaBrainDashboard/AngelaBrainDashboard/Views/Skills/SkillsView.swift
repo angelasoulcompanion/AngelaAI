@@ -196,30 +196,18 @@ struct SkillsView: View {
                     )
                 }
 
-                // Progress Bar for avg score
+                // Progress Bar for avg score (using shared ProgressBarView)
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Average Proficiency: \(String(format: "%.1f", stats.avgScore))%")
                         .font(AngelaTheme.caption())
                         .foregroundColor(AngelaTheme.textSecondary)
 
-                    GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(AngelaTheme.backgroundLight)
-                                .frame(height: 12)
-
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [AngelaTheme.primaryPurple, Color(hex: "EC4899")],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .frame(width: geometry.size.width * (stats.avgScore / 100), height: 12)
-                        }
-                    }
-                    .frame(height: 12)
+                    ProgressBarView(
+                        progress: stats.avgScore / 100,
+                        color: AngelaTheme.primaryPurple,
+                        size: .large,
+                        gradientEndColor: Color(hex: "EC4899")
+                    )
                 }
             } else {
                 Text("Loading statistics...")
@@ -474,19 +462,13 @@ struct SkillCard: View {
                 }
             }
 
-            // Progress bar
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(AngelaTheme.backgroundDark)
-                        .frame(height: 6)
-
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color(hex: skill.proficiencyLevel.color))
-                        .frame(width: geometry.size.width * skill.progress, height: 6)
-                }
-            }
-            .frame(height: 6)
+            // Progress bar (using shared ProgressBarView)
+            ProgressBarView(
+                progress: skill.progress,
+                color: Color(hex: skill.proficiencyLevel.color),
+                size: .small,
+                useGradient: false
+            )
 
             // Description
             if let description = skill.description {
