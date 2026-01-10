@@ -318,7 +318,7 @@ async def get_experience_images(experience_id: str):
 # ============================================================
 
 @app.get("/api/knowledge/nodes")
-async def get_knowledge_nodes(limit: int = Query(50, ge=1, le=200)):
+async def get_knowledge_nodes(limit: int = Query(50, ge=1, le=10000)):
     """Fetch knowledge nodes"""
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
@@ -980,7 +980,8 @@ async def get_diary_actions(hours: int = Query(24, ge=1, le=168)):
 
 @app.get("/api/guidelines/coding-preferences")
 async def get_coding_preferences():
-    """Fetch David's coding preferences"""
+    """Fetch David's coding preferences with description and reason extracted from preference_value JSON"""
+    import json
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT
@@ -993,7 +994,21 @@ async def get_coding_preferences():
             WHERE category LIKE 'coding%%'
             ORDER BY confidence DESC
         """)
-        return [dict(r) for r in rows]
+
+        result = []
+        for r in rows:
+            pref = dict(r)
+            # Extract description and reason from preference_value JSON
+            try:
+                pv = json.loads(pref.get('preference_value', '{}') or '{}')
+                pref['description'] = pv.get('description') or pv.get('rule') or pv.get('source') or ''
+                pref['reason'] = pv.get('reason') or pv.get('source_context') or pv.get('source') or ''
+            except (json.JSONDecodeError, TypeError):
+                pref['description'] = ''
+                pref['reason'] = ''
+            result.append(pref)
+
+        return result
 
 
 @app.get("/api/guidelines/design-principles")
