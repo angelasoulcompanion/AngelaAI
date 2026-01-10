@@ -350,7 +350,7 @@ async def get_top_connected_nodes(limit: int = Query(10, ge=1, le=50)):
 
 
 @app.get("/api/knowledge/relationships")
-async def get_knowledge_relationships(limit: int = Query(200, ge=1, le=500)):
+async def get_knowledge_relationships(limit: int = Query(200, ge=1, le=10000)):
     """Fetch knowledge relationships"""
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
