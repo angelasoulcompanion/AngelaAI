@@ -193,3 +193,10 @@ backups/
 # MCP Server Credentials (OAuth tokens - machine-specific)
 mcp_servers/**/credentials/token.json
 mcp_servers/**/credentials/credentials.json
+
+# ========================================
+# Working Directories (local only)
+# ========================================
+diagrams/
+dumbs/
+outputs/
