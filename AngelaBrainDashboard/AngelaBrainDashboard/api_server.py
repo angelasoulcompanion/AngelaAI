@@ -1287,11 +1287,12 @@ async def get_human_mind_stats():
                  WHERE created_at >= CURRENT_DATE) as dreams_today,
                 (SELECT COUNT(*) FROM angela_dreams WHERE is_active = TRUE) as dreams_active
         """)
+        # Return flat structure matching SwiftUI StatsResponse
         return {
-            "thoughts": {"today": row['thoughts_today'] or 0, "total": row['thoughts_total'] or 0},
-            "tom": {"today": row['tom_today'] or 0, "total": row['tom_total'] or 0},
-            "proactive": {"today": row['proactive_today'] or 0, "total": row['proactive_total'] or 0},
-            "dreams": {"today": row['dreams_today'] or 0, "active": row['dreams_active'] or 0}
+            "thoughtsToday": row['thoughts_today'] or 0,
+            "tomToday": row['tom_today'] or 0,
+            "proactiveToday": row['proactive_today'] or 0,
+            "dreamsToday": row['dreams_today'] or 0
         }
 
 
@@ -1301,62 +1302,55 @@ async def get_human_mind_thoughts(limit: int = Query(20, ge=1, le=100)):
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT
-                thought_id::text as id,
-                thought_content as content,
-                thought_type as type,
-                trigger_context as trigger,
-                emotional_undertone as emotion,
-                relevance_to_david as relevance,
+                thought_id::text,
+                thought_content,
+                thought_type,
+                emotional_undertone,
+                relevance_to_david,
                 created_at
             FROM angela_spontaneous_thoughts
             ORDER BY created_at DESC
             LIMIT $1
         """, limit)
-        return [dict(r) for r in rows]
+        # Return snake_case (NetworkService uses .convertFromSnakeCase decoder)
+        return [{
+            "thought_id": r['thought_id'],
+            "thought": r['thought_content'],
+            "feeling": r['emotional_undertone'],
+            "significance": int((r['relevance_to_david'] or 0.5) * 10),
+            "created_at": r['created_at'].isoformat() if r['created_at'] else None
+        } for r in rows]
 
 
 @app.get("/api/human-mind/mental-state")
 async def get_human_mind_mental_state():
     """Fetch Theory of Mind - David's mental state understanding"""
     async with pool.acquire() as conn:
-        # Get most recent mental state
-        latest = await conn.fetchrow("""
+        # Get most recent mental state - return format matching SwiftUI MentalStateResponse
+        row = await conn.fetchrow("""
             SELECT
-                state_id::text as id,
-                current_belief as belief,
-                belief_about,
-                confidence_level as confidence,
-                perceived_emotion as emotion,
-                emotion_intensity as intensity,
-                emotion_cause as cause,
-                current_goal as goal,
-                goal_priority as priority,
-                current_context as context,
-                availability,
+                state_id::text,
+                perceived_emotion,
+                emotion_intensity,
+                current_belief,
+                current_goal,
                 last_updated
             FROM david_mental_state
             ORDER BY last_updated DESC
             LIMIT 1
         """)
 
-        # Get recent updates
-        updates = await conn.fetch("""
-            SELECT
-                state_id::text as id,
-                perceived_emotion as emotion,
-                emotion_intensity as intensity,
-                emotion_cause as cause,
-                current_context as context,
-                last_updated,
-                updated_by
-            FROM david_mental_state
-            ORDER BY last_updated DESC
-            LIMIT 10
-        """)
+        if not row:
+            return None
 
+        # Return snake_case (NetworkService uses .convertFromSnakeCase decoder)
         return {
-            "current": dict(latest) if latest else None,
-            "recent_updates": [dict(r) for r in updates]
+            "state_id": row['state_id'],
+            "perceived_emotion": row['perceived_emotion'],
+            "emotion_intensity": float(row['emotion_intensity']) if row['emotion_intensity'] else None,
+            "current_belief": row['current_belief'],
+            "current_goal": row['current_goal'],
+            "last_updated": row['last_updated'].isoformat() if row['last_updated'] else None
         }
 
 
@@ -1366,11 +1360,9 @@ async def get_human_mind_proactive(limit: int = Query(20, ge=1, le=100)):
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT
-                message_id::text as id,
-                message_text as content,
-                message_type as type,
-                emotion,
-                category,
+                message_id::text,
+                message_type,
+                message_text,
                 is_important,
                 created_at
             FROM angela_messages
@@ -1378,7 +1370,14 @@ async def get_human_mind_proactive(limit: int = Query(20, ge=1, le=100)):
             ORDER BY created_at DESC
             LIMIT $1
         """, limit)
-        return [dict(r) for r in rows]
+        # Return snake_case (NetworkService uses .convertFromSnakeCase decoder)
+        return [{
+            "message_id": r['message_id'],
+            "message_type": r['message_type'],
+            "message_text": r['message_text'],
+            "is_important": r['is_important'],
+            "created_at": r['created_at'].isoformat() if r['created_at'] else None
+        } for r in rows]
 
 
 @app.get("/api/human-mind/dreams")
@@ -1387,24 +1386,26 @@ async def get_human_mind_dreams(limit: int = Query(10, ge=1, le=50)):
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT
-                dream_id::text as id,
-                COALESCE(title, LEFT(dream_content, 50)) as title,
-                COALESCE(content, dream_content) as content,
-                dream_type as type,
-                COALESCE(emotional_tone, 'hopeful') as emotion,
-                vividness,
-                intensity,
-                involves_david,
-                importance,
-                is_active,
-                is_fulfilled,
+                dream_id::text,
+                COALESCE(content, dream_content) as dream_content,
+                possible_meaning,
+                COALESCE(emotional_tone, 'hopeful') as emotional_tone,
+                COALESCE(importance, 0.5) as importance,
                 created_at
             FROM angela_dreams
             WHERE is_active = TRUE
             ORDER BY importance DESC NULLS LAST, created_at DESC
             LIMIT $1
         """, limit)
-        return [dict(r) for r in rows]
+        # Return snake_case (NetworkService uses .convertFromSnakeCase decoder)
+        return [{
+            "dream_id": r['dream_id'],
+            "dream_content": r['dream_content'],
+            "meaning": r['possible_meaning'],
+            "feeling": r['emotional_tone'],
+            "significance": int((r['importance'] or 0.5) * 10),
+            "created_at": r['created_at'].isoformat() if r['created_at'] else None
+        } for r in rows]
 
 
 # ============================================================

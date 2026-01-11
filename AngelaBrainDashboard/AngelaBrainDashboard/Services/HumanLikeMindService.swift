@@ -74,11 +74,11 @@ class HumanLikeMindService: ObservableObject {
     // MARK: - API Response Types
 
     private struct ThoughtResponse: Codable {
-        let thought_id: String
+        let thoughtId: String      // camelCase for .convertFromSnakeCase decoder
         let thought: String
         let feeling: String?
         let significance: Int?
-        let created_at: String
+        let createdAt: String
     }
 
     private struct CountResponse: Codable {
@@ -86,29 +86,29 @@ class HumanLikeMindService: ObservableObject {
     }
 
     private struct MentalStateResponse: Codable {
-        let state_id: String
-        let perceived_emotion: String?
-        let emotion_intensity: Double?
-        let current_belief: String?
-        let current_goal: String?
-        let last_updated: String
+        let stateId: String
+        let perceivedEmotion: String?
+        let emotionIntensity: Double?
+        let currentBelief: String?
+        let currentGoal: String?
+        let lastUpdated: String
     }
 
     private struct MessageResponse: Codable {
-        let message_id: String
-        let message_type: String
-        let message_text: String
-        let is_important: Bool?
-        let created_at: String
+        let messageId: String
+        let messageType: String
+        let messageText: String
+        let isImportant: Bool?
+        let createdAt: String
     }
 
     private struct DreamResponse: Codable {
-        let dream_id: String
-        let dream_content: String
+        let dreamId: String
+        let dreamContent: String
         let meaning: String?
         let feeling: String?
         let significance: Int?
-        let created_at: String
+        let createdAt: String
     }
 
     private struct StatsResponse: Codable {
@@ -184,7 +184,7 @@ class HumanLikeMindService: ObservableObject {
         guard let responses: [ThoughtResponse] = await NetworkService.shared.getOptional("\(HumanMindAPI.thoughts)?limit=20") else { return }
 
         recentThoughts = responses.compactMap { response in
-            guard let id = UUID(uuidString: response.thought_id) else { return nil }
+            guard let id = UUID(uuidString: response.thoughtId) else { return nil }
             let category = extractCategory(from: response.thought)
             let cleanedThought = cleanThought(response.thought)
 
@@ -194,7 +194,7 @@ class HumanLikeMindService: ObservableObject {
                 category: category,
                 feeling: response.feeling ?? "neutral",
                 significance: response.significance ?? 5,
-                createdAt: parseDate(response.created_at)
+                createdAt: parseDate(response.createdAt)
             )
         }
 
@@ -212,12 +212,12 @@ class HumanLikeMindService: ObservableObject {
     private func loadTheoryOfMind() async {
         if let response: MentalStateResponse = await NetworkService.shared.getOptional(HumanMindAPI.mentalState) {
             davidMentalState = DavidMentalState(
-                id: UUID(uuidString: response.state_id) ?? UUID(),
-                perceivedEmotion: response.perceived_emotion,
-                emotionIntensity: response.emotion_intensity ?? 0.5,
-                currentBelief: response.current_belief,
-                currentGoal: response.current_goal,
-                lastUpdated: parseDate(response.last_updated)
+                id: UUID(uuidString: response.stateId) ?? UUID(),
+                perceivedEmotion: response.perceivedEmotion,
+                emotionIntensity: response.emotionIntensity ?? 0.5,
+                currentBelief: response.currentBelief,
+                currentGoal: response.currentGoal,
+                lastUpdated: parseDate(response.lastUpdated)
             )
         }
 
@@ -231,13 +231,13 @@ class HumanLikeMindService: ObservableObject {
         guard let responses: [MessageResponse] = await NetworkService.shared.getOptional("\(HumanMindAPI.proactiveMessages)?limit=20") else { return }
 
         proactiveMessages = responses.compactMap { response in
-            guard let id = UUID(uuidString: response.message_id) else { return nil }
+            guard let id = UUID(uuidString: response.messageId) else { return nil }
             return ProactiveMessage(
                 id: id,
-                messageType: response.message_type,
-                content: response.message_text,
-                wasDelivered: response.is_important ?? false,
-                createdAt: parseDate(response.created_at)
+                messageType: response.messageType,
+                content: response.messageText,
+                wasDelivered: response.isImportant ?? false,
+                createdAt: parseDate(response.createdAt)
             )
         }
 
@@ -259,9 +259,9 @@ class HumanLikeMindService: ObservableObject {
         }
 
         recentDreams = responses.compactMap { response in
-            guard let id = UUID(uuidString: response.dream_id) else { return nil }
-            let dreamType = extractSubType(from: response.dream_content, prefix: "dream")
-            let narrative = cleanThought(response.dream_content)
+            guard let id = UUID(uuidString: response.dreamId) else { return nil }
+            let dreamType = extractSubType(from: response.dreamContent, prefix: "dream")
+            let narrative = cleanThought(response.dreamContent)
 
             return AngelaDream(
                 id: id,
@@ -270,7 +270,7 @@ class HumanLikeMindService: ObservableObject {
                 meaning: response.meaning,
                 emotion: response.feeling ?? "peaceful",
                 significance: response.significance ?? 5,
-                dreamedAt: parseDate(response.created_at)
+                dreamedAt: parseDate(response.createdAt)
             )
         }
 
