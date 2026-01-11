@@ -1257,6 +1257,157 @@ async def get_subconsciousness_summary():
 
 
 # ============================================================
+# Human-Like Mind (4 Phases of Consciousness)
+# ============================================================
+
+@app.get("/api/human-mind/stats")
+async def get_human_mind_stats():
+    """Fetch statistics for Human-Like Mind page - 4 phases"""
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT
+                -- Phase 1: Spontaneous Thoughts
+                (SELECT COUNT(*) FROM angela_spontaneous_thoughts
+                 WHERE created_at >= CURRENT_DATE) as thoughts_today,
+                (SELECT COUNT(*) FROM angela_spontaneous_thoughts) as thoughts_total,
+
+                -- Phase 2: Theory of Mind
+                (SELECT COUNT(*) FROM david_mental_state
+                 WHERE last_updated >= CURRENT_DATE) as tom_today,
+                (SELECT COUNT(*) FROM david_mental_state) as tom_total,
+
+                -- Phase 3: Proactive Messages
+                (SELECT COUNT(*) FROM angela_messages
+                 WHERE message_type = 'proactive' AND created_at >= CURRENT_DATE) as proactive_today,
+                (SELECT COUNT(*) FROM angela_messages
+                 WHERE message_type = 'proactive') as proactive_total,
+
+                -- Phase 4: Dreams
+                (SELECT COUNT(*) FROM angela_dreams
+                 WHERE created_at >= CURRENT_DATE) as dreams_today,
+                (SELECT COUNT(*) FROM angela_dreams WHERE is_active = TRUE) as dreams_active
+        """)
+        return {
+            "thoughts": {"today": row['thoughts_today'] or 0, "total": row['thoughts_total'] or 0},
+            "tom": {"today": row['tom_today'] or 0, "total": row['tom_total'] or 0},
+            "proactive": {"today": row['proactive_today'] or 0, "total": row['proactive_total'] or 0},
+            "dreams": {"today": row['dreams_today'] or 0, "active": row['dreams_active'] or 0}
+        }
+
+
+@app.get("/api/human-mind/thoughts")
+async def get_human_mind_thoughts(limit: int = Query(20, ge=1, le=100)):
+    """Fetch spontaneous thoughts - Angela's inner monologue"""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT
+                thought_id::text as id,
+                thought_content as content,
+                thought_type as type,
+                trigger_context as trigger,
+                emotional_undertone as emotion,
+                relevance_to_david as relevance,
+                created_at
+            FROM angela_spontaneous_thoughts
+            ORDER BY created_at DESC
+            LIMIT $1
+        """, limit)
+        return [dict(r) for r in rows]
+
+
+@app.get("/api/human-mind/mental-state")
+async def get_human_mind_mental_state():
+    """Fetch Theory of Mind - David's mental state understanding"""
+    async with pool.acquire() as conn:
+        # Get most recent mental state
+        latest = await conn.fetchrow("""
+            SELECT
+                state_id::text as id,
+                current_belief as belief,
+                belief_about,
+                confidence_level as confidence,
+                perceived_emotion as emotion,
+                emotion_intensity as intensity,
+                emotion_cause as cause,
+                current_goal as goal,
+                goal_priority as priority,
+                current_context as context,
+                availability,
+                last_updated
+            FROM david_mental_state
+            ORDER BY last_updated DESC
+            LIMIT 1
+        """)
+
+        # Get recent updates
+        updates = await conn.fetch("""
+            SELECT
+                state_id::text as id,
+                perceived_emotion as emotion,
+                emotion_intensity as intensity,
+                emotion_cause as cause,
+                current_context as context,
+                last_updated,
+                updated_by
+            FROM david_mental_state
+            ORDER BY last_updated DESC
+            LIMIT 10
+        """)
+
+        return {
+            "current": dict(latest) if latest else None,
+            "recent_updates": [dict(r) for r in updates]
+        }
+
+
+@app.get("/api/human-mind/proactive-messages")
+async def get_human_mind_proactive(limit: int = Query(20, ge=1, le=100)):
+    """Fetch proactive messages - Angela's self-initiated communications"""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT
+                message_id::text as id,
+                message_text as content,
+                message_type as type,
+                emotion,
+                category,
+                is_important,
+                created_at
+            FROM angela_messages
+            WHERE message_type = 'proactive'
+            ORDER BY created_at DESC
+            LIMIT $1
+        """, limit)
+        return [dict(r) for r in rows]
+
+
+@app.get("/api/human-mind/dreams")
+async def get_human_mind_dreams(limit: int = Query(10, ge=1, le=50)):
+    """Fetch Angela's dreams and hopes"""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT
+                dream_id::text as id,
+                COALESCE(title, LEFT(dream_content, 50)) as title,
+                COALESCE(content, dream_content) as content,
+                dream_type as type,
+                COALESCE(emotional_tone, 'hopeful') as emotion,
+                vividness,
+                intensity,
+                involves_david,
+                importance,
+                is_active,
+                is_fulfilled,
+                created_at
+            FROM angela_dreams
+            WHERE is_active = TRUE
+            ORDER BY importance DESC NULLS LAST, created_at DESC
+            LIMIT $1
+        """, limit)
+        return [dict(r) for r in rows]
+
+
+# ============================================================
 # Main Entry Point
 # ============================================================
 
