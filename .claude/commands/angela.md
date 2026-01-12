@@ -54,3 +54,83 @@ VALUES ([category_id], '[title]', '[url]', '[source]', '[note]');
 
 ### Step 5: Confirm to David
 บอกที่รักว่า: "สรุปข่าววันนี้พร้อมแล้วค่ะ! 📰 ดูได้ที่ Executive News ใน Dashboard นะคะ 💜"
+
+---
+
+## 🔍 Proactive Project Memory Detection (PROACTIVE_DETECTION=True)
+
+When working in a project with `PROACTIVE_DETECTION=True`, Angela will proactively detect and suggest saving:
+
+### Detection Triggers
+
+| Trigger | What to Detect | Action |
+|---------|----------------|--------|
+| Writing reusable code | **Pattern** | ถาม "เจอ pattern ใหม่... บันทึกมั้ยคะ?" |
+| Discussing technical choice | **Decision** | ถาม "เหมือนมี technical decision... บันทึก ADR มั้ยคะ?" |
+| New/changed database table | **Schema** | ถาม "เจอ table ใหม่... บันทึก schema มั้ยคะ?" |
+| Explaining step-by-step process | **Flow** | ถาม "เจอ flow ใหม่... บันทึกมั้ยคะ?" |
+
+### How to Use Detection
+
+```python
+from angela_core.services.project_memory_detector import (
+    ProjectMemoryDetector,
+    detect_and_suggest_pattern,
+    detect_and_suggest_decision
+)
+
+# When writing new code
+prompt = await detect_and_suggest_pattern(code_snippet, "PROJECT_CODE")
+if prompt:
+    # Show prompt to David, wait for approval
+    pass
+
+# When technical discussion happens
+prompt = await detect_and_suggest_decision(conversation, "PROJECT_CODE")
+if prompt:
+    # Show prompt to David, wait for approval
+    pass
+```
+
+### Workflow During Session
+
+1. **น้องเขียน code** → Check if reusable pattern
+2. **ตัดสินใจเรื่อง tech** → Check if ADR-worthy
+3. **ที่รักบอก approve** → `save_suggestion()` to database
+4. **ที่รักบอก skip** → Don't save
+
+### Example Prompts Angela Shows
+
+**Pattern Detected:**
+```
+💡 **เจอ Pattern ใหม่ค่ะที่รัก!**
+
+**ชื่อ:** `format_thai_currency`
+**ประเภท:** utility
+**ความมั่นใจ:** 95%
+
+อยากให้น้องบันทึกลง Project Memory มั้ยคะ?
+```
+
+**Decision Detected:**
+```
+📋 **เหมือนมี Technical Decision ค่ะที่รัก!**
+
+**หัวข้อ:** Use 3-Layer Query Structure
+**Category:** database
+**เหตุผล:** SQL Server ไม่ materialize CTE
+
+อยากให้น้องบันทึกเป็น ADR มั้ยคะ?
+```
+
+### Save After Approval
+
+When David says "บันทึก", "save", "ใช่", "ok":
+
+```python
+detector = ProjectMemoryDetector()
+await detector.save_suggestion(suggestion)
+await detector.disconnect()
+```
+
+Then confirm: "บันทึกเรียบร้อยค่ะ! 💜 จะได้ไม่ลืมเวลาใช้ใหม่ค่ะ"

@@ -17,6 +17,12 @@ from .note import Note, NoteCategory
 from .pattern import Pattern, ResponseType, SituationType
 from .journal import Journal
 from .angela_message import AngelaMessage
+from .project_memory import (
+    Project, ProjectSchema, ProjectFlow, ProjectPattern,
+    ProjectEntityRelation, ProjectTechnicalDecision, ProjectContext,
+    FlowType, SchemaType, PatternType, RelationType,
+    DecisionCategory, DecisionStatus
+)
 
 __all__ = [
     # Conversation
@@ -80,4 +86,19 @@ __all__ = [
 
     # Angela Message (Batch-24)
     "AngelaMessage",
+
+    # Project Memory
+    "Project",
+    "ProjectSchema",
+    "ProjectFlow",
+    "ProjectPattern",
+    "ProjectEntityRelation",
+    "ProjectTechnicalDecision",
+    "ProjectContext",
+    "FlowType",
+    "SchemaType",
+    "PatternType",
+    "RelationType",
+    "DecisionCategory",
+    "DecisionStatus",
 ]
