@@ -15,6 +15,7 @@ from angela_core.domain import Learning, LearningCategory
 from angela_core.domain.interfaces.repositories import ILearningRepository
 from angela_core.infrastructure.persistence.repositories.base_repository import BaseRepository
 from angela_core.shared.exceptions import EntityNotFoundError
+from angela_core.shared.utils import parse_enum_optional, validate_embedding
 
 
 class LearningRepository(BaseRepository[Learning], ILearningRepository):
@@ -67,31 +68,11 @@ class LearningRepository(BaseRepository[Learning], ILearningRepository):
         Returns:
             Learning entity
         """
-        # Parse category enum (with fallback for unknown values)
-        category = None
-        if row.get('category'):
-            try:
-                category = LearningCategory(row['category'])
-            except ValueError:
-                category = None  # Unknown category, leave as None
+        # Parse category enum with DRY utility
+        category = parse_enum_optional(row.get('category'), LearningCategory)
 
-        # Parse embedding (convert to list if present)
-        embedding = None
-        if row.get('embedding'):
-            # PostgreSQL vector is returned as string "[0.1, 0.2, ...]"
-            # asyncpg may return it directly as a list, or we may need to parse
-            embedding_data = row['embedding']
-            if isinstance(embedding_data, str):
-                # Parse string representation if needed
-                import json
-                try:
-                    embedding = json.loads(embedding_data)
-                except:
-                    embedding = None
-            elif isinstance(embedding_data, list):
-                embedding = embedding_data
-            else:
-                embedding = None
+        # Parse embedding with DRY utility (handles string/list/None)
+        embedding = validate_embedding(row.get('embedding'))
 
         # Create entity
         return Learning(

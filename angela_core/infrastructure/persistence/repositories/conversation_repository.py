@@ -15,6 +15,7 @@ from angela_core.domain import Conversation, Speaker, MessageType, SentimentLabe
 from angela_core.domain.interfaces.repositories import IConversationRepository
 from angela_core.infrastructure.persistence.repositories.base_repository import BaseRepository
 from angela_core.shared.exceptions import EntityNotFoundError
+from angela_core.shared.utils import parse_enum, parse_enum_optional, validate_embedding
 
 
 class ConversationRepository(BaseRepository[Conversation], IConversationRepository):
@@ -66,36 +67,13 @@ class ConversationRepository(BaseRepository[Conversation], IConversationReposito
         Returns:
             Conversation entity
         """
-        # Parse enums with fallback for invalid values
-        try:
-            speaker = Speaker(row['speaker'])
-        except ValueError:
-            speaker = Speaker.DAVID  # Fallback
+        # Parse enums with DRY utilities
+        speaker = parse_enum(row['speaker'], Speaker, Speaker.DAVID)
+        message_type = parse_enum_optional(row.get('message_type'), MessageType)
+        sentiment_label = parse_enum_optional(row.get('sentiment_label'), SentimentLabel)
 
-        # Parse message_type with fallback
-        message_type = None
-        if row.get('message_type'):
-            try:
-                message_type = MessageType(row['message_type'])
-            except ValueError:
-                message_type = None  # Skip invalid message types
-
-        # Parse sentiment_label with fallback
-        sentiment_label = None
-        if row.get('sentiment_label'):
-            try:
-                sentiment_label = SentimentLabel(row['sentiment_label'])
-            except ValueError:
-                sentiment_label = None  # Skip invalid sentiment labels
-
-        # Parse embedding (pgvector returns list)
-        # Sanitize: set to None if not 768 dimensions (corrupt data)
-        embedding = None
-        if row.get('embedding') is not None:
-            emb_list = list(row['embedding'])
-            if len(emb_list) == 768:
-                embedding = emb_list
-            # else: silently ignore corrupt embeddings (not 768 dims)
+        # Parse embedding (REMOVED: Migration 009, but keeping validation for future)
+        # embedding = validate_embedding(row.get('embedding'))
 
         # Create entity
         return Conversation(

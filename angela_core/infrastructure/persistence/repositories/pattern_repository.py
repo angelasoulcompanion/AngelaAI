@@ -15,6 +15,7 @@ from uuid import UUID
 from angela_core.domain import Pattern, ResponseType, SituationType
 from angela_core.domain.interfaces.repositories import IPatternRepository
 from angela_core.infrastructure.persistence.repositories.base_repository import BaseRepository
+from angela_core.shared.utils import parse_enum_optional, safe_list, validate_embedding
 
 
 class PatternRepository(BaseRepository[Pattern], IPatternRepository):
@@ -37,27 +38,17 @@ class PatternRepository(BaseRepository[Pattern], IPatternRepository):
 
     def _row_to_entity(self, row: asyncpg.Record) -> Pattern:
         """Convert database row to Pattern entity."""
-        response_type = None
-        if row.get('response_type'):
-            try:
-                response_type = ResponseType(row['response_type'])
-            except ValueError:
-                response_type = None
+        # Parse enum with DRY utility
+        response_type = parse_enum_optional(row.get('response_type'), ResponseType)
 
-        # Convert vector to list if needed
-        situation_embedding = None
-        if row.get('situation_embedding'):
-            if isinstance(row['situation_embedding'], str):
-                # PostgreSQL vector string representation: "[1.0, 2.0, ...]"
-                situation_embedding = eval(row['situation_embedding'])
-            else:
-                situation_embedding = list(row['situation_embedding'])
+        # Parse embedding with DRY utility
+        situation_embedding = validate_embedding(row.get('situation_embedding'))
 
         return Pattern(
             id=row['pattern_id'],
             situation_type=row['situation_type'],
             emotion_category=row.get('emotion_category'),
-            context_keywords=list(row['context_keywords']) if row.get('context_keywords') else [],
+            context_keywords=safe_list(row.get('context_keywords')),
             situation_embedding=situation_embedding,
             response_template=row['response_template'],
             response_type=response_type,

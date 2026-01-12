@@ -23,6 +23,7 @@ from angela_core.domain.entities.angela_message import AngelaMessage
 from angela_core.domain.interfaces.repositories import IMessageRepository
 from angela_core.infrastructure.persistence.repositories.base_repository import BaseRepository
 from angela_core.shared.exceptions import EntityNotFoundError
+from angela_core.shared.utils import validate_embedding
 
 
 class MessageRepository(BaseRepository[AngelaMessage], IMessageRepository):
@@ -69,8 +70,8 @@ class MessageRepository(BaseRepository[AngelaMessage], IMessageRepository):
         Returns:
             AngelaMessage entity
         """
-        # Parse embedding (pgvector returns list)
-        embedding = list(row['embedding']) if row.get('embedding') is not None else None
+        # Parse embedding with DRY utility
+        embedding = validate_embedding(row.get('embedding'))
 
         return AngelaMessage(
             message_id=row['message_id'],

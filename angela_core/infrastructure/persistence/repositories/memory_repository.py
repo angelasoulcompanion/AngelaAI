@@ -14,6 +14,7 @@ from uuid import UUID
 from angela_core.domain import Memory, MemoryPhase
 from angela_core.domain.interfaces.repositories import IMemoryRepository
 from angela_core.infrastructure.persistence.repositories.base_repository import BaseRepository
+from angela_core.shared.utils import parse_enum, parse_enum_optional, safe_dict, validate_embedding
 
 
 class MemoryRepository(BaseRepository[Memory], IMemoryRepository):
@@ -53,21 +54,17 @@ class MemoryRepository(BaseRepository[Memory], IMemoryRepository):
 
     def _row_to_entity(self, row: asyncpg.Record) -> Memory:
         """Convert database row to Memory entity."""
-        # Parse memory_phase enum
-        memory_phase = MemoryPhase(row['memory_phase'])
+        # Parse enums with DRY utilities
+        memory_phase = parse_enum(row['memory_phase'], MemoryPhase)
+        promoted_from = parse_enum_optional(row.get('promoted_from'), MemoryPhase)
 
-        # Parse promoted_from if exists
-        promoted_from = None
-        if row.get('promoted_from'):
-            promoted_from = MemoryPhase(row['promoted_from'])
-
-        # Parse embedding
-        embedding = list(row['embedding']) if row.get('embedding') is not None else None
+        # Parse embedding with DRY utility
+        embedding = validate_embedding(row.get('embedding'))
 
         return Memory(
             content=row['content'],
             id=row['id'],
-            metadata=dict(row.get('metadata', {})),
+            metadata=safe_dict(row.get('metadata')),
             importance=row.get('importance', 0.5),
             memory_phase=memory_phase,
             memory_strength=row.get('memory_strength', 1.0),

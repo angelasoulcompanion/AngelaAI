@@ -15,6 +15,7 @@ from angela_core.domain import Goal, GoalType, GoalStatus, GoalPriority, GoalCat
 from angela_core.domain.interfaces.repositories import IGoalRepository
 from angela_core.infrastructure.persistence.repositories.base_repository import BaseRepository
 from angela_core.shared.exceptions import EntityNotFoundError
+from angela_core.shared.utils import parse_enum, parse_enum_optional, safe_list
 
 
 class GoalRepository(BaseRepository[Goal], IGoalRepository):
@@ -78,31 +79,14 @@ class GoalRepository(BaseRepository[Goal], IGoalRepository):
         Returns:
             Goal entity
         """
-        # Parse enums (with fallback for unknown values)
-        try:
-            goal_type = GoalType(row['goal_type'])
-        except ValueError:
-            goal_type = GoalType.MEDIUM_TERM
-
-        try:
-            status = GoalStatus(row['status'])
-        except ValueError:
-            status = GoalStatus.ACTIVE
-
-        try:
-            priority = GoalPriority(row['priority']) if row.get('priority') else GoalPriority.MEDIUM
-        except ValueError:
-            priority = GoalPriority.MEDIUM
-
-        category = None
-        if row.get('category'):
-            try:
-                category = GoalCategory(row['category'])
-            except ValueError:
-                category = None
+        # Parse enums with DRY utilities
+        goal_type = parse_enum(row['goal_type'], GoalType, GoalType.MEDIUM_TERM)
+        status = parse_enum(row['status'], GoalStatus, GoalStatus.ACTIVE)
+        priority = parse_enum(row.get('priority'), GoalPriority, GoalPriority.MEDIUM)
+        category = parse_enum_optional(row.get('category'), GoalCategory)
 
         # Parse tags array
-        tags = list(row['tags']) if row.get('tags') else []
+        tags = safe_list(row.get('tags'))
 
         # Create entity
         return Goal(

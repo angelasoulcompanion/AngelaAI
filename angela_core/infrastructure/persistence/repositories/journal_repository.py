@@ -17,6 +17,7 @@ from angela_core.domain.entities.journal import Journal
 from angela_core.domain.interfaces.repositories import IJournalRepository
 from angela_core.infrastructure.persistence.repositories.base_repository import BaseRepository
 from angela_core.shared.exceptions import EntityNotFoundError
+from angela_core.shared.utils import safe_list
 
 
 class JournalRepository(BaseRepository[Journal], IJournalRepository):
@@ -73,11 +74,11 @@ class JournalRepository(BaseRepository[Journal], IJournalRepository):
         if isinstance(entry_date, datetime):
             entry_date = entry_date.date()
 
-        # Parse array fields (convert None to empty list)
-        gratitude = list(row['gratitude']) if row.get('gratitude') else []
-        learning_moments = list(row['learning_moments']) if row.get('learning_moments') else []
-        challenges = list(row['challenges']) if row.get('challenges') else []
-        wins = list(row['wins']) if row.get('wins') else []
+        # Parse array fields with DRY utility
+        gratitude = safe_list(row.get('gratitude'))
+        learning_moments = safe_list(row.get('learning_moments'))
+        challenges = safe_list(row.get('challenges'))
+        wins = safe_list(row.get('wins'))
 
         # Create entity
         return Journal(

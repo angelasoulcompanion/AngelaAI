@@ -14,6 +14,7 @@ from uuid import UUID
 from angela_core.domain import KnowledgeNode, KnowledgeCategory
 from angela_core.domain.interfaces.repositories import IKnowledgeRepository
 from angela_core.infrastructure.persistence.repositories.base_repository import BaseRepository
+from angela_core.shared.utils import parse_enum, validate_embedding
 
 
 class KnowledgeRepository(BaseRepository[KnowledgeNode], IKnowledgeRepository):
@@ -52,11 +53,11 @@ class KnowledgeRepository(BaseRepository[KnowledgeNode], IKnowledgeRepository):
 
     def _row_to_entity(self, row: asyncpg.Record) -> KnowledgeNode:
         """Convert database row to KnowledgeNode entity."""
-        # Parse category enum
-        category = KnowledgeCategory(row['concept_category']) if row.get('concept_category') else KnowledgeCategory.GENERAL
+        # Parse enum with DRY utility
+        category = parse_enum(row.get('concept_category'), KnowledgeCategory, KnowledgeCategory.GENERAL)
 
-        # Parse embedding
-        embedding = list(row['embedding']) if row.get('embedding') is not None else None
+        # Parse embedding with DRY utility
+        embedding = validate_embedding(row.get('embedding'))
 
         return KnowledgeNode(
             concept_name=row['concept_name'],

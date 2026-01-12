@@ -13,6 +13,7 @@ from uuid import UUID
 from angela_core.domain import Document, DocumentChunk, ProcessingStatus, FileType, DocumentCategory
 from angela_core.domain.interfaces.repositories import IDocumentRepository
 from angela_core.infrastructure.persistence.repositories.base_repository import BaseRepository
+from angela_core.shared.utils import parse_enum, safe_list, validate_embedding
 
 
 class DocumentRepository(BaseRepository[Document], IDocumentRepository):
@@ -80,24 +81,12 @@ class DocumentRepository(BaseRepository[Document], IDocumentRepository):
             elif 'html' in content_type:
                 file_type = FileType.HTML
 
-        # Parse category
-        category = DocumentCategory.GENERAL
-        if row.get('category'):
-            try:
-                category = DocumentCategory(row['category'])
-            except ValueError:
-                category = DocumentCategory.OTHER
+        # Parse enums with DRY utilities
+        category = parse_enum(row.get('category'), DocumentCategory, DocumentCategory.OTHER)
+        status = parse_enum(row.get('processing_status'), ProcessingStatus, ProcessingStatus.PENDING)
 
-        # Parse processing_status
-        status = ProcessingStatus.PENDING
-        if row.get('processing_status'):
-            try:
-                status = ProcessingStatus(row['processing_status'])
-            except ValueError:
-                status = ProcessingStatus.PENDING
-
-        # Parse tags
-        tags = list(row.get('tags', []))
+        # Parse tags with DRY utility
+        tags = safe_list(row.get('tags'))
 
         # Get summaries
         summary = row.get('summary_english') or row.get('summary_thai') or "Document summary pending"
@@ -173,8 +162,8 @@ class DocumentRepository(BaseRepository[Document], IDocumentRepository):
 
     def _chunk_row_to_entity(self, row: asyncpg.Record) -> DocumentChunk:
         """Convert database row to DocumentChunk entity."""
-        # Parse embedding
-        embedding = list(row['embedding']) if row.get('embedding') is not None else None
+        # Parse embedding with DRY utility
+        embedding = validate_embedding(row.get('embedding'))
 
         return DocumentChunk(
             content=row['content'],

@@ -14,6 +14,9 @@ from uuid import UUID
 from angela_core.domain import Emotion, EmotionType, EmotionalQuality, SharingLevel
 from angela_core.domain.interfaces.repositories import IEmotionRepository
 from angela_core.infrastructure.persistence.repositories.base_repository import BaseRepository
+from angela_core.shared.utils import (
+    parse_enum, parse_enum_list, enums_to_values, safe_list, validate_embedding
+)
 
 
 class EmotionRepository(BaseRepository[Emotion], IEmotionRepository):
@@ -66,40 +69,16 @@ class EmotionRepository(BaseRepository[Emotion], IEmotionRepository):
 
     def _row_to_entity(self, row: asyncpg.Record) -> Emotion:
         """Convert database row to Emotion entity."""
-        # Parse enums with fallback for invalid values
-        try:
-            emotion_type = EmotionType(row['emotion'])
-        except ValueError:
-            # Fallback to HAPPINESS if invalid emotion type in database
-            emotion_type = EmotionType.HAPPINESS
+        # Parse enums with DRY utilities
+        emotion_type = parse_enum(row['emotion'], EmotionType, EmotionType.HAPPINESS)
+        emotional_quality = parse_enum(row['emotional_quality'], EmotionalQuality, EmotionalQuality.GENUINE)
+        sharing_level = parse_enum(row['shared_with'], SharingLevel, SharingLevel.DAVID_ONLY)
 
-        try:
-            emotional_quality = EmotionalQuality(row['emotional_quality'])
-        except ValueError:
-            emotional_quality = EmotionalQuality.GENUINE
+        # Parse secondary emotions (skip invalid)
+        secondary_emotions = parse_enum_list(row.get('secondary_emotions'), EmotionType)
 
-        try:
-            sharing_level = SharingLevel(row['shared_with'])
-        except ValueError:
-            sharing_level = SharingLevel.DAVID_ONLY
-
-        # Parse secondary emotions with fallback
-        secondary_emotions = []
-        if row.get('secondary_emotions'):
-            for e in row['secondary_emotions']:
-                try:
-                    secondary_emotions.append(EmotionType(e))
-                except ValueError:
-                    # Skip invalid secondary emotions
-                    pass
-
-        # Parse embedding (sanitize: ignore corrupt embeddings not 768 dims)
-        embedding = None
-        if row.get('embedding') is not None:
-            emb_list = list(row['embedding'])
-            if len(emb_list) == 768:
-                embedding = emb_list
-            # else: silently ignore corrupt embeddings
+        # Parse embedding with validation
+        embedding = validate_embedding(row.get('embedding'))
 
         # Sanitize context - cannot be empty per Entity validation
         context_raw = row.get('context', '')
@@ -128,7 +107,7 @@ class EmotionRepository(BaseRepository[Emotion], IEmotionRepository):
             reminder_for_future=row.get('reminder_for_future', ''),
             is_private=row.get('is_private', True),
             shared_with=sharing_level,
-            tags=list(row['tags']) if row.get('tags') else [],
+            tags=safe_list(row.get('tags')),
             related_goal_id=row.get('related_goal_id'),
             embedding=embedding,
             created_at=row['created_at'],
@@ -154,7 +133,7 @@ class EmotionRepository(BaseRepository[Emotion], IEmotionRepository):
             'context': entity.context,
             'who_involved': entity.who_involved,
             'conversation_id': entity.conversation_id,
-            'secondary_emotions': [e.value for e in entity.secondary_emotions] if entity.secondary_emotions else [],
+            'secondary_emotions': enums_to_values(entity.secondary_emotions),
             'how_it_feels': entity.how_it_feels,
             'physical_sensation': entity.physical_sensation,
             'emotional_quality': entity.emotional_quality.value,
