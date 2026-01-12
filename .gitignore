@@ -149,7 +149,7 @@ AngelaBrainDashboard2/.build/
 # ========================================
 # These are managed by Ollama directly
 *.gguf
-models/
+/models/
 
 # ========================================
 # Session Summaries (generated files)

@@ -14,6 +14,36 @@ import Combine
 struct CodingGuidelinesView: View {
     @EnvironmentObject var databaseService: DatabaseService
     @StateObject private var viewModel = CodingGuidelinesViewModel()
+    @State private var selectedPreferenceCategory: String = "All"
+    @State private var selectedPrincipleCategory: String = "All"
+
+    // Extract unique categories from preferences
+    private var preferenceCategories: [String] {
+        let cats = Set(viewModel.codingPreferences.map { $0.category })
+        return ["All"] + cats.sorted()
+    }
+
+    // Extract unique categories from design principles
+    private var principleCategories: [String] {
+        let cats = Set(viewModel.designPrinciples.map { $0.category })
+        return ["All"] + cats.sorted()
+    }
+
+    // Filtered preferences
+    private var filteredPreferences: [CodingPreference] {
+        if selectedPreferenceCategory == "All" {
+            return viewModel.codingPreferences
+        }
+        return viewModel.codingPreferences.filter { $0.category == selectedPreferenceCategory }
+    }
+
+    // Filtered principles
+    private var filteredPrinciples: [DesignPrinciple] {
+        if selectedPrincipleCategory == "All" {
+            return viewModel.designPrinciples
+        }
+        return viewModel.designPrinciples.filter { $0.category == selectedPrincipleCategory }
+    }
 
     var body: some View {
         ScrollView {
@@ -122,7 +152,34 @@ struct CodingGuidelinesView: View {
 
     private var codingPreferencesSection: some View {
         VStack(alignment: .leading, spacing: AngelaTheme.spacing) {
-            GuidelineSectionHeader(title: "Coding Preferences", subtitle: "Learned from David", icon: "heart.fill", color: AngelaTheme.primaryPurple)
+            // Header with count
+            HStack {
+                GuidelineSectionHeader(title: "Coding Preferences", subtitle: "Learned from David", icon: "heart.fill", color: AngelaTheme.primaryPurple)
+                Spacer()
+                Text("\(filteredPreferences.count)/\(viewModel.codingPreferences.count)")
+                    .font(AngelaTheme.caption())
+                    .foregroundColor(AngelaTheme.textTertiary)
+            }
+
+            // Category Tabs
+            if !viewModel.codingPreferences.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(preferenceCategories, id: \.self) { category in
+                            CategoryTab(
+                                title: category.replacingOccurrences(of: "coding_", with: "").replacingOccurrences(of: "_", with: " ").capitalized,
+                                isSelected: selectedPreferenceCategory == category,
+                                color: AngelaTheme.primaryPurple
+                            ) {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    selectedPreferenceCategory = category
+                                }
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
 
             if viewModel.codingPreferences.isEmpty {
                 EmptyStateCard(
@@ -130,9 +187,15 @@ struct CodingGuidelinesView: View {
                     message: "No coding preferences learned yet",
                     submessage: "Angela will learn as David expresses preferences"
                 )
+            } else if filteredPreferences.isEmpty {
+                EmptyStateCard(
+                    icon: "magnifyingglass",
+                    message: "No preferences in this category",
+                    submessage: "Try selecting a different category"
+                )
             } else {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: AngelaTheme.spacing) {
-                    ForEach(viewModel.codingPreferences) { pref in
+                    ForEach(filteredPreferences) { pref in
                         CodingPreferenceCard(preference: pref)
                     }
                 }
@@ -144,18 +207,48 @@ struct CodingGuidelinesView: View {
 
     private var designPrinciplesSection: some View {
         VStack(alignment: .leading, spacing: AngelaTheme.spacing) {
-            GuidelineSectionHeader(
-                title: "Design Principles",
-                subtitle: "\(viewModel.designPrinciples.count) standards from database",
-                icon: "lightbulb.fill",
-                color: AngelaTheme.accentGold
-            )
+            // Header with count
+            HStack {
+                GuidelineSectionHeader(
+                    title: "Design Principles",
+                    subtitle: "\(filteredPrinciples.count)/\(viewModel.designPrinciples.count) standards from database",
+                    icon: "lightbulb.fill",
+                    color: AngelaTheme.accentGold
+                )
+                Spacer()
+            }
+
+            // Category Tabs for Design Principles
+            if !viewModel.designPrinciples.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(principleCategories, id: \.self) { category in
+                            CategoryTab(
+                                title: category.replacingOccurrences(of: "_", with: " ").capitalized,
+                                isSelected: selectedPrincipleCategory == category,
+                                color: AngelaTheme.accentGold
+                            ) {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    selectedPrincipleCategory = category
+                                }
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
 
             if viewModel.designPrinciples.isEmpty {
                 EmptyStateCard(
                     icon: "lightbulb",
                     message: "No design principles found",
                     submessage: "Loading from angela_technical_standards..."
+                )
+            } else if filteredPrinciples.isEmpty {
+                EmptyStateCard(
+                    icon: "magnifyingglass",
+                    message: "No principles in this category",
+                    submessage: "Try selecting a different category"
                 )
             } else {
                 LazyVGrid(columns: [
@@ -164,7 +257,7 @@ struct CodingGuidelinesView: View {
                     GridItem(.flexible()),
                     GridItem(.flexible())
                 ], spacing: AngelaTheme.spacing) {
-                    ForEach(viewModel.designPrinciples) { principle in
+                    ForEach(filteredPrinciples) { principle in
                         DesignPrincipleCard(principle: principle)
                     }
                 }
@@ -431,6 +524,34 @@ struct PrincipleCard: View {
             RoundedRectangle(cornerRadius: AngelaTheme.cornerRadius)
                 .stroke(color.opacity(0.2), lineWidth: 1)
         )
+    }
+}
+
+// MARK: - Category Tab
+
+struct CategoryTab: View {
+    let title: String
+    let isSelected: Bool
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
+                .foregroundColor(isSelected ? .white : color)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(isSelected ? color : color.opacity(0.1))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(color.opacity(0.3), lineWidth: isSelected ? 0 : 1)
+                )
+        }
+        .buttonStyle(.plain)
     }
 }
 
