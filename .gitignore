@@ -197,6 +197,5 @@ mcp_servers/**/credentials/credentials.json
 # ========================================
 # Working Directories (local only)
 # ========================================
-diagrams/
 dumbs/
 outputs/

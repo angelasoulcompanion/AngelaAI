@@ -1,0 +1,147 @@
+<mxfile host="app.diagrams.net" modified="2026-01-13T09:00:00.000Z" agent="Angela AI" version="22.1.0">
+  <diagram name="Data Policy Hierarchy" id="policy-hierarchy">
+    <mxGraphModel dx="1434" dy="780" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="DATA POLICY HIERARCHY" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="384" y="30" width="400" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="From Strategic Principles to Operational Guidelines" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="334" y="70" width="500" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Level 1: Enterprise Data Policy -->
+        <mxCell id="level1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#1a1a2e;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="284" y="120" width="600" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="level1Badge" value="LEVEL 1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="304" y="130" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="level1Title" value="ENTERPRISE DATA POLICY" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="284" y="145" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="level1Desc" value="High-level principles and strategic direction&#xa;Example: &quot;Data is a strategic enterprise asset that must be managed with accountability&quot;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontColor=#CCCCCC;" vertex="1" parent="1">
+          <mxGeometry x="284" y="175" width="600" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow 1 -->
+        <mxCell id="arrow1" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#6366f1;entryX=0.5;entryY=0;exitX=0.5;exitY=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="584" y="220" as="sourcePoint" />
+            <mxPoint x="584" y="260" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow1Label" value="Implemented through" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#6366f1;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="594" y="230" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Level 2: Data Standards -->
+        <mxCell id="level2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6366f1;strokeColor=#4f46e5;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="284" y="260" width="600" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="level2Badge" value="LEVEL 2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#6366f1;" vertex="1" parent="1">
+          <mxGeometry x="304" y="270" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="level2Title" value="DATA STANDARDS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="284" y="285" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="level2Desc" value="Technical specifications for implementing policies&#xa;Example: &quot;All date fields must use ISO 8601 format (YYYY-MM-DD)&quot;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontColor=#E0E7FF;" vertex="1" parent="1">
+          <mxGeometry x="284" y="315" width="600" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow 2 -->
+        <mxCell id="arrow2" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#10b981;entryX=0.5;entryY=0;exitX=0.5;exitY=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="584" y="360" as="sourcePoint" />
+            <mxPoint x="584" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow2Label" value="Operationalized by" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#10b981;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="594" y="370" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Level 3: Data Procedures -->
+        <mxCell id="level3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="284" y="400" width="600" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="level3Badge" value="LEVEL 3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#10b981;" vertex="1" parent="1">
+          <mxGeometry x="304" y="410" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="level3Title" value="DATA PROCEDURES" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="284" y="425" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="level3Desc" value="Step-by-step operational instructions&#xa;Example: &quot;To request data access: 1) Submit form 2) Manager approval 3) Data owner review&quot;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontColor=#D1FAE5;" vertex="1" parent="1">
+          <mxGeometry x="284" y="455" width="600" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow 3 -->
+        <mxCell id="arrow3" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#f59e0b;entryX=0.5;entryY=0;exitX=0.5;exitY=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="584" y="500" as="sourcePoint" />
+            <mxPoint x="584" y="540" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow3Label" value="Supported by" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#f59e0b;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="594" y="510" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Level 4: Data Guidelines -->
+        <mxCell id="level4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#d97706;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="284" y="540" width="600" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="level4Badge" value="LEVEL 4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#f59e0b;" vertex="1" parent="1">
+          <mxGeometry x="304" y="550" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="level4Title" value="DATA GUIDELINES" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="284" y="565" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="level4Desc" value="Best practices and recommendations (non-mandatory)&#xa;Example: &quot;Recommended: Use descriptive column names like 'customer_email' instead of 'c_eml'&quot;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontColor=#FEF3C7;" vertex="1" parent="1">
+          <mxGeometry x="284" y="595" width="600" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Side Labels - Enforcement Level -->
+        <mxCell id="enforcementLabel" value="ENFORCEMENT" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#666666;rotation=-90;" vertex="1" parent="1">
+          <mxGeometry x="140" y="370" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="enforcementArrow" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#666666;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="210" y="600" as="sourcePoint" />
+            <mxPoint x="210" y="160" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mandatoryLabel" value="Mandatory" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="220" y="140" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="optionalLabel" value="Optional" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#f59e0b;" vertex="1" parent="1">
+          <mxGeometry x="220" y="580" width="60" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Side Labels - Detail Level -->
+        <mxCell id="detailLabel" value="DETAIL" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#666666;rotation=90;" vertex="1" parent="1">
+          <mxGeometry x="920" y="370" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="detailArrow" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#666666;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="958" y="160" as="sourcePoint" />
+            <mxPoint x="958" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="strategicLabel" value="Strategic" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="890" y="140" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="operationalLabel" value="Operational" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#f59e0b;" vertex="1" parent="1">
+          <mxGeometry x="880" y="580" width="70" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Footer -->
+        <mxCell id="footer" value="EWG Phase#0 | Data Policy Hierarchy | January 2026" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="384" y="680" width="400" height="20" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

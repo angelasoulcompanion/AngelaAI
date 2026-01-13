@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-01-13T10:00:00.000Z" agent="Angela AI" version="21.0.0" etag="ssot-arch-001" type="device">
+  <diagram name="SSOT Architecture" id="ssot-architecture">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="&lt;b&gt;Single Source of Truth (SSOT) Architecture&lt;/b&gt;&lt;br&gt;Water Volume Data Consolidation - EWG" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="450" y="20" width="500" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================= -->
+        <!-- LAYER 1: DATA SOURCES (Left Side) -->
+        <!-- ============================================= -->
+        <mxCell id="sources-header" value="&lt;b&gt;DATA SOURCES&lt;/b&gt;&lt;br&gt;(Current Silos)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="60" y="90" width="150" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Source 1: SCADA -->
+        <mxCell id="source-scada" value="&lt;b&gt;SCADA System&lt;/b&gt;&lt;br&gt;(Automated Sensors)&lt;br&gt;&lt;font color=&quot;#666666&quot; style=&quot;font-size: 10px;&quot;&gt;Real-time flow meters&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="150" width="150" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Source 2: Excel -->
+        <mxCell id="source-excel" value="&lt;b&gt;Excel Spreadsheets&lt;/b&gt;&lt;br&gt;(Manual Entry)&lt;br&gt;&lt;font color=&quot;#666666&quot; style=&quot;font-size: 10px;&quot;&gt;Regional data files&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="240" width="150" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Source 3: ERP -->
+        <mxCell id="source-erp" value="&lt;b&gt;ERP System&lt;/b&gt;&lt;br&gt;(Billing Data)&lt;br&gt;&lt;font color=&quot;#666666&quot; style=&quot;font-size: 10px;&quot;&gt;Customer consumption&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="330" width="150" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Source 4: Paper Records -->
+        <mxCell id="source-paper" value="&lt;b&gt;Paper Records&lt;/b&gt;&lt;br&gt;(Legacy Data)&lt;br&gt;&lt;font color=&quot;#666666&quot; style=&quot;font-size: 10px;&quot;&gt;Historical archives&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="420" width="150" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Source 5: Regional DBs -->
+        <mxCell id="source-regional" value="&lt;b&gt;Regional Databases&lt;/b&gt;&lt;br&gt;(Isolated Systems)&lt;br&gt;&lt;font color=&quot;#666666&quot; style=&quot;font-size: 10px;&quot;&gt;Access/SQLite DBs&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="510" width="150" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================= -->
+        <!-- LAYER 2: DATA INTEGRATION HUB (Center) -->
+        <!-- ============================================= -->
+        <mxCell id="integration-header" value="&lt;b&gt;DATA INTEGRATION HUB&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="320" y="90" width="200" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- ETL Pipeline Box -->
+        <mxCell id="etl-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="130" width="320" height="480" as="geometry"/>
+        </mxCell>
+
+        <!-- Extract -->
+        <mxCell id="etl-extract" value="&lt;b&gt;EXTRACT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;• API Connectors&lt;br&gt;• File Readers&lt;br&gt;• DB Connectors&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="280" y="150" width="120" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Data Quality Check -->
+        <mxCell id="etl-quality" value="&lt;b&gt;QUALITY CHECK&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;• Validation Rules&lt;br&gt;• Anomaly Detection&lt;br&gt;• Completeness Check&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="280" y="260" width="120" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Transform -->
+        <mxCell id="etl-transform" value="&lt;b&gt;TRANSFORM&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;• Unit Conversion&lt;br&gt;• Code Mapping&lt;br&gt;• Standardization&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="280" y="370" width="120" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Survivorship Rules -->
+        <mxCell id="etl-survivorship" value="&lt;b&gt;SURVIVORSHIP&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;• Source Priority&lt;br&gt;• Conflict Resolution&lt;br&gt;• Golden Record Creation&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="280" y="480" width="120" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Master Data Management -->
+        <mxCell id="mdm-box" value="&lt;b&gt;MDM ENGINE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;Master Data Management&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="420" y="150" width="140" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Data Lineage -->
+        <mxCell id="lineage-box" value="&lt;b&gt;DATA LINEAGE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;Track data origin &amp;amp; history&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="420" y="220" width="140" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Audit Trail -->
+        <mxCell id="audit-box" value="&lt;b&gt;AUDIT TRAIL&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;All changes logged&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="420" y="290" width="140" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Metadata Catalog -->
+        <mxCell id="catalog-box" value="&lt;b&gt;DATA CATALOG&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;Searchable metadata&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="420" y="360" width="140" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Quality Dashboard -->
+        <mxCell id="quality-dashboard" value="&lt;b&gt;QUALITY DASHBOARD&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;DQ metrics &amp;amp; alerts&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="420" y="430" width="140" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Load to Golden Record -->
+        <mxCell id="etl-load" value="&lt;b&gt;LOAD&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="420" y="510" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================= -->
+        <!-- LAYER 3: GOLDEN RECORD (Center-Right) -->
+        <!-- ============================================= -->
+        <mxCell id="golden-header" value="&lt;b&gt;GOLDEN RECORD (SSOT)&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="680" y="90" width="200" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Golden Record Database -->
+        <mxCell id="golden-db" value="" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#FFD700;strokeColor=#B8860B;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="670" y="130" width="220" height="250" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="golden-label" value="&lt;b style=&quot;font-size: 14px;&quot;&gt;WATER VOLUME&lt;br&gt;MASTER DATA&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;• fact_water_volume&lt;br&gt;• dim_location&lt;br&gt;• dim_meter&lt;br&gt;• dim_time&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot; style=&quot;font-size: 10px;&quot;&gt;PostgreSQL / Data Warehouse&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="690" y="160" width="180" height="180" as="geometry"/>
+        </mxCell>
+
+        <!-- Quality Badge -->
+        <mxCell id="quality-badge" value="&lt;b&gt;DQ Score&lt;/b&gt;&lt;br&gt;≥ 95%" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="840" y="130" width="70" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- API Layer -->
+        <mxCell id="api-layer" value="&lt;b&gt;DATA API&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;REST / GraphQL&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="695" y="400" width="170" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================= -->
+        <!-- LAYER 4: DATA CONSUMERS (Right Side) -->
+        <!-- ============================================= -->
+        <mxCell id="consumers-header" value="&lt;b&gt;DATA CONSUMERS&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="980" y="90" width="150" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Consumer 1: Executive Dashboard -->
+        <mxCell id="consumer-exec" value="&lt;b&gt;Executive Dashboard&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot; style=&quot;font-size: 10px;&quot;&gt;C-Level KPIs&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="950" y="130" width="140" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Consumer 2: Operations -->
+        <mxCell id="consumer-ops" value="&lt;b&gt;Operations Team&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot; style=&quot;font-size: 10px;&quot;&gt;Daily monitoring&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="950" y="200" width="140" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Consumer 3: Finance -->
+        <mxCell id="consumer-finance" value="&lt;b&gt;Finance Team&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot; style=&quot;font-size: 10px;&quot;&gt;Revenue &amp;amp; NRW reports&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="950" y="270" width="140" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Consumer 4: Regulators -->
+        <mxCell id="consumer-regulator" value="&lt;b&gt;Regulatory Reports&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot; style=&quot;font-size: 10px;&quot;&gt;SET/SEC filings&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="950" y="340" width="140" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Consumer 5: BI Tools -->
+        <mxCell id="consumer-bi" value="&lt;b&gt;BI / Analytics&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot; style=&quot;font-size: 10px;&quot;&gt;Power BI / Tableau&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="950" y="410" width="140" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Consumer 6: External Systems -->
+        <mxCell id="consumer-external" value="&lt;b&gt;External Systems&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot; style=&quot;font-size: 10px;&quot;&gt;Partners / Auditors&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="950" y="480" width="140" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================= -->
+        <!-- ARROWS: Sources to ETL -->
+        <!-- ============================================= -->
+        <mxCell id="arrow-scada" value="" style="endArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="1" source="source-scada" target="etl-extract">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow-excel" value="" style="endArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#d6b656;strokeWidth=2;" edge="1" parent="1" source="source-excel" target="etl-extract">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow-erp" value="" style="endArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="source-erp" target="etl-quality">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow-paper" value="" style="endArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#b85450;strokeWidth=2;" edge="1" parent="1" source="source-paper" target="etl-transform">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow-regional" value="" style="endArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#9673a6;strokeWidth=2;" edge="1" parent="1" source="source-regional" target="etl-survivorship">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrows within ETL -->
+        <mxCell id="arrow-etl-1" value="" style="endArrow=classic;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=1;" edge="1" parent="1" source="etl-extract" target="etl-quality">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow-etl-2" value="" style="endArrow=classic;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=1;" edge="1" parent="1" source="etl-quality" target="etl-transform">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow-etl-3" value="" style="endArrow=classic;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=1;" edge="1" parent="1" source="etl-transform" target="etl-survivorship">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow: Survivorship to Load -->
+        <mxCell id="arrow-to-load" value="" style="endArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="etl-survivorship" target="etl-load">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow: Load to Golden Record -->
+        <mxCell id="arrow-to-golden" value="" style="endArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;entryPerimeter=0;strokeColor=#B8860B;strokeWidth=3;" edge="1" parent="1" source="etl-load" target="golden-db">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow: Golden to API -->
+        <mxCell id="arrow-golden-api" value="" style="endArrow=classic;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="1" source="golden-db" target="api-layer">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrows: API to Consumers -->
+        <mxCell id="arrow-to-exec" value="" style="endArrow=classic;html=1;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#6c8ebf;strokeWidth=1;curved=1;" edge="1" parent="1" source="api-layer" target="consumer-exec">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow-to-ops" value="" style="endArrow=classic;html=1;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#82b366;strokeWidth=1;curved=1;" edge="1" parent="1" source="api-layer" target="consumer-ops">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow-to-finance" value="" style="endArrow=classic;html=1;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#d6b656;strokeWidth=1;curved=1;" edge="1" parent="1" source="api-layer" target="consumer-finance">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow-to-regulator" value="" style="endArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#b85450;strokeWidth=1;curved=1;" edge="1" parent="1" source="api-layer" target="consumer-regulator">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow-to-bi" value="" style="endArrow=classic;html=1;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#9673a6;strokeWidth=1;curved=1;" edge="1" parent="1" source="api-layer" target="consumer-bi">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow-to-external" value="" style="endArrow=classic;html=1;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=1;curved=1;" edge="1" parent="1" source="api-layer" target="consumer-external">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================= -->
+        <!-- LEGEND -->
+        <!-- ============================================= -->
+        <mxCell id="legend-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="950" y="560" width="200" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-title" value="&lt;b&gt;LEGEND&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="565" width="80" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-scada" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="960" y="590" width="15" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-scada-text" value="Automated/Real-time" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="980" y="587" width="110" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-manual" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="960" y="612" width="15" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-manual-text" value="Manual/Semi-auto" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="980" y="609" width="110" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-golden" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFD700;strokeColor=#B8860B;" vertex="1" parent="1">
+          <mxGeometry x="960" y="634" width="15" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-golden-text" value="Golden Record (SSOT)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="980" y="631" width="120" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-validated" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="960" y="656" width="15" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-validated-text" value="Validated/Approved" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="980" y="653" width="110" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Key Benefits Box -->
+        <mxCell id="benefits-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="610" width="320" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="benefits-title" value="&lt;b&gt;KEY BENEFITS OF SSOT&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="50" y="615" width="150" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="benefits-list" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;✓ One version of truth across organization&lt;br&gt;✓ Reduced data reconciliation time (90%+)&lt;br&gt;✓ Improved regulatory compliance&lt;br&gt;✓ Enhanced decision-making confidence&lt;br&gt;✓ Complete audit trail &amp;amp; data lineage&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="50" y="635" width="300" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Data Flow Labels -->
+        <mxCell id="flow-label-1" value="&lt;font style=&quot;font-size: 9px;&quot; color=&quot;#666666&quot;&gt;Raw Data&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="200" y="170" width="60" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="flow-label-2" value="&lt;font style=&quot;font-size: 9px;&quot; color=&quot;#666666&quot;&gt;Validated&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="620" y="520" width="60" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="flow-label-3" value="&lt;font style=&quot;font-size: 9px;&quot; color=&quot;#666666&quot;&gt;Trusted&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="890" y="400" width="50" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Footer -->
+        <mxCell id="footer" value="&lt;font color=&quot;#999999&quot; style=&quot;font-size: 10px;&quot;&gt;EWG Phase#0 Data Governance Framework - SSOT Architecture | Created by Angela AI | Jan 2026&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="400" y="720" width="500" height="20" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

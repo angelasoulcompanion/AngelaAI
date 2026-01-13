@@ -1,0 +1,447 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-01-13T12:00:00.000Z" agent="Angela AI" version="21.0.0" etag="close-cycle-001" type="device">
+  <diagram name="Data Close Cycle Policy" id="data-close-cycle">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="&lt;b&gt;Data Close Cycle Policy&lt;/b&gt;&lt;br&gt;EWG - Listed Company (SET/SEC Compliance)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry x="600" y="20" width="500" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================= -->
+        <!-- SECTION 1: THREE CLOSE CYCLES -->
+        <!-- ============================================= -->
+        <mxCell id="cycles-header" value="&lt;b&gt;1. THREE CLOSE CYCLES&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="200" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Monthly Close -->
+        <mxCell id="monthly-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="130" width="380" height="200" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="monthly-header" value="&lt;b style=&quot;font-size: 16px;&quot;&gt;MONTHLY CLOSE&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;Soft Close - Standard Complexity&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="90" y="140" width="280" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="monthly-timeline" value="&lt;b&gt;Timeline: WD+7&lt;/b&gt; (7 Working Days)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="185" width="180" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="monthly-activities" value="&lt;div style=&quot;text-align: left;&quot;&gt;&lt;b&gt;Key Activities:&lt;/b&gt;&lt;br&gt;• WD+1: Sub-ledger close (AP, AR, Inventory)&lt;br&gt;• WD+2: Bank reconciliation&lt;br&gt;• WD+3: Intercompany elimination&lt;br&gt;• WD+4: Accruals &amp;amp; adjustments&lt;br&gt;• WD+5: Trial balance review&lt;br&gt;• WD+7: Management reports&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="60" y="220" width="200" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="monthly-freeze" value="&lt;b&gt;Data Freeze:&lt;/b&gt;&lt;br&gt;Level 1 (Soft)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="270" y="185" width="130" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="monthly-output" value="&lt;b&gt;Output:&lt;/b&gt;&lt;br&gt;• Trial Balance&lt;br&gt;• Management Reports&lt;br&gt;• KPI Dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="270" y="235" width="130" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Quarterly Close -->
+        <mxCell id="quarterly-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="440" y="130" width="400" height="200" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="quarterly-header" value="&lt;b style=&quot;font-size: 16px;&quot;&gt;QUARTERLY CLOSE&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;Hard Close - High Complexity&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="500" y="140" width="280" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="quarterly-timeline" value="&lt;b&gt;Timeline: 45 Days&lt;/b&gt; (SET Deadline)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="460" y="185" width="180" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="quarterly-phases" value="&lt;div style=&quot;text-align: left;&quot;&gt;&lt;b&gt;5 Phases:&lt;/b&gt;&lt;br&gt;• Phase 1 (WD 1-5): Soft Close&lt;br&gt;• Phase 2 (WD 6-10): Hard Close&lt;br&gt;• Phase 3 (WD 11-20): Review&lt;br&gt;• Phase 4 (WD 21-35): Reporting&lt;br&gt;• Phase 5 (WD 36-45): Submission&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="460" y="220" width="170" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="quarterly-freeze" value="&lt;b&gt;Data Freeze:&lt;/b&gt;&lt;br&gt;Level 2 (Hard)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="660" y="185" width="160" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="quarterly-output" value="&lt;b&gt;Output:&lt;/b&gt;&lt;br&gt;• Reviewed Financial Statements&lt;br&gt;• MD&amp;amp;A (if variance &gt;20%)&lt;br&gt;• SET/SEC Filing via SETLink" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="660" y="235" width="160" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Year-End Close -->
+        <mxCell id="yearly-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="860" y="130" width="400" height="200" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="yearly-header" value="&lt;b style=&quot;font-size: 16px;&quot;&gt;YEAR-END CLOSE&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;Full Close - Critical Complexity&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="920" y="140" width="280" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="yearly-timeline" value="&lt;b&gt;Timeline: 90 Days&lt;/b&gt; (SET Deadline)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="880" y="185" width="180" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="yearly-phases" value="&lt;div style=&quot;text-align: left;&quot;&gt;&lt;b&gt;6 Phases:&lt;/b&gt;&lt;br&gt;• Pre-Close (Dec 1-15)&lt;br&gt;• Soft Close (Dec 16-31)&lt;br&gt;• Hard Close (Jan 1-15)&lt;br&gt;• Audit Fieldwork (Jan 16-Feb 15)&lt;br&gt;• Final Adjustments (Feb 16-28)&lt;br&gt;• Board Approval (Mar 1-31)&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="880" y="220" width="170" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="yearly-freeze" value="&lt;b&gt;Data Freeze:&lt;/b&gt;&lt;br&gt;Level 3 (Audit)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;fontColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="185" width="160" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="yearly-output" value="&lt;b&gt;Output:&lt;/b&gt;&lt;br&gt;• Audited Financial Statements&lt;br&gt;• Form 56-1 One Report&lt;br&gt;• Annual Report" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="235" width="160" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================= -->
+        <!-- SECTION 2: DATA FREEZE LEVELS -->
+        <!-- ============================================= -->
+        <mxCell id="freeze-header" value="&lt;b&gt;2. DATA FREEZE LEVELS&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="350" width="200" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Level 1: Soft Freeze -->
+        <mxCell id="freeze-l1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="390" width="280" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="freeze-l1-header" value="&lt;b&gt;LEVEL 1: SOFT FREEZE&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="90" y="395" width="180" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="freeze-l1-content" value="&lt;b&gt;Duration:&lt;/b&gt; WD 0 - WD 2&lt;br&gt;&lt;b&gt;Scope:&lt;/b&gt; Transactional Data&lt;br&gt;&lt;b&gt;Rule:&lt;/b&gt; No new transactions in source systems&lt;br&gt;&lt;b&gt;Approval:&lt;/b&gt; Data Steward" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="420" width="260" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Level 2: Hard Freeze -->
+        <mxCell id="freeze-l2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="340" y="390" width="280" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="freeze-l2-header" value="&lt;b&gt;LEVEL 2: HARD FREEZE&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="390" y="395" width="180" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="freeze-l2-content" value="&lt;b&gt;Duration:&lt;/b&gt; WD 3 - WD 10&lt;br&gt;&lt;b&gt;Scope:&lt;/b&gt; Financial Data (GL)&lt;br&gt;&lt;b&gt;Rule:&lt;/b&gt; No changes to GL without approval&lt;br&gt;&lt;b&gt;Approval:&lt;/b&gt; Data Owner + Controller" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="350" y="420" width="260" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Level 3: Audit Freeze -->
+        <mxCell id="freeze-l3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="640" y="390" width="280" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="freeze-l3-header" value="&lt;b&gt;LEVEL 3: AUDIT FREEZE&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="690" y="395" width="180" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="freeze-l3-content" value="&lt;b&gt;Duration:&lt;/b&gt; WD 11 - Filing&lt;br&gt;&lt;b&gt;Scope:&lt;/b&gt; All Financial Data&lt;br&gt;&lt;b&gt;Rule:&lt;/b&gt; Only audit adjustments allowed&lt;br&gt;&lt;b&gt;Approval:&lt;/b&gt; CFO + External Auditor" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="650" y="420" width="260" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Level 4: Archive -->
+        <mxCell id="freeze-l4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="940" y="390" width="280" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="freeze-l4-header" value="&lt;b&gt;LEVEL 4: ARCHIVE&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="990" y="395" width="180" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="freeze-l4-content" value="&lt;b&gt;Duration:&lt;/b&gt; Post-filing (Permanent)&lt;br&gt;&lt;b&gt;Scope:&lt;/b&gt; Historical Data&lt;br&gt;&lt;b&gt;Rule:&lt;/b&gt; Data locked, read-only&lt;br&gt;&lt;b&gt;Retention:&lt;/b&gt; 10 years minimum" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="950" y="420" width="260" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrows between freeze levels -->
+        <mxCell id="freeze-arrow-1" value="" style="endArrow=classic;html=1;strokeColor=#666666;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="320" y="450" as="sourcePoint"/>
+            <mxPoint x="340" y="450" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="freeze-arrow-2" value="" style="endArrow=classic;html=1;strokeColor=#666666;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="620" y="450" as="sourcePoint"/>
+            <mxPoint x="640" y="450" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="freeze-arrow-3" value="" style="endArrow=classic;html=1;strokeColor=#666666;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="920" y="450" as="sourcePoint"/>
+            <mxPoint x="940" y="450" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ============================================= -->
+        <!-- SECTION 3: DATA QUALITY GATES -->
+        <!-- ============================================= -->
+        <mxCell id="gates-header" value="&lt;b&gt;3. DATA QUALITY GATES&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="530" width="200" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Gate 1 -->
+        <mxCell id="gate-1" value="&lt;b&gt;G1&lt;/b&gt;&lt;br&gt;Completeness&lt;br&gt;&lt;font style=&quot;font-size: 9px;&quot; color=&quot;#666666&quot;&gt;WD+1&lt;/font&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="60" y="570" width="100" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="gate-1-check" value="All sources loaded" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="45" y="650" width="130" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow 1-2 -->
+        <mxCell id="gate-arrow-1" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=3;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="160" y="610" as="sourcePoint"/>
+            <mxPoint x="200" y="610" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Gate 2 -->
+        <mxCell id="gate-2" value="&lt;b&gt;G2&lt;/b&gt;&lt;br&gt;Accuracy&lt;br&gt;&lt;font style=&quot;font-size: 9px;&quot; color=&quot;#666666&quot;&gt;WD+2&lt;/font&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="200" y="570" width="100" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="gate-2-check" value="Reconciliation pass" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="185" y="650" width="130" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow 2-3 -->
+        <mxCell id="gate-arrow-2" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=3;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="610" as="sourcePoint"/>
+            <mxPoint x="340" y="610" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Gate 3 -->
+        <mxCell id="gate-3" value="&lt;b&gt;G3&lt;/b&gt;&lt;br&gt;Timeliness&lt;br&gt;&lt;font style=&quot;font-size: 9px;&quot; color=&quot;#666666&quot;&gt;WD+3&lt;/font&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="340" y="570" width="100" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="gate-3-check" value="Data within SLA" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="325" y="650" width="130" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow 3-4 -->
+        <mxCell id="gate-arrow-3" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=3;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="440" y="610" as="sourcePoint"/>
+            <mxPoint x="480" y="610" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Gate 4 -->
+        <mxCell id="gate-4" value="&lt;b&gt;G4&lt;/b&gt;&lt;br&gt;Consistency&lt;br&gt;&lt;font style=&quot;font-size: 9px;&quot; color=&quot;#666666&quot;&gt;WD+4&lt;/font&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="480" y="570" width="100" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="gate-4-check" value="Cross-system match" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="465" y="650" width="130" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow 4-5 -->
+        <mxCell id="gate-arrow-4" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=3;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="580" y="610" as="sourcePoint"/>
+            <mxPoint x="620" y="610" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Gate 5 -->
+        <mxCell id="gate-5" value="&lt;b&gt;G5&lt;/b&gt;&lt;br&gt;Sign-off&lt;br&gt;&lt;font style=&quot;font-size: 9px;&quot; color=&quot;#666666&quot;&gt;WD+5&lt;/font&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="620" y="570" width="100" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="gate-5-check" value="Steward approval" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="605" y="650" width="130" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Final Arrow to Close -->
+        <mxCell id="gate-arrow-final" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=3;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="720" y="610" as="sourcePoint"/>
+            <mxPoint x="780" y="610" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Close Success -->
+        <mxCell id="close-success" value="&lt;b&gt;CLOSE&lt;br&gt;SUCCESS&lt;/b&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=3;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="780" y="570" width="100" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Fail path -->
+        <mxCell id="fail-box" value="&lt;b&gt;FAIL&lt;/b&gt;&lt;br&gt;Halt Close &amp;amp; Investigate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="300" y="690" width="150" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="fail-arrow" value="&lt;font color=&quot;#b85450&quot;&gt;If Failed&lt;/font&gt;" style="endArrow=classic;html=1;strokeColor=#b85450;strokeWidth=2;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="gate-2" target="fail-box">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="250" y="680" as="sourcePoint"/>
+            <mxPoint x="300" y="630" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ============================================= -->
+        <!-- SECTION 4: EXCEPTION WORKFLOW -->
+        <!-- ============================================= -->
+        <mxCell id="exception-header" value="&lt;b&gt;4. EXCEPTION WORKFLOW&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="920" y="530" width="200" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Exception Process -->
+        <mxCell id="exc-1" value="&lt;b&gt;1. Request&lt;/b&gt;&lt;br&gt;(User)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="920" y="570" width="90" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="exc-arrow-1" value="" style="endArrow=classic;html=1;strokeColor=#666666;strokeWidth=1;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1010" y="595" as="sourcePoint"/>
+            <mxPoint x="1030" y="595" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="exc-2" value="&lt;b&gt;2. Review&lt;/b&gt;&lt;br&gt;(Steward)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="570" width="90" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="exc-arrow-2" value="" style="endArrow=classic;html=1;strokeColor=#666666;strokeWidth=1;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1120" y="595" as="sourcePoint"/>
+            <mxPoint x="1140" y="595" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="exc-3" value="&lt;b&gt;3. Approve&lt;/b&gt;&lt;br&gt;(Owner)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="570" width="90" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="exc-arrow-3" value="" style="endArrow=classic;html=1;strokeColor=#666666;strokeWidth=1;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1230" y="595" as="sourcePoint"/>
+            <mxPoint x="1250" y="595" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="exc-4" value="&lt;b&gt;4. Execute&lt;/b&gt;&lt;br&gt;(Custodian)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="570" width="90" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Exception Types -->
+        <mxCell id="exc-types" value="&lt;div style=&quot;text-align: left;&quot;&gt;&lt;b&gt;Exception Types:&lt;/b&gt;&lt;br&gt;• Error Correction → Data Steward&lt;br&gt;• Late Invoice → Data Owner&lt;br&gt;• Audit Adjustment → Controller + Auditor&lt;br&gt;• Reclassification → Controller&lt;br&gt;• Prior Period Adj → CFO + Audit Committee&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="920" y="640" width="250" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- SLA Box -->
+        <mxCell id="exc-sla" value="&lt;b&gt;SLA:&lt;/b&gt;&lt;br&gt;Standard: 24 hours&lt;br&gt;Critical: 4 hours" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="640" width="150" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================= -->
+        <!-- SECTION 5: REGULATORY REQUIREMENTS -->
+        <!-- ============================================= -->
+        <mxCell id="reg-header" value="&lt;b&gt;5. SET/SEC REGULATORY REQUIREMENTS&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="750" width="300" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Regulatory Table -->
+        <mxCell id="reg-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="790" width="500" height="180" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="reg-table-header" value="&lt;table style=&quot;font-size: 11px; width: 100%;&quot;&gt;&lt;tr style=&quot;background-color: #6c8ebf; color: white;&quot;&gt;&lt;th style=&quot;padding: 5px;&quot;&gt;Report Type&lt;/th&gt;&lt;th style=&quot;padding: 5px;&quot;&gt;Deadline&lt;/th&gt;&lt;th style=&quot;padding: 5px;&quot;&gt;Penalty&lt;/th&gt;&lt;/tr&gt;&lt;/table&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="50" y="800" width="480" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="reg-table-rows" value="&lt;table style=&quot;font-size: 10px; width: 100%;&quot;&gt;&lt;tr&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;&lt;b&gt;Quarterly F/S (Reviewed)&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;45 days from quarter-end&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;THB 100,000 + 3,000/day&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;&lt;b&gt;Annual F/S (Audited, no Q4)&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;2 months from year-end&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;THB 100,000 + 3,000/day&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;&lt;b&gt;Annual F/S (Audited, with Q4)&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;3 months from year-end&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;THB 100,000 + 3,000/day&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;&lt;b&gt;Form 56-1 One Report&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;3 months from year-end&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;THB 100,000 + 3,000/day&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding: 5px;&quot;&gt;&lt;b&gt;MD&amp;amp;A&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding: 5px;&quot;&gt;With F/S (if variance &gt;20%)&lt;/td&gt;&lt;td style=&quot;padding: 5px;&quot;&gt;Required disclosure&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="50" y="830" width="480" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================= -->
+        <!-- SECTION 6: KEY CONTACTS -->
+        <!-- ============================================= -->
+        <mxCell id="contacts-header" value="&lt;b&gt;6. KEY CONTACTS &amp;amp; ESCALATION&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="560" y="750" width="250" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="contacts-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="560" y="790" width="350" height="180" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="contacts-content" value="&lt;table style=&quot;font-size: 11px; width: 100%;&quot;&gt;&lt;tr&gt;&lt;th style=&quot;text-align: left; padding: 5px; background-color: #9673a6; color: white;&quot;&gt;Role&lt;/th&gt;&lt;th style=&quot;text-align: left; padding: 5px; background-color: #9673a6; color: white;&quot;&gt;Responsibility&lt;/th&gt;&lt;th style=&quot;text-align: left; padding: 5px; background-color: #9673a6; color: white;&quot;&gt;Escalation&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;&lt;b&gt;Close Manager&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;Overall coordination&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;→ CFO&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;&lt;b&gt;Data Steward&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;Financial data quality&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;→ Controller → CFO&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;&lt;b&gt;IT Lead&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;System availability&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;→ CIO → CFO&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;&lt;b&gt;External Auditor&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;Audit procedures&lt;/td&gt;&lt;td style=&quot;padding: 5px; border-bottom: 1px solid #ccc;&quot;&gt;→ Audit Committee&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding: 5px;&quot;&gt;&lt;b&gt;IR/Compliance&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding: 5px;&quot;&gt;Regulatory filing&lt;/td&gt;&lt;td style=&quot;padding: 5px;&quot;&gt;→ Legal → CEO&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="570" y="800" width="330" height="160" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================= -->
+        <!-- SECTION 7: AUDIT TRAIL -->
+        <!-- ============================================= -->
+        <mxCell id="audit-header" value="&lt;b&gt;7. AUDIT TRAIL REQUIREMENTS&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="930" y="750" width="250" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="audit-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="930" y="790" width="330" height="180" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="audit-content" value="&lt;div style=&quot;text-align: left; font-size: 11px;&quot;&gt;&lt;b&gt;What Must Be Logged:&lt;/b&gt;&lt;br&gt;&lt;br&gt;✓ &lt;b&gt;Data Change&lt;/b&gt; - Who, what, when, before/after (10 years)&lt;br&gt;✓ &lt;b&gt;Access&lt;/b&gt; - User, timestamp, data accessed (7 years)&lt;br&gt;✓ &lt;b&gt;Approval&lt;/b&gt; - Approver, timestamp, decision (10 years)&lt;br&gt;✓ &lt;b&gt;Exception&lt;/b&gt; - Requestor, reason, resolution (10 years)&lt;br&gt;✓ &lt;b&gt;System Change&lt;/b&gt; - Change ID, description (10 years)&lt;br&gt;&lt;br&gt;&lt;b&gt;Key Fields:&lt;/b&gt;&lt;br&gt;• table_name, record_id, action (INSERT/UPDATE/DELETE)&lt;br&gt;• changed_by, changed_at, old_values, new_values&lt;br&gt;• change_reason, approval_id, period_end_date&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;spacingLeft=10;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="940" y="800" width="310" height="160" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================= -->
+        <!-- LEGEND -->
+        <!-- ============================================= -->
+        <mxCell id="legend-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="130" width="160" height="200" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-title" value="&lt;b&gt;LEGEND&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="135" width="80" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-monthly" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="165" width="20" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-monthly-text" value="Monthly (Soft)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1335" y="162" width="100" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-quarterly" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="190" width="20" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-quarterly-text" value="Quarterly (Hard)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1335" y="187" width="100" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-yearly" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="215" width="20" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-yearly-text" value="Year-End (Full)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1335" y="212" width="100" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-success" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="240" width="20" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-success-text" value="Pass / Approved" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1335" y="237" width="100" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-fail" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="265" width="20" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-fail-text" value="Fail / Blocked" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1335" y="262" width="100" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-archive" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="290" width="20" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-archive-text" value="Archive / Final" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1335" y="287" width="100" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Footer -->
+        <mxCell id="footer" value="&lt;font color=&quot;#999999&quot; style=&quot;font-size: 10px;&quot;&gt;EWG Phase#0 Data Governance Framework - Data Close Cycle Policy | Created by Angela AI | Jan 2026&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="550" y="990" width="600" height="20" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

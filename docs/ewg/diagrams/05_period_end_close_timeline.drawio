@@ -1,0 +1,382 @@
+<mxfile host="app.diagrams.net" modified="2026-01-13T09:00:00.000Z" agent="Angela AI" version="22.1.0">
+  <diagram name="Period-End Close Timeline" id="period-end-timeline">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="PERIOD-END CLOSE TIMELINE FOR LISTED COMPANY" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="400" y="20" width="800" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="SET/SEC Thailand Regulatory Requirements" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="550" y="55" width="500" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Section: Regulatory Deadlines -->
+        <mxCell id="regBox" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#f59e0b;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="360" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="regTitle" value="&#9888; SET/SEC REGULATORY DEADLINES" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#92400e;" vertex="1" parent="1">
+          <mxGeometry x="55" y="100" width="300" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="regContent" value="&#8226; Quarterly Financial Statements: 45 days&#xa;&#8226; Annual F/S (without Q4): 2 months&#xa;&#8226; Annual F/S (with Q4): 3 months&#xa;&#8226; Form 56-1 One Report: 3 months&#xa;&#xa;&#9888; Penalties:&#xa;   THB 100,000 + THB 3,000/day late" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=12;fontColor=#78350f;" vertex="1" parent="1">
+          <mxGeometry x="55" y="130" width="330" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- ============== MONTHLY CLOSE SECTION ============== -->
+        <mxCell id="monthlyHeader" value="MONTHLY CLOSE (Soft Close)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="40" y="290" width="300" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="monthlyDuration" value="Duration: 7 Working Days" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0E7FF;strokeColor=#6366f1;fontSize=11;fontColor=#3730a3;" vertex="1" parent="1">
+          <mxGeometry x="280" y="292" width="150" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Monthly Timeline -->
+        <mxCell id="monthTimeline" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#6366f1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="40" y="380" as="sourcePoint" />
+            <mxPoint x="550" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Monthly: Day 0 -->
+        <mxCell id="m0" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ef4444;strokeColor=#dc2626;" vertex="1" parent="1">
+          <mxGeometry x="40" y="330" width="70" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m0Text" value="WD 0&#xa;CUTOFF" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="45" y="333" width="60" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="m0Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ef4444;strokeColor=#dc2626;" vertex="1" parent="1">
+          <mxGeometry x="65" y="370" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="m0Label" value="Data&#xa;Freeze" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#ef4444;" vertex="1" parent="1">
+          <mxGeometry x="50" y="392" width="50" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Monthly: Day 1-2 -->
+        <mxCell id="m1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#d97706;" vertex="1" parent="1">
+          <mxGeometry x="120" y="330" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m1Text" value="WD 1-2&#xa;Sub-Ledger" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="125" y="333" width="80" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="m1Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#d97706;" vertex="1" parent="1">
+          <mxGeometry x="155" y="370" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="m1Label" value="AP/AR/Inv&#xa;Close" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#f59e0b;" vertex="1" parent="1">
+          <mxGeometry x="140" y="392" width="50" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Monthly: Day 3-4 -->
+        <mxCell id="m2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="220" y="330" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m2Text" value="WD 3-4&#xa;Reconcile" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="225" y="333" width="80" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="m2Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="255" y="370" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="m2Label" value="Bank &amp;&#xa;Interco" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#10b981;" vertex="1" parent="1">
+          <mxGeometry x="240" y="392" width="50" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Monthly: Day 5-6 -->
+        <mxCell id="m3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6366f1;strokeColor=#4f46e5;" vertex="1" parent="1">
+          <mxGeometry x="320" y="330" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m3Text" value="WD 5-6&#xa;Review" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="325" y="333" width="80" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="m3Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#6366f1;strokeColor=#4f46e5;" vertex="1" parent="1">
+          <mxGeometry x="355" y="370" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="m3Label" value="Trial Bal&#xa;Analysis" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#6366f1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="392" width="50" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Monthly: Day 7 -->
+        <mxCell id="m4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8b5cf6;strokeColor=#7c3aed;" vertex="1" parent="1">
+          <mxGeometry x="420" y="330" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m4Text" value="WD 7&#xa;Reports" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="425" y="333" width="80" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="m4Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#8b5cf6;strokeColor=#7c3aed;" vertex="1" parent="1">
+          <mxGeometry x="455" y="370" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="m4Label" value="Mgmt&#xa;Reports" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#8b5cf6;" vertex="1" parent="1">
+          <mxGeometry x="440" y="392" width="50" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- ============== QUARTERLY CLOSE SECTION ============== -->
+        <mxCell id="quarterlyHeader" value="QUARTERLY CLOSE (Hard Close) - 45 Days Deadline" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="40" y="440" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="quarterlyDuration" value="SET Submission Required" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEE2E2;strokeColor=#ef4444;fontSize=11;fontColor=#991b1b;" vertex="1" parent="1">
+          <mxGeometry x="410" y="442" width="150" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Quarterly Timeline -->
+        <mxCell id="qTimeline" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#10b981;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="40" y="530" as="sourcePoint" />
+            <mxPoint x="1550" y="530" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Quarterly: Phase 1 -->
+        <mxCell id="q1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6366f1;strokeColor=#4f46e5;" vertex="1" parent="1">
+          <mxGeometry x="40" y="480" width="180" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="q1Text" value="Phase 1: Soft Close (WD 1-5)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="45" y="488" width="170" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="q1Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#6366f1;strokeColor=#4f46e5;" vertex="1" parent="1">
+          <mxGeometry x="120" y="520" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Quarterly: Phase 2 -->
+        <mxCell id="q2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#d97706;" vertex="1" parent="1">
+          <mxGeometry x="240" y="480" width="200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="q2Text" value="Phase 2: Hard Close (WD 6-10)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="250" y="488" width="180" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="q2Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#d97706;" vertex="1" parent="1">
+          <mxGeometry x="330" y="520" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Quarterly: Phase 3 -->
+        <mxCell id="q3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="460" y="480" width="280" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="q3Text" value="Phase 3: Auditor Review (WD 11-20)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="475" y="488" width="250" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="q3Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="590" y="520" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Quarterly: Phase 4 -->
+        <mxCell id="q4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8b5cf6;strokeColor=#7c3aed;" vertex="1" parent="1">
+          <mxGeometry x="760" y="480" width="380" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="q4Text" value="Phase 4: MD&amp;A &amp; Board Review (WD 21-35)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="780" y="488" width="340" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="q4Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#8b5cf6;strokeColor=#7c3aed;" vertex="1" parent="1">
+          <mxGeometry x="940" y="520" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Quarterly: Phase 5 -->
+        <mxCell id="q5" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ef4444;strokeColor=#dc2626;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="480" width="300" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="q5Text" value="Phase 5: SET Submission (WD 36-45)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="488" width="260" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="q5Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ef4444;strokeColor=#dc2626;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="520" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="q5Flag" value="&#127937; DEADLINE" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=1;fontColor=#ef4444;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="518" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- ============== YEAR-END CLOSE SECTION ============== -->
+        <mxCell id="yearHeader" value="YEAR-END CLOSE (Full Close) - 90 Days Deadline" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="40" y="580" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="yearDuration" value="Form 56-1 One Report + Audit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEE2E2;strokeColor=#ef4444;fontSize=11;fontColor=#991b1b;" vertex="1" parent="1">
+          <mxGeometry x="410" y="582" width="180" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Year-End Timeline -->
+        <mxCell id="yTimeline" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#ef4444;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="40" y="720" as="sourcePoint" />
+            <mxPoint x="1550" y="720" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Year: Pre-Close -->
+        <mxCell id="y0" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#64748b;strokeColor=#475569;" vertex="1" parent="1">
+          <mxGeometry x="40" y="630" width="140" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="y0Title" value="Pre-Close" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="55" y="635" width="110" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="y0Date" value="Dec 1-15" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#CBD5E1;" vertex="1" parent="1">
+          <mxGeometry x="55" y="655" width="110" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="y0Desc" value="Preparation&#xa;Cutoff comms" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#E2E8F0;" vertex="1" parent="1">
+          <mxGeometry x="55" y="672" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="y0Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#64748b;strokeColor=#475569;" vertex="1" parent="1">
+          <mxGeometry x="100" y="710" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Year: Soft Close -->
+        <mxCell id="y1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6366f1;strokeColor=#4f46e5;" vertex="1" parent="1">
+          <mxGeometry x="200" y="630" width="140" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="y1Title" value="Soft Close" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="215" y="635" width="110" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="y1Date" value="Dec 16-31" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#C7D2FE;" vertex="1" parent="1">
+          <mxGeometry x="215" y="655" width="110" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="y1Desc" value="Q4 Preliminary&#xa;Sub-ledgers" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#E0E7FF;" vertex="1" parent="1">
+          <mxGeometry x="215" y="672" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="y1Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#6366f1;strokeColor=#4f46e5;" vertex="1" parent="1">
+          <mxGeometry x="260" y="710" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Year: Hard Close -->
+        <mxCell id="y2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#d97706;" vertex="1" parent="1">
+          <mxGeometry x="360" y="630" width="140" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="y2Title" value="Hard Close" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="375" y="635" width="110" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="y2Date" value="Jan 1-15" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#FDE68A;" vertex="1" parent="1">
+          <mxGeometry x="375" y="655" width="110" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="y2Desc" value="Full year adj&#xa;Reconciliations" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#FEF3C7;" vertex="1" parent="1">
+          <mxGeometry x="375" y="672" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="y2Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#d97706;" vertex="1" parent="1">
+          <mxGeometry x="420" y="710" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Year: Audit Fieldwork -->
+        <mxCell id="y3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="520" y="630" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="y3Title" value="Audit Fieldwork" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="545" y="635" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="y3Date" value="Jan 16 - Feb 15" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#A7F3D0;" vertex="1" parent="1">
+          <mxGeometry x="545" y="655" width="150" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="y3Desc" value="External audit&#xa;procedures" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#D1FAE5;" vertex="1" parent="1">
+          <mxGeometry x="545" y="672" width="150" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="y3Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="610" y="710" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Year: Final Adjustments -->
+        <mxCell id="y4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8b5cf6;strokeColor=#7c3aed;" vertex="1" parent="1">
+          <mxGeometry x="740" y="630" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="y4Title" value="Final Adjustments" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="755" y="635" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="y4Date" value="Feb 16-28" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#DDD6FE;" vertex="1" parent="1">
+          <mxGeometry x="755" y="655" width="130" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="y4Desc" value="Audit adj&#xa;Tax provisions" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#EDE9FE;" vertex="1" parent="1">
+          <mxGeometry x="755" y="672" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="y4Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#8b5cf6;strokeColor=#7c3aed;" vertex="1" parent="1">
+          <mxGeometry x="810" y="710" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Year: Board Approval -->
+        <mxCell id="y5" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ec4899;strokeColor=#db2777;" vertex="1" parent="1">
+          <mxGeometry x="920" y="630" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="y5Title" value="Board Approval" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="935" y="635" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="y5Date" value="Mar 1-15" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#FBCFE8;" vertex="1" parent="1">
+          <mxGeometry x="935" y="655" width="130" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="y5Desc" value="F/S Approval&#xa;Audit Committee" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#FCE7F3;" vertex="1" parent="1">
+          <mxGeometry x="935" y="672" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="y5Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ec4899;strokeColor=#db2777;" vertex="1" parent="1">
+          <mxGeometry x="990" y="710" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Year: Regulatory Filing -->
+        <mxCell id="y6" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ef4444;strokeColor=#dc2626;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="630" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="y6Title" value="Regulatory Filing" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1125" y="635" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="y6Date" value="Mar 16-31" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#FCA5A5;" vertex="1" parent="1">
+          <mxGeometry x="1125" y="655" width="150" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="y6Desc" value="Form 56-1 One Report&#xa;SETLink submission" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#FEE2E2;" vertex="1" parent="1">
+          <mxGeometry x="1125" y="672" width="150" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="y6Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ef4444;strokeColor=#dc2626;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="710" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="y6Flag" value="&#127937; 90-DAY DEADLINE" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#ef4444;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="708" width="150" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legendBox2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F9FAFB;strokeColor=#E5E7EB;" vertex="1" parent="1">
+          <mxGeometry x="440" y="90" width="400" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="legendTitle2" value="DATA GOVERNANCE ACTIVITIES BY PHASE" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#1f2937;" vertex="1" parent="1">
+          <mxGeometry x="450" y="95" width="380" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="legItem1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ef4444;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="460" y="130" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="legText1" value="Data Cutoff &amp; Freeze - No new transactions" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="485" y="127" width="340" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legItem2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="460" y="155" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="legText2" value="Sub-ledger Close - AP, AR, Inventory locked" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="485" y="152" width="340" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legItem3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="460" y="180" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="legText3" value="Reconciliation - Data validation &amp; quality checks" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="485" y="177" width="340" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legItem4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6366f1;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="460" y="205" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="legText4" value="Review - Trial balance, variance analysis" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="485" y="202" width="340" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legItem5" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8b5cf6;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="460" y="230" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="legText5" value="Reporting - Final reports, MD&amp;A, submissions" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="485" y="227" width="340" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Key Dates Box -->
+        <mxCell id="keyDatesBox" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDF4;strokeColor=#10b981;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="860" y="90" width="280" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="keyDatesTitle" value="&#128197; KEY SUBMISSION DATES (Dec Year-End)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#065f46;" vertex="1" parent="1">
+          <mxGeometry x="870" y="95" width="260" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="keyDatesContent" value="&#8226; Q1 Report: May 15&#xa;&#8226; Q2 Report: Aug 14&#xa;&#8226; Q3 Report: Nov 14&#xa;&#8226; Annual (no Q4): Feb 28/29&#xa;&#8226; Annual (with Q4): Mar 31&#xa;&#8226; Form 56-1: Mar 31&#xa;&#xa;&#9888; If deadline = holiday → next business day" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#166534;" vertex="1" parent="1">
+          <mxGeometry x="875" y="125" width="255" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Footer -->
+        <mxCell id="footer2" value="EWG Phase#0 | Period-End Close Timeline | SET/SEC Thailand Requirements | January 2026" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="500" y="760" width="600" height="20" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

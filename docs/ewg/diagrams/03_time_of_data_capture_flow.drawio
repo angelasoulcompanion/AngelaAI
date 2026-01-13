@@ -1,0 +1,242 @@
+<mxfile host="app.diagrams.net" modified="2026-01-13T09:00:00.000Z" agent="Angela AI" version="22.1.0">
+  <diagram name="Time of Data Capture Flow" id="data-capture-flow">
+    <mxGraphModel dx="1434" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="TIME OF DATA CAPTURE FLOW" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="450" y="20" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="Understanding Data Timeliness, Freshness &amp; Latency" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="450" y="55" width="500" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Timeline Base -->
+        <mxCell id="timeline" value="" style="endArrow=classic;html=1;strokeWidth=4;strokeColor=#1a1a2e;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="300" as="sourcePoint" />
+            <mxPoint x="1300" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="timelineLabel" value="TIME" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="310" width="60" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Stage 1: Business Event -->
+        <mxCell id="stage1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ef4444;strokeColor=#dc2626;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="120" width="180" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="stage1Icon" value="&#9889;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=32;" vertex="1" parent="1">
+          <mxGeometry x="180" y="125" width="60" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="stage1Title" value="BUSINESS EVENT" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="130" y="160" width="160" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="stage1Timestamp" value="event_timestamp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#ef4444;" vertex="1" parent="1">
+          <mxGeometry x="150" y="185" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="stage1Desc" value="When it actually&#xa;happened" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#FCA5A5;" vertex="1" parent="1">
+          <mxGeometry x="150" y="205" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="stage1Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ef4444;strokeColor=#dc2626;" vertex="1" parent="1">
+          <mxGeometry x="195" y="285" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="stage1Line" value="" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#ef4444;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="210" y="240" as="sourcePoint" />
+            <mxPoint x="210" y="285" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Stage 2: Record Created -->
+        <mxCell id="stage2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#d97706;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="120" width="180" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="stage2Icon" value="&#128190;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=32;" vertex="1" parent="1">
+          <mxGeometry x="420" y="125" width="60" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="stage2Title" value="RECORD CREATED" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="370" y="160" width="160" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="stage2Timestamp" value="created_at" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#f59e0b;" vertex="1" parent="1">
+          <mxGeometry x="390" y="185" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="stage2Desc" value="When source system&#xa;recorded it" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#FDE68A;" vertex="1" parent="1">
+          <mxGeometry x="390" y="205" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="stage2Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#d97706;" vertex="1" parent="1">
+          <mxGeometry x="435" y="285" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="stage2Line" value="" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#f59e0b;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="450" y="240" as="sourcePoint" />
+            <mxPoint x="450" y="285" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Stage 3: Data Extracted -->
+        <mxCell id="stage3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="120" width="180" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="stage3Icon" value="&#128230;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=32;" vertex="1" parent="1">
+          <mxGeometry x="660" y="125" width="60" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="stage3Title" value="DATA EXTRACTED" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="610" y="160" width="160" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="stage3Timestamp" value="extracted_at" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#10b981;" vertex="1" parent="1">
+          <mxGeometry x="630" y="185" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="stage3Desc" value="When ETL pulled&#xa;from source" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#A7F3D0;" vertex="1" parent="1">
+          <mxGeometry x="630" y="205" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="stage3Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="675" y="285" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="stage3Line" value="" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#10b981;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="690" y="240" as="sourcePoint" />
+            <mxPoint x="690" y="285" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Stage 4: Data Loaded -->
+        <mxCell id="stage4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6366f1;strokeColor=#4f46e5;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="840" y="120" width="180" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="stage4Icon" value="&#128451;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=32;" vertex="1" parent="1">
+          <mxGeometry x="900" y="125" width="60" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="stage4Title" value="DATA LOADED" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="850" y="160" width="160" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="stage4Timestamp" value="loaded_at" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#6366f1;" vertex="1" parent="1">
+          <mxGeometry x="870" y="185" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="stage4Desc" value="When data arrived&#xa;at destination" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#C7D2FE;" vertex="1" parent="1">
+          <mxGeometry x="870" y="205" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="stage4Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#6366f1;strokeColor=#4f46e5;" vertex="1" parent="1">
+          <mxGeometry x="915" y="285" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="stage4Line" value="" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#6366f1;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="240" as="sourcePoint" />
+            <mxPoint x="930" y="285" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Stage 5: Data Available -->
+        <mxCell id="stage5" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8b5cf6;strokeColor=#7c3aed;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="120" width="180" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="stage5Icon" value="&#128200;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=32;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="125" width="60" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="stage5Title" value="DATA AVAILABLE" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="160" width="160" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="stage5Timestamp" value="query_time" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#8b5cf6;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="185" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="stage5Desc" value="When user can&#xa;access data" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#DDD6FE;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="205" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="stage5Dot" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#8b5cf6;strokeColor=#7c3aed;" vertex="1" parent="1">
+          <mxGeometry x="1155" y="285" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="stage5Line" value="" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#8b5cf6;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1170" y="240" as="sourcePoint" />
+            <mxPoint x="1170" y="285" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Latency Measurements Section -->
+        <mxCell id="metricsTitle" value="KEY METRICS" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="120" y="360" width="150" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Input Latency -->
+        <mxCell id="inputLatency" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#f59e0b;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="210" y="400" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="inputLatencyLabel" value="INPUT LATENCY" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#d97706;" vertex="1" parent="1">
+          <mxGeometry x="260" y="405" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="inputLatencyDesc" value="event_timestamp → created_at" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#92400e;" vertex="1" parent="1">
+          <mxGeometry x="210" y="440" width="240" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Delivery Latency -->
+        <mxCell id="deliveryLatency" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D1FAE5;strokeColor=#10b981;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="450" y="400" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="deliveryLatencyLabel" value="DELIVERY LATENCY" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="490" y="405" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="deliveryLatencyDesc" value="created_at → extracted_at" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#065f46;" vertex="1" parent="1">
+          <mxGeometry x="450" y="440" width="240" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Processing Latency -->
+        <mxCell id="processingLatency" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E0E7FF;strokeColor=#6366f1;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="690" y="400" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="processingLatencyLabel" value="PROCESSING LATENCY" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#4f46e5;" vertex="1" parent="1">
+          <mxGeometry x="720" y="405" width="180" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="processingLatencyDesc" value="extracted_at → loaded_at" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#3730a3;" vertex="1" parent="1">
+          <mxGeometry x="690" y="440" width="240" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Total Latency (End-to-End) -->
+        <mxCell id="totalLatency" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FEE2E2;strokeColor=#ef4444;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="210" y="490" width="960" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="totalLatencyLabel" value="TOTAL DATA LATENCY (End-to-End)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#dc2626;" vertex="1" parent="1">
+          <mxGeometry x="510" y="495" width="360" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="totalLatencyFormula" value="event_timestamp → query_time = Input + Delivery + Processing + Access Latency" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#991b1b;" vertex="1" parent="1">
+          <mxGeometry x="390" y="515" width="600" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Data Freshness Box -->
+        <mxCell id="freshnessBox" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3F4F6;strokeColor=#9CA3AF;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="570" width="540" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="freshnessTitle" value="DATA FRESHNESS" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#1f2937;" vertex="1" parent="1">
+          <mxGeometry x="140" y="580" width="160" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="freshnessFormula" value="Freshness = NOW() - loaded_at" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontColor=#4b5563;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="140" y="605" width="300" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="freshnessDesc" value="How &quot;old&quot; is the data at any given point in time?&#xa;Fresh data = recently loaded, Stale data = long time since last update" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="140" y="625" width="500" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Data Timeliness Box -->
+        <mxCell id="timelinessBox" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3F4F6;strokeColor=#9CA3AF;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="690" y="570" width="540" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="timelinessTitle" value="DATA TIMELINESS" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#1f2937;" vertex="1" parent="1">
+          <mxGeometry x="710" y="580" width="160" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="timelinessFormula" value="Timeliness = f(Currency, Volatility)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontColor=#4b5563;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="710" y="605" width="300" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="timelinessDesc" value="Is the data available WHEN it's needed?&#xa;Considers both data age (currency) and how quickly source changes (volatility)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="710" y="625" width="500" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Footer -->
+        <mxCell id="footer" value="EWG Phase#0 | Time of Data Capture | January 2026" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="500" y="700" width="400" height="20" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

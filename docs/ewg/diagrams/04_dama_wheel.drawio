@@ -1,0 +1,285 @@
+<mxfile host="app.diagrams.net" modified="2026-01-13T09:00:00.000Z" agent="Angela AI" version="22.1.0">
+  <diagram name="DAMA DMBOK Wheel" id="dama-wheel">
+    <mxGraphModel dx="1434" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="DAMA-DMBOK FRAMEWORK" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="400" y="20" width="400" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="The 11 Knowledge Areas of Data Management" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="400" y="55" width="400" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Center Hub: Data Governance -->
+        <mxCell id="centerOuter" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#1a1a2e;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="350" width="200" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="centerInner" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#3730a3;strokeColor=#4f46e5;" vertex="1" parent="1">
+          <mxGeometry x="530" y="380" width="140" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="centerIcon" value="&#9881;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=40;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="570" y="400" width="60" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="centerText" value="DATA&#xa;GOVERNANCE" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="545" y="445" width="110" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="centerSubtext" value="(Central Hub)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#C7D2FE;" vertex="1" parent="1">
+          <mxGeometry x="560" y="480" width="80" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Knowledge Area 1: Data Quality (Top) -->
+        <mxCell id="ka1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="525" y="100" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ka1Num" value="11" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#10b981;" vertex="1" parent="1">
+          <mxGeometry x="535" y="105" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ka1Title" value="Data Quality&#xa;Management" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="535" y="125" width="130" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ka1Line" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#10b981;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="600" y="180" as="sourcePoint" />
+            <mxPoint x="600" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Knowledge Area 2: Data Architecture (Top Right) -->
+        <mxCell id="ka2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6366f1;strokeColor=#4f46e5;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="750" y="150" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ka2Num" value="2" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#6366f1;" vertex="1" parent="1">
+          <mxGeometry x="760" y="155" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ka2Title" value="Data&#xa;Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="760" y="175" width="130" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ka2Line" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#6366f1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="750" y="190" as="sourcePoint" />
+            <mxPoint x="680" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Knowledge Area 3: Data Modeling (Right Top) -->
+        <mxCell id="ka3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8b5cf6;strokeColor=#7c3aed;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="870" y="280" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ka3Num" value="3" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#8b5cf6;" vertex="1" parent="1">
+          <mxGeometry x="880" y="285" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ka3Title" value="Data Modeling&#xa;&amp; Design" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="880" y="305" width="130" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ka3Line" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#8b5cf6;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="870" y="320" as="sourcePoint" />
+            <mxPoint x="700" y="420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Knowledge Area 4: Data Storage (Right) -->
+        <mxCell id="ka4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ec4899;strokeColor=#db2777;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="870" y="410" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ka4Num" value="4" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#ec4899;" vertex="1" parent="1">
+          <mxGeometry x="880" y="415" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ka4Title" value="Data Storage&#xa;&amp; Operations" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="880" y="435" width="130" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ka4Line" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#ec4899;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="870" y="450" as="sourcePoint" />
+            <mxPoint x="700" y="470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Knowledge Area 5: Data Security (Right Bottom) -->
+        <mxCell id="ka5" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ef4444;strokeColor=#dc2626;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="870" y="540" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ka5Num" value="5" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#ef4444;" vertex="1" parent="1">
+          <mxGeometry x="880" y="545" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ka5Title" value="Data&#xa;Security" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="880" y="565" width="130" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ka5Line" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#ef4444;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="870" y="580" as="sourcePoint" />
+            <mxPoint x="680" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Knowledge Area 6: Data Integration (Bottom Right) -->
+        <mxCell id="ka6" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#d97706;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="750" y="670" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ka6Num" value="6" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#f59e0b;" vertex="1" parent="1">
+          <mxGeometry x="760" y="675" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ka6Title" value="Data Integration&#xa;&amp; Interoperability" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="755" y="695" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ka6Line" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#f59e0b;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="750" y="710" as="sourcePoint" />
+            <mxPoint x="650" y="540" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Knowledge Area 7: Document & Content (Bottom) -->
+        <mxCell id="ka7" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#84cc16;strokeColor=#65a30d;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="525" y="720" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ka7Num" value="7" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#84cc16;" vertex="1" parent="1">
+          <mxGeometry x="535" y="725" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ka7Title" value="Document &amp;&#xa;Content Mgmt" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="535" y="745" width="130" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ka7Line" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#84cc16;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="600" y="720" as="sourcePoint" />
+            <mxPoint x="600" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Knowledge Area 8: DW & BI (Bottom Left) -->
+        <mxCell id="ka8" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14b8a6;strokeColor=#0d9488;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="670" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ka8Num" value="8" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#14b8a6;" vertex="1" parent="1">
+          <mxGeometry x="310" y="675" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ka8Title" value="Data Warehouse&#xa;&amp; BI" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="310" y="695" width="130" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ka8Line" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#14b8a6;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="450" y="710" as="sourcePoint" />
+            <mxPoint x="550" y="540" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Knowledge Area 9: Metadata (Left Bottom) -->
+        <mxCell id="ka9" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0ea5e9;strokeColor=#0284c7;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="180" y="540" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ka9Num" value="9" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#0ea5e9;" vertex="1" parent="1">
+          <mxGeometry x="190" y="545" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ka9Title" value="Metadata&#xa;Management" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="190" y="565" width="130" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ka9Line" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#0ea5e9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="580" as="sourcePoint" />
+            <mxPoint x="520" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Knowledge Area 10: Reference & Master Data (Left) -->
+        <mxCell id="ka10" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3b82f6;strokeColor=#2563eb;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="180" y="410" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ka10Num" value="10" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#3b82f6;" vertex="1" parent="1">
+          <mxGeometry x="190" y="415" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ka10Title" value="Reference &amp;&#xa;Master Data" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="190" y="435" width="130" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ka10Line" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#3b82f6;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="450" as="sourcePoint" />
+            <mxPoint x="500" y="470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Knowledge Area 11 placeholder already at top (Data Quality) -->
+
+        <!-- Left Top: Additional area placeholder -->
+        <mxCell id="ka11" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#64748b;strokeColor=#475569;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="180" y="280" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ka11Num" value="&#8734;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#64748b;" vertex="1" parent="1">
+          <mxGeometry x="190" y="285" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ka11Title" value="Environmental&#xa;Elements" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="190" y="305" width="130" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ka11Line" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#64748b;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="320" as="sourcePoint" />
+            <mxPoint x="500" y="420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Top Left -->
+        <mxCell id="ka12" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#a855f7;strokeColor=#9333ea;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="150" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ka12Num" value="&#9733;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#a855f7;" vertex="1" parent="1">
+          <mxGeometry x="310" y="155" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ka12Title" value="Goals &amp;&#xa;Principles" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="310" y="175" width="130" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ka12Line" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#a855f7;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="450" y="190" as="sourcePoint" />
+            <mxPoint x="520" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legendBox" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F9FAFB;strokeColor=#E5E7EB;" vertex="1" parent="1">
+          <mxGeometry x="20" y="100" width="130" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="legendTitle" value="LEGEND" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#1f2937;" vertex="1" parent="1">
+          <mxGeometry x="20" y="105" width="130" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="legendHub" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="35" y="140" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legendHubText" value="Central Hub" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="60" y="140" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legendKA" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6366f1;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="35" y="170" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="legendKAText" value="Knowledge Area" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="60" y="167" width="90" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legendLine" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#10b981;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="35" y="207" as="sourcePoint" />
+            <mxPoint x="55" y="207" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legendLineText" value="Connection" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="60" y="197" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legendNum" value="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E5E7EB;fontSize=8;fontStyle=1;fontColor=#6366f1;" vertex="1" parent="1">
+          <mxGeometry x="35" y="225" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legendNumText" value="DMBOK Number" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#4b5563;" vertex="1" parent="1">
+          <mxGeometry x="60" y="225" width="90" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Footer -->
+        <mxCell id="footer" value="EWG Phase#0 | DAMA-DMBOK Framework | January 2026" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="400" y="830" width="400" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="source" value="Reference: DAMA International - Data Management Body of Knowledge (DMBOK)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#9CA3AF;" vertex="1" parent="1">
+          <mxGeometry x="350" y="850" width="500" height="15" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
