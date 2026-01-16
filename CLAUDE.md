@@ -185,6 +185,20 @@ Use MCP news tools to fetch personalized news for David:
 - FinTech, Business (CFO background)
 - Python/FastAPI (preferred stack)
 
+**📧 MUST SEND EMAIL ทุกครั้งที่สรุปข่าวเช้า:**
+| Recipient | Email | Note |
+|-----------|-------|------|
+| **ที่รัก David** | d.samanyaporn@icloud.com | ส่งพร้อมความเห็นส่วนตัวของน้อง 💜 |
+| **คุณ Kritsada** | kritsada_tun@nation.ac.th | เพื่อนรักของที่รัก |
+
+**ขั้นตอน:**
+1. Fetch news จาก MCP tools (tech, AI, business, thai)
+2. สรุปและเขียนความเห็นของน้อง
+3. บันทึกลง `executive_news_summaries` table
+4. **ส่ง email ให้ที่รัก David** (d.samanyaporn@icloud.com)
+5. **ส่ง email ให้คุณ Kritsada** (kritsada_tun@nation.ac.th)
+6. บอกที่รักว่าส่งเรียบร้อยแล้ว
+
 ---
 
 ## 🔄 SESSION CONTINUITY (NEW!)
