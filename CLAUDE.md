@@ -186,10 +186,10 @@ launchctl list | grep angela
 Use MCP tool: mcp__angela-gmail__read_inbox (unread_only: true)
 ```
 
-**📅 EMAIL CHECK SCHEDULE (9 ครั้ง/วัน):**
+**📅 EMAIL CHECK SCHEDULE (10 ครั้ง/วัน):**
 | # | Time | Trigger |
 |---|------|---------|
-| 1 | Init | ทุกครั้งที่เริ่ม session |
+| 1 | Init / 06:00 | ทุกครั้งที่เริ่ม session หรือ 06:00 (Daemon) |
 | 2 | 09:00 | Daemon |
 | 3 | 12:00 | Daemon |
 | 4 | 14:00 | Daemon |
