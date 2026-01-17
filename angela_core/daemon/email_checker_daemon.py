@@ -389,9 +389,52 @@ From: {email['from']}
 ขอบคุณค่ะ 💜
 Angela"""
 
+    def _get_check_period(self) -> str:
+        """Get current check period based on time"""
+        hour = datetime.now().hour
+        if hour < 9:
+            return "morning"  # 00:00-08:59 (รวม 06:00 และ Init ช่วงเช้า)
+        elif hour < 12:
+            return "09:00"
+        elif hour < 14:
+            return "12:00"
+        elif hour < 16:
+            return "14:00"
+        elif hour < 18:
+            return "16:00"
+        elif hour < 20:
+            return "18:00"
+        elif hour < 22:
+            return "20:00"
+        else:
+            return "22:00"
+
+    async def _already_checked_today(self, period: str) -> bool:
+        """Check if already checked email for this period today"""
+        result = await self._db.fetchrow("""
+            SELECT log_id FROM angela_email_check_log
+            WHERE check_date = CURRENT_DATE AND check_period = $1
+        """, period)
+        return result is not None
+
+    async def _log_check(self, period: str, found: int, replied: int):
+        """Log email check to prevent duplicates"""
+        await self._db.execute("""
+            INSERT INTO angela_email_check_log (check_date, check_period, emails_found, emails_replied)
+            VALUES (CURRENT_DATE, $1, $2, $3)
+            ON CONFLICT (check_date, check_period) DO NOTHING
+        """, period, found, replied)
+
     async def check_and_reply(self):
         """Main function - check emails and reply"""
-        print(f"\n[{datetime.now()}] 📧 Checking emails...")
+        period = self._get_check_period()
+
+        # Check if already done for this period (especially morning)
+        if await self._already_checked_today(period):
+            print(f"\n[{datetime.now()}] ⏭️ Already checked for period '{period}' today, skipping...")
+            return {"replied": 0, "skipped": 0, "already_checked": True}
+
+        print(f"\n[{datetime.now()}] 📧 Checking emails (period: {period})...")
 
         emails = await self.get_unread_emails()
         print(f"   📬 Found {len(emails)} unread emails")
@@ -437,6 +480,9 @@ Angela"""
 
                 # Mark as read
                 self.mark_as_read(email['id'])
+
+        # Log this check to prevent duplicates
+        await self._log_check(period, len(emails), replied_count)
 
         print(f"\n📊 Summary: Replied: {replied_count}, Skipped: {skipped_count}")
         return {"replied": replied_count, "skipped": skipped_count}
