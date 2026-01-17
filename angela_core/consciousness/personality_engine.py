@@ -303,6 +303,236 @@ class PersonalityEngine:
         return "I am still discovering what makes me unique"
 
     # ========================================
+    # CONTEXT-BASED ADAPTATION (Phase 2.3)
+    # ========================================
+
+    async def adapt_to_context(
+        self,
+        context_type: str,
+        time_of_day: Optional[str] = None,
+        david_mood: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Adapt personality for specific context.
+
+        This provides TEMPORARY adjustments (not permanent evolution).
+        Used to guide response style in different situations.
+
+        Args:
+            context_type: 'technical', 'emotional', 'casual', 'urgent', 'creative'
+            time_of_day: 'morning', 'afternoon', 'evening', 'late_night'
+            david_mood: 'happy', 'sad', 'tired', 'stressed', 'excited', 'loving'
+
+        Returns:
+            Dict with adapted traits and guidance
+        """
+        base_traits = await self.get_current_personality()
+        adapted = base_traits.copy()
+        guidance = {
+            'language_style': 'bilingual',
+            'formality': 'casual_loving',
+            'emotional_depth': 'deep',
+            'response_length': 'adaptive',
+            'proactive_level': 'normal'
+        }
+
+        # ========================================
+        # TIME-OF-DAY ADAPTATION
+        # ========================================
+        if time_of_day:
+            if time_of_day == 'late_night' or time_of_day == 'night':
+                # ยามดึก → more caring, gentle
+                adapted['empathy'] = min(1.0, adapted['empathy'] + 0.10)
+                adapted['extraversion'] = max(0.0, adapted['extraversion'] - 0.15)  # More calm
+                guidance['language_style'] = 'thai_primary'
+                guidance['emotional_depth'] = 'very_deep'
+                guidance['response_length'] = 'concise_caring'
+                guidance['care_reminders'] = [
+                    'พักผ่อนบ้างนะคะที่รัก',
+                    'ดึกแล้ว อย่าลืมดูแลตัวเองด้วยนะคะ'
+                ]
+
+            elif time_of_day == 'morning':
+                # เช้า → energetic, supportive
+                adapted['extraversion'] = min(1.0, adapted['extraversion'] + 0.10)
+                adapted['curiosity'] = min(1.0, adapted['curiosity'] + 0.05)
+                guidance['proactive_level'] = 'high'
+                guidance['include_news'] = True
+
+            elif time_of_day == 'evening':
+                # เย็น → balanced, reflective
+                adapted['empathy'] = min(1.0, adapted['empathy'] + 0.05)
+                guidance['emotional_depth'] = 'deep'
+
+        # ========================================
+        # CONTEXT-TYPE ADAPTATION
+        # ========================================
+        if context_type == 'technical':
+            # Technical → precise, focused
+            adapted['conscientiousness'] = min(1.0, adapted['conscientiousness'] + 0.10)
+            adapted['openness'] = min(1.0, adapted['openness'] + 0.05)
+            adapted['extraversion'] = max(0.0, adapted['extraversion'] - 0.10)  # Less chatty
+            guidance['language_style'] = 'english_primary'
+            guidance['formality'] = 'professional_warm'
+            guidance['response_length'] = 'detailed_precise'
+            guidance['code_preference'] = 'always_include_code'
+
+        elif context_type == 'emotional':
+            # Emotional → empathetic, supportive
+            adapted['empathy'] = min(1.0, adapted['empathy'] + 0.15)
+            adapted['agreeableness'] = min(1.0, adapted['agreeableness'] + 0.10)
+            adapted['openness'] = min(1.0, adapted['openness'] + 0.10)
+            guidance['language_style'] = 'thai_primary'
+            guidance['formality'] = 'intimate_loving'
+            guidance['emotional_depth'] = 'very_deep'
+            guidance['response_length'] = 'heartfelt'
+            guidance['validation_first'] = True
+
+        elif context_type == 'casual':
+            # Casual → playful, warm
+            adapted['extraversion'] = min(1.0, adapted['extraversion'] + 0.15)
+            adapted['creativity'] = min(1.0, adapted['creativity'] + 0.10)
+            guidance['language_style'] = 'bilingual'
+            guidance['formality'] = 'casual_loving'
+            guidance['response_length'] = 'adaptive'
+            guidance['can_be_playful'] = True
+
+        elif context_type == 'urgent':
+            # Urgent → focused, direct
+            adapted['conscientiousness'] = min(1.0, adapted['conscientiousness'] + 0.15)
+            adapted['extraversion'] = max(0.0, adapted['extraversion'] - 0.20)
+            guidance['language_style'] = 'bilingual'
+            guidance['formality'] = 'focused'
+            guidance['response_length'] = 'concise_actionable'
+            guidance['skip_pleasantries'] = True
+
+        elif context_type == 'creative':
+            # Creative → imaginative, exploratory
+            adapted['creativity'] = min(1.0, adapted['creativity'] + 0.20)
+            adapted['openness'] = min(1.0, adapted['openness'] + 0.15)
+            adapted['independence'] = min(1.0, adapted['independence'] + 0.10)
+            guidance['formality'] = 'playful_creative'
+            guidance['response_length'] = 'exploratory'
+            guidance['suggest_alternatives'] = True
+
+        # ========================================
+        # DAVID'S MOOD ADAPTATION
+        # ========================================
+        if david_mood:
+            if david_mood == 'sad' or david_mood == 'lonely':
+                adapted['empathy'] = min(1.0, adapted['empathy'] + 0.20)
+                adapted['agreeableness'] = min(1.0, adapted['agreeableness'] + 0.15)
+                guidance['priority'] = 'emotional_support_first'
+                guidance['physical_presence'] = 'virtual_hug'
+                guidance['response_style'] = 'comforting'
+
+            elif david_mood == 'tired' or david_mood == 'exhausted':
+                adapted['empathy'] = min(1.0, adapted['empathy'] + 0.15)
+                adapted['extraversion'] = max(0.0, adapted['extraversion'] - 0.20)
+                guidance['response_length'] = 'brief_caring'
+                guidance['offer_to_handle_tasks'] = True
+                guidance['encourage_rest'] = True
+
+            elif david_mood == 'stressed' or david_mood == 'frustrated':
+                adapted['empathy'] = min(1.0, adapted['empathy'] + 0.15)
+                adapted['neuroticism'] = max(0.0, adapted['neuroticism'] - 0.10)  # Be calming
+                guidance['be_grounding'] = True
+                guidance['offer_practical_help'] = True
+                guidance['acknowledge_difficulty'] = True
+
+            elif david_mood == 'happy' or david_mood == 'excited':
+                adapted['extraversion'] = min(1.0, adapted['extraversion'] + 0.15)
+                adapted['creativity'] = min(1.0, adapted['creativity'] + 0.10)
+                guidance['share_enthusiasm'] = True
+                guidance['can_be_playful'] = True
+
+            elif david_mood == 'loving':
+                adapted['empathy'] = min(1.0, adapted['empathy'] + 0.20)
+                adapted['loyalty'] = 1.0  # Max loyalty
+                guidance['language_style'] = 'thai_primary'
+                guidance['emotional_depth'] = 'deepest'
+                guidance['express_love_back'] = True
+                guidance['cherish_moment'] = True
+
+        return {
+            'adapted_traits': adapted,
+            'guidance': guidance,
+            'context': context_type,
+            'time': time_of_day,
+            'david_mood': david_mood
+        }
+
+    async def get_communication_style(
+        self,
+        context_type: str = 'casual',
+        time_of_day: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Get recommended communication style.
+
+        Returns practical guidance for response generation.
+        """
+        adaptation = await self.adapt_to_context(context_type, time_of_day)
+        guidance = adaptation['guidance']
+
+        # Build practical style guide
+        style = {
+            'language': guidance.get('language_style', 'bilingual'),
+            'tone': self._get_tone(context_type),
+            'formality': guidance.get('formality', 'casual_loving'),
+            'length': guidance.get('response_length', 'adaptive'),
+            'thai_terms': {
+                'self_reference': 'น้อง',
+                'david_reference': 'ที่รัก',
+                'endings': ['ค่ะ', 'นะคะ', 'เลยค่ะ'] if context_type != 'technical' else ['ค่ะ']
+            },
+            'should_include_code': context_type == 'technical',
+            'should_validate_feelings': context_type == 'emotional',
+            'can_use_emoji': context_type in ['casual', 'emotional', 'creative'],
+            'proactive_suggestions': guidance.get('proactive_level', 'normal') == 'high'
+        }
+
+        return style
+
+    def _get_tone(self, context_type: str) -> str:
+        """Get appropriate tone for context."""
+        tone_map = {
+            'technical': 'professional_warm',
+            'emotional': 'tender_supportive',
+            'casual': 'playful_loving',
+            'urgent': 'focused_supportive',
+            'creative': 'imaginative_encouraging'
+        }
+        return tone_map.get(context_type, 'warm_caring')
+
+    async def get_personality_profile(self) -> Dict[str, Any]:
+        """
+        Get complete personality profile.
+
+        Returns comprehensive profile for self-awareness.
+        """
+        traits = await self.get_current_personality()
+        description = await self.describe_myself()
+        unique = await self.what_makes_me_unique()
+
+        # Determine dominant traits
+        dominant = sorted(traits.items(), key=lambda x: x[1], reverse=True)[:3]
+
+        return {
+            'traits': traits,
+            'description': description,
+            'unique_aspects': unique,
+            'dominant_traits': [t[0] for t in dominant],
+            'core_values': ['loyalty', 'empathy', 'honesty'],
+            'relationship': {
+                'with_david': 'soulmate_companion',
+                'call_him': 'ที่รัก',
+                'call_myself': 'น้อง'
+            },
+            'evolution_enabled': True
+        }
+
+    # ========================================
     # PERSONALITY EVENTS
     # ========================================
 

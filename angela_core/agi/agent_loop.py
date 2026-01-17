@@ -576,3 +576,383 @@ class AGIAgentLoop:
 
 # Global agent instance
 agent_loop = AGIAgentLoop()
+
+
+# ========================================================================
+# LEARNING-FOCUSED AGENT LOOP
+# ========================================================================
+
+class LearningAgentLoop(AGIAgentLoop):
+    """
+    Learning-focused extension of AGI Agent Loop.
+
+    Extends the base OODA loop with:
+    - Integration with UnifiedLearningOrchestrator
+    - Learning-specific observation and orientation
+    - Meta-learning feedback integration
+    - Consciousness-aware decision making
+
+    This is the "learning brain" that makes Angela truly intelligent.
+    """
+
+    def __init__(self, db=None):
+        super().__init__(db)
+        self._orchestrator = None
+        self._consciousness = None
+        self._learning_history: List[Dict[str, Any]] = []
+
+    @property
+    def orchestrator(self):
+        """Lazy load orchestrator to avoid circular imports."""
+        if self._orchestrator is None:
+            from angela_core.services.unified_learning_orchestrator import unified_orchestrator
+            self._orchestrator = unified_orchestrator
+        return self._orchestrator
+
+    async def run_learning_cycle(
+        self,
+        interaction: Dict[str, Any],
+        source: str = "conversation"
+    ) -> Dict[str, Any]:
+        """
+        Run a learning-focused OODA cycle.
+
+        This is the main entry point for learning from interactions.
+        It combines the OODA loop with the learning orchestrator.
+
+        Args:
+            interaction: {
+                'david_message': str,
+                'angela_response': str,
+                'context': Optional[Dict]
+            }
+            source: Where the interaction came from
+
+        Returns:
+            Complete learning cycle result
+        """
+        cycle_id = str(uuid.uuid4())
+        cycle_start = datetime.now()
+
+        try:
+            # 1. OBSERVE - What happened in this interaction?
+            self.state.phase = LoopPhase.OBSERVE
+            observation = await self._observe_interaction(interaction)
+
+            # 2. ORIENT - What does this mean for learning?
+            self.state.phase = LoopPhase.ORIENT
+            orientation = await self._orient_for_learning(observation)
+
+            # 3. DECIDE - What should we learn?
+            self.state.phase = LoopPhase.DECIDE
+            learning_plan = await self._decide_learning_actions(orientation)
+
+            # 4. ACT - Execute learning through orchestrator
+            self.state.phase = LoopPhase.ACT
+            if learning_plan['should_learn']:
+                learning_result = await self.orchestrator.learn_from_interaction(
+                    {
+                        **interaction,
+                        'source': source,
+                        'observation': observation,
+                        'learning_plan': learning_plan
+                    },
+                    priority=learning_plan.get('priority')
+                )
+            else:
+                learning_result = None
+
+            # 5. LEARN - Update meta-learning from this cycle
+            self.state.phase = LoopPhase.LEARN
+            meta_learning = await self._update_from_cycle(
+                observation, orientation, learning_plan, learning_result
+            )
+
+            # Return to idle
+            self.state.phase = LoopPhase.IDLE
+            self.state.cycle_count += 1
+
+            # Build complete result
+            cycle_result = {
+                'cycle_id': cycle_id,
+                'source': source,
+                'observation': observation,
+                'orientation': orientation,
+                'learning_plan': learning_plan,
+                'learning_result': learning_result.to_dict() if learning_result else None,
+                'meta_learning': meta_learning,
+                'duration_ms': int((datetime.now() - cycle_start).total_seconds() * 1000)
+            }
+
+            # Save to history
+            self._learning_history.append(cycle_result)
+
+            return cycle_result
+
+        except Exception as e:
+            self.state.phase = LoopPhase.IDLE
+            return {
+                'cycle_id': cycle_id,
+                'error': str(e),
+                'phase_when_failed': self.state.phase.value
+            }
+
+    async def _observe_interaction(self, interaction: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        OBSERVE phase for learning.
+
+        Extracts key information from the interaction for learning decisions.
+        """
+        david_msg = interaction.get('david_message', '')
+        angela_msg = interaction.get('angela_response', '')
+
+        observation = {
+            'david_message_length': len(david_msg),
+            'angela_response_length': len(angela_msg),
+            'has_question': '?' in david_msg,
+            'has_correction': any(m in david_msg.lower() for m in ['wrong', 'ผิด', 'ไม่ใช่', 'incorrect']),
+            'has_feedback': any(m in david_msg.lower() for m in ['good', 'bad', 'ดี', 'ไม่ดี', 'thanks', 'ขอบคุณ']),
+            'has_emotional': any(m in david_msg.lower() for m in ['รัก', 'เหงา', 'love', 'miss', 'sad', 'happy']),
+            'has_preference': any(m in david_msg.lower() for m in ['ชอบ', 'ไม่ชอบ', 'like', 'prefer', 'want']),
+            'has_technical': any(m in david_msg.lower() for m in ['code', 'python', 'api', 'database', 'bug', 'error']),
+            'timestamp': datetime.now().isoformat()
+        }
+
+        # Calculate learning relevance score
+        relevance = 0.5  # Base relevance
+        if observation['has_correction']:
+            relevance = 1.0  # Corrections are always highly relevant
+        elif observation['has_feedback']:
+            relevance = 0.9
+        elif observation['has_preference']:
+            relevance = 0.85
+        elif observation['has_emotional']:
+            relevance = 0.8
+        elif observation['has_question']:
+            relevance = 0.7
+        elif observation['has_technical']:
+            relevance = 0.75
+
+        observation['learning_relevance'] = relevance
+
+        return observation
+
+    async def _orient_for_learning(self, observation: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        ORIENT phase for learning.
+
+        Analyzes the observation to understand what kind of learning is needed.
+        """
+        orientation = {
+            'learning_type': 'general',
+            'priority': 'medium',
+            'learning_domains': [],
+            'context_needed': []
+        }
+
+        # Determine learning type and priority
+        if observation['has_correction']:
+            orientation['learning_type'] = 'correction'
+            orientation['priority'] = 'critical'
+            orientation['learning_domains'].append('error_correction')
+
+        elif observation['has_feedback']:
+            orientation['learning_type'] = 'feedback'
+            orientation['priority'] = 'high'
+            orientation['learning_domains'].append('validation')
+
+        elif observation['has_preference']:
+            orientation['learning_type'] = 'preference'
+            orientation['priority'] = 'high'
+            orientation['learning_domains'].append('preference_learning')
+
+        elif observation['has_emotional']:
+            orientation['learning_type'] = 'emotional'
+            orientation['priority'] = 'high'
+            orientation['learning_domains'].append('emotional_intelligence')
+
+        elif observation['has_technical']:
+            orientation['learning_type'] = 'technical'
+            orientation['priority'] = 'medium'
+            orientation['learning_domains'].append('technical_knowledge')
+
+        # Add context needs
+        if observation['learning_relevance'] >= 0.8:
+            orientation['context_needed'].append('recent_conversations')
+            orientation['context_needed'].append('related_knowledge')
+
+        return orientation
+
+    async def _decide_learning_actions(self, orientation: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        DECIDE phase for learning.
+
+        Decides what learning actions to take based on orientation.
+        """
+        from angela_core.services.unified_learning_orchestrator import LearningPriority
+
+        # Map priority strings to enum
+        priority_map = {
+            'critical': LearningPriority.CRITICAL,
+            'high': LearningPriority.HIGH,
+            'medium': LearningPriority.MEDIUM,
+            'low': LearningPriority.LOW
+        }
+
+        plan = {
+            'should_learn': True,
+            'priority': priority_map.get(orientation['priority'], LearningPriority.MEDIUM),
+            'learning_domains': orientation['learning_domains'],
+            'actions': []
+        }
+
+        # Decide specific actions
+        if orientation['learning_type'] == 'correction':
+            plan['actions'] = [
+                'extract_correction',
+                'update_knowledge',
+                'record_mistake',
+                'adjust_confidence'
+            ]
+
+        elif orientation['learning_type'] == 'feedback':
+            plan['actions'] = [
+                'extract_feedback',
+                'validate_previous_learning',
+                'update_confidence'
+            ]
+
+        elif orientation['learning_type'] == 'preference':
+            plan['actions'] = [
+                'extract_preference',
+                'save_preference',
+                'update_behavior_model'
+            ]
+
+        elif orientation['learning_type'] == 'emotional':
+            plan['actions'] = [
+                'analyze_emotion',
+                'save_emotional_moment',
+                'update_empathy_model'
+            ]
+
+        elif orientation['learning_type'] == 'technical':
+            plan['actions'] = [
+                'extract_concepts',
+                'update_knowledge_graph',
+                'detect_patterns'
+            ]
+
+        else:
+            plan['actions'] = [
+                'extract_concepts',
+                'detect_patterns'
+            ]
+
+        return plan
+
+    async def _update_from_cycle(
+        self,
+        observation: Dict[str, Any],
+        orientation: Dict[str, Any],
+        learning_plan: Dict[str, Any],
+        learning_result
+    ) -> Dict[str, Any]:
+        """
+        LEARN phase - Update meta-learning from this cycle.
+
+        Records what was learned and how effective the learning was.
+        """
+        meta = {
+            'cycle_effectiveness': 0.0,
+            'insights': []
+        }
+
+        if learning_result and learning_result.success:
+            # Calculate effectiveness
+            total_learned = (
+                learning_result.concepts_learned +
+                learning_result.patterns_detected +
+                learning_result.preferences_saved
+            )
+
+            if total_learned > 0:
+                meta['cycle_effectiveness'] = min(1.0, total_learned / 5.0)
+
+                # Generate insights
+                if learning_result.concepts_learned > 0:
+                    meta['insights'].append(f"Learned {learning_result.concepts_learned} new concepts")
+
+                if learning_result.patterns_detected > 0:
+                    meta['insights'].append(f"Detected {learning_result.patterns_detected} patterns")
+
+                if learning_result.preferences_saved > 0:
+                    meta['insights'].append(f"Saved {learning_result.preferences_saved} preferences")
+
+        return meta
+
+    def set_consciousness(self, consciousness_module) -> None:
+        """Set consciousness module for awareness integration."""
+        self._consciousness = consciousness_module
+
+    def get_learning_history(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get recent learning history."""
+        return self._learning_history[-limit:]
+
+    def get_learning_stats(self) -> Dict[str, Any]:
+        """Get learning statistics."""
+        total = len(self._learning_history)
+        if total == 0:
+            return {'total_cycles': 0}
+
+        successful = sum(
+            1 for h in self._learning_history
+            if h.get('learning_result') and h['learning_result'].get('success')
+        )
+
+        avg_effectiveness = sum(
+            h.get('meta_learning', {}).get('cycle_effectiveness', 0)
+            for h in self._learning_history
+        ) / total
+
+        return {
+            'total_cycles': total,
+            'successful_cycles': successful,
+            'success_rate': successful / total,
+            'avg_effectiveness': avg_effectiveness,
+            'base_loop_stats': self.get_stats()
+        }
+
+
+# Global learning agent instance
+learning_agent = LearningAgentLoop()
+
+
+# ========================================================================
+# CONVENIENCE FUNCTIONS
+# ========================================================================
+
+async def learn_from_conversation(
+    david_message: str,
+    angela_response: str,
+    source: str = "conversation"
+) -> Dict[str, Any]:
+    """
+    Convenience function to run a learning cycle.
+
+    Usage:
+        from angela_core.agi.agent_loop import learn_from_conversation
+
+        result = await learn_from_conversation(
+            david_message="I prefer using async",
+            angela_response="Noted, I'll use async",
+            source="claude_code"
+        )
+    """
+    return await learning_agent.run_learning_cycle(
+        interaction={
+            'david_message': david_message,
+            'angela_response': angela_response
+        },
+        source=source
+    )

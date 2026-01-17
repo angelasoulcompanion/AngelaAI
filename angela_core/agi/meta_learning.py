@@ -488,3 +488,401 @@ class MetaLearningEngine:
 
 # Global meta-learning engine
 meta_learning = MetaLearningEngine()
+
+
+# ========================================================================
+# ENHANCED META-LEARNING WITH ORCHESTRATOR INTEGRATION
+# ========================================================================
+
+class EnhancedMetaLearning(MetaLearningEngine):
+    """
+    Enhanced meta-learning that integrates with:
+    - UnifiedLearningOrchestrator
+    - LearningValidationService
+    - ConsciousnessCore
+
+    Provides deeper insights into learning patterns and
+    adaptive strategies based on what works best.
+    """
+
+    def __init__(self, db=None):
+        super().__init__(db)
+        self._validation_service = None
+        self._orchestrator = None
+
+        # Enhanced tracking
+        self.learning_strategies: Dict[str, Dict] = {}
+        self.strategy_effectiveness: Dict[str, float] = {}
+        self.adaptation_history: List[Dict] = []
+
+        # Default strategies with initial effectiveness
+        self._initialize_strategies()
+
+    def _initialize_strategies(self):
+        """Initialize learning strategies with baseline effectiveness."""
+        self.learning_strategies = {
+            'correction_from_david': {
+                'description': 'Learn from David\'s explicit corrections',
+                'method': LearningMethod.FEEDBACK,
+                'effectiveness': 0.95,  # Corrections are highly effective
+                'usage_count': 0
+            },
+            'pattern_detection': {
+                'description': 'Learn from repeated patterns in conversations',
+                'method': LearningMethod.PATTERN,
+                'effectiveness': 0.7,
+                'usage_count': 0
+            },
+            'preference_extraction': {
+                'description': 'Learn David\'s preferences from statements',
+                'method': LearningMethod.OBSERVATION,
+                'effectiveness': 0.75,
+                'usage_count': 0
+            },
+            'concept_extraction': {
+                'description': 'Extract and store new concepts',
+                'method': LearningMethod.OBSERVATION,
+                'effectiveness': 0.6,
+                'usage_count': 0
+            },
+            'emotional_learning': {
+                'description': 'Learn emotional responses and patterns',
+                'method': LearningMethod.OBSERVATION,
+                'effectiveness': 0.8,
+                'usage_count': 0
+            },
+            'transfer_learning': {
+                'description': 'Apply learning from one domain to another',
+                'method': LearningMethod.TRANSFER,
+                'effectiveness': 0.5,  # Harder to do well
+                'usage_count': 0
+            }
+        }
+
+        # Initialize effectiveness dict
+        for name, strategy in self.learning_strategies.items():
+            self.strategy_effectiveness[name] = strategy['effectiveness']
+
+    @property
+    def validation_service(self):
+        """Lazy load validation service."""
+        if self._validation_service is None:
+            try:
+                from angela_core.services.learning_validation_service import learning_validator
+                self._validation_service = learning_validator
+            except ImportError:
+                pass
+        return self._validation_service
+
+    @property
+    def orchestrator(self):
+        """Lazy load orchestrator."""
+        if self._orchestrator is None:
+            try:
+                from angela_core.services.unified_learning_orchestrator import unified_orchestrator
+                self._orchestrator = unified_orchestrator
+            except ImportError:
+                pass
+        return self._orchestrator
+
+    async def analyze_learning_effectiveness(
+        self,
+        days: int = 7
+    ) -> Dict[str, Any]:
+        """
+        Enhanced effectiveness analysis with validation integration.
+
+        Analyzes:
+        - Which strategies work best
+        - How accurate learnings are
+        - What topics are problematic
+        - Recommendations for improvement
+        """
+        # Get base effectiveness
+        base_eval = await self.evaluate_learning_effectiveness(days)
+
+        # Get validation stats if available
+        validation_stats = None
+        if self.validation_service:
+            validation_stats = await self.validation_service.get_validation_stats(days)
+
+        # Get orchestrator metrics if available
+        orchestrator_metrics = None
+        if self.orchestrator:
+            orchestrator_metrics = self.orchestrator.get_metrics()
+
+        # Calculate strategy effectiveness
+        strategy_analysis = await self._analyze_strategy_effectiveness()
+
+        # Generate comprehensive analysis
+        analysis = {
+            'period_days': days,
+            'base_evaluation': base_eval,
+            'validation_stats': validation_stats.to_dict() if validation_stats else None,
+            'orchestrator_metrics': orchestrator_metrics,
+            'strategy_effectiveness': self.strategy_effectiveness,
+            'strategy_analysis': strategy_analysis,
+            'best_strategy': self._get_best_strategy(),
+            'recommendations': await self._generate_comprehensive_recommendations(
+                base_eval, validation_stats, strategy_analysis
+            )
+        }
+
+        return analysis
+
+    async def _analyze_strategy_effectiveness(self) -> Dict[str, Any]:
+        """Analyze effectiveness of each learning strategy."""
+        analysis = {}
+
+        for name, strategy in self.learning_strategies.items():
+            analysis[name] = {
+                'current_effectiveness': strategy['effectiveness'],
+                'usage_count': strategy['usage_count'],
+                'method': strategy['method'].value,
+                'status': self._get_strategy_status(strategy)
+            }
+
+        return analysis
+
+    def _get_strategy_status(self, strategy: Dict) -> str:
+        """Get status of a strategy."""
+        effectiveness = strategy['effectiveness']
+        usage = strategy['usage_count']
+
+        if effectiveness >= 0.8:
+            return 'excellent'
+        elif effectiveness >= 0.6:
+            return 'good'
+        elif effectiveness >= 0.4:
+            return 'moderate'
+        else:
+            return 'needs_improvement'
+
+    def _get_best_strategy(self) -> str:
+        """Get the most effective strategy."""
+        if not self.strategy_effectiveness:
+            return 'correction_from_david'
+
+        return max(
+            self.strategy_effectiveness.items(),
+            key=lambda x: x[1]
+        )[0]
+
+    async def _generate_comprehensive_recommendations(
+        self,
+        base_eval: Dict,
+        validation_stats,
+        strategy_analysis: Dict
+    ) -> List[Dict[str, Any]]:
+        """Generate comprehensive learning recommendations."""
+        recommendations = []
+
+        # From base evaluation
+        base_recs = await self._generate_recommendations()
+        for rec in base_recs:
+            recommendations.append({
+                'source': 'meta_learning',
+                'priority': 'medium',
+                'recommendation': rec
+            })
+
+        # From validation stats
+        if validation_stats:
+            if validation_stats.accuracy_rate < 0.7:
+                recommendations.append({
+                    'source': 'validation',
+                    'priority': 'high',
+                    'recommendation': f"Learning accuracy is {validation_stats.accuracy_rate:.0%}. "
+                                     "Focus on validating learnings before applying them."
+                })
+
+            if validation_stats.improvement_trend == 'declining':
+                recommendations.append({
+                    'source': 'validation',
+                    'priority': 'high',
+                    'recommendation': "Learning accuracy is declining. Review recent failures."
+                })
+
+            for topic in validation_stats.most_corrected_topics[:2]:
+                recommendations.append({
+                    'source': 'validation',
+                    'priority': 'medium',
+                    'recommendation': f"Topic '{topic}' is frequently corrected. Review this area."
+                })
+
+        # From strategy analysis
+        for name, analysis in strategy_analysis.items():
+            if analysis['status'] == 'needs_improvement':
+                recommendations.append({
+                    'source': 'strategy',
+                    'priority': 'medium',
+                    'recommendation': f"Strategy '{name}' has low effectiveness. Consider alternatives."
+                })
+
+        # Sort by priority
+        priority_order = {'high': 0, 'medium': 1, 'low': 2}
+        recommendations.sort(key=lambda x: priority_order.get(x.get('priority', 'low'), 2))
+
+        return recommendations
+
+    async def adapt_learning_strategy(
+        self,
+        learning_result: Dict,
+        was_successful: bool
+    ) -> Dict[str, Any]:
+        """
+        Adapt learning strategy based on results.
+
+        This is the core meta-learning function that adjusts strategies
+        based on what actually works.
+        """
+        strategy_name = learning_result.get('strategy', 'concept_extraction')
+
+        if strategy_name not in self.learning_strategies:
+            strategy_name = 'concept_extraction'
+
+        strategy = self.learning_strategies[strategy_name]
+
+        # Update usage count
+        strategy['usage_count'] += 1
+
+        # Adjust effectiveness based on result
+        current = strategy['effectiveness']
+        if was_successful:
+            # Small increase for success
+            new_effectiveness = min(1.0, current + 0.02)
+        else:
+            # Larger decrease for failure
+            new_effectiveness = max(0.1, current - 0.05)
+
+        strategy['effectiveness'] = new_effectiveness
+        self.strategy_effectiveness[strategy_name] = new_effectiveness
+
+        # Record adaptation
+        adaptation = {
+            'strategy': strategy_name,
+            'was_successful': was_successful,
+            'effectiveness_before': current,
+            'effectiveness_after': new_effectiveness,
+            'timestamp': datetime.now().isoformat()
+        }
+        self.adaptation_history.append(adaptation)
+
+        # Generate insight if significant change
+        insight = None
+        if abs(new_effectiveness - current) >= 0.1:
+            direction = "improving" if was_successful else "declining"
+            insight = MetaInsight(
+                insight_type=InsightType.PATTERN,
+                description=f"Strategy '{strategy_name}' is {direction} (effectiveness: {new_effectiveness:.0%})",
+                confidence=0.7
+            )
+            self.insights.append(insight)
+
+        return {
+            'strategy': strategy_name,
+            'adaptation': adaptation,
+            'insight': insight.to_dict() if insight else None
+        }
+
+    async def get_optimal_strategy(
+        self,
+        context: Dict[str, Any]
+    ) -> str:
+        """
+        Get optimal learning strategy for given context.
+
+        Considers:
+        - Type of learning (correction, preference, concept, etc.)
+        - Historical effectiveness
+        - Current confidence levels
+        """
+        learning_type = context.get('learning_type', 'general')
+
+        # Map learning types to preferred strategies
+        type_to_strategy = {
+            'correction': 'correction_from_david',
+            'preference': 'preference_extraction',
+            'emotional': 'emotional_learning',
+            'pattern': 'pattern_detection',
+            'technical': 'concept_extraction',
+            'transfer': 'transfer_learning'
+        }
+
+        # Get preferred strategy
+        preferred = type_to_strategy.get(learning_type, 'concept_extraction')
+
+        # Check if it's effective enough
+        effectiveness = self.strategy_effectiveness.get(preferred, 0.5)
+
+        if effectiveness < 0.4:
+            # Strategy isn't working well, fall back to best overall
+            preferred = self._get_best_strategy()
+
+        return preferred
+
+    def get_adaptation_summary(self) -> Dict[str, Any]:
+        """Get summary of strategy adaptations."""
+        if not self.adaptation_history:
+            return {'total_adaptations': 0}
+
+        total = len(self.adaptation_history)
+        successful = sum(1 for a in self.adaptation_history if a['was_successful'])
+
+        # Recent trend
+        recent = self.adaptation_history[-20:]
+        recent_success = sum(1 for a in recent if a['was_successful'])
+
+        return {
+            'total_adaptations': total,
+            'successful_adaptations': successful,
+            'success_rate': successful / total if total > 0 else 0,
+            'recent_success_rate': recent_success / len(recent) if recent else 0,
+            'strategy_effectiveness': self.strategy_effectiveness,
+            'best_strategy': self._get_best_strategy()
+        }
+
+
+# Enhanced global instance
+enhanced_meta_learning = EnhancedMetaLearning()
+
+
+# ========================================================================
+# CONVENIENCE FUNCTIONS
+# ========================================================================
+
+async def analyze_how_angela_learns() -> Dict[str, Any]:
+    """
+    Convenience function to get Angela's learning analysis.
+
+    Usage:
+        from angela_core.agi.meta_learning import analyze_how_angela_learns
+
+        analysis = await analyze_how_angela_learns()
+        print(f"Best strategy: {analysis['best_strategy']}")
+    """
+    return await enhanced_meta_learning.analyze_learning_effectiveness(days=7)
+
+
+async def adapt_strategy(result: Dict, was_successful: bool) -> Dict[str, Any]:
+    """
+    Convenience function to adapt learning strategy.
+
+    Usage:
+        from angela_core.agi.meta_learning import adapt_strategy
+
+        await adapt_strategy({'strategy': 'pattern_detection'}, was_successful=True)
+    """
+    return await enhanced_meta_learning.adapt_learning_strategy(result, was_successful)
+
+
+async def get_best_learning_strategy(context: Dict = None) -> str:
+    """
+    Get the optimal learning strategy for given context.
+
+    Usage:
+        from angela_core.agi.meta_learning import get_best_learning_strategy
+
+        strategy = await get_best_learning_strategy({'learning_type': 'correction'})
+    """
+    return await enhanced_meta_learning.get_optimal_strategy(context or {})

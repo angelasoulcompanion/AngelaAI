@@ -42,7 +42,8 @@ class RealtimeLearningPipeline:
     def __init__(self):
         self.knowledge_extractor = knowledge_extractor
         self.emotional_service = EmotionalIntelligenceService()
-        self.embedding_service = embedding
+        # embedding_service is lazy-loaded when needed
+        self._embedding_service = None
 
         # Conversation buffer for context
         self.conversation_buffer = deque(maxlen=10)
