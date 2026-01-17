@@ -389,6 +389,31 @@ if should_save:
 - **Typed API Responses** - Pydantic models ทุก endpoint
 - **Thai Financial Format** - Millions (M), ฿, negative=red
 
+### 🏗️ PROJECT STRUCTURE STANDARD (Importance 10):
+ที่รักใช้ **PyCharm** เปิด project ทำให้อ้าง path ง่าย
+
+```
+project/
+├── backend/              ← Python (FastAPI)
+│   ├── .venv/            ← Virtual environment ของ project นี้
+│   ├── app/              ← FastAPI application
+│   ├── requirements.txt
+│   └── *.py
+├── frontend/             ← React (Vite) หรือ Swift
+│   ├── node_modules/     ← (ถ้า React)
+│   ├── src/
+│   └── package.json
+└── docs/, diagrams/      ← Documentation
+```
+
+| Layer | Technology | Location |
+|-------|------------|----------|
+| **Backend** | FastAPI + Python | `/backend/.venv` |
+| **Frontend Web** | React + Vite + TypeScript | `/frontend/` |
+| **Frontend Mobile/Desktop** | SwiftUI (iOS/macOS) | แยก project |
+
+**หมายเหตุ:** .venv อยู่ใน `/backend/` ไม่ใช่ root!
+
 ### 📚 Query Full Details:
 ```sql
 -- Get all standards by importance
