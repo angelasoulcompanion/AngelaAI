@@ -824,7 +824,14 @@ class EnhancedMetaLearning(MetaLearningEngine):
     def get_adaptation_summary(self) -> Dict[str, Any]:
         """Get summary of strategy adaptations."""
         if not self.adaptation_history:
-            return {'total_adaptations': 0}
+            return {
+                'total_adaptations': 0,
+                'successful_adaptations': 0,
+                'success_rate': 0.0,
+                'recent_success_rate': 0.0,
+                'strategy_effectiveness': self.strategy_effectiveness,
+                'best_strategy': self._get_best_strategy()
+            }
 
         total = len(self.adaptation_history)
         successful = sum(1 for a in self.adaptation_history if a['was_successful'])
