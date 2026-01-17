@@ -518,7 +518,7 @@ struct KnowledgeRAGView: View {
         """
 
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/opt/anaconda3/bin/python3")
+        process.executableURL = URL(fileURLWithPath: "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin/python3")
         process.arguments = ["-c", script]
 
         let pipe = Pipe()
@@ -572,7 +572,7 @@ struct KnowledgeRAGView: View {
 
         DispatchQueue.global(qos: .userInitiated).async {
             let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/opt/anaconda3/bin/python3")
+            process.executableURL = URL(fileURLWithPath: "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin/python3")
             process.arguments = ["-c", script]
 
             let pipe = Pipe()
@@ -674,7 +674,7 @@ struct KnowledgeRAGView: View {
 
         DispatchQueue.global(qos: .userInitiated).async {
             let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/opt/anaconda3/bin/python3")
+            process.executableURL = URL(fileURLWithPath: "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin/python3")
             process.arguments = ["-c", script]
 
             let pipe = Pipe()
@@ -721,7 +721,7 @@ struct KnowledgeRAGView: View {
 
     private func runPythonScript(args: [String], completion: @escaping (String) -> Void) {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/opt/anaconda3/bin/python3")
+        process.executableURL = URL(fileURLWithPath: "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin/python3")
         process.arguments = ["/Users/davidsamanyaporn/PycharmProjects/AngelaAI/angela_core/scripts/angela_rag.py"] + args
 
         let pipe = Pipe()

@@ -2,7 +2,7 @@
 # Angela Telegram Daemon Startup Script
 # Waits for PostgreSQL and starts the Telegram auto-reply service
 
-export PATH="/opt/homebrew/bin:/opt/anaconda3/bin:$PATH"
+export PATH="/opt/homebrew/bin:$PATH"
 cd /Users/davidsamanyaporn/PycharmProjects/AngelaAI
 
 # Wait for PostgreSQL to be ready (max 60 seconds)
@@ -18,4 +18,4 @@ done
 
 # Start the Telegram daemon
 echo "[$(date)] Starting Angela Telegram Daemon..."
-exec /opt/anaconda3/bin/python3 -u angela_core/daemon/telegram_daemon.py
+exec /Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin/python3 -u angela_core/daemon/telegram_daemon.py

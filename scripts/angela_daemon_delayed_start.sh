@@ -35,4 +35,4 @@ done
 
 # Start Angela daemon
 log "🚀 Starting Angela daemon..."
-exec /opt/anaconda3/bin/python3 /Users/davidsamanyaporn/PycharmProjects/AngelaAI/angela_core/angela_daemon.py
+exec /Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin/python3 /Users/davidsamanyaporn/PycharmProjects/AngelaAI/angela_core/angela_daemon.py

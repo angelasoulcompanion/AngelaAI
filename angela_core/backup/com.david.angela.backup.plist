@@ -7,7 +7,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/opt/anaconda3/bin/python3</string>
+        <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin/python3</string>
         <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/angela_core/backup/run_backup.py</string>
     </array>
 
@@ -36,7 +36,7 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/opt/anaconda3/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
         <key>PYTHONUNBUFFERED</key>
         <string>1</string>
         <key>PYTHONPATH</key>

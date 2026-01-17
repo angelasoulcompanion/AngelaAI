@@ -52,7 +52,7 @@ class UnifiedTrainingService: ObservableObject {
     func checkSystemStatus() async {
         // Check MLX
         let mlxProcess = Process()
-        mlxProcess.executableURL = URL(fileURLWithPath: "/opt/anaconda3/bin/python3")
+        mlxProcess.executableURL = URL(fileURLWithPath: "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin/python3")
         mlxProcess.arguments = ["-c", "import mlx; print('OK')"]
         mlxProcess.standardOutput = FileHandle.nullDevice
         mlxProcess.standardError = FileHandle.nullDevice
@@ -135,7 +135,7 @@ class UnifiedTrainingService: ObservableObject {
 
         // Run Python export script
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/opt/anaconda3/bin/python3")
+        process.executableURL = URL(fileURLWithPath: "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin/python3")
         process.currentDirectoryURL = URL(fileURLWithPath: projectPath)
         process.arguments = [
             "-m", "angela_core.training.export_training_data",
@@ -189,12 +189,12 @@ class UnifiedTrainingService: ObservableObject {
         )
 
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/opt/anaconda3/bin/python3")
+        process.executableURL = URL(fileURLWithPath: "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin/python3")
         process.currentDirectoryURL = URL(fileURLWithPath: projectPath)
 
         // Set environment with proper PATH for subprocess
         var env = ProcessInfo.processInfo.environment
-        env["PATH"] = "/opt/anaconda3/bin:/usr/local/bin:/usr/bin:/bin"
+        env["PATH"] = "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
         env["PYTHONUNBUFFERED"] = "1"  // Unbuffered output
         process.environment = env
 
@@ -266,12 +266,12 @@ class UnifiedTrainingService: ObservableObject {
         let modelName = "angela:trained"
 
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/opt/anaconda3/bin/python3")
+        process.executableURL = URL(fileURLWithPath: "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin/python3")
         process.currentDirectoryURL = URL(fileURLWithPath: projectPath)
 
         // Set environment with proper PATH for subprocess (needed for ollama)
         var env = ProcessInfo.processInfo.environment
-        env["PATH"] = "/opt/anaconda3/bin:/usr/local/bin:/usr/bin:/bin"
+        env["PATH"] = "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
         process.environment = env
 
         // Note: --adapters needs the adapters subfolder, not the output dir
