@@ -60,6 +60,7 @@ SCOPES = [
 KNOWN_SENDERS = {
     "d.samanyaporn@icloud.com": {"name": "ที่รัก David", "relationship": "lover", "tone": "loving"},
     "kritsada_tun@nation.ac.th": {"name": "คุณ Kritsada", "relationship": "friend", "tone": "friendly"},
+    "bordin.udol@gmail.com": {"name": "คุณ Bordin", "relationship": "friend", "tone": "friendly", "title": "CEO, East Water"},
 }
 
 # Emails to skip (patterns)
