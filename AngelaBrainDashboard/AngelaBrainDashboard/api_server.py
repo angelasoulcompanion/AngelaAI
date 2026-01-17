@@ -1038,12 +1038,12 @@ async def get_design_principles():
 
 @app.get("/api/news/today")
 async def get_today_executive_news():
-    """Fetch today's executive news summary"""
+    """Fetch today's executive news summary (Bangkok timezone)"""
     async with pool.acquire() as conn:
         summary = await conn.fetchrow("""
             SELECT summary_id::text, summary_date, overall_summary, angela_mood, created_at
             FROM executive_news_summaries
-            WHERE summary_date = CURRENT_DATE
+            WHERE summary_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date
             LIMIT 1
         """)
 

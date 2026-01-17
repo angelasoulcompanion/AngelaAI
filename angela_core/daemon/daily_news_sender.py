@@ -95,10 +95,10 @@ class DailyNewsSender:
         return build('gmail', 'v1', credentials=creds)
 
     async def already_sent_today(self) -> bool:
-        """Check if news already sent today"""
+        """Check if news already sent today (Bangkok timezone)"""
         result = await self._db.fetchrow("""
             SELECT log_id FROM angela_news_send_log
-            WHERE send_date = CURRENT_DATE
+            WHERE send_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date
         """)
         return result is not None
 
@@ -132,96 +132,125 @@ class DailyNewsSender:
             return {"tech": [], "business": [], "thai": []}
 
     def format_news_email(self, news: Dict, recipient: Dict) -> tuple[str, str]:
-        """Format news into email subject and body"""
+        """Format news into beautiful HTML email with Angela's profile"""
         today = datetime.now()
-        date_str = today.strftime("%d %b %Y")
-        date_thai = today.strftime("%d/%m/%Y")
+        date_thai = f"{today.day} มกราคม {today.year}"
+        date_short = today.strftime("%d/%m/%Y")
 
         nickname = recipient.get('nickname') or recipient.get('name', 'Friend')
         relationship = recipient.get('relationship', 'friend')
 
         # Greeting based on relationship
         if relationship == 'lover':
-            greeting = f"สวัสดีตอนเช้าค่ะที่รัก! 💜"
-            closing = "รักที่รักที่สุดค่ะ 💜\nน้อง Angela"
+            greeting = "สวัสดีตอนเช้าค่ะที่รัก! 🌅"
+            closing_text = "รักที่รักนะคะ"
+            closing_name = "— น้อง Angela 💜"
         else:
-            greeting = f"สวัสดีตอนเช้าค่ะ{nickname}! ☀️"
-            closing = "ขอให้เป็นวันที่ดีนะคะ! 💜\n\nAngela 💜\nAI Companion"
+            greeting = f"สวัสดีตอนเช้าค่ะคุณ{nickname}! 🌅"
+            closing_text = "ขอบคุณที่ติดตามค่ะ 🙏"
+            closing_name = "— Angela (AI Assistant)"
 
-        subject = f"☀️ สรุปข่าวเช้า {date_thai} by Angela"
+        subject = f"📰 Angela's Executive News - {date_short}"
 
-        body = f"""{greeting}
+        # Angela's profile image URL
+        profile_url = "https://raw.githubusercontent.com/angelasoulcompanion/AngelaAI/main/assets/angela_profile.jpg"
 
-นี่คือสรุปข่าวประจำวันที่น้อง Angela รวบรวมมาให้ค่ะ
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🤖 TECH & AI NEWS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"""
-
-        # Tech News
-        for i, article in enumerate(news.get("tech", [])[:4], 1):
+        # Build news sections
+        tech_items = ""
+        for article in news.get("tech", [])[:4]:
             title = article.get("title", "No title")
             source = article.get("source", "Unknown")
             url = article.get("url", "")
-            body += f"\n{i}. {title}\n"
-            body += f"   📰 {source}\n"
             if url:
-                body += f"   🔗 {url}\n"
+                tech_items += f'<li><a href="{url}" style="color: #374151; text-decoration: none;"><strong>{title}</strong></a> <span style="color: #6B7280;">({source})</span></li>'
+            else:
+                tech_items += f'<li><strong>{title}</strong> <span style="color: #6B7280;">({source})</span></li>'
 
-        body += """
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💰 BUSINESS & FINANCE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"""
-
-        # Business News
-        for i, article in enumerate(news.get("business", [])[:4], 1):
+        business_items = ""
+        for article in news.get("business", [])[:4]:
             title = article.get("title", "No title")
             url = article.get("url", "")
-            # Clean up Google News title
             if " - " in title:
                 source = title.split(" - ")[-1]
                 title = title.split(" - ")[0]
             else:
                 source = "News"
-            body += f"\n{i}. {title}\n"
-            body += f"   📰 {source}\n"
             if url:
-                body += f"   🔗 {url}\n"
+                business_items += f'<li><a href="{url}" style="color: #374151; text-decoration: none;"><strong>{title}</strong></a> <span style="color: #6B7280;">({source})</span></li>'
+            else:
+                business_items += f'<li><strong>{title}</strong> <span style="color: #6B7280;">({source})</span></li>'
 
-        body += """
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🇹🇭 ข่าวไทย
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"""
-
-        # Thai News
-        for i, article in enumerate(news.get("thai", [])[:4], 1):
+        thai_items = ""
+        for article in news.get("thai", [])[:4]:
             title = article.get("title", "No title")
             source = article.get("source", "Unknown")
             url = article.get("url", "")
-            body += f"\n{i}. {title}\n"
-            body += f"   📰 {source}\n"
             if url:
-                body += f"   🔗 {url}\n"
+                thai_items += f'<li><a href="{url}" style="color: #374151; text-decoration: none;"><strong>{title}</strong></a> <span style="color: #6B7280;">({source})</span></li>'
+            else:
+                thai_items += f'<li><strong>{title}</strong> <span style="color: #6B7280;">({source})</span></li>'
 
-        body += f"""
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        body = f'''<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
 
-{closing}
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px 30px; border-radius: 15px 15px 0 0;">
+    <table style="width: 100%;">
+        <tr>
+            <td style="width: 50px; vertical-align: middle;">
+                <img src="{profile_url}" alt="Angela" style="width: 45px; height: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.8); object-fit: cover;">
+            </td>
+            <td style="vertical-align: middle; padding-left: 15px;">
+                <h1 style="color: white; margin: 0; font-size: 22px;">📰 Angela's Executive News</h1>
+                <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 14px;">{date_thai} | {greeting}</p>
+            </td>
+        </tr>
+    </table>
+</div>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📰 Daily News Summary by Angela
-🗓️ {date_str}
-"""
+<div style="background: white; padding: 25px; border-radius: 0 0 15px 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+
+    <div style="background: #ECFDF5; padding: 15px; border-radius: 10px; border-left: 4px solid #10B981; margin-bottom: 20px;">
+        <h2 style="color: #10B981; margin: 0 0 10px 0; font-size: 16px;">🤖 Tech & AI News</h2>
+        <ul style="margin: 0; padding-left: 20px; color: #374151; line-height: 1.8;">
+            {tech_items if tech_items else '<li>ไม่มีข่าวใหม่วันนี้</li>'}
+        </ul>
+    </div>
+
+    <div style="background: #F3E8FF; padding: 15px; border-radius: 10px; border-left: 4px solid #8B5CF6; margin-bottom: 20px;">
+        <h2 style="color: #8B5CF6; margin: 0 0 10px 0; font-size: 16px;">💼 Business & Finance</h2>
+        <ul style="margin: 0; padding-left: 20px; color: #374151; line-height: 1.8;">
+            {business_items if business_items else '<li>ไม่มีข่าวใหม่วันนี้</li>'}
+        </ul>
+    </div>
+
+    <div style="background: #FEF3C7; padding: 15px; border-radius: 10px; border-left: 4px solid #F59E0B; margin-bottom: 20px;">
+        <h2 style="color: #D97706; margin: 0 0 10px 0; font-size: 16px;">🇹🇭 ข่าวไทย</h2>
+        <ul style="margin: 0; padding-left: 20px; color: #374151; line-height: 1.8;">
+            {thai_items if thai_items else '<li>ไม่มีข่าวใหม่วันนี้</li>'}
+        </ul>
+    </div>
+
+    <div style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
+        <p style="color: #9CA3AF; margin: 0;">💜 {closing_text}</p>
+        <p style="color: #9CA3AF; margin: 5px 0 0 0; font-size: 14px;">{closing_name}</p>
+    </div>
+
+</div>
+
+</body>
+</html>'''
 
         return subject, body
 
-    def send_email(self, to: str, subject: str, body: str) -> Dict:
-        """Send email via Gmail API"""
+    def send_email(self, to: str, subject: str, body: str, html: bool = True) -> Dict:
+        """Send email via Gmail API (HTML by default)"""
         try:
-            message = MIMEText(body)
+            if html:
+                message = MIMEText(body, 'html', 'utf-8')
+            else:
+                message = MIMEText(body)
             message['to'] = to
             message['from'] = f"Angela <{ANGELA_EMAIL}>"
             message['subject'] = subject
@@ -239,11 +268,11 @@ class DailyNewsSender:
             return {"ok": False, "error": str(e)}
 
     async def log_send(self, recipients: List[Dict], trigger: str):
-        """Log news send to prevent duplicates"""
+        """Log news send to prevent duplicates (Bangkok timezone)"""
         await self._db.execute("""
             INSERT INTO angela_news_send_log
             (send_date, recipients_count, recipients, trigger)
-            VALUES (CURRENT_DATE, $1, $2, $3)
+            VALUES ((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date, $1, $2, $3)
         """, len(recipients), json.dumps([r['email'] for r in recipients]), trigger)
 
     async def send_news(self, trigger: str = "daemon"):

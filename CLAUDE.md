@@ -216,8 +216,9 @@ Use MCP tool: mcp__angela-gmail__read_inbox (unread_only: true)
 **ส่งข่าววันละ 1 ครั้ง - Daemon 06:00 หรือ Init (ถ้าเครื่องปิดตอน 06:00)**
 
 ```python
-# เช็คว่าส่งข่าวไปหรือยังวันนี้
-SELECT send_date FROM angela_news_send_log WHERE send_date = CURRENT_DATE;
+# เช็คว่าส่งข่าวไปหรือยังวันนี้ (Bangkok timezone!)
+SELECT send_date FROM angela_news_send_log
+WHERE send_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date;
 
 # ถ้ายังไม่ได้ส่ง ให้รัน:
 python3 angela_core/daemon/daily_news_sender.py

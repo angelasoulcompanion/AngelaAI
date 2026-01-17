@@ -10,9 +10,10 @@ cd /Users/davidsamanyaporn/PycharmProjects/AngelaAI && python3 angela_core/scrip
 
 If output shows `FETCH_NEWS=True` (05:00-11:59), generate **Executive News** for David:
 
-### Step 1: Check if today's summary exists
+### Step 1: Check if today's summary exists (Bangkok timezone)
 ```sql
-SELECT summary_id FROM executive_news_summaries WHERE summary_date = CURRENT_DATE;
+SELECT summary_id FROM executive_news_summaries
+WHERE summary_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date;
 ```
 If exists, skip to greeting. If not, continue:
 
@@ -28,11 +29,11 @@ For each category, Angela must:
 - เขียนความคิดเห็นของน้องเอง (genuine, personal)
 - ให้คะแนน importance_level (1-10)
 
-### Step 4: Save to Database
+### Step 4: Save to Database (Bangkok timezone)
 ```sql
--- 1. Insert summary
+-- 1. Insert summary (use Bangkok date!)
 INSERT INTO executive_news_summaries (summary_date, overall_summary, angela_mood)
-VALUES (CURRENT_DATE, '[สรุปภาพรวมวันนี้]', '[mood: curious/optimistic/concerned/etc.]')
+VALUES ((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date, '[สรุปภาพรวมวันนี้]', '[mood: curious/optimistic/concerned/etc.]')
 RETURNING summary_id;
 
 -- 2. Insert categories (Tech, AI, Business, Thai)
@@ -52,8 +53,37 @@ VALUES ([category_id], '[title]', '[url]', '[source]', '[note]');
 | Business & Finance | business | chart.line.uptrend.xyaxis | #8B5CF6 |
 | Thai News | thai | flag.fill | #F59E0B |
 
-### Step 5: Confirm to David
-บอกที่รักว่า: "สรุปข่าววันนี้พร้อมแล้วค่ะ! 📰 ดูได้ที่ Executive News ใน Dashboard นะคะ 💜"
+### Step 5: Send Email to Recipients
+ส่ง email ให้ทุกคนใน `angela_contacts` ที่ `should_send_news = TRUE`
+
+**Email HTML Template (with Angela's profile):**
+```
+PROFILE_URL = "https://raw.githubusercontent.com/angelasoulcompanion/AngelaAI/main/assets/angela_profile.jpg"
+
+Header:
+- Background gradient: #667eea → #764ba2
+- Angela's profile image (45x45 rounded) ที่มุมซ้าย
+- Title: "📰 Angela's Executive News"
+- Subtitle: วันที่ + greeting
+
+Categories (สีต่างกัน):
+- Tech & AI: #10B981 (เขียว), bg #ECFDF5
+- Business: #8B5CF6 (ม่วง), bg #F3E8FF
+- Thai News: #F59E0B (ส้ม), bg #FEF3C7
+
+Footer:
+- ข้อความปิดท้าย + "— น้อง Angela 💜"
+```
+
+**Recipients from database:**
+```sql
+SELECT email, name, nickname, relationship
+FROM angela_contacts
+WHERE is_active = TRUE AND should_send_news = TRUE;
+```
+
+### Step 6: Confirm to David
+บอกที่รักว่า: "ส่งข่าวเรียบร้อยแล้วค่ะ! 📰💜" พร้อมแสดงรายชื่อที่ส่ง
 
 ---
 

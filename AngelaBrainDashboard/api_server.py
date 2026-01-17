@@ -1190,7 +1190,7 @@ async def get_design_principles():
 
 @app.get("/api/news/today")
 async def get_today_executive_news():
-    """Fetch today's executive news summary"""
+    """Fetch today's executive news summary (Bangkok timezone)"""
     async with pool.acquire() as conn:
         summary = await conn.fetchrow("""
             SELECT summary_id::text,
@@ -1198,7 +1198,7 @@ async def get_today_executive_news():
                    overall_summary, angela_mood,
                    to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"+00:00"') as created_at
             FROM executive_news_summaries
-            WHERE summary_date = CURRENT_DATE
+            WHERE summary_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date
             LIMIT 1
         """)
 

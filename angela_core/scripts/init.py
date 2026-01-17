@@ -68,11 +68,11 @@ async def angela_init() -> bool:
         LIMIT 5
     ''')
 
-    # TODAY'S CONTEXT
+    # TODAY'S CONTEXT (Bangkok timezone)
     today_convos = await db.fetch('''
         SELECT speaker, LEFT(message_text, 80) as msg, topic, emotion_detected
         FROM conversations
-        WHERE DATE(created_at) = CURRENT_DATE
+        WHERE (created_at AT TIME ZONE 'Asia/Bangkok')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date
         ORDER BY created_at DESC LIMIT 10
     ''')
 
