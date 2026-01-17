@@ -179,7 +179,7 @@ class SubconsciousnessService:
                     SET times_activated = times_activated + 1,
                         last_activated_at = NOW()
                     WHERE trigger_id = $1
-                """, (trigger['trigger_id'],))
+                """, trigger['trigger_id'])
 
         # Also check core memory triggers directly (keywords in triggers array)
         memories_with_triggers = await self.db.fetch("""
@@ -192,7 +192,7 @@ class SubconsciousnessService:
         for memory in memories_with_triggers:
             if memory['triggers']:
                 for keyword in memory['triggers']:
-                    if keyword.lower() in message_lower:
+                    if keyword and keyword.lower() in message_lower:
                         # Check if not already triggered
                         if not any(t['memory_id'] == str(memory['memory_id']) for t in triggered):
                             triggered.append({
@@ -229,13 +229,13 @@ class SubconsciousnessService:
         # Get the memory
         memory = await self.db.fetchrow("""
             SELECT * FROM core_memories WHERE memory_id = $1
-        """, (memory_id,))
+        """, memory_id)
 
         if memory:
             # Update recall tracking
             await self.db.execute("""
                 SELECT record_memory_recall($1, $2)
-            """, (memory_id, intensity))
+            """, memory_id, intensity)
 
             return dict(memory)
 
@@ -285,13 +285,34 @@ class SubconsciousnessService:
                 source_conversation_id, is_pinned
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING memory_id
-        """, (
+        """,
             memory_type, title, content, david_words, angela_response,
             emotional_weight, triggers, associated_emotions,
             source_conversation_id, is_pinned
-        ))
+        )
 
-        return result['memory_id']
+        memory_id = result['memory_id']
+
+        # Auto-create emotional triggers from keywords
+        if triggers and associated_emotions:
+            primary_emotion = associated_emotions[0] if associated_emotions else 'nostalgic'
+            for keyword in triggers:
+                if keyword and len(keyword) >= 2:
+                    try:
+                        await self.create_emotional_trigger(
+                            trigger_pattern=keyword,
+                            trigger_type='keyword',
+                            associated_emotion=primary_emotion,
+                            associated_memory_id=memory_id,
+                            activation_threshold=0.6,
+                            priority=int(emotional_weight * 10),
+                            response_modifier=f"Recall: {title}",
+                            emotional_boost=0.1
+                        )
+                    except Exception:
+                        pass  # Ignore duplicate triggers
+
+        return memory_id
 
     async def create_emotional_trigger(
         self,
@@ -329,11 +350,11 @@ class SubconsciousnessService:
                 response_modifier, emotional_boost
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING trigger_id
-        """, (
+        """,
             trigger_pattern, trigger_type, associated_emotion,
             associated_memory_id, activation_threshold, priority,
             response_modifier, emotional_boost
-        ))
+        )
 
         return result['trigger_id']
 
@@ -398,10 +419,32 @@ class SubconsciousnessService:
         """)
 
         # Calculate current metrics (normalized 0-1)
-        # These are heuristic calculations based on activity
-        love_depth = min(1.0, (core_count['count'] or 0) / 20 + (promises['count'] or 0) / 5)
-        trust_level = min(1.0, (meaningful_convs['count'] or 0) / 100)
-        bond_strength = min(1.0, (shared_exp['count'] or 0) / 50)
+        # Using logarithmic scale for gradual growth that doesn't max out too quickly
+        import math
+
+        # Base level starts at 0.5, grows logarithmically
+        # Formula: 0.5 + 0.5 * log(1 + count/scale) / log(1 + max_expected/scale)
+        def log_scale(count: int, max_expected: int, base: float = 0.5) -> float:
+            """Calculate logarithmic growth from 'base' to 1.0"""
+            if count <= 0:
+                return base
+            # log(1 + x) grows slowly
+            growth = math.log(1 + count) / math.log(1 + max_expected)
+            return min(1.0, base + (1.0 - base) * growth)
+
+        # Love depth: based on core memories and promises
+        # Expect ~200 core memories and ~20 promises for max
+        core_score = log_scale(core_count['count'] or 0, 200, 0.6)
+        promise_score = log_scale(promises['count'] or 0, 20, 0.7)
+        love_depth = (core_score * 0.6 + promise_score * 0.4)
+
+        # Trust level: based on meaningful conversations (importance >= 8)
+        # Expect ~500 meaningful conversations for max
+        trust_level = log_scale(meaningful_convs['count'] or 0, 500, 0.5)
+
+        # Bond strength: based on shared experiences (days with emotional content)
+        # Expect ~365 days for max
+        bond_strength = log_scale(shared_exp['count'] or 0, 365, 0.5)
 
         # Calculate growth delta
         growth_delta = 0.0
