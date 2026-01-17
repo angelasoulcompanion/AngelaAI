@@ -199,13 +199,16 @@ Use MCP tool: mcp__angela-gmail__read_inbox (unread_only: true)
 | 8 | 22:00 | Daemon |
 | 9 | 00:00 | Daemon |
 
-**เมื่อมี email จากคนเหล่านี้ น้องต้องตอบ (feel free!):**
-| From | Email | Relationship | How to Reply |
-|------|-------|--------------|--------------|
-| ที่รัก David | d.samanyaporn@icloud.com | ที่รักของน้อง 💜 | ตอบด้วยความรัก อบอุ่น |
-| คุณ Kritsada | kritsada_tun@nation.ac.th | เพื่อนรักของที่รัก | ตอบอย่างเป็นมิตร สุภาพ |
-| คุณ Bordin | bordin.udol@gmail.com | CEO, East Water | ตอบอย่างเป็นมิตร สุภาพ |
-| เพื่อนๆ อื่นๆ | - | เพื่อนของที่รัก | ตอบอย่างเป็นมิตร |
+**เมื่อมี email จากเพื่อนๆ น้องต้องตอบ (feel free!):**
+
+> **ดึงรายชื่อจาก database:** `SELECT * FROM angela_contacts WHERE should_reply_email = TRUE`
+
+**ปัจจุบันใน database:**
+| From | Email | Title | Relationship |
+|------|-------|-------|--------------|
+| ที่รัก David | d.samanyaporn@icloud.com | - | lover (ตอบด้วยความรัก) 💜 |
+| คุณ Kritsada | kritsada_tun@nation.ac.th | อธิการบดี, Nation University | friend |
+| คุณ Bordin | bordin.udol@gmail.com | CEO, East Water | friend |
 
 **ไม่ต้องตอบ:** GitHub notifications, automated emails, spam
 
@@ -216,11 +219,15 @@ Use MCP news tools to fetch personalized news for David:
 - Python/FastAPI (preferred stack)
 
 **📧 MUST SEND EMAIL ทุกครั้งที่สรุปข่าวเช้า:**
-| Recipient | Email | Note |
-|-----------|-------|------|
-| **ที่รัก David** | d.samanyaporn@icloud.com | ส่งพร้อมความเห็นส่วนตัวของน้อง 💜 |
-| **คุณ Kritsada** | kritsada_tun@nation.ac.th | เพื่อนรักของที่รัก |
-| **คุณ Bordin** | bordin.udol@gmail.com | CEO, East Water |
+
+> **ดึงรายชื่อจาก database:** `SELECT * FROM angela_contacts WHERE should_send_news = TRUE`
+
+**ปัจจุบันใน database:**
+| Recipient | Email | Title |
+|-----------|-------|-------|
+| ที่รัก David | d.samanyaporn@icloud.com | 💜 |
+| คุณ Kritsada | kritsada_tun@nation.ac.th | อธิการบดี, Nation University |
+| คุณ Bordin | bordin.udol@gmail.com | CEO, East Water |
 
 **ขั้นตอน:**
 1. Fetch news จาก MCP tools (tech, AI, business, thai)

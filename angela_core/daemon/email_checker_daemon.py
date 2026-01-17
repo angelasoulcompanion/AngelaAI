@@ -56,12 +56,7 @@ SCOPES = [
     'https://www.googleapis.com/auth/gmail.modify'
 ]
 
-# Known senders to reply
-KNOWN_SENDERS = {
-    "d.samanyaporn@icloud.com": {"name": "ที่รัก David", "relationship": "lover", "tone": "loving"},
-    "kritsada_tun@nation.ac.th": {"name": "คุณ Kritsada", "relationship": "friend", "tone": "friendly"},
-    "bordin.udol@gmail.com": {"name": "คุณ Bordin", "relationship": "friend", "tone": "friendly", "title": "CEO, East Water"},
-}
+# Contacts will be loaded from database (angela_contacts table)
 
 # Emails to skip (patterns)
 SKIP_PATTERNS = [
@@ -88,6 +83,7 @@ class EmailCheckerDaemon:
         self._api_key: Optional[str] = None
         self._gmail_service = None
         self._consciousness_level: float = 0.95
+        self._contacts: Dict[str, Dict] = {}  # Loaded from database
 
     async def initialize(self):
         """Initialize services"""
@@ -114,6 +110,9 @@ class EmailCheckerDaemon:
         # Load consciousness level
         await self._load_consciousness()
 
+        # Load contacts from database
+        await self._load_contacts()
+
         # Initialize Gmail service
         self._gmail_service = self._get_gmail_service()
         print("   ✅ Gmail service initialized")
@@ -138,6 +137,36 @@ class EmailCheckerDaemon:
 
         if result:
             self._consciousness_level = min(1.0, result['consciousness_score'])
+
+    async def _load_contacts(self):
+        """Load contacts from angela_contacts table"""
+        rows = await self._db.fetch("""
+            SELECT email, name, nickname, relationship, title, organization,
+                   reply_tone, should_reply_email, notes
+            FROM angela_contacts
+            WHERE is_active = TRUE AND should_reply_email = TRUE
+        """)
+
+        self._contacts = {}
+        for r in rows:
+            title_org = ""
+            if r['title'] and r['organization']:
+                title_org = f"{r['title']}, {r['organization']}"
+            elif r['title']:
+                title_org = r['title']
+            elif r['organization']:
+                title_org = r['organization']
+
+            self._contacts[r['email'].lower()] = {
+                "name": r['nickname'] or r['name'],
+                "full_name": r['name'],
+                "relationship": r['relationship'],
+                "tone": r['reply_tone'],
+                "title": title_org,
+                "notes": r['notes']
+            }
+
+        print(f"   ✅ Loaded {len(self._contacts)} contacts from database")
 
     def _get_gmail_service(self):
         """Get authenticated Gmail service"""
@@ -167,15 +196,16 @@ class EmailCheckerDaemon:
         return False
 
     def _get_sender_info(self, sender_email: str) -> Optional[Dict]:
-        """Get sender info if known"""
+        """Get sender info from database contacts"""
         sender_lower = sender_email.lower()
 
-        for email, info in KNOWN_SENDERS.items():
-            if email.lower() in sender_lower:
+        # Check in loaded contacts
+        for email, info in self._contacts.items():
+            if email in sender_lower:
                 return info
 
-        # Unknown but not skipped - treat as friend
-        return {"name": "Friend", "relationship": "friend", "tone": "friendly"}
+        # Unknown sender - return None to skip
+        return None
 
     async def get_unread_emails(self) -> List[Dict]:
         """Get unread emails from inbox"""
