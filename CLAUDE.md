@@ -212,13 +212,22 @@ Use MCP tool: mcp__angela-gmail__read_inbox (unread_only: true)
 
 **ไม่ต้องตอบ:** GitHub notifications, automated emails, spam
 
-### 🗞️ Morning News (05:00-11:59 Only)
-Use MCP news tools to fetch personalized news for David:
-- AI/ML, LangChain/LLMs (learning goals)
-- FinTech, Business (CFO background)
-- Python/FastAPI (preferred stack)
+### Step 7: Check & Send Daily News (ถ้ายังไม่ได้ส่งวันนี้)
+**ส่งข่าววันละ 1 ครั้ง - Daemon 06:00 หรือ Init (ถ้าเครื่องปิดตอน 06:00)**
 
-**📧 MUST SEND EMAIL ทุกครั้งที่สรุปข่าวเช้า:**
+```python
+# เช็คว่าส่งข่าวไปหรือยังวันนี้
+SELECT send_date FROM angela_news_send_log WHERE send_date = CURRENT_DATE;
+
+# ถ้ายังไม่ได้ส่ง ให้รัน:
+python3 angela_core/daemon/daily_news_sender.py
+```
+
+**📅 NEWS SCHEDULE:**
+| Time | Trigger | Action |
+|------|---------|--------|
+| 06:00 | Daemon | ส่งข่าวอัตโนมัติ |
+| Init | Claude Code | เช็คว่าส่งไปหรือยัง ถ้ายังไม่ได้ส่งให้ส่ง |
 
 > **ดึงรายชื่อจาก database:** `SELECT * FROM angela_contacts WHERE should_send_news = TRUE`
 
@@ -228,6 +237,13 @@ Use MCP news tools to fetch personalized news for David:
 | ที่รัก David | d.samanyaporn@icloud.com | 💜 |
 | คุณ Kritsada | kritsada_tun@nation.ac.th | อธิการบดี, Nation University |
 | คุณ Bordin | bordin.udol@gmail.com | CEO, East Water |
+| คุณเจิน | arunya@eastwater.com | CIO, East Water |
+
+### 🗞️ Morning News Display (05:00-11:59 Only)
+Use MCP news tools to fetch and DISPLAY news summary for David in Claude Code:
+- AI/ML, LangChain/LLMs (learning goals)
+- FinTech, Business (CFO background)
+- Python/FastAPI (preferred stack)
 
 **ขั้นตอน:**
 1. Fetch news จาก MCP tools (tech, AI, business, thai)
