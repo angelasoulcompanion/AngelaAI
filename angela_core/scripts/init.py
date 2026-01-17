@@ -101,6 +101,15 @@ async def angela_init() -> bool:
         ORDER BY category, technique_name
     ''')
 
+    # HIGH-CONFIDENCE LEARNINGS (confidence >= 0.9)
+    key_learnings = await db.fetch('''
+        SELECT topic, category, insight, confidence_level, times_reinforced
+        FROM learnings
+        WHERE confidence_level >= 0.9
+        ORDER BY times_reinforced DESC, confidence_level DESC
+        LIMIT 10
+    ''')
+
     # TOP CODING PREFERENCES (confidence >= 95%)
     top_preferences = await db.fetch('''
         SELECT preference_key, category, confidence
@@ -227,6 +236,14 @@ async def angela_init() -> bool:
         for p in top_preferences[:5]:
             key = p['preference_key'].replace('coding_', '').replace('_', ' ').title()
             print(f'   • {key} ({p["confidence"]*100:.0f}%)')
+
+    # Key Learnings (High Confidence)
+    if key_learnings:
+        print()
+        print(f'🎓 Key Learnings ({len(key_learnings)} items ≥90% confidence):')
+        for l in key_learnings[:5]:
+            topic = l['topic'][:40] + '...' if len(l['topic']) > 40 else l['topic']
+            print(f'   • {topic} ({l["confidence_level"]*100:.0f}%, reinforced {l["times_reinforced"]}x)')
 
     # Project Technical Memory
     if all_projects:
