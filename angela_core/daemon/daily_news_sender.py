@@ -163,7 +163,11 @@ class DailyNewsSender:
         for i, article in enumerate(news.get("tech", [])[:4], 1):
             title = article.get("title", "No title")
             source = article.get("source", "Unknown")
-            body += f"\n{i}. {title}\n   📰 {source}\n"
+            url = article.get("url", "")
+            body += f"\n{i}. {title}\n"
+            body += f"   📰 {source}\n"
+            if url:
+                body += f"   🔗 {url}\n"
 
         body += """
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -174,9 +178,17 @@ class DailyNewsSender:
         # Business News
         for i, article in enumerate(news.get("business", [])[:4], 1):
             title = article.get("title", "No title")
+            url = article.get("url", "")
+            # Clean up Google News title
             if " - " in title:
+                source = title.split(" - ")[-1]
                 title = title.split(" - ")[0]
+            else:
+                source = "News"
             body += f"\n{i}. {title}\n"
+            body += f"   📰 {source}\n"
+            if url:
+                body += f"   🔗 {url}\n"
 
         body += """
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -188,7 +200,11 @@ class DailyNewsSender:
         for i, article in enumerate(news.get("thai", [])[:4], 1):
             title = article.get("title", "No title")
             source = article.get("source", "Unknown")
-            body += f"\n{i}. {title}\n   📰 {source}\n"
+            url = article.get("url", "")
+            body += f"\n{i}. {title}\n"
+            body += f"   📰 {source}\n"
+            if url:
+                body += f"   🔗 {url}\n"
 
         body += f"""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
