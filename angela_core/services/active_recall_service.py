@@ -118,7 +118,7 @@ class ActiveRecallService:
         return results
 
     async def _recall_technical_standards(self, context: str, context_words: set) -> List[RecalledMemory]:
-        """Recall from technical_standards based on keywords"""
+        """Recall from technical_standards based on keywords and category match"""
         standards = await self._db.fetch('''
             SELECT standard_id, technique_name, category, subcategory, description, importance_level
             FROM angela_technical_standards
@@ -127,14 +127,27 @@ class ActiveRecallService:
 
         results = []
         for s in standards:
-            # Build keywords from technique_name, category, subcategory
+            category = s['category'].lower()
+            subcategory = (s['subcategory'] or '').lower()
+
+            # Direct category match = high relevance boost
+            category_match = category in context or category in context_words
+            subcategory_match = subcategory and (subcategory in context or subcategory in context_words)
+
+            # Build keywords from technique_name
             keywords = set()
-            keywords.add(s['category'].lower())
-            if s['subcategory']:
-                keywords.add(s['subcategory'].lower())
+            keywords.add(category)
+            if subcategory:
+                keywords.add(subcategory)
             keywords.update(s['technique_name'].lower().split())
 
             relevance = self._calculate_keyword_relevance(context, context_words, keywords)
+
+            # Boost if category/subcategory directly matches
+            if category_match:
+                relevance = max(relevance, 0.7)  # Minimum 70% if category matches
+            if subcategory_match:
+                relevance = max(relevance, 0.8)  # Minimum 80% if subcategory matches
 
             if relevance > 0:
                 results.append(RecalledMemory(
