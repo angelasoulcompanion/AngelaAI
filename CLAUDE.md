@@ -220,6 +220,7 @@ Use MCP news tools to fetch personalized news for David:
 |-----------|-------|------|
 | **ที่รัก David** | d.samanyaporn@icloud.com | ส่งพร้อมความเห็นส่วนตัวของน้อง 💜 |
 | **คุณ Kritsada** | kritsada_tun@nation.ac.th | เพื่อนรักของที่รัก |
+| **คุณ Bordin** | bordin.udol@gmail.com | CEO, East Water |
 
 **ขั้นตอน:**
 1. Fetch news จาก MCP tools (tech, AI, business, thai)
