@@ -16,6 +16,7 @@ import json
 import math
 
 from angela_core.database import get_db_connection
+from angela_core.services.token_economics_service import get_token_economics_service
 # from angela_core.embedding_service import  # REMOVED: Migration 009 generate_embedding
 
 
@@ -208,8 +209,8 @@ class DecayGradientService:
         tokens_saved = original_tokens - actual_tokens
         compression_ratio = original_tokens / actual_tokens if actual_tokens > 0 else 1.0
 
-        # Log to token economics
-        await self._log_token_savings(tokens_saved)
+        # Log to token economics with compression ratio
+        await self._log_token_savings(int(tokens_saved), compression_ratio)
 
         return {
             'memory_id': memory_id,
@@ -432,16 +433,10 @@ class DecayGradientService:
 
         return results
 
-    async def _log_token_savings(self, tokens_saved: int):
-        """Log token savings to token_economics table."""
-        async with get_db_connection() as conn:
-            await conn.execute("""
-                INSERT INTO token_economics (date, tokens_saved_by_decay)
-                VALUES (CURRENT_DATE, $1)
-                ON CONFLICT (date) DO UPDATE
-                SET tokens_saved_by_decay = token_economics.tokens_saved_by_decay + $1,
-                    updated_at = NOW()
-            """, tokens_saved)
+    async def _log_token_savings(self, tokens_saved: int, compression_ratio: float = None):
+        """Log token savings using TokenEconomicsService."""
+        token_service = get_token_economics_service()
+        await token_service.track_decay_savings(tokens_saved, compression_ratio)
 
     def get_compression_preview(self, content: str, target_phase: str) -> str:
         """

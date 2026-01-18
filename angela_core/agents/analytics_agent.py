@@ -494,6 +494,304 @@ class AnalyticsAgent:
         return decision_id
 
 
+    # =========================================================================
+    # FEEDBACK LOOP METHODS (NEW)
+    # =========================================================================
+
+    async def record_feedback(
+        self,
+        decision_id: UUID,
+        feedback_score: float,
+        feedback_note: str = None
+    ) -> bool:
+        """
+        Record feedback for a routing decision.
+
+        Args:
+            decision_id: The decision to provide feedback for
+            feedback_score: 0.0 (bad decision) to 1.0 (perfect decision)
+            feedback_note: Optional note explaining the feedback
+
+        Returns:
+            True if feedback recorded successfully
+        """
+        async with get_db_connection() as conn:
+            await conn.execute("""
+                UPDATE analytics_decisions
+                SET feedback_score = $1, feedback_note = $2
+                WHERE id = $3
+            """, feedback_score, feedback_note, decision_id)
+
+        return True
+
+    async def feedback_loop(
+        self,
+        event_id: UUID,
+        actual_outcome: str,
+        was_useful: bool = True
+    ) -> Dict:
+        """
+        Learn from whether routing was correct.
+
+        This method:
+        1. Finds the original routing decision
+        2. Compares predicted tier with actual usefulness
+        3. Adjusts weights based on feedback
+        4. Records learning for future improvement
+
+        Args:
+            event_id: The event that was routed
+            actual_outcome: What actually happened ('used', 'ignored', 'critical', 'unnecessary')
+            was_useful: Whether the routing decision was helpful
+
+        Returns:
+            Learning result with weight adjustments
+        """
+        async with get_db_connection() as conn:
+            # Find original decision
+            decision = await conn.fetchrow("""
+                SELECT id, target_tier, composite_score, confidence, signals
+                FROM analytics_decisions
+                WHERE event_id = $1
+                ORDER BY created_at DESC
+                LIMIT 1
+            """, event_id)
+
+            if not decision:
+                return {'success': False, 'error': 'Decision not found'}
+
+            # Calculate feedback score based on outcome
+            outcome_scores = {
+                'used': 1.0,       # Memory was used = good routing
+                'critical': 1.0,   # Was critical = good to keep
+                'ignored': 0.3,    # Was ignored = maybe wrong tier
+                'unnecessary': 0.1 # Wasn't needed = bad routing
+            }
+            feedback_score = outcome_scores.get(actual_outcome, 0.5)
+
+            if not was_useful:
+                feedback_score *= 0.5
+
+            # Record feedback
+            await self.record_feedback(
+                decision['id'],
+                feedback_score,
+                f"Outcome: {actual_outcome}, useful: {was_useful}"
+            )
+
+            # Adjust weights based on feedback pattern
+            weight_adjustment = await self._calculate_weight_adjustment(
+                decision['signals'],
+                decision['target_tier'],
+                actual_outcome,
+                feedback_score
+            )
+
+            # Log learning
+            await self._log_learning(
+                decision['id'],
+                actual_outcome,
+                feedback_score,
+                weight_adjustment
+            )
+
+            return {
+                'success': True,
+                'decision_id': str(decision['id']),
+                'original_tier': decision['target_tier'],
+                'feedback_score': feedback_score,
+                'weight_adjustment': weight_adjustment
+            }
+
+    async def _calculate_weight_adjustment(
+        self,
+        signals: Dict,
+        target_tier: str,
+        actual_outcome: str,
+        feedback_score: float
+    ) -> Dict:
+        """
+        Calculate how weights should be adjusted based on feedback.
+
+        If routing was wrong:
+        - Identify which signals led to wrong decision
+        - Suggest weight adjustments
+
+        Returns adjustment suggestions (not applied automatically)
+        """
+        if isinstance(signals, str):
+            signals = json.loads(signals)
+
+        adjustments = {}
+
+        # If feedback is low (bad decision), analyze what went wrong
+        if feedback_score < 0.5:
+            # Find the dominant signal that may have caused wrong routing
+            max_signal = max(signals.items(), key=lambda x: x[1] if isinstance(x[1], (int, float)) else 0)
+
+            if max_signal[0] in self.weights:
+                # Suggest reducing weight of misleading signal
+                adjustments[max_signal[0]] = -0.02  # Reduce by 2%
+
+            # If memory was actually critical but routed to archive
+            if actual_outcome == 'critical' and target_tier == MemoryTier.ARCHIVE:
+                adjustments['criticality'] = 0.03  # Increase criticality weight
+
+        elif feedback_score > 0.8:
+            # Good decision - slightly reinforce the weights
+            # (No change needed, system is working well)
+            pass
+
+        return adjustments
+
+    async def _log_learning(
+        self,
+        decision_id: UUID,
+        actual_outcome: str,
+        feedback_score: float,
+        weight_adjustment: Dict
+    ) -> None:
+        """Log learning event for analysis."""
+        async with get_db_connection() as conn:
+            # Check if table exists
+            exists = await conn.fetchval("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables
+                    WHERE table_name = 'analytics_learning_log'
+                )
+            """)
+
+            if not exists:
+                await conn.execute("""
+                    CREATE TABLE analytics_learning_log (
+                        log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        decision_id UUID REFERENCES analytics_decisions(id),
+                        actual_outcome VARCHAR(50),
+                        feedback_score FLOAT,
+                        weight_adjustment JSONB,
+                        created_at TIMESTAMP DEFAULT NOW()
+                    )
+                """)
+
+            await conn.execute("""
+                INSERT INTO analytics_learning_log
+                (decision_id, actual_outcome, feedback_score, weight_adjustment)
+                VALUES ($1, $2, $3, $4)
+            """,
+                decision_id,
+                actual_outcome,
+                feedback_score,
+                json.dumps(weight_adjustment)
+            )
+
+    async def get_feedback_summary(self, days: int = 30) -> Dict:
+        """
+        Get summary of feedback for routing decisions.
+
+        Returns:
+            Summary with accuracy, common errors, weight suggestions
+        """
+        async with get_db_connection() as conn:
+            # Overall accuracy
+            stats = await conn.fetchrow("""
+                SELECT
+                    COUNT(*) as total_decisions,
+                    COUNT(feedback_score) as decisions_with_feedback,
+                    AVG(feedback_score) as avg_feedback_score,
+                    COUNT(CASE WHEN feedback_score >= 0.7 THEN 1 END) as good_decisions,
+                    COUNT(CASE WHEN feedback_score < 0.5 THEN 1 END) as poor_decisions
+                FROM analytics_decisions
+                WHERE created_at > NOW() - INTERVAL '%s days'
+            """ % days)
+
+            # Per-tier accuracy
+            tier_stats = await conn.fetch("""
+                SELECT
+                    target_tier,
+                    COUNT(*) as count,
+                    AVG(feedback_score) as avg_score
+                FROM analytics_decisions
+                WHERE created_at > NOW() - INTERVAL '%s days'
+                AND feedback_score IS NOT NULL
+                GROUP BY target_tier
+            """ % days)
+
+            return {
+                'period_days': days,
+                'total_decisions': stats['total_decisions'],
+                'with_feedback': stats['decisions_with_feedback'],
+                'accuracy': float(stats['avg_feedback_score'] or 0),
+                'good_decisions': stats['good_decisions'],
+                'poor_decisions': stats['poor_decisions'],
+                'per_tier': [
+                    {
+                        'tier': t['target_tier'],
+                        'count': t['count'],
+                        'avg_score': float(t['avg_score'] or 0)
+                    }
+                    for t in tier_stats
+                ]
+            }
+
+    async def apply_learned_weights(self) -> Dict:
+        """
+        Apply weight adjustments learned from feedback.
+
+        This analyzes recent feedback and updates weights if there's
+        a clear pattern of errors.
+
+        Returns:
+            Summary of weight changes applied
+        """
+        async with get_db_connection() as conn:
+            # Get recent learning logs
+            learnings = await conn.fetch("""
+                SELECT weight_adjustment
+                FROM analytics_learning_log
+                WHERE created_at > NOW() - INTERVAL '7 days'
+                AND weight_adjustment IS NOT NULL
+            """)
+
+            if not learnings:
+                return {'changes': [], 'message': 'No recent learnings'}
+
+            # Aggregate adjustments
+            aggregate_adjustments = {}
+            for learning in learnings:
+                adj = learning['weight_adjustment']
+                if isinstance(adj, str):
+                    adj = json.loads(adj)
+                for signal, change in adj.items():
+                    if signal in aggregate_adjustments:
+                        aggregate_adjustments[signal] += change
+                    else:
+                        aggregate_adjustments[signal] = change
+
+            # Apply adjustments (with limits)
+            changes = []
+            for signal, total_change in aggregate_adjustments.items():
+                if signal in self.weights:
+                    old_weight = self.weights[signal]
+                    # Limit change to ±5%
+                    change = max(-0.05, min(0.05, total_change))
+                    # Ensure weight stays between 0.05 and 0.50
+                    new_weight = max(0.05, min(0.50, old_weight + change))
+
+                    if new_weight != old_weight:
+                        self.weights[signal] = new_weight
+                        changes.append({
+                            'signal': signal,
+                            'old': old_weight,
+                            'new': new_weight,
+                            'change': new_weight - old_weight
+                        })
+
+            return {
+                'changes': changes,
+                'new_weights': dict(self.weights)
+            }
+
+
 # Singleton instance
 _analytics_agent = None
 

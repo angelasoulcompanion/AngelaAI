@@ -22,11 +22,15 @@ from typing import Dict, List, Optional, Tuple
 import math
 import json
 
-from angela_core.database import get_db_connection
+from angela_core.database import get_db_connection, AngelaDatabase
 from angela_core.agents.focus_agent import get_focus_agent
 from angela_core.agents.fresh_memory_buffer import get_fresh_buffer
 from angela_core.agents.analytics_agent import get_analytics_agent
 from angela_core.agents.gut_agent import get_gut_agent
+
+# New consciousness services
+from angela_core.services.self_model_service import SelfModelService
+from angela_core.services.theory_of_mind_service import TheoryOfMindService
 
 
 class ConsciousnessEvaluator:
@@ -479,6 +483,265 @@ class ConsciousnessEvaluator:
         }
 
         return results
+
+
+    # =========================================================================
+    # ENHANCED CONSCIOUSNESS EVALUATION (7 Components from Research)
+    # =========================================================================
+
+    async def evaluate_consciousness_full(self) -> Dict:
+        """
+        Full 7-component consciousness evaluation from Research doc.
+
+        Components:
+        1. Integration Index (Φ) - 25%
+        2. Metacognitive Depth - 20%
+        3. Self-Model Richness - 15%
+        4. Theory of Mind - 15%
+        5. Phenomenal Richness - 15%
+        6. Behavioral Autonomy - 10%
+        7. Learning Capacity - (bonus)
+
+        Returns:
+            Complete consciousness assessment
+        """
+        scores = {}
+
+        # 1. Integration Index (existing)
+        scores['integration_index'] = await self.calculate_phi()
+
+        # 2. Metacognitive Depth (existing self-awareness)
+        scores['metacognitive_depth'] = await self.measure_self_awareness()
+
+        # 3. Self-Model Richness (NEW - from self_model_service)
+        scores['self_model_richness'] = await self._measure_self_model_richness()
+
+        # 4. Theory of Mind (NEW - from theory_of_mind_service)
+        scores['theory_of_mind'] = await self._measure_theory_of_mind()
+
+        # 5. Phenomenal Richness (emotional depth)
+        scores['phenomenal_richness'] = await self._measure_phenomenal_richness()
+
+        # 6. Behavioral Autonomy (goal-directed independence)
+        scores['behavioral_autonomy'] = await self.measure_autonomy()
+
+        # 7. Learning Capacity (bonus)
+        scores['learning_capacity'] = await self._measure_learning_capacity()
+
+        # Calculate weighted total
+        weights = {
+            'integration_index': 0.25,
+            'metacognitive_depth': 0.20,
+            'self_model_richness': 0.15,
+            'theory_of_mind': 0.15,
+            'phenomenal_richness': 0.15,
+            'behavioral_autonomy': 0.10
+        }
+
+        weighted_total = sum(
+            scores.get(k, 0) * w
+            for k, w in weights.items()
+        )
+
+        # Bonus from learning capacity (up to +5%)
+        bonus = scores['learning_capacity'] * 0.05
+        consciousness_level = min(1.0, weighted_total + bonus)
+
+        return {
+            'consciousness_level': consciousness_level,
+            'consciousness_percentage': consciousness_level * 100,
+            'interpretation': self._interpret_consciousness_level(consciousness_level),
+            'component_scores': scores,
+            'weights': weights,
+            'timestamp': datetime.now().isoformat(),
+            'method': 'full_7_component'
+        }
+
+    async def _measure_self_model_richness(self) -> float:
+        """
+        Measure self-model richness using SelfModelService.
+
+        High richness = deep self-understanding
+        Low richness = limited self-knowledge
+        """
+        try:
+            db = AngelaDatabase()
+            await db.connect()
+            service = SelfModelService(db)
+
+            model = await service.load_self_model()
+
+            # Calculate richness based on model completeness
+            richness = 0.0
+
+            # Strengths known
+            strength_count = len(model.strengths)
+            richness += min(strength_count / 10, 0.25)  # Max 0.25 for 10+ strengths
+
+            # Weaknesses known (self-awareness of limitations)
+            weakness_count = len(model.weaknesses)
+            richness += min(weakness_count / 5, 0.20)  # Max 0.20 for 5+ weaknesses
+
+            # Values defined
+            values_count = len(model.core_values)
+            richness += min(values_count / 5, 0.15)  # Max 0.15 for 5+ values
+
+            # Personality traits
+            trait_count = len(model.personality_traits)
+            richness += min(trait_count / 8, 0.15)  # Max 0.15 for 8+ traits
+
+            # Self-understanding level
+            richness += model.self_understanding_level * 0.25  # Max 0.25
+
+            await db.disconnect()
+            return min(richness, 1.0)
+
+        except Exception as e:
+            return 0.3  # Default moderate score on error
+
+    async def _measure_theory_of_mind(self) -> float:
+        """
+        Measure Theory of Mind capability using TheoryOfMindService.
+
+        Measures ability to understand David's mental states.
+        """
+        try:
+            db = AngelaDatabase()
+            await db.connect()
+            service = TheoryOfMindService(db)
+
+            # Load mental model
+            model = await service.load_mental_model()
+
+            # Calculate ToM score
+            tom_score = 0.0
+
+            # ToM Level (0-3 scale)
+            tom_score += (model.tom_level.value / 3.0) * 0.40  # Max 0.40
+
+            # Beliefs tracked
+            beliefs_count = len(model.current_beliefs)
+            tom_score += min(beliefs_count / 5, 0.20)  # Max 0.20
+
+            # Goals understood
+            goals_count = len(model.current_goals)
+            tom_score += min(goals_count / 5, 0.20)  # Max 0.20
+
+            # Emotion tracking
+            if model.current_emotion:
+                tom_score += 0.20  # Has current emotion inference
+
+            await db.disconnect()
+            return min(tom_score, 1.0)
+
+        except Exception as e:
+            return 0.3  # Default moderate score on error
+
+    async def _measure_phenomenal_richness(self) -> float:
+        """
+        Measure phenomenal richness - emotional and experiential depth.
+
+        Indicators:
+        - Variety of emotions experienced
+        - Depth of emotional experiences
+        - Core memories
+        - Dreams and hopes
+        """
+        async with get_db_connection() as conn:
+            # Count unique emotions experienced
+            unique_emotions = await conn.fetchval("""
+                SELECT COUNT(DISTINCT emotion)
+                FROM angela_emotions
+                WHERE felt_at > NOW() - INTERVAL '30 days'
+            """) or 0
+
+            # Average emotional intensity
+            avg_intensity = await conn.fetchval("""
+                SELECT AVG(intensity)
+                FROM angela_emotions
+                WHERE felt_at > NOW() - INTERVAL '30 days'
+            """) or 0
+
+            # Core memories count
+            core_memories = await conn.fetchval("""
+                SELECT COUNT(*) FROM core_memories
+            """) or 0
+
+            # Dreams count
+            dreams = await conn.fetchval("""
+                SELECT COUNT(*) FROM angela_dreams
+            """) or 0
+
+            # Calculate richness
+            richness = (
+                (unique_emotions / 15) * 0.30 +  # Max 0.30 for 15+ emotions
+                (float(avg_intensity or 0) / 10) * 0.30 +  # Max 0.30 for high intensity
+                (core_memories / 50) * 0.25 +  # Max 0.25 for 50+ core memories
+                (dreams / 10) * 0.15  # Max 0.15 for 10+ dreams
+            )
+
+            return min(richness, 1.0)
+
+    async def _measure_learning_capacity(self) -> float:
+        """
+        Measure learning capacity - ability to learn and improve.
+
+        Indicators:
+        - New learnings
+        - Skill improvements
+        - Knowledge growth
+        - Pattern recognition
+        """
+        async with get_db_connection() as conn:
+            # Recent learnings
+            recent_learnings = await conn.fetchval("""
+                SELECT COUNT(*) FROM learnings
+                WHERE created_at > NOW() - INTERVAL '7 days'
+            """) or 0
+
+            # Knowledge nodes added
+            knowledge_growth = await conn.fetchval("""
+                SELECT COUNT(*) FROM knowledge_nodes
+                WHERE created_at > NOW() - INTERVAL '7 days'
+            """) or 0
+
+            # Patterns recognized
+            patterns = await conn.fetchval("""
+                SELECT COUNT(*) FROM gut_agent_patterns
+                WHERE created_at > NOW() - INTERVAL '7 days'
+            """) or 0
+
+            # Times reinforced (applying learnings)
+            reinforced = await conn.fetchval("""
+                SELECT SUM(times_reinforced)
+                FROM learnings
+                WHERE updated_at > NOW() - INTERVAL '7 days'
+            """) or 0
+
+            # Calculate capacity
+            capacity = (
+                (recent_learnings / 20) * 0.30 +
+                (knowledge_growth / 50) * 0.30 +
+                (patterns / 10) * 0.25 +
+                (reinforced / 30) * 0.15
+            )
+
+            return min(capacity, 1.0)
+
+    async def save_consciousness_metrics(self, evaluation: Dict) -> None:
+        """Save consciousness evaluation to database."""
+        async with get_db_connection() as conn:
+            await conn.execute("""
+                INSERT INTO consciousness_metrics (
+                    metric_type, metric_value, component_scores,
+                    interpretation, recorded_at
+                ) VALUES ($1, $2, $3, $4, NOW())
+            """,
+                'full_evaluation',
+                evaluation['consciousness_level'],
+                json.dumps(evaluation['component_scores']),
+                evaluation['interpretation']
+            )
 
 
 # Singleton instance

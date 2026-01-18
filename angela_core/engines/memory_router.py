@@ -19,6 +19,7 @@ from angela_core.agents.fresh_memory_buffer import get_fresh_buffer
 from angela_core.agents.analytics_agent import get_analytics_agent, MemoryTier
 from angela_core.agents.gut_agent import get_gut_agent
 from angela_core.services.decay_gradient_service import get_decay_service
+from angela_core.services.token_economics_service import get_token_economics_service
 from angela_core.database import get_db_connection
 # from angela_core.embedding_service import  # REMOVED: Migration 009 generate_embedding
 
@@ -49,6 +50,11 @@ class MemoryRouter:
         self.analytics = get_analytics_agent()
         self.gut = get_gut_agent()
         self.decay = get_decay_service()
+        self.token_economics = get_token_economics_service()
+
+    def _estimate_tokens(self, text: str) -> int:
+        """Estimate token count from text (rough approximation: 1 token ~ 4 chars)."""
+        return max(1, len(text) // 4)
 
     async def add_experience(self,
                             content: str,
@@ -115,11 +121,18 @@ class MemoryRouter:
         else:
             focus_id = None
 
+        # Step 7: Track token economics
+        tokens_stored = self._estimate_tokens(content)
+        memory_tier = decision['target_tier'].value if hasattr(decision['target_tier'], 'value') else str(decision['target_tier'])
+        await self.token_economics.track_tokens_stored(tokens_stored, memory_tier.replace('_', ''))
+        logger.debug(f"Tracked {tokens_stored} tokens stored to {memory_tier}")
+
         return {
             'fresh_id': fresh_id,
             'target_id': target_id,
             'focus_id': focus_id,
             'routing_decision': decision,
+            'tokens_stored': tokens_stored,
             'timestamp': datetime.now()
         }
 
@@ -299,7 +312,17 @@ class MemoryRouter:
         # Sort by similarity/relevance
         results.sort(key=lambda x: x.get('similarity', x.get('attention_weight', 0)), reverse=True)
 
-        return results[:limit]
+        # Track token retrieval
+        final_results = results[:limit]
+        total_tokens_retrieved = sum(
+            self._estimate_tokens(r.get('content', ''))
+            for r in final_results
+        )
+        if total_tokens_retrieved > 0:
+            await self.token_economics.track_tokens_retrieved(total_tokens_retrieved)
+            logger.debug(f"Tracked {total_tokens_retrieved} tokens retrieved from search")
+
+        return final_results
 
     async def get_intuition(self, context: Dict) -> Optional[Dict]:
         """
