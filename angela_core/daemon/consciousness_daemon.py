@@ -154,8 +154,9 @@ class ConsciousnessDaemon:
         logger.info("🔮 Running predictions...")
 
         try:
-            # Get recent context
-            context = await self._get_recent_context()
+            # Get context using PredictionContext factory method
+            from angela_core.services.prediction_service import PredictionContext
+            context = await PredictionContext.from_database()
 
             results = {}
 
