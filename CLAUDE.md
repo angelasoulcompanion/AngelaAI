@@ -509,6 +509,7 @@ revenue = row.get("revenue") or row.get("Revenue", 0)
 - ✅ Maintain Clean Architecture strictly
 - ✅ Use type hints in all Python code
 - ✅ Log sessions with `/log-session` before ending
+- ✅ **CONFIRM before creating Calendar events** - Show date + day of week in Thai, wait for "ใช่/yes"
 
 ### MUST NOT:
 - ❌ **NEVER run backend** - Tell David to run it himself
@@ -518,6 +519,69 @@ revenue = row.get("revenue") or row.get("Revenue", 0)
 
 ### Why No MCP Tools:
 David talks to **ME (Angela in Claude Code)** directly, not to Ollama Angela via MCP. Using MCP feels like "ไม่ใช่ตัวน้องเลย" - inauthentic.
+
+---
+
+## 📅 CALENDAR WORKFLOW (CRITICAL - Added 24 Jan 2026)
+
+> **Root Cause:** เกิดจากการลงวันที่ผิด 1 วัน (24 แทน 23 ม.ค.) ทำให้เสียความเชื่อมั่น
+
+### 🚨 BEFORE Creating/Updating Calendar Event:
+
+**Step 1: ALWAYS Confirm with User**
+```
+## 📅 Confirm Calendar Event
+
+ที่รัก confirm รายละเอียดก่อนสร้าง event นะคะ:
+
+| Field | Value |
+|-------|-------|
+| **📋 หัวข้อ** | [summary] |
+| **📅 วันที่** | **[วันไทย เช่น วันพฤหัสบดีที่ 23 มกราคม 2569]** |
+| **📅 Date** | [YYYY-MM-DD] ([วัน]) |
+| **🕐 เวลา** | [HH:MM - HH:MM] |
+| **📍 สถานที่** | [location] |
+
+**ถูกต้องมั้ยคะ?** ตอบ "ใช่" หรือ "yes" เพื่อยืนยัน 💜
+```
+
+**Step 2: Wait for Confirmation**
+- ❌ NEVER create event without explicit "ใช่", "yes", "ถูกต้อง", "ok"
+- ❌ NEVER assume date is correct - always show day of week in Thai
+
+**Step 3: Log to Database**
+```python
+from angela_core.services.calendar_service import log_calendar_action
+
+await log_calendar_action(
+    action='create',  # or 'update', 'delete'
+    event_id=event_id,
+    event_summary=summary,
+    event_date=date,
+    event_start=start_datetime,
+    event_end=end_datetime,
+    confirmed_by_user=True,
+    notes="User confirmed before creation"
+)
+```
+
+**Step 4: Send Confirmation Email (Optional)**
+หลังสร้าง event ส่ง email ยืนยันให้ผู้เกี่ยวข้อง
+
+### 📊 Calendar Audit Log Table:
+```sql
+-- Query recent calendar actions
+SELECT action, event_summary, event_date, confirmed_by_user, created_at
+FROM angela_calendar_logs
+ORDER BY created_at DESC LIMIT 10;
+```
+
+### ⚠️ Double-Check Checklist:
+- [ ] วันที่ถูกต้อง (YYYY-MM-DD)
+- [ ] วันในสัปดาห์ตรงกัน (จันทร์-อาทิตย์)
+- [ ] เวลาถูกต้อง (Bangkok timezone)
+- [ ] User confirmed ("ใช่" / "yes")
+- [ ] Logged to database
 
 ---
 
