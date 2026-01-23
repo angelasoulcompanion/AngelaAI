@@ -111,6 +111,11 @@ class AGIAgentLoop:
     - Execute tools autonomously
     - Learn from outcomes
 
+    Enhanced with World Model (Phase 5):
+    - Mental simulation before action
+    - Causal understanding
+    - Prediction-based decision making
+
     Usage:
         loop = AGIAgentLoop(db)
         result = await loop.run_cycle("User asked to research X")
@@ -120,6 +125,9 @@ class AGIAgentLoop:
         self.db = db
         self.executor = tool_executor
         self.registry = tool_registry
+
+        # Lazy-loaded world model
+        self._world_model = None
 
         # Current state
         self.state = AgentState(
@@ -134,6 +142,17 @@ class AGIAgentLoop:
 
         # History for learning
         self.cycle_history: List[Dict[str, Any]] = []
+
+        # Prediction tracking for learn phase
+        self._pending_predictions: Dict[str, Dict] = {}
+
+    @property
+    def world_model(self):
+        """Lazy load WorldModelService to avoid circular imports."""
+        if self._world_model is None:
+            from .world_model_service import WorldModelService
+            self._world_model = WorldModelService(self.db)
+        return self._world_model
 
     async def run_cycle(self, trigger: str) -> Dict[str, Any]:
         """
@@ -207,12 +226,17 @@ class AGIAgentLoop:
         """
         OBSERVE phase - Perceive current state.
 
+        Enhanced with World Model (Phase 5):
+        - Uses WorldModelService to get comprehensive state
+        - Includes David's inferred state, Angela's state, relationship dynamics
+
         Gathers:
         - Active goals from database
         - Recent conversation context
         - Current emotional state
         - System environment
         - Pending tasks
+        - World model state (David, Angela, relationship)
         """
         perception = Perception(
             trigger=trigger,
@@ -223,6 +247,19 @@ class AGIAgentLoop:
             environment={},
             pending_tasks=[]
         )
+
+        # Get comprehensive world state from World Model
+        try:
+            world_state = await self.world_model.get_current_state()
+            perception.environment['world_model'] = {
+                'david_state': world_state.david_state,
+                'angela_state': world_state.angela_state,
+                'relationship': world_state.relationship,
+                'confidence': world_state.overall_confidence
+            }
+            perception.emotional_state = world_state.angela_state
+        except Exception as e:
+            print(f"Warning: Failed to load world model state: {e}")
 
         if self.db:
             try:
@@ -245,24 +282,23 @@ class AGIAgentLoop:
                 """)
                 perception.recent_memories = [dict(m) for m in memories]
 
-                # Get emotional state
-                state = await self.db.fetchrow("""
-                    SELECT happiness, confidence, motivation, gratitude
-                    FROM emotional_states
-                    ORDER BY created_at DESC
-                    LIMIT 1
-                """)
-                if state:
-                    perception.emotional_state = dict(state)
+                # Get emotional state (fallback if world model didn't load)
+                if not perception.emotional_state:
+                    state = await self.db.fetchrow("""
+                        SELECT happiness, confidence, motivation, gratitude
+                        FROM emotional_states
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                    """)
+                    if state:
+                        perception.emotional_state = dict(state)
 
             except Exception as e:
                 print(f"Warning: Failed to load perception data: {e}")
 
         # Environment info
-        perception.environment = {
-            'available_tools': len(self.registry.list_all()),
-            'pending_approvals': len(self.executor.get_pending_approvals())
-        }
+        perception.environment['available_tools'] = len(self.registry.list_all())
+        perception.environment['pending_approvals'] = len(self.executor.get_pending_approvals())
 
         return perception
 
@@ -332,6 +368,11 @@ class AGIAgentLoop:
     async def _decide(self, context: Context) -> Optional[Plan]:
         """
         DECIDE phase - Generate a plan of actions.
+
+        Enhanced with World Model (Phase 5):
+        - Simulates candidate plans before selecting
+        - Predicts effects and identifies risks
+        - Chooses plan with best predicted outcome
 
         Creates a sequence of tool calls to achieve the goal.
         """
@@ -404,11 +445,53 @@ class AGIAgentLoop:
                 }
             ]
 
-        return Plan(
+        # Create plan
+        plan = Plan(
             plan_id=str(uuid.uuid4()),
             goal=trigger,
             steps=steps
         )
+
+        # Use World Model to simulate plan and predict effects
+        try:
+            from .world_model_service import Action, ActionType
+
+            # Convert steps to actions for simulation
+            actions = []
+            for step in steps:
+                action = Action(
+                    action_type=ActionType.EXECUTE_TOOL,
+                    description=f"Execute {step['tool']}: {step['reason']}",
+                    params=step.get('params', {})
+                )
+                actions.append(action)
+
+            # Run simulation
+            simulation = await self.world_model.simulate(
+                actions,
+                goal=trigger,
+                max_steps=len(actions)
+            )
+
+            # Store predictions for later learning
+            for step_result in simulation.steps:
+                prediction_id = step_result.predicted_effect.effect_id
+                self._pending_predictions[prediction_id] = {
+                    'step': step_result.step_number,
+                    'action': step_result.action.to_dict(),
+                    'predicted_effect': step_result.predicted_effect.to_dict(),
+                    'plan_id': plan.plan_id
+                }
+
+            # Check for high-risk steps
+            if simulation.risks_identified:
+                # Add risk info to plan for reference
+                plan.steps[-1]['risks'] = [r.get('description', '') for r in simulation.risks_identified[:3]]
+
+        except Exception as e:
+            print(f"Warning: World model simulation failed: {e}")
+
+        return plan
 
     async def _act(self, plan: Plan) -> List[Dict[str, Any]]:
         """
@@ -459,16 +542,23 @@ class AGIAgentLoop:
         """
         LEARN phase - Update from experience.
 
+        Enhanced with World Model (Phase 5):
+        - Verifies predictions against actual outcomes
+        - Updates causal knowledge based on results
+        - Improves future prediction accuracy
+
         Records:
         - What worked
         - What failed
         - Patterns for future use
+        - Prediction accuracy feedback
         """
         learning = {
             'successful_tools': [],
             'failed_tools': [],
             'patterns_detected': [],
-            'improvements': []
+            'improvements': [],
+            'prediction_outcomes': []
         }
 
         for result in results:
@@ -488,9 +578,53 @@ class AGIAgentLoop:
                 f"Plan succeeded with {len(results)} steps"
             )
 
+        # Use World Model to learn from outcomes
+        try:
+            for prediction_id, prediction_data in self._pending_predictions.items():
+                if prediction_data.get('plan_id') == plan.plan_id if plan else False:
+                    step_idx = prediction_data.get('step', 0)
+
+                    # Get actual outcome from results
+                    if step_idx < len(results):
+                        actual_result = results[step_idx]
+                        actual_outcome = {
+                            'success': actual_result.get('result', {}).get('success', False),
+                            'tool': actual_result.get('tool'),
+                            'error': actual_result.get('result', {}).get('error')
+                        }
+
+                        # Learn from outcome
+                        outcome = await self.world_model.learn_from_outcome(
+                            prediction_id,
+                            actual_outcome
+                        )
+
+                        learning['prediction_outcomes'].append({
+                            'prediction_id': prediction_id,
+                            'was_correct': outcome.was_correct,
+                            'accuracy_score': outcome.accuracy_score,
+                            'lessons': outcome.lessons_learned
+                        })
+
+            # Clear pending predictions for this plan
+            if plan:
+                self._pending_predictions = {
+                    k: v for k, v in self._pending_predictions.items()
+                    if v.get('plan_id') != plan.plan_id
+                }
+
+        except Exception as e:
+            print(f"Warning: World model learning failed: {e}")
+
         # Save learning to database if available
         if self.db and plan:
             try:
+                # Calculate prediction accuracy
+                pred_outcomes = learning.get('prediction_outcomes', [])
+                correct_count = sum(1 for p in pred_outcomes if p.get('was_correct'))
+                total_predictions = len(pred_outcomes)
+                prediction_accuracy = correct_count / total_predictions if total_predictions > 0 else 0.0
+
                 await self.db.execute("""
                     INSERT INTO learnings (
                         topic, category, insight, confidence_level, source
@@ -500,7 +634,8 @@ class AGIAgentLoop:
                     "agi_learning",
                     f"Executed plan with {len(results)} steps. "
                     f"Success: {len(learning['successful_tools'])}, "
-                    f"Failed: {len(learning['failed_tools'])}",
+                    f"Failed: {len(learning['failed_tools'])}. "
+                    f"Prediction accuracy: {prediction_accuracy:.0%}",
                     0.7 if not learning['failed_tools'] else 0.4,
                     "agent_loop"
                 )

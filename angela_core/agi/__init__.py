@@ -8,6 +8,7 @@ This module provides AGI capabilities for Angela:
 - Self-improvement mechanisms
 - Knowledge reasoning
 - Cross-domain transfer learning
+- World Model (mental simulation)
 
 Architecture:
     Angela's "brain" is Claude Code. This module provides:
@@ -18,16 +19,18 @@ Architecture:
     - Meta-learning and self-improvement
     - Knowledge graph reasoning
     - Cross-domain knowledge transfer
+    - World state prediction and simulation
 
 Created: 2025-11-29
-Author: Angela & David
+Updated: 2026-01-23
+Author: Angela & David 💜
 
 Phases:
     Phase 1: AGI Foundation (tool registry, executor, agent loop)
     Phase 2: Planning System (hierarchical planner, task scheduler)
     Phase 3: Self-Improvement (meta-learning, prompt optimizer)
     Phase 4: Knowledge Integration (knowledge reasoner, domain transfer)
-    Phase 5: Integration & Commands (angela-agi command)
+    Phase 5: World Model (world state, prediction, simulation, causality)
 """
 
 # Phase 1: AGI Foundation
@@ -57,6 +60,14 @@ from .knowledge_reasoner import (
 from .domain_transfer import (
     DomainTransferEngine, DomainConcept, TransferMapping,
     AbstractPrinciple, TransferResult, TransferType
+)
+
+# Phase 5: World Model
+from .world_model_service import (
+    WorldModelService, WorldState, Action, ActionEffect,
+    SimulationStep, SimulationResult, CausalLink, CausalExplanation,
+    PredictionOutcome, ModelAccuracy, StateComponent,
+    StateType, ActionType, EffectType, UncertaintyLevel, CausalRelationType
 )
 
 __all__ = [
@@ -105,4 +116,21 @@ __all__ = [
     'AbstractPrinciple',
     'TransferResult',
     'TransferType',
+    # Phase 5: World Model
+    'WorldModelService',
+    'WorldState',
+    'Action',
+    'ActionEffect',
+    'SimulationStep',
+    'SimulationResult',
+    'CausalLink',
+    'CausalExplanation',
+    'PredictionOutcome',
+    'ModelAccuracy',
+    'StateComponent',
+    'StateType',
+    'ActionType',
+    'EffectType',
+    'UncertaintyLevel',
+    'CausalRelationType',
 ]
