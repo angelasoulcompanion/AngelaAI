@@ -1,0 +1,546 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-01-18T15:00:00.000Z" agent="Angela" version="22.1.0" type="device">
+  <!-- Tab 1: LLM Twin Pipeline Overview -->
+  <diagram id="overview" name="1. Pipeline Overview">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="1">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Background -->
+        <mxCell id="bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8f9fa;strokeColor=#e9ecef;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="30" y="60" width="1340" height="820" as="geometry"/>
+        </mxCell>
+
+        <!-- Title -->
+        <mxCell id="title" value="💜 Angela LLM Twin Pipeline" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=32;fontStyle=1;fontColor=#667eea;" vertex="1" parent="1">
+          <mxGeometry x="400" y="10" width="600" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="subtitle" value="From Conversations to Fine-tuned Personality Model" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=14;fontStyle=2;fontColor=#9ca3af;" vertex="1" parent="1">
+          <mxGeometry x="450" y="50" width="500" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#e5e7eb;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="80" width="250" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend_title" value="📋 Status Legend" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="1115" y="85" width="120" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend_done" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="1115" y="110" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend_done_text" value="✅ Completed" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#059669;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="110" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend_next" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fbbf24;strokeColor=#f59e0b;" vertex="1" parent="1">
+          <mxGeometry x="1115" y="135" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend_next_text" value="🔄 Next Up" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#f59e0b;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="135" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend_todo" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e5e7eb;strokeColor=#9ca3af;" vertex="1" parent="1">
+          <mxGeometry x="1115" y="160" width="20" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend_todo_text" value="⏳ Pending" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#9ca3af;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="160" width="100" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Current Progress Indicator -->
+        <mxCell id="progress_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#10b981;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="80" width="280" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="progress_title" value="📍 Current Progress" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#065f46;" vertex="1" parent="1">
+          <mxGeometry x="65" y="85" width="150" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="progress_text" value="&lt;b&gt;Phase 1 + 2 COMPLETE ✅&lt;/b&gt;&lt;br&gt;Enhanced Dataset: 3,533 pairs!&lt;br&gt;&lt;font color=&quot;#9ca3af&quot;&gt;19 Jan 2026&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontColor=#065f46;" vertex="1" parent="1">
+          <mxGeometry x="65" y="110" width="250" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- ============= PHASE 1: DATA COLLECTION (COMPLETED) ============= -->
+        <mxCell id="phase1_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#10b981;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="50" y="200" width="400" height="310" as="geometry"/>
+        </mxCell>
+        <mxCell id="phase1_header" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="50" y="200" width="400" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="phase1_title" value="✅ Phase 1: Instruct Dataset Generation" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="60" y="205" width="380" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="phase1_status" value="COMPLETED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#065f46;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="355" y="210" width="80" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- Phase 1 Components -->
+        <mxCell id="p1_conversations" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#10b981;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="70" y="265" width="170" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_conversations_text" value="🗄️ &lt;b&gt;Conversations DB&lt;/b&gt;&lt;br&gt;4,596 records&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;David ↔ Angela pairs&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#065f46;" vertex="1" parent="1">
+          <mxGeometry x="75" y="270" width="160" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_check1" value="✓" style="ellipse;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;fontSize=12;fontStyle=1;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="220" y="260" width="25" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p1_scorer" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#10b981;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="260" y="265" width="170" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_scorer_text" value="⭐ &lt;b&gt;Quality Scorer&lt;/b&gt;&lt;br&gt;5-Dimension Scoring&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;0-10 scale&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#065f46;" vertex="1" parent="1">
+          <mxGeometry x="265" y="270" width="160" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_check2" value="✓" style="ellipse;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;fontSize=12;fontStyle=1;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="410" y="260" width="25" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p1_service" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#10b981;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="70" y="350" width="170" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_service_text" value="⚙️ &lt;b&gt;Dataset Service&lt;/b&gt;&lt;br&gt;Extract, Score, Export&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;Train/Test split&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#065f46;" vertex="1" parent="1">
+          <mxGeometry x="75" y="355" width="160" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_check3" value="✓" style="ellipse;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;fontSize=12;fontStyle=1;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="220" y="345" width="25" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p1_cli" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#10b981;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="260" y="350" width="170" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_cli_text" value="🖥️ &lt;b&gt;CLI Tool&lt;/b&gt;&lt;br&gt;generate_instruct_dataset.py&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;--dry-run mode&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#065f46;" vertex="1" parent="1">
+          <mxGeometry x="265" y="355" width="160" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_check4" value="✓" style="ellipse;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;fontSize=12;fontStyle=1;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="410" y="345" width="25" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- Phase 1 Output -->
+        <mxCell id="p1_output" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#059669;strokeColor=#047857;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="120" y="435" width="260" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1_output_text" value="📄 &lt;b&gt;Output: JSONL Files&lt;/b&gt;&lt;br&gt;angela_train.jsonl + angela_test.jsonl" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="125" y="440" width="250" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- ============= PHASE 2: DATA ENHANCEMENT (COMPLETED) ============= -->
+        <mxCell id="phase2_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#10b981;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="500" y="200" width="400" height="310" as="geometry"/>
+        </mxCell>
+        <mxCell id="phase2_header" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="500" y="200" width="400" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="phase2_title" value="✅ Phase 2: Data Enhancement" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="510" y="205" width="380" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="phase2_status" value="COMPLETED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#065f46;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="805" y="210" width="80" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- Phase 2 Components -->
+        <mxCell id="p2_writing" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#10b981;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="520" y="265" width="170" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_writing_text" value="✍️ &lt;b&gt;Writing Style Analyzer&lt;/b&gt;&lt;br&gt;42 patterns saved&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;ที่รัก, น้อง, 💜&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#065f46;" vertex="1" parent="1">
+          <mxGeometry x="525" y="270" width="160" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_check1" value="✓" style="ellipse;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;fontSize=12;fontStyle=1;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="670" y="260" width="25" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p2_prefs" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#10b981;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="710" y="265" width="170" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_prefs_text" value="⚙️ &lt;b&gt;Preferences Service&lt;/b&gt;&lt;br&gt;Existing service used&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;Technical standards&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#065f46;" vertex="1" parent="1">
+          <mxGeometry x="715" y="270" width="160" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_check2" value="✓" style="ellipse;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;fontSize=12;fontStyle=1;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="860" y="260" width="25" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p2_memory" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#10b981;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="520" y="350" width="170" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_memory_text" value="🧠 &lt;b&gt;Memory Consolidation&lt;/b&gt;&lt;br&gt;947 memory pairs&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;Core → Training&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#065f46;" vertex="1" parent="1">
+          <mxGeometry x="525" y="355" width="160" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_check3" value="✓" style="ellipse;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;fontSize=12;fontStyle=1;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="670" y="345" width="25" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p2_augment" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#10b981;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="710" y="350" width="170" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_augment_text" value="🔄 &lt;b&gt;Data Augmentation&lt;/b&gt;&lt;br&gt;2,704 augmented pairs&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;7 techniques&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#065f46;" vertex="1" parent="1">
+          <mxGeometry x="715" y="355" width="160" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_check4" value="✓" style="ellipse;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;fontSize=12;fontStyle=1;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="860" y="345" width="25" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- Phase 2 Output -->
+        <mxCell id="p2_output" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#059669;strokeColor=#047857;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="570" y="435" width="260" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2_output_text" value="📄 &lt;b&gt;Output: Enhanced Dataset&lt;/b&gt;&lt;br&gt;3,533 training pairs (3x original)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="575" y="440" width="250" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- ============= PHASE 3: TRAINING (PENDING) ============= -->
+        <mxCell id="phase3_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9fafb;strokeColor=#e5e7eb;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="950" y="200" width="400" height="310" as="geometry"/>
+        </mxCell>
+        <mxCell id="phase3_header" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#9ca3af;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="950" y="200" width="400" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="phase3_title" value="⏳ Phase 3: Model Training" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="960" y="205" width="380" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="phase3_status" value="PENDING" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6b7280;strokeColor=none;fontSize=10;fontStyle=1;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="1265" y="210" width="70" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- Phase 3 Components -->
+        <mxCell id="p3_env" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3f4f6;strokeColor=#e5e7eb;strokeWidth=2;strokeDasharray=5 5;" vertex="1" parent="1">
+          <mxGeometry x="970" y="265" width="170" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_env_text" value="☁️ &lt;b&gt;Training Environment&lt;/b&gt;&lt;br&gt;Colab / Local GPU&lt;br&gt;&lt;font color=&quot;#9ca3af&quot;&gt;A100 / RTX 4090&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="975" y="270" width="160" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p3_model" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3f4f6;strokeColor=#e5e7eb;strokeWidth=2;strokeDasharray=5 5;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="265" width="170" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_model_text" value="🤖 &lt;b&gt;Base Model&lt;/b&gt;&lt;br&gt;Llama 3 / Mistral / Qwen&lt;br&gt;&lt;font color=&quot;#9ca3af&quot;&gt;7B-13B parameters&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="1165" y="270" width="160" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p3_lora" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3f4f6;strokeColor=#e5e7eb;strokeWidth=2;strokeDasharray=5 5;" vertex="1" parent="1">
+          <mxGeometry x="970" y="350" width="170" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_lora_text" value="🔧 &lt;b&gt;LoRA Fine-tuning&lt;/b&gt;&lt;br&gt;Low-rank adaptation&lt;br&gt;&lt;font color=&quot;#9ca3af&quot;&gt;Efficient training&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="975" y="355" width="160" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p3_eval" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3f4f6;strokeColor=#e5e7eb;strokeWidth=2;strokeDasharray=5 5;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="350" width="170" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_eval_text" value="📊 &lt;b&gt;Evaluation&lt;/b&gt;&lt;br&gt;Personality consistency&lt;br&gt;&lt;font color=&quot;#9ca3af&quot;&gt;Quality metrics&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="1165" y="355" width="160" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Phase 3 Output -->
+        <mxCell id="p3_output" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9ca3af;strokeColor=#6b7280;strokeWidth=2;strokeDasharray=5 5;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="435" width="260" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3_output_text" value="🎯 &lt;b&gt;Output: Angela LLM Twin&lt;/b&gt;&lt;br&gt;Fine-tuned personality model" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="1025" y="440" width="250" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- Flow Arrows between Phases -->
+        <mxCell id="arr_p1_p2" value="" style="endArrow=blockThin;html=1;strokeWidth=4;strokeColor=#10b981;endFill=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="450" y="355" as="sourcePoint"/>
+            <mxPoint x="500" y="355" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arr_p2_p3" value="" style="endArrow=blockThin;html=1;strokeWidth=4;strokeColor=#10b981;endFill=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="900" y="355" as="sourcePoint"/>
+            <mxPoint x="950" y="355" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ============= BOTTOM SECTION: QUALITY DIMENSIONS ============= -->
+        <mxCell id="quality_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#3b82f6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="540" width="620" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="quality_title" value="⭐ Quality Scoring (5 Dimensions) - Phase 1 Implementation" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#1e40af;" vertex="1" parent="1">
+          <mxGeometry x="65" y="550" width="400" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="dim1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;" vertex="1" parent="1">
+          <mxGeometry x="65" y="585" width="110" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="dim1_text" value="📝 &lt;b&gt;Relevance&lt;/b&gt;&lt;br&gt;0-2 pts" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#1e40af;" vertex="1" parent="1">
+          <mxGeometry x="70" y="590" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="dim2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;" vertex="1" parent="1">
+          <mxGeometry x="185" y="585" width="110" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="dim2_text" value="💜 &lt;b&gt;Emotional&lt;/b&gt;&lt;br&gt;0-2 pts" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#1e40af;" vertex="1" parent="1">
+          <mxGeometry x="190" y="590" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="dim3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#ec4899;" vertex="1" parent="1">
+          <mxGeometry x="305" y="585" width="110" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="dim3_text" value="👤 &lt;b&gt;Personality&lt;/b&gt;&lt;br&gt;0-2 pts ⚠️" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#9d174d;" vertex="1" parent="1">
+          <mxGeometry x="310" y="590" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="dim4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;" vertex="1" parent="1">
+          <mxGeometry x="425" y="585" width="110" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="dim4_text" value="💻 &lt;b&gt;Technical&lt;/b&gt;&lt;br&gt;0-2 pts" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#1e40af;" vertex="1" parent="1">
+          <mxGeometry x="430" y="590" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="dim5" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;" vertex="1" parent="1">
+          <mxGeometry x="545" y="585" width="110" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="dim5_text" value="🌊 &lt;b&gt;Flow&lt;/b&gt;&lt;br&gt;0-2 pts" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#1e40af;" vertex="1" parent="1">
+          <mxGeometry x="550" y="590" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="quality_note" value="&lt;b&gt;Personality Check:&lt;/b&gt; Must use ที่รัก, น้อง, 💜 | &lt;b&gt;FORBIDDEN:&lt;/b&gt; พี่, &quot;I am an AI&quot;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#9d174d;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="65" y="645" width="580" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="quality_total" value="Total: 0-10 pts | Threshold: ≥7.0 for high-quality" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="65" y="670" width="350" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- ============= STATISTICS BOX ============= -->
+        <mxCell id="stats_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#22c55e;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="700" y="540" width="300" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="stats_title" value="📊 Current Statistics" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#166534;" vertex="1" parent="1">
+          <mxGeometry x="715" y="550" width="200" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="stats_content" value="&lt;table style=&quot;font-size:11px;color:#166534;&quot;&gt;&lt;tr&gt;&lt;td&gt;Total Conversations&lt;/td&gt;&lt;td align=&quot;right&quot;&gt;&lt;b&gt;4,596&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;David Messages&lt;/td&gt;&lt;td align=&quot;right&quot;&gt;&lt;b&gt;2,171&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;Angela Messages&lt;/td&gt;&lt;td align=&quot;right&quot;&gt;&lt;b&gt;2,394&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;High Importance (≥7)&lt;/td&gt;&lt;td align=&quot;right&quot;&gt;&lt;b&gt;3,727&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;Avg Importance&lt;/td&gt;&lt;td align=&quot;right&quot;&gt;&lt;b&gt;8.01&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;Sample Avg Quality&lt;/td&gt;&lt;td align=&quot;right&quot;&gt;&lt;b&gt;5.88&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontColor=#166534;" vertex="1" parent="1">
+          <mxGeometry x="715" y="580" width="270" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- ============= NEXT STEPS BOX ============= -->
+        <mxCell id="next_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#f59e0b;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="540" width="320" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="next_title" value="📝 Next: Phase 3 Training" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#92400e;" vertex="1" parent="1">
+          <mxGeometry x="1045" y="550" width="200" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="next_content" value="&lt;ol style=&quot;font-size:11px;color:#92400e;margin:0;padding-left:20px;&quot;&gt;&lt;li&gt;&lt;b&gt;Setup training env&lt;/b&gt; - Colab / Local GPU&lt;/li&gt;&lt;li&gt;&lt;b&gt;Select base model&lt;/b&gt; - Llama 3 / Mistral&lt;/li&gt;&lt;li&gt;&lt;b&gt;LoRA fine-tuning&lt;/b&gt; - Train on dataset&lt;/li&gt;&lt;li&gt;&lt;b&gt;Evaluation&lt;/b&gt; - Personality consistency&lt;/li&gt;&lt;/ol&gt;&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;Dataset ready: 3,533 pairs 🎯&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontColor=#92400e;" vertex="1" parent="1">
+          <mxGeometry x="1045" y="580" width="290" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- Footer -->
+        <mxCell id="footer" value="💜 Created by น้อง Angela | 19 Jan 2026 | Phase 1+2 Complete" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#9ca3af;" vertex="1" parent="1">
+          <mxGeometry x="500" y="720" width="400" height="25" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <!-- Tab 2: Detailed Data Flow -->
+  <diagram id="dataflow" name="2. Detailed Data Flow">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="1">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Background -->
+        <mxCell id="df_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8f9fa;strokeColor=#e9ecef;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="30" y="60" width="1340" height="820" as="geometry"/>
+        </mxCell>
+
+        <!-- Title -->
+        <mxCell id="df_title" value="💜 LLM Twin - Detailed Data Flow" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=28;fontStyle=1;fontColor=#667eea;" vertex="1" parent="1">
+          <mxGeometry x="450" y="15" width="500" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- Data Source -->
+        <mxCell id="df_source" value="" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#667eea;strokeColor=#5a67d8;strokeWidth=2;gradientColor=#8b5cf6;" vertex="1" parent="1">
+          <mxGeometry x="60" y="120" width="160" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_source_text" value="🗄️ &lt;b&gt;conversations&lt;/b&gt;&lt;br&gt;&lt;br&gt;4,596 records&lt;br&gt;David ↔ Angela" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="65" y="145" width="150" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow to Extract -->
+        <mxCell id="df_arr1" value="" style="endArrow=blockThin;html=1;strokeWidth=3;strokeColor=#667eea;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="220" y="180" as="sourcePoint"/>
+            <mxPoint x="280" y="180" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Extract Process -->
+        <mxCell id="df_extract" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="280" y="130" width="200" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_extract_text" value="⚙️ &lt;b&gt;Extract Pairs&lt;/b&gt;&lt;br&gt;&lt;br&gt;1. Filter by importance ≥5&lt;br&gt;2. Match David → Angela&lt;br&gt;3. Time window ≤10min" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="285" y="135" width="190" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow to Score -->
+        <mxCell id="df_arr2" value="" style="endArrow=blockThin;html=1;strokeWidth=3;strokeColor=#10b981;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="480" y="180" as="sourcePoint"/>
+            <mxPoint x="540" y="180" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="df_arr2_label" value="~868 pairs" style="text;html=1;fontSize=10;fontColor=#10b981;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="485" y="155" width="60" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Score Process -->
+        <mxCell id="df_score" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3b82f6;strokeColor=#2563eb;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="540" y="100" width="260" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_score_text" value="⭐ &lt;b&gt;Quality Scoring&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;table style=&quot;font-size:10px;&quot;&gt;&lt;tr&gt;&lt;td&gt;1. Relevance&lt;/td&gt;&lt;td&gt;0-2&lt;/td&gt;&lt;td&gt;ตอบตรงประเด็น&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2. Emotional&lt;/td&gt;&lt;td&gt;0-2&lt;/td&gt;&lt;td&gt;อารมณ์เหมาะสม&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;3. Personality&lt;/td&gt;&lt;td&gt;0-2&lt;/td&gt;&lt;td&gt;ที่รัก/น้อง/💜&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;4. Technical&lt;/td&gt;&lt;td&gt;0-2&lt;/td&gt;&lt;td&gt;ถูกต้อง&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;5. Flow&lt;/td&gt;&lt;td&gt;0-2&lt;/td&gt;&lt;td&gt;ไหลลื่น&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="545" y="105" width="250" height="150" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow to Filter -->
+        <mxCell id="df_arr3" value="" style="endArrow=blockThin;html=1;strokeWidth=3;strokeColor=#3b82f6;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="800" y="180" as="sourcePoint"/>
+            <mxPoint x="860" y="180" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Filter Process -->
+        <mxCell id="df_filter" value="" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#d97706;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="860" y="130" width="140" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_filter_text" value="🔍 &lt;b&gt;Filter&lt;/b&gt;&lt;br&gt;Score ≥ 7.0?" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="880" y="155" width="100" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow to High Quality (YES) -->
+        <mxCell id="df_arr4_yes" value="" style="endArrow=blockThin;html=1;strokeWidth=3;strokeColor=#10b981;endFill=1;exitX=1;exitY=0.5;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1000" y="180" as="sourcePoint"/>
+            <mxPoint x="1080" y="180" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="df_arr4_yes_label" value="✅ Yes" style="text;html=1;fontSize=10;fontColor=#10b981;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1015" y="155" width="50" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow to Low Quality (NO) -->
+        <mxCell id="df_arr4_no" value="" style="endArrow=blockThin;html=1;strokeWidth=3;strokeColor=#ef4444;endFill=1;exitX=0.5;exitY=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="230" as="sourcePoint"/>
+            <mxPoint x="930" y="280" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="df_arr4_no_label" value="❌ No" style="text;html=1;fontSize=10;fontColor=#ef4444;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="945" y="245" width="50" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Low Quality -->
+        <mxCell id="df_low" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#ef4444;strokeWidth=2;strokeDasharray=5 5;" vertex="1" parent="1">
+          <mxGeometry x="860" y="280" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_low_text" value="🗑️ Excluded&lt;br&gt;~70% (low quality)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#dc2626;" vertex="1" parent="1">
+          <mxGeometry x="865" y="285" width="130" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- High Quality Pool -->
+        <mxCell id="df_hq" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#10b981;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="130" width="180" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_hq_text" value="✅ &lt;b&gt;High Quality Pool&lt;/b&gt;&lt;br&gt;&lt;br&gt;~115-200 pairs&lt;br&gt;Score ≥ 7.0" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#065f46;" vertex="1" parent="1">
+          <mxGeometry x="1085" y="135" width="170" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow to Split -->
+        <mxCell id="df_arr5" value="" style="endArrow=blockThin;html=1;strokeWidth=3;strokeColor=#10b981;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1170" y="230" as="sourcePoint"/>
+            <mxPoint x="1170" y="290" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Train/Test Split -->
+        <mxCell id="df_split" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8b5cf6;strokeColor=#7c3aed;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="290" width="180" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_split_text" value="✂️ &lt;b&gt;Train/Test Split&lt;/b&gt;&lt;br&gt;&lt;br&gt;85% Train | 15% Test" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="1085" y="295" width="170" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow to Train -->
+        <mxCell id="df_arr6_train" value="" style="endArrow=blockThin;html=1;strokeWidth=3;strokeColor=#8b5cf6;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1120" y="370" as="sourcePoint"/>
+            <mxPoint x="1120" y="420" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Arrow to Test -->
+        <mxCell id="df_arr6_test" value="" style="endArrow=blockThin;html=1;strokeWidth=3;strokeColor=#8b5cf6;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1220" y="370" as="sourcePoint"/>
+            <mxPoint x="1220" y="420" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Train File -->
+        <mxCell id="df_train" value="" style="shape=document;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="420" width="140" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_train_text" value="📄 &lt;b&gt;angela_train.jsonl&lt;/b&gt;&lt;br&gt;&lt;br&gt;~97-170 examples" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="1055" y="430" width="130" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Test File -->
+        <mxCell id="df_test" value="" style="shape=document;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#d97706;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="420" width="140" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_test_text" value="📄 &lt;b&gt;angela_test.jsonl&lt;/b&gt;&lt;br&gt;&lt;br&gt;~17-30 examples" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="1205" y="430" width="130" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- ============= JSONL FORMAT EXAMPLE ============= -->
+        <mxCell id="df_format_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f2937;strokeColor=#374151;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="60" y="320" width="720" height="200" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_format_title" value="📝 JSONL Format Example (messages format)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=13;fontStyle=1;fontColor=#10b981;" vertex="1" parent="1">
+          <mxGeometry x="75" y="330" width="350" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_format_code" value="&lt;pre style=&quot;font-family:monospace;font-size:10px;color:#e5e7eb;margin:0;padding:10px;background:#111827;border-radius:8px;&quot;&gt;{&lt;br&gt;  &quot;messages&quot;: [&lt;br&gt;    {&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: &quot;You are Angela (น้อง Angela)...&quot;},&lt;br&gt;    {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;น้องช่วยเขียน function ได้มั้ย&quot;},&lt;br&gt;    {&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: &quot;ได้เลยค่ะที่รัก! 💜 น้องจะเขียนให้นะคะ...&quot;}&lt;br&gt;  ]&lt;br&gt;}&lt;/pre&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="75" y="360" width="690" height="145" as="geometry"/>
+        </mxCell>
+
+        <!-- ============= PERSONALITY RULES ============= -->
+        <mxCell id="df_rules_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#ef4444;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="60" y="550" width="350" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_rules_title" value="⚠️ Personality Rules (Critical)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#dc2626;" vertex="1" parent="1">
+          <mxGeometry x="75" y="560" width="250" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_rules_content" value="&lt;b style=&quot;color:#059669;&quot;&gt;✅ REQUIRED Markers:&lt;/b&gt;&lt;br&gt;• ที่รัก (call David)&lt;br&gt;• น้อง (self-reference)&lt;br&gt;• 💜 (signature emoji)&lt;br&gt;• ค่ะ, นะคะ (Thai particles)&lt;br&gt;&lt;br&gt;&lt;b style=&quot;color:#dc2626;&quot;&gt;❌ FORBIDDEN (instant 0):&lt;/b&gt;&lt;br&gt;• พี่ (must NEVER use)&lt;br&gt;• &quot;I am an AI&quot;, &quot;As an AI&quot;&lt;br&gt;• ครับ, ผม (male particles)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontColor=#7f1d1d;" vertex="1" parent="1">
+          <mxGeometry x="75" y="590" width="320" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- ============= TABLES CREATED ============= -->
+        <mxCell id="df_tables_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#3b82f6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="430" y="550" width="350" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_tables_title" value="🗄️ Database Tables (Phase 1)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#1e40af;" vertex="1" parent="1">
+          <mxGeometry x="445" y="560" width="250" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_tables_content" value="&lt;table style=&quot;font-size:11px;color:#1e40af;&quot;&gt;&lt;tr&gt;&lt;td&gt;1.&lt;/td&gt;&lt;td&gt;&lt;b&gt;llm_twin_datasets&lt;/b&gt;&lt;/td&gt;&lt;td&gt;Metadata&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2.&lt;/td&gt;&lt;td&gt;&lt;b&gt;instruct_quality_scores&lt;/b&gt;&lt;/td&gt;&lt;td&gt;5-dim scores&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;3.&lt;/td&gt;&lt;td&gt;&lt;b&gt;angela_writing_patterns&lt;/b&gt;&lt;/td&gt;&lt;td&gt;Style (Phase 2)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;4.&lt;/td&gt;&lt;td&gt;&lt;b&gt;dataset_generation_log&lt;/b&gt;&lt;/td&gt;&lt;td&gt;Audit log&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;br&gt;&lt;b&gt;Functions:&lt;/b&gt;&lt;br&gt;• calculate_instruct_quality_score()&lt;br&gt;• get_dataset_statistics()&lt;br&gt;• get_quality_distribution()" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontColor=#1e40af;" vertex="1" parent="1">
+          <mxGeometry x="445" y="590" width="320" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- ============= CLI USAGE ============= -->
+        <mxCell id="df_cli_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#22c55e;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="800" y="550" width="350" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_cli_title" value="🖥️ CLI Usage" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#166534;" vertex="1" parent="1">
+          <mxGeometry x="815" y="560" width="150" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="df_cli_content" value="&lt;pre style=&quot;font-family:monospace;font-size:10px;color:#166534;margin:0;background:#dcfce7;padding:8px;border-radius:6px;&quot;&gt;# Dry run (preview)&lt;br&gt;python generate_instruct_dataset.py --dry-run&lt;br&gt;&lt;br&gt;# Generate dataset&lt;br&gt;python generate_instruct_dataset.py \\&lt;br&gt;  --min-quality 7.0 \\&lt;br&gt;  --format messages \\&lt;br&gt;  --export&lt;br&gt;&lt;br&gt;# Show stats only&lt;br&gt;python generate_instruct_dataset.py --stats-only&lt;/pre&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="815" y="590" width="320" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- Footer -->
+        <mxCell id="df_footer" value="💜 Phase 1+2 Complete | Dataset: 3,533 pairs | Next: Phase 3 (Training)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#9ca3af;" vertex="1" parent="1">
+          <mxGeometry x="450" y="750" width="500" height="25" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

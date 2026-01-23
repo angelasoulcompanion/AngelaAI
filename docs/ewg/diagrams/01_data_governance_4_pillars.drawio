@@ -1,113 +1,96 @@
-<mxfile host="app.diagrams.net" modified="2026-01-13T09:00:00.000Z" agent="Angela AI" version="22.1.0">
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.3.0 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.3.0">
   <diagram name="Data Governance 4 Pillars" id="4pillars">
-    <mxGraphModel dx="1434" dy="780" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+    <mxGraphModel dx="1257" dy="781" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-
-        <!-- Title -->
-        <mxCell id="title" value="DATA GOVERNANCE FRAMEWORK" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
-          <mxGeometry x="284" y="30" width="600" height="40" as="geometry" />
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1a1a2e;" value="DATA GOVERNANCE FRAMEWORK" vertex="1">
+          <mxGeometry height="40" width="600" x="284" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="subtitle" value="The Four Pillars" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="434" y="70" width="300" height="20" as="geometry" />
+        <mxCell id="subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#666666;" value="The Four Pillars" vertex="1">
+          <mxGeometry height="20" width="300" x="434" y="70" as="geometry" />
         </mxCell>
-
-        <!-- Central Hub - Data Governance -->
-        <mxCell id="center" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#1a1a2e;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="504" y="320" width="160" height="160" as="geometry" />
+        <mxCell id="center" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#1a1a2e;shadow=1;" value="" vertex="1">
+          <mxGeometry height="160" width="160" x="504" y="320" as="geometry" />
         </mxCell>
-        <mxCell id="centerText" value="DATA&#xa;GOVERNANCE" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="524" y="375" width="120" height="50" as="geometry" />
+        <mxCell id="centerText" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#FFFFFF;" value="DATA&#xa;GOVERNANCE" vertex="1">
+          <mxGeometry height="50" width="120" x="524" y="375" as="geometry" />
         </mxCell>
-
-        <!-- Pillar 1: PEOPLE (Top) -->
-        <mxCell id="people" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6366f1;strokeColor=#4f46e5;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="484" y="100" width="200" height="140" as="geometry" />
+        <mxCell id="people" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6366f1;strokeColor=#4f46e5;shadow=1;" value="" vertex="1">
+          <mxGeometry height="140" width="200" x="484" y="100" as="geometry" />
         </mxCell>
-        <mxCell id="peopleIcon" value="&#128101;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=36;" vertex="1" parent="1">
-          <mxGeometry x="554" y="105" width="60" height="40" as="geometry" />
+        <mxCell id="peopleIcon" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=36;" value="👥" vertex="1">
+          <mxGeometry height="40" width="60" x="554" y="105" as="geometry" />
         </mxCell>
-        <mxCell id="peopleTitle" value="PEOPLE" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="534" y="140" width="100" height="25" as="geometry" />
+        <mxCell id="peopleTitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#FFFFFF;" value="PEOPLE" vertex="1">
+          <mxGeometry height="25" width="100" x="534" y="140" as="geometry" />
         </mxCell>
-        <mxCell id="peopleItems" value="&#8226; Governance Council&#xa;&#8226; Data Owners&#xa;&#8226; Data Stewards&#xa;&#8226; Data Custodians" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="504" y="165" width="160" height="70" as="geometry" />
+        <mxCell id="peopleItems" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#FFFFFF;" value="• Governance Council&#xa;• Data Owners&#xa;• Data Stewards&#xa;• Data Custodians" vertex="1">
+          <mxGeometry height="70" width="160" x="504" y="165" as="geometry" />
         </mxCell>
-
-        <!-- Pillar 2: PROCESS (Right) -->
-        <mxCell id="process" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="730" y="330" width="200" height="140" as="geometry" />
+        <mxCell id="process" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#10b981;strokeColor=#059669;shadow=1;" value="" vertex="1">
+          <mxGeometry height="140" width="200" x="730" y="330" as="geometry" />
         </mxCell>
-        <mxCell id="processIcon" value="&#9881;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=36;" vertex="1" parent="1">
-          <mxGeometry x="800" y="335" width="60" height="40" as="geometry" />
+        <mxCell id="processIcon" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=36;" value="⚙" vertex="1">
+          <mxGeometry height="40" width="60" x="800" y="335" as="geometry" />
         </mxCell>
-        <mxCell id="processTitle" value="PROCESS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="780" y="370" width="100" height="25" as="geometry" />
+        <mxCell id="processTitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#FFFFFF;" value="PROCESS" vertex="1">
+          <mxGeometry height="25" width="100" x="780" y="370" as="geometry" />
         </mxCell>
-        <mxCell id="processItems" value="&#8226; Lifecycle Management&#xa;&#8226; Issue Resolution&#xa;&#8226; Change Management&#xa;&#8226; Quality Assurance" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="750" y="395" width="160" height="70" as="geometry" />
+        <mxCell id="processItems" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#FFFFFF;" value="• Lifecycle Management&#xa;• Issue Resolution&#xa;• Change Management&#xa;• Quality Assurance" vertex="1">
+          <mxGeometry height="70" width="160" x="750" y="395" as="geometry" />
         </mxCell>
-
-        <!-- Pillar 3: TECHNOLOGY (Bottom) -->
-        <mxCell id="tech" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#d97706;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="484" y="560" width="200" height="140" as="geometry" />
+        <mxCell id="tech" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#d97706;shadow=1;" value="" vertex="1">
+          <mxGeometry height="140" width="200" x="484" y="560" as="geometry" />
         </mxCell>
-        <mxCell id="techIcon" value="&#128187;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=36;" vertex="1" parent="1">
-          <mxGeometry x="554" y="565" width="60" height="40" as="geometry" />
+        <mxCell id="techIcon" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=36;" value="💻" vertex="1">
+          <mxGeometry height="40" width="60" x="554" y="565" as="geometry" />
         </mxCell>
-        <mxCell id="techTitle" value="TECHNOLOGY" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="524" y="600" width="120" height="25" as="geometry" />
+        <mxCell id="techTitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#FFFFFF;" value="TECHNOLOGY" vertex="1">
+          <mxGeometry height="25" width="120" x="524" y="600" as="geometry" />
         </mxCell>
-        <mxCell id="techItems" value="&#8226; Data Catalog&#xa;&#8226; Lineage Mapping&#xa;&#8226; Access Controls&#xa;&#8226; Quality Monitoring" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="504" y="625" width="160" height="70" as="geometry" />
+        <mxCell id="techItems" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#FFFFFF;" value="• Data Catalog&#xa;• Lineage Mapping&#xa;• Access Controls&#xa;• Quality Monitoring" vertex="1">
+          <mxGeometry height="70" width="160" x="504" y="625" as="geometry" />
         </mxCell>
-
-        <!-- Pillar 4: POLICY (Left) -->
-        <mxCell id="policy" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ef4444;strokeColor=#dc2626;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="238" y="330" width="200" height="140" as="geometry" />
+        <mxCell id="policy" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ef4444;strokeColor=#dc2626;shadow=1;" value="" vertex="1">
+          <mxGeometry height="140" width="200" x="238" y="330" as="geometry" />
         </mxCell>
-        <mxCell id="policyIcon" value="&#128220;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=36;" vertex="1" parent="1">
-          <mxGeometry x="308" y="335" width="60" height="40" as="geometry" />
+        <mxCell id="policyIcon" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=36;" value="📜" vertex="1">
+          <mxGeometry height="40" width="60" x="308" y="335" as="geometry" />
         </mxCell>
-        <mxCell id="policyTitle" value="POLICY" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="288" y="370" width="100" height="25" as="geometry" />
+        <mxCell id="policyTitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#FFFFFF;" value="POLICY" vertex="1">
+          <mxGeometry height="25" width="100" x="288" y="370" as="geometry" />
         </mxCell>
-        <mxCell id="policyItems" value="&#8226; Classification&#xa;&#8226; Quality Standards&#xa;&#8226; Access Rules&#xa;&#8226; Retention Rules" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="258" y="395" width="160" height="70" as="geometry" />
+        <mxCell id="policyItems" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#FFFFFF;" value="• Classification&#xa;• Quality Standards&#xa;• Access Rules&#xa;• Retention Rules" vertex="1">
+          <mxGeometry height="70" width="160" x="258" y="395" as="geometry" />
         </mxCell>
-
-        <!-- Connecting Lines -->
-        <mxCell id="line1" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#1a1a2e;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1">
+        <mxCell id="line1" edge="1" parent="1" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#1a1a2e;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" value="">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="584" y="240" as="sourcePoint" />
             <mxPoint x="584" y="320" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="line2" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#1a1a2e;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1">
+        <mxCell id="line2" edge="1" parent="1" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#1a1a2e;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" value="">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="664" y="400" as="sourcePoint" />
             <mxPoint x="730" y="400" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="line3" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#1a1a2e;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1">
+        <mxCell id="line3" edge="1" parent="1" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#1a1a2e;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" value="">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="584" y="560" as="sourcePoint" />
             <mxPoint x="584" y="480" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="line4" value="" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#1a1a2e;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1">
+        <mxCell id="line4" edge="1" parent="1" style="endArrow=none;html=1;strokeWidth=3;strokeColor=#1a1a2e;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" value="">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="504" y="400" as="sourcePoint" />
             <mxPoint x="438" y="400" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-
-        <!-- Footer -->
-        <mxCell id="footer" value="EWG Phase#0 | Data Governance Framework | January 2026" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#999999;" vertex="1" parent="1">
-          <mxGeometry x="384" y="750" width="400" height="20" as="geometry" />
+        <mxCell id="footer" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#999999;" value="EWG Phase#0 | Data Governance Framework | January 2026" vertex="1">
+          <mxGeometry height="20" width="400" x="384" y="750" as="geometry" />
         </mxCell>
-
       </root>
     </mxGraphModel>
   </diagram>

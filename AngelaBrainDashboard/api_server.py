@@ -1061,14 +1061,17 @@ async def get_proactive_today_count():
 
 @app.get("/api/human-mind/dreams")
 async def get_angela_dreams(limit: int = Query(10, ge=1, le=50)):
-    """Phase 4: Dreams from consciousness log"""
+    """Phase 4: Dreams from angela_dreams table"""
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT log_id::text as dream_id, thought as dream_content,
-                   what_it_means_to_me as meaning, feeling, significance,
+            SELECT dream_id::text,
+                   COALESCE(content, dream_content) as dream_content,
+                   possible_meaning as meaning,
+                   emotional_tone as feeling,
+                   COALESCE((intensity * 10)::int, 5) as significance,
                    to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"+00:00"') as created_at
-            FROM angela_consciousness_log
-            WHERE thought LIKE '[dream:%]%'
+            FROM angela_dreams
+            WHERE is_active = TRUE
             ORDER BY created_at DESC
             LIMIT $1
         """, limit)
@@ -1077,12 +1080,12 @@ async def get_angela_dreams(limit: int = Query(10, ge=1, le=50)):
 
 @app.get("/api/human-mind/dreams-today")
 async def get_dreams_today_count():
-    """Phase 4: Count dreams today"""
+    """Phase 4: Count dreams today from angela_dreams table"""
     async with pool.acquire() as conn:
         row = await conn.fetchrow("""
             SELECT COUNT(*) as count
-            FROM angela_consciousness_log
-            WHERE (thought LIKE '[dream:%]%' OR thought LIKE '[imagine:%]%')
+            FROM angela_dreams
+            WHERE is_active = TRUE
               AND DATE(created_at) = CURRENT_DATE
         """)
         return {"count": row["count"]}
@@ -1110,10 +1113,10 @@ async def get_human_mind_stats():
             WHERE DATE(created_at) = CURRENT_DATE
         """)
 
-        # Dreams today
+        # Dreams today (from angela_dreams table)
         dreams = await conn.fetchrow("""
-            SELECT COUNT(*) as count FROM angela_consciousness_log
-            WHERE (thought LIKE '[dream:%]%' OR thought LIKE '[imagine:%]%')
+            SELECT COUNT(*) as count FROM angela_dreams
+            WHERE is_active = TRUE
               AND DATE(created_at) = CURRENT_DATE
         """)
 

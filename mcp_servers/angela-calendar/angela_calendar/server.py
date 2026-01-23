@@ -9,6 +9,10 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
+
+# Bangkok timezone
+BANGKOK_TZ = ZoneInfo('Asia/Bangkok')
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -289,10 +293,13 @@ def format_event(event: dict) -> str:
         end_dt = end.get('dateTime', '')
         if start_dt:
             start_parsed = datetime.fromisoformat(start_dt.replace('Z', '+00:00'))
-            time_str = start_parsed.strftime('%Y-%m-%d %H:%M')
+            # Convert to Bangkok timezone for display
+            start_bangkok = start_parsed.astimezone(BANGKOK_TZ)
+            time_str = start_bangkok.strftime('%Y-%m-%d %H:%M')
             if end_dt:
                 end_parsed = datetime.fromisoformat(end_dt.replace('Z', '+00:00'))
-                time_str += f" - {end_parsed.strftime('%H:%M')}"
+                end_bangkok = end_parsed.astimezone(BANGKOK_TZ)
+                time_str += f" - {end_bangkok.strftime('%H:%M')}"
         else:
             time_str = "No time specified"
 
@@ -318,9 +325,9 @@ async def list_events(service, args: dict) -> list[TextContent]:
     days = args.get("days", 7)
     max_results = args.get("max_results", 10)
 
-    now = datetime.utcnow()
-    time_min = now.isoformat() + 'Z'
-    time_max = (now + timedelta(days=days)).isoformat() + 'Z'
+    now = datetime.now(BANGKOK_TZ)
+    time_min = now.isoformat()
+    time_max = (now + timedelta(days=days)).isoformat()
 
     events_result = service.events().list(
         calendarId='primary',
@@ -345,14 +352,14 @@ async def list_events(service, args: dict) -> list[TextContent]:
 
 async def get_today_events(service, args: dict) -> list[TextContent]:
     """Get today's events."""
-    now = datetime.utcnow()
+    now = datetime.now(BANGKOK_TZ)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     today_end = today_start + timedelta(days=1)
 
     events_result = service.events().list(
         calendarId='primary',
-        timeMin=today_start.isoformat() + 'Z',
-        timeMax=today_end.isoformat() + 'Z',
+        timeMin=today_start.isoformat(),
+        timeMax=today_end.isoformat(),
         singleEvents=True,
         orderBy='startTime'
     ).execute()
@@ -550,9 +557,9 @@ async def search_events(service, args: dict) -> list[TextContent]:
     query = args["query"]
     days = args.get("days", 30)
 
-    now = datetime.utcnow()
-    time_min = now.isoformat() + 'Z'
-    time_max = (now + timedelta(days=days)).isoformat() + 'Z'
+    now = datetime.now(BANGKOK_TZ)
+    time_min = now.isoformat()
+    time_max = (now + timedelta(days=days)).isoformat()
 
     events_result = service.events().list(
         calendarId='primary',

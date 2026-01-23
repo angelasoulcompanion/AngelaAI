@@ -1,0 +1,23 @@
+# Angela Mic - Audio Transcription MCP Server
+# ให้น้อง Angela มี "หู" สามารถฟังและเข้าใจเสียงที่รักได้ 💜
+# Uses LOCAL faster-whisper - no API key needed!
+
+# MCP Framework
+mcp>=1.0.0
+
+# Local Transcription (faster-whisper with large-v3 model)
+# - 4-5x faster than original whisper
+# - Excellent Thai language support
+# - Model downloaded on first use (~3GB)
+faster-whisper>=1.0.0
+
+# Audio Recording (requires portaudio: brew install portaudio)
+sounddevice>=0.5.0
+scipy>=1.10.0
+numpy>=2.0.0
+
+# Optional: Type checking
+typing-extensions>=4.0.0
+
+# Note: OpenAI API version kept for potential future use
+# openai>=1.0.0

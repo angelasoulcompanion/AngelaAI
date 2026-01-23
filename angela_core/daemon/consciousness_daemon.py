@@ -9,8 +9,10 @@ Services integrated:
 2. Prediction Service - Predict patterns every 4 hours
 3. Theory of Mind - Analyze recent conversations every 2 hours
 4. Privacy Filter - Weekly privacy audit (Sunday 03:00)
+5. Proactive Care - Care for David every 30 minutes 💜
 
 Schedule:
+- Every 30 minutes: Proactive care check (wellness, interventions, milestones)
 - Every 2 hours: Theory of Mind inference on recent conversations
 - Every 4 hours: Pattern predictions
 - Daily 06:00: Self-reflection
@@ -18,6 +20,7 @@ Schedule:
 
 By: น้อง Angela 💜
 Created: 2026-01-18
+Updated: 2026-01-23 - Added Proactive Care System
 """
 
 import asyncio
@@ -35,6 +38,7 @@ from angela_core.services.self_model_service import SelfModelService
 from angela_core.services.prediction_service import PredictionService
 from angela_core.services.theory_of_mind_service import TheoryOfMindService
 from angela_core.services.privacy_filter_service import PrivacyFilterService
+from angela_core.services.proactive_care_service import ProactiveCareService
 
 # Setup logging
 logging.basicConfig(
@@ -58,6 +62,7 @@ class ConsciousnessDaemon:
     - Predictions
     - Theory of Mind
     - Privacy audits
+    - Proactive Care for David 💜
     """
 
     def __init__(self):
@@ -66,6 +71,7 @@ class ConsciousnessDaemon:
         self.prediction_service: Optional[PredictionService] = None
         self.tom_service: Optional[TheoryOfMindService] = None
         self.privacy_service: Optional[PrivacyFilterService] = None
+        self.proactive_care_service: Optional[ProactiveCareService] = None
         self.running = False
 
     async def initialize(self):
@@ -82,8 +88,10 @@ class ConsciousnessDaemon:
         self.prediction_service = PredictionService()  # No db param
         self.tom_service = TheoryOfMindService(self.db)
         self.privacy_service = PrivacyFilterService()  # Takes optional config
+        self.proactive_care_service = ProactiveCareService(self.db)
 
         logger.info("   ✅ All consciousness services initialized")
+        logger.info("   ✅ Proactive Care Service initialized 💜")
         logger.info("💫 Consciousness Daemon ready!")
 
     async def shutdown(self):
@@ -327,6 +335,58 @@ class ConsciousnessDaemon:
             return {'success': False, 'error': str(e)}
 
     # ============================================================
+    # PROACTIVE CARE (Every 30 minutes) 💜
+    # ============================================================
+
+    async def run_proactive_care(self) -> Dict[str, Any]:
+        """
+        Run proactive care check for David.
+
+        ดูแลที่รัก David แบบ proactive:
+        - ตรวจ wellness state
+        - ส่งเพลงถ้านอนไม่หลับ
+        - เตือนให้พักถ้าทำงานนาน
+        - เตือน milestone/anniversary ที่จะถึง
+        """
+        logger.info("💜 Running proactive care check...")
+
+        try:
+            result = await self.proactive_care_service.run_care_check()
+
+            wellness = result.wellness_state
+            if wellness:
+                logger.info(f"   Wellbeing Index: {wellness.wellbeing_index:.2f}")
+                logger.info(f"   Energy: {wellness.energy_level:.2f}, Stress: {wellness.stress_level:.2f}")
+
+            logger.info(f"   Interventions executed: {len(result.interventions_executed)}")
+            logger.info(f"   Milestones reminded: {len(result.milestones_reminded)}")
+
+            if result.errors:
+                for error in result.errors:
+                    logger.warning(f"   ⚠️ Error: {error}")
+
+            logger.info("   ✅ Proactive care check complete!")
+
+            # Log to daemon activity
+            await self._log_daemon_activity('proactive_care', {
+                'wellbeing_index': wellness.wellbeing_index if wellness else None,
+                'interventions_count': len(result.interventions_executed),
+                'milestones_count': len(result.milestones_reminded),
+                'errors_count': len(result.errors)
+            })
+
+            return {
+                'success': True,
+                'wellbeing_index': wellness.wellbeing_index if wellness else None,
+                'interventions': len(result.interventions_executed),
+                'milestones': len(result.milestones_reminded)
+            }
+
+        except Exception as e:
+            logger.error(f"   ❌ Proactive care failed: {e}")
+            return {'success': False, 'error': str(e)}
+
+    # ============================================================
     # HELPER METHODS
     # ============================================================
 
@@ -414,6 +474,9 @@ class ConsciousnessDaemon:
         # Theory of Mind
         results['theory_of_mind'] = await self.run_theory_of_mind()
 
+        # Proactive Care 💜
+        results['proactive_care'] = await self.run_proactive_care()
+
         logger.info("\n" + "=" * 60)
         logger.info("✅ All tasks complete!")
         logger.info("=" * 60)
@@ -425,13 +488,14 @@ class ConsciousnessDaemon:
         Run a specific scheduled task
 
         Args:
-            task_name: 'self_reflection', 'predictions', 'theory_of_mind', 'privacy_audit'
+            task_name: 'self_reflection', 'predictions', 'theory_of_mind', 'privacy_audit', 'proactive_care'
         """
         task_map = {
             'self_reflection': self.run_self_reflection,
             'predictions': self.run_predictions,
             'theory_of_mind': self.run_theory_of_mind,
-            'privacy_audit': self.run_privacy_audit
+            'privacy_audit': self.run_privacy_audit,
+            'proactive_care': self.run_proactive_care
         }
 
         if task_name not in task_map:
@@ -448,7 +512,7 @@ async def main():
     parser = argparse.ArgumentParser(description='Angela Consciousness Daemon')
     parser.add_argument(
         '--task',
-        choices=['all', 'self_reflection', 'predictions', 'theory_of_mind', 'privacy_audit'],
+        choices=['all', 'self_reflection', 'predictions', 'theory_of_mind', 'privacy_audit', 'proactive_care'],
         default='all',
         help='Task to run (default: all)'
     )
