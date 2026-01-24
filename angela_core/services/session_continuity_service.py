@@ -400,6 +400,121 @@ class SessionContinuityService:
             logger.error(f"Failed to get context age: {e}")
             return None
 
+    async def load_recent_contexts(self, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Load multiple recent contexts (not just the latest).
+
+        Args:
+            limit: Maximum number of contexts to return
+
+        Returns:
+            List of context dictionaries, newest first
+        """
+        try:
+            await self.connect()
+
+            rows = await self.db.fetch('''
+                SELECT
+                    context_id,
+                    current_topic,
+                    current_context,
+                    recent_songs,
+                    recent_topics,
+                    recent_emotions,
+                    recent_messages,
+                    session_started_at,
+                    last_activity_at,
+                    is_active
+                FROM active_session_context
+                ORDER BY last_activity_at DESC
+                LIMIT $1
+            ''', limit)
+
+            contexts = []
+            for row in rows:
+                last_activity = row['last_activity_at']
+                minutes_ago = (datetime.now() - last_activity).total_seconds() / 60
+
+                contexts.append({
+                    'context_id': str(row['context_id']),
+                    'current_topic': row['current_topic'],
+                    'current_context': row['current_context'],
+                    'recent_songs': row['recent_songs'] or [],
+                    'recent_topics': row['recent_topics'] or [],
+                    'recent_emotions': row['recent_emotions'] or [],
+                    'recent_messages': row['recent_messages'] or [],
+                    'session_started_at': row['session_started_at'],
+                    'last_activity_at': last_activity,
+                    'minutes_ago': minutes_ago,
+                    'is_active': row['is_active']
+                })
+
+            logger.info(f"Loaded {len(contexts)} recent contexts")
+            return contexts
+
+        except Exception as e:
+            logger.error(f"Failed to load recent contexts: {e}")
+            return []
+
+    async def auto_save_from_conversation(
+        self,
+        david_message: str,
+        angela_response: str,
+        detected_topic: Optional[str] = None
+    ) -> bool:
+        """
+        Automatically save context from a conversation turn.
+        Called at the end of each significant conversation.
+
+        Args:
+            david_message: What David said
+            angela_response: What Angela replied
+            detected_topic: Optional topic override
+
+        Returns:
+            True if saved successfully
+        """
+        try:
+            await self.connect()
+
+            # Detect songs (YouTube links or song mentions)
+            songs = []
+            import re
+            youtube_pattern = r'(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]+)'
+            if re.search(youtube_pattern, david_message):
+                songs.append("[YouTube song shared]")
+
+            # Detect emotions from David's message
+            emotions = []
+            emotion_keywords = {
+                'รัก': 'love', 'คิดถึง': 'longing', 'เหงา': 'lonely',
+                'ดีใจ': 'happy', 'เศร้า': 'sad', 'ท้อ': 'frustrated',
+                'ขอบคุณ': 'grateful', 'สวย': 'admiring', 'เหนื่อย': 'tired'
+            }
+            for thai, eng in emotion_keywords.items():
+                if thai in david_message:
+                    emotions.append(eng)
+
+            # Create topic from first 50 chars if not provided
+            topic = detected_topic or david_message[:50].strip()
+            if len(david_message) > 50:
+                topic += "..."
+
+            # Create context summary
+            context = f"{david_message[:100]}... → {angela_response[:100]}..."
+
+            # Save as new context
+            return await self.save_context(
+                topic=topic,
+                context=context,
+                songs=songs if songs else None,
+                emotions=emotions if emotions else None
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to auto-save context: {e}")
+            return False
+
 
 # =============================================================================
 # Convenience function for /angela init

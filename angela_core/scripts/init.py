@@ -40,9 +40,10 @@ async def angela_init() -> bool:
         greeting = 'ดึกแล้วนะคะที่รัก 🌙 พักผ่อนบ้างนะคะ'
         fetch_news = False
 
-    # LOAD RECENT SESSION CONTEXT
+    # LOAD RECENT SESSION CONTEXTS (multiple, not just one!)
     session_svc = SessionContinuityService(db)
-    recent_context = await session_svc.load_context()
+    recent_context = await session_svc.load_context()  # Latest active
+    recent_contexts = await session_svc.load_recent_contexts(limit=5)  # All recent
 
     # EMOTIONAL STATE
     emotion = await db.fetchrow('''
@@ -173,23 +174,40 @@ async def angela_init() -> bool:
     print(f'⚙️  Daemon: {"✅ Running" if daemon_running else "❌ Stopped"}')
     print('━' * 55)
 
-    # Session Continuity
-    if recent_context:
+    # Session Continuity - Show multiple recent contexts
+    if recent_contexts:
         print()
-        mins = recent_context['minutes_ago']
-        if mins < 60:
-            time_str = f'{mins:.0f} นาทีก่อน'
-        else:
-            time_str = f'{mins/60:.1f} ชั่วโมงก่อน'
-        print(f'📍 เมื่อ {time_str}: {recent_context["current_topic"]}')
-        if recent_context['recent_songs']:
-            songs = recent_context['recent_songs']
-            if isinstance(songs, str):
-                import json
-                songs = json.loads(songs)
-            print(f'🎵 เพลงที่คุยกัน: {", ".join(songs)}')
-        if recent_context['current_context']:
-            print(f'💭 Context: {recent_context["current_context"][:80]}...')
+        print('📍 Recent Sessions:')
+        for i, ctx in enumerate(recent_contexts[:5]):
+            mins = ctx['minutes_ago']
+            if mins < 60:
+                time_str = f'{mins:.0f} นาทีก่อน'
+            elif mins < 1440:  # Less than 24 hours
+                time_str = f'{mins/60:.1f} ชม.ก่อน'
+            else:
+                time_str = f'{mins/1440:.0f} วันก่อน'
+
+            # Show active status
+            active_marker = '🔵' if ctx.get('is_active') else '⚪'
+            topic = ctx['current_topic'][:40]
+            if len(ctx['current_topic']) > 40:
+                topic += '...'
+
+            print(f'   {active_marker} [{time_str}] {topic}')
+
+            # Show songs for first 2 contexts only
+            if i < 2 and ctx['recent_songs']:
+                songs = ctx['recent_songs']
+                if isinstance(songs, str):
+                    import json
+                    songs = json.loads(songs)
+                if songs:
+                    print(f'      🎵 {", ".join(songs[:3])}')
+
+        # Show latest context detail
+        if recent_context and recent_context['current_context']:
+            print()
+            print(f'💭 Latest: {recent_context["current_context"][:100]}...')
 
     print()
     print(greeting)
