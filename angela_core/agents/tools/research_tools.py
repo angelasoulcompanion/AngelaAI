@@ -134,14 +134,14 @@ class KnowledgeSearchTool(BaseTool):
             async def do_search():
                 await db.connect()
 
-                # Search in knowledge_nodes
+                # Search in knowledge_nodes (fixed column name: times_referenced)
                 sql = """
                     SELECT concept_name, concept_category, my_understanding,
-                           understanding_level, times_accessed
+                           understanding_level, times_referenced
                     FROM knowledge_nodes
                     WHERE concept_name ILIKE $1
                        OR my_understanding ILIKE $1
-                    ORDER BY understanding_level DESC, times_accessed DESC
+                    ORDER BY understanding_level DESC, times_referenced DESC
                     LIMIT $2
                 """
                 pattern = f"%{query}%"
@@ -149,7 +149,15 @@ class KnowledgeSearchTool(BaseTool):
                 await db.disconnect()
                 return results
 
-            results = asyncio.get_event_loop().run_until_complete(do_search())
+            # Handle async properly
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    import nest_asyncio
+                    nest_asyncio.apply()
+                results = loop.run_until_complete(do_search())
+            except RuntimeError:
+                results = asyncio.run(do_search())
 
             if not results:
                 return f"ไม่พบความรู้สำหรับ: {query}"
