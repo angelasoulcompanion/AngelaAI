@@ -57,6 +57,14 @@ python-dateutil>=2.8.2   # Date/time utilities
 pytz>=2023.3             # Timezone support
 
 # ========================================
+# Agent Framework (CrewAI)
+# ========================================
+crewai>=0.80.0           # Multi-agent framework
+crewai-tools>=0.14.0     # CrewAI tools
+langchain-ollama>=0.2.0  # Ollama integration for LangChain
+litellm>=1.0.0           # LiteLLM for Ollama support in CrewAI
+
+# ========================================
 # Development & Testing
 # ========================================
 pytest>=7.4.0            # Testing framework
