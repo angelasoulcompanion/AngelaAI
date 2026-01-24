@@ -21,7 +21,7 @@ class WebResearchInput(BaseModel):
 class WebResearchTool(BaseTool):
     """
     Tool for searching and researching information on the web.
-    Uses WebResearchService to find relevant information.
+    Uses DuckDuckGo search via httpx.
     """
     name: str = "web_research"
     description: str = """ค้นหาข้อมูลจาก web.
@@ -30,27 +30,56 @@ class WebResearchTool(BaseTool):
     args_schema: Type[BaseModel] = WebResearchInput
 
     def _run(self, query: str, max_results: int = 5) -> str:
-        """Synchronous wrapper for web research"""
+        """Search web using DuckDuckGo"""
         try:
-            # Import here to avoid circular imports
-            from angela_core.services.web_research_service import WebResearchService
+            import httpx
+            from urllib.parse import quote_plus
 
-            async def do_research():
-                service = WebResearchService()
-                results = await service.research(query, max_results=max_results)
-                return results
+            # Use DuckDuckGo HTML search
+            search_url = f"https://html.duckduckgo.com/html/?q={quote_plus(query)}"
 
-            result = asyncio.get_event_loop().run_until_complete(do_research())
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+            }
 
-            if not result:
+            with httpx.Client(timeout=10.0, follow_redirects=True) as client:
+                response = client.get(search_url, headers=headers)
+                response.raise_for_status()
+                html = response.text
+
+            # Parse results from HTML
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html, "html.parser")
+
+            results = []
+            for result in soup.select(".result"):
+                title_elem = result.select_one(".result__title")
+                snippet_elem = result.select_one(".result__snippet")
+                url_elem = result.select_one(".result__url")
+
+                if title_elem:
+                    title = title_elem.get_text(strip=True)
+                    snippet = snippet_elem.get_text(strip=True) if snippet_elem else ""
+                    url = url_elem.get_text(strip=True) if url_elem else ""
+
+                    results.append({
+                        "title": title,
+                        "snippet": snippet,
+                        "url": url
+                    })
+
+                if len(results) >= max_results:
+                    break
+
+            if not results:
                 return f"ไม่พบข้อมูลสำหรับ: {query}"
 
             # Format results
             output = f"🔍 Web Research Results for: {query}\n\n"
-            for i, item in enumerate(result[:max_results], 1):
+            for i, item in enumerate(results, 1):
                 title = item.get("title", "No title")
                 url = item.get("url", "")
-                snippet = item.get("snippet", item.get("content", ""))[:200]
+                snippet = item.get("snippet", "")[:200]
                 output += f"{i}. **{title}**\n   {snippet}...\n   URL: {url}\n\n"
 
             return output
