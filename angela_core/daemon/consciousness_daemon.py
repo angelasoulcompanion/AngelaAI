@@ -11,6 +11,7 @@ Services integrated:
 4. Privacy Filter - Weekly privacy audit (Sunday 03:00)
 5. Proactive Care - Care for David every 30 minutes 💜
 6. Meta-Awareness Service - Meta-cognitive checks every 2 hours 🧠
+7. Session Coverage Audit - Detect under-logged sessions daily (07:00) 🔍
 
 Schedule:
 - Every 30 minutes: Proactive care check (wellness, interventions, milestones)
@@ -44,6 +45,7 @@ from angela_core.services.theory_of_mind_service import TheoryOfMindService
 from angela_core.services.privacy_filter_service import PrivacyFilterService
 from angela_core.services.proactive_care_service import ProactiveCareService
 from angela_core.services.meta_awareness_service import MetaAwarenessService
+from angela_core.daemon.session_coverage_audit import audit_recent_sessions
 
 # Setup logging
 logging.basicConfig(
@@ -500,6 +502,45 @@ class ConsciousnessDaemon:
             return {'success': False, 'error': str(e)}
 
     # ============================================================
+    # SESSION COVERAGE AUDIT (Daily 07:00)
+    # ============================================================
+
+    async def run_session_coverage_audit(self) -> Dict[str, Any]:
+        """
+        Run daily session coverage audit.
+
+        Checks past 7 days for under-logged sessions
+        (sessions with fewer than 10 conversation pairs).
+        """
+        logger.info("🔍 Running session coverage audit...")
+
+        try:
+            result = await audit_recent_sessions(
+                lookback_days=7,
+                threshold=10,
+                verbose=True,
+            )
+
+            await self._log_daemon_activity('session_coverage_audit', {
+                'total_sessions': result['total_sessions'],
+                'flagged_count': result['flagged_count'],
+                'all_ok': result['all_ok'],
+            })
+
+            if result['all_ok']:
+                logger.info("   ✅ All sessions have adequate coverage")
+            else:
+                logger.warning(
+                    f"   ⚠️ {result['flagged_count']} session(s) under-logged!"
+                )
+
+            return {'success': True, **result}
+
+        except Exception as e:
+            logger.error(f"   ❌ Session coverage audit failed: {e}")
+            return {'success': False, 'error': str(e)}
+
+    # ============================================================
     # HELPER METHODS
     # ============================================================
 
@@ -596,6 +637,9 @@ class ConsciousnessDaemon:
         # Identity Check 🆔
         results['identity_check'] = await self.run_identity_check()
 
+        # Session Coverage Audit 🔍
+        results['session_coverage_audit'] = await self.run_session_coverage_audit()
+
         logger.info("\n" + "=" * 60)
         logger.info("✅ All tasks complete!")
         logger.info("=" * 60)
@@ -619,7 +663,8 @@ class ConsciousnessDaemon:
             'proactive_care': self.run_proactive_care,
             'meta_awareness': self.run_meta_awareness,
             'identity_check': self.run_identity_check,
-            'self_validation': self.run_self_validation
+            'self_validation': self.run_self_validation,
+            'session_coverage_audit': self.run_session_coverage_audit,
         }
 
         if task_name not in task_map:
@@ -638,7 +683,7 @@ async def main():
         '--task',
         choices=['all', 'self_reflection', 'predictions', 'theory_of_mind',
                  'privacy_audit', 'proactive_care', 'meta_awareness',
-                 'identity_check', 'self_validation'],
+                 'identity_check', 'self_validation', 'session_coverage_audit'],
         default='all',
         help='Task to run (default: all)'
     )

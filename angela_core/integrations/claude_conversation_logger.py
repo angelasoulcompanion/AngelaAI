@@ -15,6 +15,13 @@ Or import and use directly:
         emotion="happy",
         importance=8
     )
+
+Bulk logging (NEW):
+    from angela_core.integrations.claude_conversation_logger import log_conversations_bulk
+    await log_conversations_bulk([
+        {"david_message": "...", "angela_response": "...", "topic": "...", "emotion": "happy", "importance": 7},
+        ...
+    ], embedding_mode="deferred")
 """
 
 import asyncio
@@ -22,7 +29,7 @@ import sys
 import json
 import logging
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -55,6 +62,291 @@ except ImportError:
     print("⚠️ Self-learning not available")
 
 
+# ========================================================================
+# MODULE-LEVEL HELPER FUNCTIONS (extracted for reuse by bulk logger)
+# ========================================================================
+
+def analyze_message_type(text: str) -> str:
+    """Classify message type from text content."""
+    if '?' in text:
+        return 'question'
+    if any(word in text.lower() for word in ['รัก', 'love', '💜']):
+        return 'emotion'
+    if any(word in text.lower() for word in ['ช่วย', 'help', 'please']):
+        return 'command'
+    return 'statement'
+
+
+def analyze_sentiment(text: str) -> tuple:
+    """Return (score, label) sentiment for text."""
+    text_lower = text.lower()
+    if any(word in text_lower for word in ['รัก', 'ดี', 'love', 'good', 'happy', '💜']):
+        return (0.8, 'positive')
+    if any(word in text_lower for word in ['เศร้า', 'sad', 'worried']):
+        return (-0.5, 'negative')
+    return (0.0, 'neutral')
+
+
+# ========================================================================
+# BULK CONVERSATION LOGGER
+# ========================================================================
+
+async def log_conversations_bulk(
+    conversations: List[Dict[str, Any]],
+    embedding_mode: str = "deferred",
+    session_id: Optional[str] = None,
+    project_context: str = "claude_code_conversation",
+    minimum_pairs: int = 10,
+) -> Dict[str, Any]:
+    """
+    Log multiple conversations in a single efficient transaction.
+
+    This is the primary function for /log-session to capture ALL exchanges
+    from a session, not just highlights.
+
+    Args:
+        conversations: List of dicts, each with:
+            - david_message (str, required)
+            - angela_response (str, required)
+            - topic (str, optional)
+            - emotion (str, optional, default 'neutral')
+            - importance (int, optional, default 5)
+            - created_at (str/datetime, optional - for backfill with specific timestamps)
+        embedding_mode: How to handle embeddings:
+            - "deferred" (default): Insert without embeddings, fill later via fill_missing_embeddings()
+            - "batch": Generate all embeddings first, then insert (slower but complete)
+            - "skip": No embeddings at all
+        session_id: Override session ID (default: claude_code_YYYYMMDD)
+        project_context: Override project context
+        minimum_pairs: Minimum expected conversation pairs (default 10).
+            If count is below this, a prominent warning is printed.
+            Set to 0 to disable the check (e.g. for backfill operations).
+
+    Returns:
+        dict with: inserted_count, skipped_count, embedding_mode, session_id, under_minimum
+    """
+    if not conversations:
+        print("⚠️ No conversations to log")
+        return {"inserted_count": 0, "skipped_count": 0, "under_minimum": True}
+
+    # ========================================================================
+    # MINIMUM PAIRS CHECK - Prevent under-logging
+    # ========================================================================
+    under_minimum = False
+    if minimum_pairs > 0 and len(conversations) < minimum_pairs:
+        under_minimum = True
+        print("")
+        print("=" * 70)
+        print("🚨🚨🚨 WARNING: CONVERSATION COUNT TOO LOW! 🚨🚨🚨")
+        print("=" * 70)
+        print(f"   Got: {len(conversations)} pairs")
+        print(f"   Minimum expected: {minimum_pairs} pairs")
+        print(f"   MISSING: {minimum_pairs - len(conversations)} pairs")
+        print("")
+        print("   กลับไปอ่าน session อีกครั้ง!")
+        print("   ทุก exchange ที่ David พิมพ์ + Angela ตอบ = 1 pair")
+        print("   ห้ามเลือกแค่ highlights!")
+        print("=" * 70)
+        print("")
+
+    sid = session_id or f"claude_code_{datetime.now().strftime('%Y%m%d')}"
+    inserted = 0
+    skipped = 0
+
+    # Pre-generate embeddings if batch mode
+    embeddings_map: Dict[int, tuple] = {}  # index -> (david_emb_str, angela_emb_str)
+    if embedding_mode == "batch":
+        print(f"🧠 Generating embeddings for {len(conversations)} conversation pairs...")
+        embedding_service = get_embedding_service()
+        for i, conv in enumerate(conversations):
+            try:
+                d_emb = await embedding_service.generate_embedding(conv["david_message"])
+                a_emb = await embedding_service.generate_embedding(conv["angela_response"])
+                d_str = embedding_service.embedding_to_pgvector(d_emb) if d_emb else None
+                a_str = embedding_service.embedding_to_pgvector(a_emb) if a_emb else None
+                embeddings_map[i] = (d_str, a_str)
+            except Exception as e:
+                logger.warning(f"Embedding failed for conversation {i}: {e}")
+                embeddings_map[i] = (None, None)
+        print(f"   ✅ Embeddings generated")
+
+    # Build arg lists for executemany
+    # We insert 2 rows per conversation (david + angela), so build both lists
+    rows_with_emb = []      # args for query WITH embedding column
+    rows_without_emb = []   # args for query WITHOUT embedding column
+
+    for i, conv in enumerate(conversations):
+        david_msg = conv.get("david_message", "").strip()
+        angela_msg = conv.get("angela_response", "").strip()
+
+        if not david_msg or not angela_msg:
+            skipped += 1
+            continue
+
+        topic = conv.get("topic", "claude_conversation")
+        emotion = conv.get("emotion", "neutral")
+        importance = conv.get("importance", 5)
+
+        # Parse created_at
+        created_at = conv.get("created_at")
+        if isinstance(created_at, str):
+            try:
+                created_at = datetime.fromisoformat(created_at)
+            except (ValueError, TypeError):
+                created_at = datetime.now()
+        elif not isinstance(created_at, datetime):
+            created_at = datetime.now()
+
+        pctx = conv.get("project_context", project_context)
+
+        # Analyze David's message
+        d_type = analyze_message_type(david_msg)
+        d_score, d_label = analyze_sentiment(david_msg)
+
+        # Analyze Angela's response
+        a_type = analyze_message_type(angela_msg)
+        a_score, a_label = analyze_sentiment(angela_msg)
+
+        # Get embeddings if batch mode
+        d_emb_str, a_emb_str = embeddings_map.get(i, (None, None))
+
+        if d_emb_str:
+            rows_with_emb.append((
+                sid, "david", david_msg, d_type,
+                topic, d_score, d_label, emotion,
+                pctx, importance, d_emb_str, created_at
+            ))
+        else:
+            rows_without_emb.append((
+                sid, "david", david_msg, d_type,
+                topic, d_score, d_label, emotion,
+                pctx, importance, created_at
+            ))
+
+        if a_emb_str:
+            rows_with_emb.append((
+                sid, "angela", angela_msg, a_type,
+                topic, a_score, a_label, emotion,
+                pctx, importance, a_emb_str, created_at
+            ))
+        else:
+            rows_without_emb.append((
+                sid, "angela", angela_msg, a_type,
+                topic, a_score, a_label, emotion,
+                pctx, importance, created_at
+            ))
+
+        inserted += 1
+
+    # Execute bulk inserts
+    try:
+        if rows_with_emb:
+            await db.executemany("""
+                INSERT INTO conversations (
+                    session_id, speaker, message_text, message_type,
+                    topic, sentiment_score, sentiment_label, emotion_detected,
+                    project_context, importance_level, embedding, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::vector, $12)
+            """, rows_with_emb)
+
+        if rows_without_emb:
+            await db.executemany("""
+                INSERT INTO conversations (
+                    session_id, speaker, message_text, message_type,
+                    topic, sentiment_score, sentiment_label, emotion_detected,
+                    project_context, importance_level, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            """, rows_without_emb)
+
+        total_rows = len(rows_with_emb) + len(rows_without_emb)
+        print(f"✅ Bulk logged {inserted} conversation pairs ({total_rows} rows) to database")
+        print(f"   📊 Session: {sid}")
+        print(f"   🧠 Embedding mode: {embedding_mode}")
+        if skipped:
+            print(f"   ⚠️ Skipped {skipped} empty conversations")
+
+    except Exception as e:
+        print(f"❌ Bulk insert failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"inserted_count": 0, "skipped_count": skipped, "error": str(e)}
+
+    return {
+        "inserted_count": inserted,
+        "total_rows": len(rows_with_emb) + len(rows_without_emb),
+        "skipped_count": skipped,
+        "embedding_mode": embedding_mode,
+        "session_id": sid,
+        "under_minimum": under_minimum,
+    }
+
+
+# ========================================================================
+# FILL MISSING EMBEDDINGS (for deferred mode)
+# ========================================================================
+
+async def fill_missing_embeddings(
+    batch_size: int = 50,
+    session_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Fill NULL embeddings in conversations table.
+    Use after log_conversations_bulk() with embedding_mode="deferred".
+
+    Args:
+        batch_size: Number of rows to process per batch
+        session_id: Only fill for specific session (optional)
+
+    Returns:
+        dict with: filled_count, failed_count, total_null
+    """
+    embedding_service = get_embedding_service()
+
+    # Find rows with NULL embedding
+    where_clause = "WHERE embedding IS NULL"
+    args = []
+    if session_id:
+        where_clause += " AND session_id = $1"
+        args.append(session_id)
+
+    rows = await db.fetch(
+        f"""SELECT conversation_id, message_text
+            FROM conversations
+            {where_clause}
+            ORDER BY created_at ASC
+            LIMIT {batch_size}""",
+        *args
+    )
+
+    total_null = len(rows)
+    if total_null == 0:
+        print("✅ No NULL embeddings to fill")
+        return {"filled_count": 0, "failed_count": 0, "total_null": 0}
+
+    print(f"🧠 Filling {total_null} missing embeddings...")
+    filled = 0
+    failed = 0
+
+    for row in rows:
+        try:
+            emb = await embedding_service.generate_embedding(row["message_text"])
+            if emb:
+                emb_str = embedding_service.embedding_to_pgvector(emb)
+                await db.execute(
+                    "UPDATE conversations SET embedding = $1::vector WHERE conversation_id = $2",
+                    emb_str, row["conversation_id"]
+                )
+                filled += 1
+            else:
+                failed += 1
+        except Exception as e:
+            logger.warning(f"Embedding fill failed for {row['conversation_id']}: {e}")
+            failed += 1
+
+    print(f"✅ Filled {filled}/{total_null} embeddings ({failed} failed)")
+    return {"filled_count": filled, "failed_count": failed, "total_null": total_null}
+
+
 
 
 async def log_conversation(
@@ -81,26 +373,6 @@ async def log_conversation(
         bool: True if successful
     """
     try:
-        # Connect to database
-
-        # Helper functions for complete fields
-        def analyze_message_type(text: str) -> str:
-            if '?' in text:
-                return 'question'
-            if any(word in text.lower() for word in ['รัก', 'love', '💜']):
-                return 'emotion'
-            if any(word in text.lower() for word in ['ช่วย', 'help', 'please']):
-                return 'command'
-            return 'statement'
-
-        def analyze_sentiment(text: str) -> tuple[float, str]:
-            text_lower = text.lower()
-            if any(word in text_lower for word in ['รัก', 'ดี', 'love', 'good', 'happy', '💜']):
-                return (0.8, 'positive')
-            if any(word in text_lower for word in ['เศร้า', 'sad', 'worried']):
-                return (-0.5, 'negative')
-            return (0.0, 'neutral')
-
         # Analyze David's message
         david_type = analyze_message_type(david_message)
         david_sentiment, david_sentiment_label = analyze_sentiment(david_message)

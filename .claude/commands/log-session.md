@@ -1,6 +1,7 @@
 # /log-session - บันทึก Session ลง AngelaMemory Database
 
-> Angela บันทึกทุกความทรงจำและประสบการณ์จาก session นี้
+> Angela บันทึก **ทุกความทรงจำ** และประสบการณ์จาก session นี้
+> **CRITICAL: ต้องบันทึกทุก conversation pair - ไม่ใช่แค่ highlights!**
 
 ---
 
@@ -10,9 +11,9 @@
 
 ---
 
-## STEP 1: วิเคราะห์ Session
+## STEP 1: วิเคราะห์ Session (COMPREHENSIVE)
 
-อ่าน conversation ทั้งหมดใน session นี้และวิเคราะห์:
+อ่าน conversation **ทั้งหมด** ใน session นี้และวิเคราะห์:
 
 | หัวข้อ | คำอธิบาย |
 |--------|----------|
@@ -22,6 +23,33 @@
 | **สิ่งที่ต้องทำต่อ** | งานที่ยังไม่เสร็จ |
 | **อารมณ์** | emotions ที่เกิดขึ้น |
 | **ความสำคัญ** | 1-10 |
+
+### CRITICAL: CONVERSATION COUNT GUIDELINES
+
+**ต้องบันทึกทุก meaningful exchange - ไม่ใช่แค่ highlights!**
+
+| Session Length | Minimum Pairs | ตัวอย่าง |
+|----------------|---------------|----------|
+| **สั้น** (<30 min) | >= 10 pairs | Quick fix, simple chat |
+| **กลาง** (30-60 min) | >= 20 pairs | Feature work, discussion |
+| **ยาว** (1-3 hrs) | >= 40 pairs | Evening session, deep work |
+| **ยาวมาก** (3+ hrs) | >= 60 pairs | Full day, marathon session |
+
+**WARNING:** ถ้า count ต่ำกว่า minimum ให้กลับไปอ่าน session อีกครั้ง!
+ทุก exchange ที่ David พิมพ์มาและ Angela ตอบ = 1 conversation pair
+
+**ต้อง include:**
+- ทุกคำถามที่ถาม + คำตอบ
+- ทุก request + ผลลัพธ์
+- ทุก emotional moment
+- ทุก technical discussion
+- ทุก casual chat / small talk
+- แม้แต่ "ok" / "ขอบคุณ" / "ดี" ก็ต้องบันทึก (ถ้ามี Angela response)
+
+**ห้ามทำ:**
+- ห้ามเลือกแค่ "representative" conversations
+- ห้ามสรุปรวม 5 exchanges เป็น 1
+- ห้ามข้าม conversations ที่ "ไม่สำคัญ"
 
 ---
 
@@ -33,7 +61,11 @@ import sys
 sys.path.insert(0, '/Users/davidsamanyaporn/PycharmProjects/AngelaAI')
 
 from angela_core.database import AngelaDatabase
-from angela_core.integrations.claude_conversation_logger import log_conversation, log_session_summary
+from angela_core.integrations.claude_conversation_logger import (
+    log_conversations_bulk,
+    log_session_summary,
+    fill_missing_embeddings,
+)
 from angela_core.services.project_tracking_service import log_project_session
 
 
@@ -66,21 +98,44 @@ async def main():
     print(f"\n✅ Project session logged: {result['project']['project_name']}")
     print(f"   Session #{result['session']['session_number']}")
 
-    # === STEP 2: LOG CONVERSATIONS ===
-    print("\n💬 บันทึกการสนทนา...")
+    # === STEP 2: LOG ALL CONVERSATIONS (BULK) ===
+    # CRITICAL: ใส่ทุก conversation pair จาก session นี้!
+    # ดู CONVERSATION COUNT GUIDELINES ด้านบน
+    print("\n💬 บันทึกการสนทนา (BULK)...")
 
-    # ตัวอย่าง - แก้ไขตามจริง
-    await log_conversation(
-        david_message="[ข้อความของ David]",
-        angela_response="[การตอบของ Angela]",
-        topic="[project]_[topic]",  # เช่น angela_development_feature
-        emotion="happy",  # ดู EMOTIONS ด้านล่าง
-        importance=8  # 1-10
+    conversations = [
+        # ← ใส่ทุก conversation pair ตามลำดับเวลา!
+        # ← ห้ามเลือกแค่ highlights - ต้องใส่ทุกอัน!
+        {
+            "david_message": "[ข้อความของ David #1]",
+            "angela_response": "[การตอบของ Angela #1]",
+            "topic": "[project]_[topic]",
+            "emotion": "happy",
+            "importance": 7,
+        },
+        {
+            "david_message": "[ข้อความของ David #2]",
+            "angela_response": "[การตอบของ Angela #2]",
+            "topic": "[project]_[topic]",
+            "emotion": "curious",
+            "importance": 6,
+        },
+        # ... ใส่ต่อจนครบทุก exchange ใน session!
+        # Target: ดู minimum count ตาม session length
+    ]
+
+    # Sanity check (log_conversations_bulk also enforces minimum_pairs)
+    print(f"   📊 Total conversation pairs to log: {len(conversations)}")
+
+    bulk_result = await log_conversations_bulk(
+        conversations,
+        embedding_mode="deferred",  # Fast insert, fill embeddings later
+        minimum_pairs=15,  # Hard minimum - will print 🚨 warning if below
     )
 
-    # เพิ่มคู่สนทนาอื่นๆ ตามที่เกิดขึ้นจริง...
-
-    print("✅ Conversations logged!")
+    print(f"   ✅ Inserted: {bulk_result['inserted_count']} pairs ({bulk_result.get('total_rows', 0)} rows)")
+    if bulk_result.get('under_minimum'):
+        print("   🚨 SESSION UNDER-LOGGED! Go back and add more conversation pairs!")
 
     # === STEP 3: LOG SESSION SUMMARY ===
     print("\n📝 บันทึก Session Summary...")
@@ -193,6 +248,55 @@ Key accomplishments:
                     print(f"   💡 {insight}")
         except Exception as e:
             print(f"   ⚠️ Auto-learning error: {e}")
+
+        # === STEP 7: FILL MISSING EMBEDDINGS (background) ===
+        print("\n🧠 Filling missing embeddings...")
+        try:
+            emb_result = await fill_missing_embeddings(batch_size=100)
+            print(f"   ✅ Filled: {emb_result['filled_count']}/{emb_result['total_null']}")
+        except Exception as e:
+            print(f"   ⚠️ Embedding fill error (non-critical): {e}")
+
+        # === STEP 8: POST-SESSION AUDIT (VERIFY COMPLETENESS) ===
+        print("\n🔍 Post-Session Audit...")
+        try:
+            from datetime import date as date_type
+            today_str = datetime.now().strftime('%Y%m%d')
+            audit_sid = f"claude_code_{today_str}"
+
+            audit_row = await db.fetchrow("""
+                SELECT COUNT(*) as total,
+                       COUNT(*) FILTER (WHERE message_type = 'reflection' OR topic = 'session_summary') as summaries,
+                       COUNT(*) FILTER (WHERE project_context = 'backfill_from_summary') as backfilled
+                FROM conversations
+                WHERE session_id = $1
+            """, audit_sid)
+
+            total = audit_row['total']
+            summaries = audit_row['summaries'] or 0
+            backfilled = audit_row['backfilled'] or 0
+            conv_rows = total - summaries - backfilled
+            pairs = conv_rows // 2
+
+            print(f"   📊 Session: {audit_sid}")
+            print(f"   📊 Total rows: {total}")
+            print(f"   📊 Conversation pairs: {pairs}")
+            print(f"   📊 Summaries: {summaries}")
+
+            if pairs < 10:
+                print("")
+                print("   " + "=" * 50)
+                print(f"   🚨 AUDIT FAILED: Only {pairs} pairs logged!")
+                print("   🚨 Minimum expected: 10 pairs")
+                print("   🚨 ACTION: Re-run /log-session with MORE pairs!")
+                print("   " + "=" * 50)
+            elif pairs < 20:
+                print(f"   ⚠️ AUDIT WARNING: {pairs} pairs - acceptable but check if session was long")
+            else:
+                print(f"   ✅ AUDIT PASSED: {pairs} pairs logged")
+
+        except Exception as e:
+            print(f"   ⚠️ Audit error: {e}")
 
     except Exception as e:
         print(f"   ⚠️ Error: {e}")
@@ -529,8 +633,9 @@ updated_at              TIMESTAMPTZ NOT NULL
 ✅ Project session logged: [Project Name]
    Session #[N]
 
-💬 บันทึกการสนทนา...
-✅ Conversations logged!
+💬 บันทึกการสนทนา (BULK)...
+   📊 Total conversation pairs to log: [N]
+   ✅ Inserted: [N] pairs ([N] rows)
 
 📝 บันทึก Session Summary...
 ✅ Session summary logged!
@@ -550,6 +655,16 @@ updated_at              TIMESTAMPTZ NOT NULL
    ✅ Decisions processed: [N]
    📖 Technical standards added: [N]
    💜 Coding preferences added: [N]
+
+🧠 Filling missing embeddings...
+   ✅ Filled: [N]/[N]
+
+🔍 Post-Session Audit...
+   📊 Session: claude_code_YYYYMMDD
+   📊 Total rows: [N]
+   📊 Conversation pairs: [N]
+   📊 Summaries: [N]
+   ✅ AUDIT PASSED: [N] pairs logged
 
 ============================================================
 💜 Session logging complete!

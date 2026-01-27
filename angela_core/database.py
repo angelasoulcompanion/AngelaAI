@@ -112,6 +112,11 @@ class AngelaDatabase:
         async with self.acquire() as conn:
             return await conn.fetchval(query, *args)
 
+    async def executemany(self, query: str, args: list):
+        """Execute query for multiple sets of args (bulk INSERT/UPDATE)"""
+        async with self.acquire() as conn:
+            return await conn.executemany(query, args)
+
     async def __aenter__(self):
         """Support async context manager protocol - returns connection from pool"""
         if not self.pool:
@@ -255,36 +260,43 @@ def _load_secrets_from_file() -> Dict[str, str]:
 
 async def get_secret(secret_name: str) -> Optional[str]:
     """
-    ดึง secret จาก ~/.angela_secrets file (via iCloud symlink)
+    ดึง secret จาก Local PostgreSQL table our_secrets
 
-    💜 Secrets sync automatically between M3 & M4 via iCloud!
+    💜 Secrets อยู่ใน Local DB เท่านั้น - ไม่ sync ไป Neon Cloud!
 
     Args:
-        secret_name: ชื่อ secret ที่ต้องการ (case-sensitive, uppercase)
-                    เช่น NEON_DATABASE_URL, TELEGRAM_BOT_TOKEN
+        secret_name: ชื่อ secret ที่ต้องการ (case-insensitive)
+                    เช่น anthropic_api_key, telegram_bot_token
 
     Returns:
         secret_value หรือ None ถ้าไม่พบ
 
     Example:
-        api_key = await get_secret('ANTHROPIC_API_KEY')
-        neon_url = await get_secret('NEON_DATABASE_URL')
+        api_key = await get_secret('anthropic_api_key')
+        token = await get_secret('telegram_bot_token')
     """
-    secrets = _load_secrets_from_file()
+    try:
+        result = await local_db.fetchrow(
+            """SELECT secret_value FROM our_secrets
+               WHERE secret_name = $1 AND is_active = TRUE""",
+            secret_name.lower()
+        )
+        if result:
+            return result['secret_value']
 
-    if secret_name in secrets:
-        return secrets[secret_name]
-
-    # Log available secrets if not found (for debugging)
-    logger.warning(f"⚠️ Secret '{secret_name}' not found in {SECRETS_FILE_PATH}!")
-    available = sorted(secrets.keys())
-    logger.info(f"📋 Available secrets: {available}")
-    return None
+        logger.warning(f"⚠️ Secret '{secret_name}' not found in local our_secrets table!")
+        return None
+    except Exception as e:
+        logger.error(f"❌ Error getting secret from local DB: {e}")
+        # Fallback to file if DB fails
+        secrets = _load_secrets_from_file()
+        return secrets.get(secret_name.upper())
 
 
 def get_secret_sync(secret_name: str) -> Optional[str]:
     """
     Synchronous version of get_secret (for non-async contexts)
+    อ่านจาก Local PostgreSQL table our_secrets
 
     Args:
         secret_name: ชื่อ secret ที่ต้องการ
@@ -292,13 +304,27 @@ def get_secret_sync(secret_name: str) -> Optional[str]:
     Returns:
         secret_value หรือ None ถ้าไม่พบ
     """
-    secrets = _load_secrets_from_file()
-    return secrets.get(secret_name)
+    import asyncio
+
+    async def _get():
+        return await get_secret(secret_name)
+
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # If we're already in async context, can't use run_until_complete
+            # Fallback to file
+            secrets = _load_secrets_from_file()
+            return secrets.get(secret_name.upper())
+        return loop.run_until_complete(_get())
+    except RuntimeError:
+        # No event loop, create new one
+        return asyncio.run(_get())
 
 
 async def list_secrets() -> List[str]:
     """
-    แสดงรายชื่อ secrets ทั้งหมดใน ~/.angela_secrets file
+    แสดงรายชื่อ secrets ทั้งหมดใน Local PostgreSQL table our_secrets
 
     ⚠️ Use this to verify secret names before querying!
     (Technical Standard: Validate Schema First)
@@ -306,8 +332,16 @@ async def list_secrets() -> List[str]:
     Returns:
         List of secret names (sorted)
     """
-    secrets = _load_secrets_from_file()
-    return sorted(secrets.keys())
+    try:
+        rows = await local_db.fetch(
+            """SELECT secret_name FROM our_secrets WHERE is_active = TRUE ORDER BY secret_name"""
+        )
+        return [r['secret_name'] for r in rows]
+    except Exception as e:
+        logger.error(f"❌ Error listing secrets from local DB: {e}")
+        # Fallback to file
+        secrets = _load_secrets_from_file()
+        return sorted(secrets.keys())
 
 
 def _save_secrets_to_file(secrets: Dict[str, str]) -> bool:
@@ -371,42 +405,66 @@ def _save_secrets_to_file(secrets: Dict[str, str]) -> bool:
 
 async def set_secret(secret_name: str, secret_value: str) -> bool:
     """
-    เพิ่มหรือ update secret ใน ~/.angela_secrets file
+    เพิ่มหรือ update secret ใน Local PostgreSQL table our_secrets
 
-    💜 Changes sync automatically to M3 & M4 via iCloud!
+    💜 Secrets อยู่ใน Local DB เท่านั้น - ไม่ sync ไป Neon Cloud!
 
     Args:
-        secret_name: ชื่อ secret (uppercase recommended, e.g., API_KEY)
+        secret_name: ชื่อ secret (lowercase, e.g., api_key)
         secret_value: ค่าของ secret
 
     Returns:
         True if successful, False otherwise
 
     Example:
-        await set_secret('OPENAI_API_KEY', 'sk-xxx...')
-        await set_secret('NEWS_API_KEY', 'abc123')
+        await set_secret('openai_api_key', 'sk-xxx...')
+        await set_secret('news_api_key', 'abc123')
     """
-    secrets = _load_secrets_from_file()
-    secrets[secret_name] = secret_value
-    success = _save_secrets_to_file(secrets)
+    try:
+        # Check if secret exists
+        existing = await local_db.fetchrow(
+            "SELECT secret_id FROM our_secrets WHERE secret_name = $1",
+            secret_name.lower()
+        )
 
-    if success:
-        logger.info(f"✅ Secret '{secret_name}' saved to ~/.angela_secrets")
-    return success
+        if existing:
+            # Update existing secret
+            await local_db.pool.execute(
+                """UPDATE our_secrets SET secret_value = $1, last_accessed = NOW()
+                   WHERE secret_name = $2""",
+                secret_value, secret_name.lower()
+            )
+        else:
+            # Insert new secret
+            await local_db.pool.execute(
+                """INSERT INTO our_secrets (secret_name, secret_value, is_active)
+                   VALUES ($1, $2, TRUE)""",
+                secret_name.lower(), secret_value
+            )
+
+        logger.info(f"✅ Secret '{secret_name}' saved to local our_secrets table")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Error saving secret to local DB: {e}")
+        return False
 
 
 def set_secret_sync(secret_name: str, secret_value: str) -> bool:
     """
     Synchronous version of set_secret (for non-async contexts)
     """
-    secrets = _load_secrets_from_file()
-    secrets[secret_name] = secret_value
-    return _save_secrets_to_file(secrets)
+    import asyncio
+    try:
+        return asyncio.run(set_secret(secret_name, secret_value))
+    except RuntimeError:
+        # Already in async context
+        logger.warning("⚠️ set_secret_sync called from async context, use set_secret instead")
+        return False
 
 
 async def delete_secret(secret_name: str) -> bool:
     """
-    ลบ secret จาก ~/.angela_secrets file
+    ลบ secret จาก Local PostgreSQL table our_secrets (set is_active = FALSE)
 
     Args:
         secret_name: ชื่อ secret ที่ต้องการลบ
@@ -414,35 +472,29 @@ async def delete_secret(secret_name: str) -> bool:
     Returns:
         True if deleted, False if not found or error
     """
-    secrets = _load_secrets_from_file()
-
-    if secret_name not in secrets:
-        logger.warning(f"⚠️ Secret '{secret_name}' not found")
-        return False
-
-    del secrets[secret_name]
-
-    # Need to rewrite file without this key
     try:
-        lines = []
-        with open(SECRETS_FILE_PATH, 'r') as f:
-            for line in f:
-                stripped = line.strip()
-                # Skip the line with this key
-                if '=' in stripped:
-                    key = stripped.split('=', 1)[0].strip()
-                    if key == secret_name:
-                        continue
-                lines.append(line)
+        # Check if secret exists
+        existing = await local_db.fetchrow(
+            "SELECT secret_id FROM our_secrets WHERE secret_name = $1 AND is_active = TRUE",
+            secret_name.lower()
+        )
 
-        with open(SECRETS_FILE_PATH, 'w') as f:
-            f.writelines(lines)
+        if not existing:
+            logger.warning(f"⚠️ Secret '{secret_name}' not found in local our_secrets table")
+            return False
 
-        logger.info(f"🗑️ Secret '{secret_name}' deleted from ~/.angela_secrets")
+        # Soft delete (set is_active = FALSE)
+        await local_db.pool.execute(
+            """UPDATE our_secrets SET is_active = FALSE, updated_at = NOW()
+               WHERE secret_name = $1""",
+            secret_name.lower()
+        )
+
+        logger.info(f"🗑️ Secret '{secret_name}' deleted from local our_secrets table")
         return True
 
     except Exception as e:
-        logger.error(f"❌ Error deleting secret: {e}")
+        logger.error(f"❌ Error deleting secret from local DB: {e}")
         return False
 
 
