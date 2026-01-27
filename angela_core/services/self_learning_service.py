@@ -458,16 +458,22 @@ class SelfLearningLoop:
         try:
             # 1. Update knowledge graph from concepts
             if analysis.get("concepts"):
-                knowledge_result = await self.knowledge_extractor.extract_from_conversation(
-                    conversation_id=conversation_id,
-                    message_text="",  # Already extracted
-                    speaker=""
+                # Fetch conversation text for knowledge extraction
+                conv = await db.fetchrow(
+                    "SELECT message_text, speaker FROM conversations WHERE conversation_id = $1",
+                    conversation_id
                 )
+                if conv and conv['message_text']:
+                    knowledge_result = await self.knowledge_extractor.extract_from_conversation(
+                        conversation_id=conversation_id,
+                        message_text=conv['message_text'],
+                        speaker=conv['speaker'] or ""
+                    )
 
-                result["concepts_learned"] = knowledge_result.get("concepts_found", 0)
-                result["knowledge_nodes_created"] = knowledge_result.get("nodes_created", 0)
-                result["knowledge_nodes_updated"] = knowledge_result.get("nodes_updated", 0)
-                result["knowledge_updated"] = True
+                    result["concepts_learned"] = knowledge_result.get("concepts_found", 0)
+                    result["knowledge_nodes_created"] = knowledge_result.get("nodes_created", 0)
+                    result["knowledge_nodes_updated"] = knowledge_result.get("nodes_updated", 0)
+                    result["knowledge_updated"] = True
 
             # 2. Save detected preferences
             if analysis.get("preferences"):
@@ -490,65 +496,74 @@ class SelfLearningLoop:
     async def _save_preference(self, conversation_id: uuid.UUID, preference: Dict):
         """
         บันทึก preference ที่ตรวจพบลง david_preferences table
+
+        Schema: id, category, preference_key, preference_value (jsonb),
+                confidence, evidence_count, evidence_conversation_ids (jsonb),
+                created_at, updated_at, embedding
         """
         try:
-            # Build preference description from context
             pref_type = preference.get("preference_type", "general")
             context = preference.get("context", "")[:200]
+            pref_value = preference.get("preference_value", context)[:200]
             confidence = preference.get("confidence", 0.5)
+            pref_key = f"{pref_type}_{pref_value[:30].lower().replace(' ', '_')}"
 
             # Check if similar preference exists
             existing = await db.fetchrow(
                 """
-                SELECT preference_id FROM david_preferences
+                SELECT id, evidence_count FROM david_preferences
                 WHERE category = $1
-                AND LOWER(preference_value) LIKE LOWER($2)
+                AND preference_key = $2
                 LIMIT 1
                 """,
                 pref_type,
-                f"%{context[:50]}%"
+                pref_key
             )
 
             if existing:
-                # Update existing preference (increase times_observed)
+                # Update existing preference
                 await db.execute(
                     """
                     UPDATE david_preferences
-                    SET times_observed = times_observed + 1,
-                        last_observed_at = NOW(),
-                        examples = COALESCE(examples, '') || '\n' || $1
-                    WHERE preference_id = $2
+                    SET evidence_count = evidence_count + 1,
+                        confidence = LEAST(1.0, confidence + 0.05),
+                        evidence_conversation_ids = COALESCE(evidence_conversation_ids, '[]'::jsonb) || to_jsonb($1::text),
+                        updated_at = NOW()
+                    WHERE id = $2
                     """,
-                    context[:100],
-                    existing['preference_id']
+                    str(conversation_id),
+                    existing['id']
                 )
                 logger.info(f"📈 Updated existing preference: {pref_type}")
             else:
-                # Create new preference with correct schema (with ON CONFLICT handling)
+                # Create new preference
+                import json as json_mod
+                pref_value_jsonb = json_mod.dumps({"value": pref_value, "context": context})
+                evidence_ids = json_mod.dumps([str(conversation_id)])
+
                 await db.execute(
                     """
                     INSERT INTO david_preferences (
                         category, preference_key, preference_value,
-                        confidence_level, times_observed, learned_from, examples, created_at
-                    ) VALUES ($1, $2, $3, $4, 1, $5, $6, NOW())
+                        confidence, evidence_count, evidence_conversation_ids,
+                        created_at, updated_at
+                    ) VALUES ($1, $2, $3::jsonb, $4, 1, $5::jsonb, NOW(), NOW())
                     ON CONFLICT (preference_key) DO UPDATE SET
-                        preference_value = EXCLUDED.preference_value,
-                        confidence_level = EXCLUDED.confidence_level,
-                        times_observed = david_preferences.times_observed + 1,
-                        last_observed_at = NOW(),
-                        examples = COALESCE(david_preferences.examples, '') || '\n' || EXCLUDED.examples
+                        confidence = LEAST(1.0, david_preferences.confidence + 0.05),
+                        evidence_count = david_preferences.evidence_count + 1,
+                        evidence_conversation_ids = COALESCE(david_preferences.evidence_conversation_ids, '[]'::jsonb) || to_jsonb($6::text),
+                        updated_at = NOW()
                     """,
                     pref_type,
-                    pref_type + "_auto",
-                    context[:200],
+                    pref_key,
+                    pref_value_jsonb,
                     confidence,
-                    conversation_id,
-                    context[:100]
+                    evidence_ids,
+                    str(conversation_id)
                 )
                 logger.info(f"✨ Created new preference: {pref_type}")
 
         except Exception as e:
-            # Silently handle duplicate key errors (handled by ON CONFLICT clause)
             error_msg = str(e)
             if "duplicate key" not in error_msg.lower() and "unique constraint" not in error_msg.lower():
                 logger.error(f"Failed to save preference: {error_msg}")
@@ -839,8 +854,8 @@ class SelfLearningLoop:
 
             # Parse vectors (format: "[0.1, 0.2, ...]")
             if isinstance(embedding1, str):
-                vec1 = np.array(eval(embedding1))
-                vec2 = np.array(eval(embedding2))
+                vec1 = np.array(json.loads(embedding1))
+                vec2 = np.array(json.loads(embedding2))
             else:
                 vec1 = np.array(embedding1)
                 vec2 = np.array(embedding2)
