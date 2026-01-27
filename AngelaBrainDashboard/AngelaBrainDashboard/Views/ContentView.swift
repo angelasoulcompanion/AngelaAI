@@ -72,8 +72,8 @@ struct ContentView: View {
                             SkillsView()
                         case .projects:
                             ProjectsView()
-                        case .meetingNotes:
-                            MeetingNotesView()
+                        case .thingsOverview:
+                            ThingsOverviewView()
                         case .preferences:
                             PreferencesView()
                         case .davidMatrix:
@@ -143,7 +143,7 @@ enum NavigationItem: String, CaseIterable {
     case dailyTasks = "Daily Tasks"
     case skills = "Skills"
     case projects = "Projects"
-    case meetingNotes = "Meeting Notes"
+    case thingsOverview = "Things Overview"
     case preferences = "Preferences"
     case davidMatrix = "David's Matrix"
     case codingGuidelines = "Coding Guidelines"
@@ -170,7 +170,7 @@ enum NavigationItem: String, CaseIterable {
         case .dailyTasks: return "calendar.badge.clock"
         case .skills: return "star.leadinghalf.filled"
         case .projects: return "folder.fill"
-        case .meetingNotes: return "doc.text.magnifyingglass"
+        case .thingsOverview: return "checklist"
         case .preferences: return "star.fill"
         case .davidMatrix: return "chart.bar.xaxis"
         case .codingGuidelines: return "exclamationmark.shield.fill"
@@ -187,7 +187,7 @@ enum NavigationItem: String, CaseIterable {
             return .core
         case .brain, .emotions, .emotionalBenchmark, .memories, .experiences, .consciousness, .humanLikeMind:
             return .mind
-        case .goals, .learningSystems, .dailyTasks, .skills, .projects, .meetingNotes:
+        case .goals, .learningSystems, .dailyTasks, .skills, .projects, .thingsOverview:
             return .growth
         case .preferences, .davidMatrix, .trainingStudio:
             return .settings

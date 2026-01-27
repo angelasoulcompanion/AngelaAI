@@ -1439,7 +1439,7 @@ async def get_meetings(limit: int = Query(50, ge=1, le=200)):
                 mn.meeting_date, mn.time_range,
                 mn.attendees, mn.agenda, mn.key_points,
                 mn.decisions_made, mn.issues_risks, mn.next_steps,
-                mn.personal_notes, mn.project_name,
+                mn.personal_notes, mn.raw_notes, mn.project_name,
                 mn.things3_status, mn.morning_notes,
                 mn.afternoon_notes, mn.site_observations,
                 mn.synced_at, mn.created_at, mn.updated_at,
@@ -1463,6 +1463,8 @@ async def get_meeting_stats():
                 (SELECT COUNT(*) FROM meeting_notes) as total_meetings,
                 (SELECT COUNT(*) FROM meeting_notes
                  WHERE meeting_date >= date_trunc('month', CURRENT_DATE)) as this_month,
+                (SELECT COUNT(*) FROM meeting_notes
+                 WHERE meeting_date >= CURRENT_DATE) as upcoming,
                 (SELECT COUNT(*) FROM meeting_action_items
                  WHERE is_completed = FALSE) as open_actions,
                 (SELECT COUNT(*) FROM meeting_action_items) as total_actions,
@@ -1476,6 +1478,7 @@ async def get_meeting_stats():
         return {
             "total_meetings": row['total_meetings'] or 0,
             "this_month": row['this_month'] or 0,
+            "upcoming": row['upcoming'] or 0,
             "open_actions": row['open_actions'] or 0,
             "total_actions": total,
             "completed_actions": completed,
@@ -1501,6 +1504,51 @@ async def get_open_action_items():
             JOIN meeting_notes mn ON ai.meeting_id = mn.meeting_id
             WHERE ai.is_completed = FALSE
             ORDER BY ai.priority ASC, mn.meeting_date DESC NULLS LAST
+        """)
+        return [dict(r) for r in rows]
+
+
+@app.get("/api/meetings/upcoming")
+async def get_upcoming_meetings(limit: int = Query(10, ge=1, le=50)):
+    """Fetch upcoming meetings (meeting_date >= today)"""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT
+                mn.meeting_id::text, mn.things3_uuid, mn.title,
+                mn.meeting_type, mn.location,
+                mn.meeting_date, mn.time_range,
+                mn.attendees, mn.agenda, mn.key_points,
+                mn.decisions_made, mn.issues_risks, mn.next_steps,
+                mn.personal_notes, mn.raw_notes, mn.project_name,
+                mn.things3_status, mn.morning_notes,
+                mn.afternoon_notes, mn.site_observations,
+                mn.synced_at, mn.created_at, mn.updated_at,
+                (SELECT COUNT(*) FROM meeting_action_items
+                 WHERE meeting_id = mn.meeting_id) as total_actions,
+                (SELECT COUNT(*) FROM meeting_action_items
+                 WHERE meeting_id = mn.meeting_id AND is_completed = TRUE) as completed_actions
+            FROM meeting_notes mn
+            WHERE mn.meeting_date >= CURRENT_DATE
+            ORDER BY mn.meeting_date ASC
+            LIMIT $1
+        """, limit)
+        return [dict(r) for r in rows]
+
+
+@app.get("/api/meetings/project-breakdown")
+async def get_meeting_project_breakdown():
+    """Fetch meeting counts grouped by project"""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT
+                COALESCE(NULLIF(project_name, ''), 'No Project') as project_name,
+                COUNT(*) as meeting_count,
+                COUNT(*) FILTER (WHERE things3_status = 'open') as open_count,
+                COUNT(*) FILTER (WHERE things3_status = 'completed') as completed_count,
+                COUNT(*) FILTER (WHERE meeting_type = 'site_visit') as site_visit_count
+            FROM meeting_notes
+            GROUP BY COALESCE(NULLIF(project_name, ''), 'No Project')
+            ORDER BY meeting_count DESC
         """)
         return [dict(r) for r in rows]
 

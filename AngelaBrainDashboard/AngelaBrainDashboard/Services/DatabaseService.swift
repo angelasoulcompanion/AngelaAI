@@ -551,6 +551,14 @@ class DatabaseService: ObservableObject {
         return try await get("/meetings/action-items")
     }
 
+    func fetchUpcomingMeetings(limit: Int = 10) async throws -> [MeetingNote] {
+        return try await get("/meetings/upcoming?limit=\(limit)")
+    }
+
+    func fetchMeetingProjectBreakdown() async throws -> [ProjectMeetingBreakdown] {
+        return try await get("/meetings/project-breakdown")
+    }
+
     // MARK: - Angela Code Prompt (Local File - Not via API)
 
     func fetchAngelaCodePrompt() async -> String {

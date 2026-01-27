@@ -2185,6 +2185,7 @@ struct MeetingNote: Identifiable, Codable {
     let issuesRisks: [String]?
     let nextSteps: [String]?
     let personalNotes: String?
+    let rawNotes: String?
     let projectName: String?
     let things3Status: String         // "open" or "completed"
     let morningNotes: String?
@@ -2211,6 +2212,7 @@ struct MeetingNote: Identifiable, Codable {
         case issuesRisks = "issues_risks"
         case nextSteps = "next_steps"
         case personalNotes = "personal_notes"
+        case rawNotes = "raw_notes"
         case projectName = "project_name"
         case things3Status = "things3_status"
         case morningNotes = "morning_notes"
@@ -2325,6 +2327,7 @@ struct MeetingActionItem: Identifiable, Codable {
 struct MeetingStats: Codable {
     let totalMeetings: Int
     let thisMonth: Int
+    let upcoming: Int?
     let openActions: Int
     let totalActions: Int
     let completedActions: Int
@@ -2334,10 +2337,29 @@ struct MeetingStats: Codable {
     enum CodingKeys: String, CodingKey {
         case totalMeetings = "total_meetings"
         case thisMonth = "this_month"
+        case upcoming
         case openActions = "open_actions"
         case totalActions = "total_actions"
         case completedActions = "completed_actions"
         case completionRate = "completion_rate"
         case siteVisits = "site_visits"
+    }
+}
+
+/// Project meeting breakdown for chart
+struct ProjectMeetingBreakdown: Identifiable, Codable {
+    var id: String { projectName }
+    let projectName: String
+    let meetingCount: Int
+    let openCount: Int
+    let completedCount: Int
+    let siteVisitCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case projectName = "project_name"
+        case meetingCount = "meeting_count"
+        case openCount = "open_count"
+        case completedCount = "completed_count"
+        case siteVisitCount = "site_visit_count"
     }
 }

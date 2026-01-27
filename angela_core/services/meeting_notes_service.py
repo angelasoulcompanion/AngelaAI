@@ -27,7 +27,7 @@ import asyncio
 import logging
 import re
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -169,6 +169,28 @@ class MeetingNotesParser:
                 items.append(cleaned)
         return items
 
+    def _is_junk_action_item(self, text: str) -> bool:
+        """Check if text is a junk/template artifact, not a real action item."""
+        t = text.strip()
+        if not t:
+            return True
+        # Too short to be meaningful (e.g. "[ ]", "-", "1.")
+        if len(t) <= 3:
+            return True
+        # Empty checkbox placeholder only
+        if re.fullmatch(r'[\[\]xX \-•·]+', t):
+            return True
+        # Divider lines (━━━, ---, ═══, etc.)
+        if re.fullmatch(r'[━─═\-—_]{3,}', t):
+            return True
+        # Section header: starts with emoji or ends with ":"  with no real content
+        if t.endswith(':') and len(t) < 30:
+            return True
+        # Template marker patterns
+        if re.match(r'^[/／]\s*\S+:', t):
+            return True
+        return False
+
     def _parse_action_items(self, text: str) -> List[Dict[str, Any]]:
         """Parse action items with checkbox status."""
         items = []
@@ -182,14 +204,15 @@ class MeetingNotesParser:
             if checkbox_match:
                 is_completed = checkbox_match.group(1).lower() == 'x'
                 action_text = checkbox_match.group(2).strip()
-                items.append({
-                    'action_text': action_text,
-                    'is_completed': is_completed,
-                })
+                if not self._is_junk_action_item(action_text):
+                    items.append({
+                        'action_text': action_text,
+                        'is_completed': is_completed,
+                    })
             else:
                 # Plain bullet item
                 cleaned = re.sub(r'^[-•·\d.)\]]+\s*', '', line).strip()
-                if cleaned:
+                if cleaned and not self._is_junk_action_item(cleaned):
                     items.append({
                         'action_text': cleaned,
                         'is_completed': False,
@@ -303,6 +326,20 @@ class MeetingNotesSyncService:
 
                 parsed = self.parser.parse(notes, meeting['title'])
 
+                # Fallback: meeting_date from Things3 start_date or deadline
+                if not parsed.get('meeting_date'):
+                    fallback_date = meeting.get('start_date') or meeting.get('deadline')
+                    if fallback_date and isinstance(fallback_date, datetime):
+                        parsed['meeting_date'] = fallback_date.date()
+                    elif fallback_date and isinstance(fallback_date, date):
+                        parsed['meeting_date'] = fallback_date
+
+                # Combine project + heading for richer context
+                project = meeting.get('project_title', '')
+                heading = meeting.get('heading_title', '')
+                if heading and project:
+                    meeting['project_title'] = f"{project} / {heading}"
+
                 # Check if meeting already exists
                 existing = await self.db.fetchrow(
                     "SELECT meeting_id FROM meeting_notes WHERE things3_uuid = $1",
@@ -335,19 +372,25 @@ class MeetingNotesSyncService:
 
     async def _insert_meeting(self, meeting: Dict, parsed: Dict) -> None:
         """Insert a new meeting record."""
+        now = datetime.now(timezone.utc)
+        # Use Things3 creation_date for created_at if available
+        created = meeting.get('creation_date') or now
+
         meeting_id = await self.db.fetchval('''
             INSERT INTO meeting_notes (
                 things3_uuid, title, meeting_type, location, meeting_date,
                 time_range, attendees, agenda, key_points, decisions_made,
                 issues_risks, next_steps, personal_notes, raw_notes,
                 project_name, things3_status,
-                morning_notes, afternoon_notes, site_observations
+                morning_notes, afternoon_notes, site_observations,
+                synced_at, created_at, updated_at
             ) VALUES (
                 $1, $2, $3, $4, $5,
                 $6, $7, $8, $9, $10,
                 $11, $12, $13, $14,
                 $15, $16,
-                $17, $18, $19
+                $17, $18, $19,
+                $20, $21, $22
             ) RETURNING meeting_id
         ''',
             meeting['uuid'],
@@ -369,25 +412,18 @@ class MeetingNotesSyncService:
             parsed.get('morning_notes'),
             parsed.get('afternoon_notes'),
             parsed.get('site_observations'),
+            now,       # synced_at
+            created,   # created_at
+            now,       # updated_at
         )
 
-        # Insert action items
-        action_items = parsed.get('action_items', [])
-        # Also merge checklist items from Things3
-        for ci in meeting.get('checklist_items', []):
-            action_items.append({
-                'action_text': ci['title'],
-                'is_completed': ci['is_completed'],
-            })
-
-        for item in action_items:
-            await self.db.execute('''
-                INSERT INTO meeting_action_items (meeting_id, action_text, is_completed)
-                VALUES ($1, $2, $3)
-            ''', meeting_id, item['action_text'], item.get('is_completed', False))
+        # Insert action items (parsed from notes + Things3 checklist)
+        await self._sync_action_items(meeting_id, meeting, parsed)
 
     async def _update_meeting(self, meeting_id, meeting: Dict, parsed: Dict) -> None:
         """Update an existing meeting record."""
+        now = datetime.now(timezone.utc)
+
         await self.db.execute('''
             UPDATE meeting_notes SET
                 title = $2,
@@ -408,7 +444,8 @@ class MeetingNotesSyncService:
                 morning_notes = $17,
                 afternoon_notes = $18,
                 site_observations = $19,
-                updated_at = NOW()
+                synced_at = $20,
+                updated_at = $20
             WHERE meeting_id = $1
         ''',
             meeting_id,
@@ -430,6 +467,7 @@ class MeetingNotesSyncService:
             parsed.get('morning_notes'),
             parsed.get('afternoon_notes'),
             parsed.get('site_observations'),
+            now,
         )
 
         # Re-sync action items: delete old, insert new
@@ -437,19 +475,48 @@ class MeetingNotesSyncService:
             "DELETE FROM meeting_action_items WHERE meeting_id = $1",
             meeting_id
         )
+        await self._sync_action_items(meeting_id, meeting, parsed)
 
-        action_items = parsed.get('action_items', [])
-        for ci in meeting.get('checklist_items', []):
-            action_items.append({
-                'action_text': ci['title'],
-                'is_completed': ci['is_completed'],
-            })
 
-        for item in action_items:
+    async def _sync_action_items(self, meeting_id, meeting: Dict, parsed: Dict) -> None:
+        """Insert action items from parsed notes + Things3 checklist."""
+        now = datetime.now(timezone.utc)
+
+        # Action items parsed from notes text
+        for item in parsed.get('action_items', []):
+            is_done = item.get('is_completed', False)
             await self.db.execute('''
-                INSERT INTO meeting_action_items (meeting_id, action_text, is_completed)
-                VALUES ($1, $2, $3)
-            ''', meeting_id, item['action_text'], item.get('is_completed', False))
+                INSERT INTO meeting_action_items
+                    (meeting_id, action_text, is_completed, completed_at, priority, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6)
+            ''',
+                meeting_id,
+                item['action_text'],
+                is_done,
+                now if is_done else None,
+                3,   # default priority: medium
+                now,
+            )
+
+        # Checklist items from Things3 (separate from notes)
+        for ci in meeting.get('checklist_items', []):
+            title = ci.get('title', '').strip()
+            if not title or self.parser._is_junk_action_item(title):
+                continue
+            is_done = ci.get('is_completed', False)
+            completed_at = ci.get('completed_date')  # datetime from Things3
+            await self.db.execute('''
+                INSERT INTO meeting_action_items
+                    (meeting_id, action_text, is_completed, completed_at, priority, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6)
+            ''',
+                meeting_id,
+                title,
+                is_done,
+                completed_at if is_done else None,
+                3,   # default priority: medium
+                now,
+            )
 
 
 async def run_sync() -> Dict[str, int]:

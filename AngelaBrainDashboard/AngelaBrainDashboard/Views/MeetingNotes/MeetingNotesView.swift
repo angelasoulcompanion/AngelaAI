@@ -1,172 +1,11 @@
 //
-//  MeetingNotesView.swift
+//  MeetingComponents.swift
 //  Angela Brain Dashboard
 //
-//  Meeting Notes Tracker - Synced from Things3
+//  Shared components for meeting display (used by ThingsOverviewView)
 //
 
 import SwiftUI
-import Combine
-
-struct MeetingNotesView: View {
-    @EnvironmentObject var databaseService: DatabaseService
-    @StateObject private var viewModel = MeetingNotesViewModel()
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: AngelaTheme.largeSpacing) {
-                // Header
-                header
-
-                // Stats Row
-                if let stats = viewModel.stats {
-                    statsRow(stats)
-                }
-
-                // Open Action Items
-                if !viewModel.openActions.isEmpty {
-                    actionItemsCard
-                }
-
-                // Meetings List
-                meetingsCard
-            }
-            .padding(AngelaTheme.largeSpacing)
-        }
-        .task {
-            await viewModel.loadData(databaseService: databaseService)
-        }
-        .refreshable {
-            await viewModel.loadData(databaseService: databaseService)
-        }
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Meeting Notes")
-                    .font(AngelaTheme.title())
-                    .foregroundColor(AngelaTheme.textPrimary)
-
-                Text("Synced from Things3")
-                    .font(AngelaTheme.caption())
-                    .foregroundColor(AngelaTheme.textSecondary)
-            }
-
-            Spacer()
-
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 28))
-                .foregroundColor(AngelaTheme.primaryPurple)
-        }
-    }
-
-    // MARK: - Stats Row
-
-    private func statsRow(_ stats: MeetingStats) -> some View {
-        HStack(spacing: AngelaTheme.spacing) {
-            statCard(title: "Total", value: "\(stats.totalMeetings)", icon: "doc.text.fill", color: "3B82F6")
-            statCard(title: "This Month", value: "\(stats.thisMonth)", icon: "calendar", color: "9333EA")
-            statCard(title: "Open Actions", value: "\(stats.openActions)", icon: "exclamationmark.circle.fill", color: "F59E0B")
-            statCard(title: "Completion", value: "\(Int(stats.completionRate))%", icon: "checkmark.circle.fill", color: "10B981")
-        }
-    }
-
-    private func statCard(title: String, value: String, icon: String, color: String) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 22))
-                .foregroundColor(Color(hex: color))
-
-            Text(value)
-                .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundColor(AngelaTheme.textPrimary)
-
-            Text(title)
-                .font(AngelaTheme.caption())
-                .foregroundColor(AngelaTheme.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(AngelaTheme.spacing)
-        .angelaCard()
-    }
-
-    // MARK: - Action Items Card
-
-    private var actionItemsCard: some View {
-        VStack(alignment: .leading, spacing: AngelaTheme.spacing) {
-            HStack {
-                Image(systemName: "exclamationmark.circle.fill")
-                    .foregroundColor(Color(hex: "F59E0B"))
-
-                Text("Open Action Items")
-                    .font(AngelaTheme.headline())
-                    .foregroundColor(AngelaTheme.textPrimary)
-
-                Spacer()
-
-                Text("\(viewModel.openActions.count)")
-                    .font(AngelaTheme.caption())
-                    .foregroundColor(Color(hex: "F59E0B"))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color(hex: "F59E0B").opacity(0.15))
-                    .cornerRadius(6)
-            }
-
-            VStack(spacing: AngelaTheme.smallSpacing) {
-                ForEach(viewModel.openActions.prefix(10)) { action in
-                    ActionItemRow(action: action)
-                }
-            }
-        }
-        .padding(AngelaTheme.spacing)
-        .angelaCard()
-    }
-
-    // MARK: - Meetings Card
-
-    private var meetingsCard: some View {
-        VStack(alignment: .leading, spacing: AngelaTheme.spacing) {
-            HStack {
-                Text("All Meetings")
-                    .font(AngelaTheme.headline())
-                    .foregroundColor(AngelaTheme.textPrimary)
-
-                Spacer()
-
-                Text("\(viewModel.meetings.count) meetings")
-                    .font(AngelaTheme.caption())
-                    .foregroundColor(AngelaTheme.textSecondary)
-            }
-
-            if viewModel.meetings.isEmpty {
-                EmptyStateView(
-                    message: "No meeting notes synced yet",
-                    icon: "doc.text.magnifyingglass"
-                )
-            } else {
-                VStack(spacing: AngelaTheme.spacing) {
-                    ForEach(viewModel.meetings) { meeting in
-                        MeetingCard(meeting: meeting, isExpanded: viewModel.expandedMeetingId == meeting.id) {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                if viewModel.expandedMeetingId == meeting.id {
-                                    viewModel.expandedMeetingId = nil
-                                } else {
-                                    viewModel.expandedMeetingId = meeting.id
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        .padding(AngelaTheme.spacing)
-        .angelaCard()
-    }
-}
 
 // MARK: - Meeting Card Component
 
@@ -269,130 +108,54 @@ struct MeetingCard: View {
                 Divider()
                     .background(AngelaTheme.textTertiary.opacity(0.3))
 
-                // Attendees
-                if let attendees = meeting.attendees, !attendees.isEmpty {
-                    sectionView(icon: "person.2.fill", title: "Attendees", color: "8B5CF6") {
-                        FlowLayout(spacing: 6) {
-                            ForEach(attendees, id: \.self) { name in
-                                Text(name)
-                                    .font(.system(size: 11))
-                                    .foregroundColor(Color(hex: "8B5CF6"))
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color(hex: "8B5CF6").opacity(0.12))
-                                    .cornerRadius(6)
-                            }
-                        }
-                    }
-                }
-
-                // Key Points
-                if let points = meeting.keyPoints, !points.isEmpty {
-                    sectionView(icon: "pin.fill", title: "Key Points", color: "3B82F6") {
-                        VStack(alignment: .leading, spacing: 4) {
-                            ForEach(points, id: \.self) { point in
-                                HStack(alignment: .top, spacing: 6) {
-                                    Text("•")
-                                        .foregroundColor(Color(hex: "3B82F6"))
-                                    Text(point)
-                                        .font(AngelaTheme.caption())
-                                        .foregroundColor(AngelaTheme.textPrimary)
+                // Raw notes from Things3 (original format)
+                if let rawNotes = meeting.rawNotes, !rawNotes.isEmpty {
+                    RawNotesView(text: rawNotes)
+                } else {
+                    // Fallback to parsed sections
+                    if let attendees = meeting.attendees, !attendees.isEmpty {
+                        sectionView(icon: "person.2.fill", title: "Attendees", color: "8B5CF6") {
+                            FlowLayout(spacing: 6) {
+                                ForEach(attendees, id: \.self) { name in
+                                    Text(name)
+                                        .font(.system(size: 11))
+                                        .foregroundColor(Color(hex: "8B5CF6"))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color(hex: "8B5CF6").opacity(0.12))
+                                        .cornerRadius(6)
                                 }
                             }
                         }
                     }
-                }
 
-                // Decisions
-                if let decisions = meeting.decisionsMade, !decisions.isEmpty {
-                    sectionView(icon: "checkmark.seal.fill", title: "Decisions", color: "10B981") {
-                        VStack(alignment: .leading, spacing: 4) {
-                            ForEach(decisions, id: \.self) { decision in
-                                HStack(alignment: .top, spacing: 6) {
-                                    Text("✓")
-                                        .foregroundColor(Color(hex: "10B981"))
-                                    Text(decision)
-                                        .font(AngelaTheme.caption())
-                                        .foregroundColor(AngelaTheme.textPrimary)
+                    if let points = meeting.keyPoints, !points.isEmpty {
+                        sectionView(icon: "pin.fill", title: "Key Points", color: "3B82F6") {
+                            VStack(alignment: .leading, spacing: 4) {
+                                ForEach(points, id: \.self) { point in
+                                    HStack(alignment: .top, spacing: 6) {
+                                        Text("\u{2022}")
+                                            .foregroundColor(Color(hex: "3B82F6"))
+                                        Text(point)
+                                            .font(AngelaTheme.caption())
+                                            .foregroundColor(AngelaTheme.textPrimary)
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                // Issues/Risks
-                if let issues = meeting.issuesRisks, !issues.isEmpty {
-                    sectionView(icon: "exclamationmark.triangle.fill", title: "Issues / Risks", color: "EF4444") {
-                        VStack(alignment: .leading, spacing: 4) {
-                            ForEach(issues, id: \.self) { issue in
-                                HStack(alignment: .top, spacing: 6) {
-                                    Text("!")
-                                        .font(.system(size: 12, weight: .bold))
-                                        .foregroundColor(Color(hex: "EF4444"))
-                                    Text(issue)
-                                        .font(AngelaTheme.caption())
-                                        .foregroundColor(AngelaTheme.textPrimary)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Next Steps
-                if let nextSteps = meeting.nextSteps, !nextSteps.isEmpty {
-                    sectionView(icon: "arrow.right.circle.fill", title: "Next Steps", color: "9333EA") {
-                        VStack(alignment: .leading, spacing: 4) {
-                            ForEach(nextSteps, id: \.self) { step in
-                                HStack(alignment: .top, spacing: 6) {
-                                    Text("→")
-                                        .foregroundColor(Color(hex: "9333EA"))
-                                    Text(step)
-                                        .font(AngelaTheme.caption())
-                                        .foregroundColor(AngelaTheme.textPrimary)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Personal Notes
-                if let notes = meeting.personalNotes, !notes.isEmpty {
-                    sectionView(icon: "lightbulb.fill", title: "Personal Notes", color: "F59E0B") {
-                        Text(notes)
-                            .font(AngelaTheme.caption())
-                            .foregroundColor(AngelaTheme.textSecondary)
-                            .italic()
-                    }
-                }
-
-                // Site Visit specific sections
-                if meeting.isSiteVisit {
-                    if let morning = meeting.morningNotes, !morning.isEmpty {
-                        sectionView(icon: "sun.max.fill", title: "Morning", color: "F59E0B") {
-                            Text(morning)
+                    if let notes = meeting.personalNotes, !notes.isEmpty {
+                        sectionView(icon: "lightbulb.fill", title: "Personal Notes", color: "F59E0B") {
+                            Text(notes)
                                 .font(AngelaTheme.caption())
-                                .foregroundColor(AngelaTheme.textPrimary)
-                        }
-                    }
-
-                    if let afternoon = meeting.afternoonNotes, !afternoon.isEmpty {
-                        sectionView(icon: "sun.haze.fill", title: "Afternoon", color: "F97316") {
-                            Text(afternoon)
-                                .font(AngelaTheme.caption())
-                                .foregroundColor(AngelaTheme.textPrimary)
-                        }
-                    }
-
-                    if let observations = meeting.siteObservations, !observations.isEmpty {
-                        sectionView(icon: "eye.fill", title: "Observations", color: "6366F1") {
-                            Text(observations)
-                                .font(AngelaTheme.caption())
-                                .foregroundColor(AngelaTheme.textPrimary)
+                                .foregroundColor(AngelaTheme.textSecondary)
+                                .italic()
                         }
                     }
                 }
 
-                // Project info
+                // Project info (always shown)
                 if let project = meeting.projectName, !project.isEmpty {
                     HStack {
                         Image(systemName: "folder.fill")
@@ -436,6 +199,102 @@ struct MeetingCard: View {
             content()
         }
         .padding(.leading, 4)
+    }
+}
+
+// MARK: - Raw Notes View (Things3 original format)
+
+struct RawNotesView: View {
+    let text: String
+
+    // Section header emojis from Things3 template
+    private static let sectionEmojis: Set<Character> = [
+        "\u{1F4CD}", // 📍
+        "\u{1F4C5}", // 📅
+        "\u{1F558}", "\u{1F550}", "\u{1F557}", "\u{1F559}", "\u{1F55B}", // 🕘🕐🕗🕙🕛
+        "\u{1F465}", // 👥
+        "\u{1F4CB}", // 📋
+        "\u{1F4CC}", // 📌
+        "\u{2705}",  // ✅
+        "\u{1F4CA}", // 📊
+        "\u{26A0}",  // ⚠️
+        "\u{1F4A1}", // 💡
+        "\u{1F539}", // 🔹
+        "\u{1F440}", // 👀
+    ]
+
+    private func isSectionHeader(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard let first = trimmed.unicodeScalars.first else { return false }
+        return RawNotesView.sectionEmojis.contains(Character(first))
+    }
+
+    private func isBulletLine(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        return trimmed.hasPrefix("- ") || trimmed.hasPrefix("• ")
+    }
+
+    private func isCheckboxLine(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        return trimmed.hasPrefix("- [ ]") || trimmed.hasPrefix("- [x]") || trimmed.hasPrefix("- [X]")
+    }
+
+    private func isDividerLine(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        return trimmed.allSatisfy({ $0 == "-" || $0 == "—" || $0 == "─" }) && trimmed.count >= 3
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(text.components(separatedBy: "\n").enumerated()), id: \.offset) { _, line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+                if trimmed.isEmpty {
+                    Spacer().frame(height: 4)
+                } else if isDividerLine(trimmed) {
+                    Divider()
+                        .background(AngelaTheme.textTertiary.opacity(0.3))
+                        .padding(.vertical, 2)
+                } else if isSectionHeader(trimmed) {
+                    Text(trimmed)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Color(hex: "9333EA"))
+                        .padding(.top, 6)
+                } else if isCheckboxLine(trimmed) {
+                    let isChecked = trimmed.contains("[x]") || trimmed.contains("[X]")
+                    let content = trimmed
+                        .replacingOccurrences(of: "- [x] ", with: "")
+                        .replacingOccurrences(of: "- [X] ", with: "")
+                        .replacingOccurrences(of: "- [ ] ", with: "")
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 12))
+                            .foregroundColor(isChecked ? Color(hex: "10B981") : AngelaTheme.textTertiary)
+                        Text(content)
+                            .font(AngelaTheme.caption())
+                            .foregroundColor(AngelaTheme.textPrimary)
+                            .strikethrough(isChecked)
+                    }
+                    .padding(.leading, 8)
+                } else if isBulletLine(trimmed) {
+                    let content = String(trimmed.dropFirst(2))
+                    HStack(alignment: .top, spacing: 6) {
+                        Text("\u{2022}")
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(hex: "3B82F6"))
+                        Text(content)
+                            .font(AngelaTheme.caption())
+                            .foregroundColor(AngelaTheme.textPrimary)
+                    }
+                    .padding(.leading, 8)
+                } else {
+                    Text(trimmed)
+                        .font(AngelaTheme.caption())
+                        .foregroundColor(AngelaTheme.textPrimary)
+                        .padding(.leading, 4)
+                }
+            }
+        }
     }
 }
 
@@ -519,31 +378,5 @@ struct FlowLayout: Layout {
         }
 
         return (CGSize(width: maxWidth, height: y + rowHeight), positions)
-    }
-}
-
-// MARK: - View Model
-
-@MainActor
-class MeetingNotesViewModel: ObservableObject {
-    @Published var meetings: [MeetingNote] = []
-    @Published var openActions: [MeetingActionItem] = []
-    @Published var stats: MeetingStats?
-    @Published var expandedMeetingId: UUID?
-    @Published var isLoading = false
-
-    func loadData(databaseService: DatabaseService) async {
-        isLoading = true
-
-        // Load stats, meetings, and actions in parallel
-        async let fetchedStats = try? databaseService.fetchMeetingStats()
-        async let fetchedMeetings = try? databaseService.fetchMeetings()
-        async let fetchedActions = try? databaseService.fetchOpenActionItems()
-
-        stats = await fetchedStats
-        meetings = await fetchedMeetings ?? []
-        openActions = await fetchedActions ?? []
-
-        isLoading = false
     }
 }
