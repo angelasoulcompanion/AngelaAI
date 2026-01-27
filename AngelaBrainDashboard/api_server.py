@@ -1509,8 +1509,8 @@ async def get_open_action_items():
 
 
 @app.get("/api/meetings/upcoming")
-async def get_upcoming_meetings(limit: int = Query(10, ge=1, le=50)):
-    """Fetch upcoming meetings (meeting_date >= today)"""
+async def get_upcoming_meetings(limit: int = Query(5, ge=1, le=50)):
+    """Fetch upcoming meetings (nearest first, default 5)"""
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT

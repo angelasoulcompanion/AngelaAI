@@ -551,7 +551,7 @@ class DatabaseService: ObservableObject {
         return try await get("/meetings/action-items")
     }
 
-    func fetchUpcomingMeetings(limit: Int = 10) async throws -> [MeetingNote] {
+    func fetchUpcomingMeetings(limit: Int = 5) async throws -> [MeetingNote] {
         return try await get("/meetings/upcoming?limit=\(limit)")
     }
 

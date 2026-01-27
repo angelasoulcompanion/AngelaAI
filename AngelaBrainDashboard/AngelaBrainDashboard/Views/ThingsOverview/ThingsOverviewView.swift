@@ -260,7 +260,7 @@ struct ThingsOverviewView: View {
             }
 
             VStack(spacing: AngelaTheme.smallSpacing) {
-                ForEach(viewModel.upcomingMeetings.prefix(10)) { meeting in
+                ForEach(viewModel.upcomingMeetings.prefix(5)) { meeting in
                     MeetingCard(
                         meeting: meeting,
                         isExpanded: viewModel.expandedMeetingId == meeting.id

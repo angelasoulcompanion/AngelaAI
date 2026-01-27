@@ -501,10 +501,11 @@ class BrainVisualizationViewModel: ObservableObject {
     @Published var topConnectedNodes: [KnowledgeNode] = []
     @Published var graphData: GraphData?
     @Published var isLoading = false
-    @Published var currentNodeCount = 2000  // Default: 2000 nodes
+    @Published var currentNodeCount = 0  // Set to 70% of total on first load
     @Published var hasMoreNodes = true
 
     private let nodesPerPage = 500  // Load 500 more nodes each time
+    private var isFirstLoad = true
 
     func loadData(databaseService: DatabaseService) async {
         isLoading = true
@@ -512,6 +513,13 @@ class BrainVisualizationViewModel: ObservableObject {
         do {
             // Load sequentially to avoid pool exhaustion
             brainStats = try await databaseService.fetchBrainStats()
+
+            // First load: default to 70% of total nodes
+            if isFirstLoad, let stats = brainStats {
+                currentNodeCount = Int(Double(stats.totalKnowledgeNodes) * 0.7)
+                isFirstLoad = false
+            }
+
             knowledgeNodes = try await databaseService.fetchKnowledgeNodes(limit: currentNodeCount)
             topConnectedNodes = try await databaseService.fetchTopConnectedNodes(limit: 10)
 
