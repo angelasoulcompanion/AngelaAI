@@ -1529,6 +1529,7 @@ async def get_upcoming_meetings(limit: int = Query(5, ge=1, le=50)):
                  WHERE meeting_id = mn.meeting_id AND is_completed = TRUE) as completed_actions
             FROM meeting_notes mn
             WHERE mn.meeting_date >= CURRENT_DATE
+              AND mn.things3_status = 'open'
             ORDER BY mn.meeting_date ASC
             LIMIT $1
         """, limit)
