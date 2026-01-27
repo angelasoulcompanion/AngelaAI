@@ -381,6 +381,109 @@ class SQLiteHandler:
             print(f"Error searching todos: {e}")
             return []
 
+    def get_meeting_todos(self) -> List[Dict[str, Any]]:
+        """Get todos that contain meeting notes template.
+        Detects by matching on notes content containing meeting markers.
+        Returns both open and completed meetings.
+        """
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+
+            # Match on notes containing meeting template markers
+            query = """
+                SELECT
+                    t.uuid,
+                    t.title,
+                    t.notes,
+                    t.status,
+                    t.startDate,
+                    t.deadline,
+                    t.creationDate,
+                    t.stopDate,
+                    COALESCE(p.title, hp.title) as project_title,
+                    h.title as heading_title
+                FROM TMTask t
+                LEFT JOIN TMTask p ON t.project = p.uuid
+                LEFT JOIN TMTask h ON t.heading = h.uuid
+                LEFT JOIN TMTask hp ON h.project = hp.uuid
+                WHERE t.type = 0
+                    AND t.trashed = 0
+                    AND (
+                        t.notes LIKE '%บันทึกประชุม%'
+                        OR t.notes LIKE '%Action Items%'
+                        OR t.notes LIKE '%สรุปประเด็น%'
+                        OR t.notes LIKE '%ผู้เข้าประชุม%'
+                        OR t.notes LIKE '%Site Visit%'
+                        OR t.notes LIKE '%วาระ%'
+                    )
+                ORDER BY t.creationDate DESC
+            """
+
+            cursor.execute(query)
+            rows = cursor.fetchall()
+
+            meetings = []
+            for row in rows:
+                uuid = row["uuid"]
+                checklist = self.get_checklist_items(conn, uuid)
+                meetings.append({
+                    "uuid": uuid,
+                    "title": row["title"] or "",
+                    "notes": row["notes"] or "",
+                    "status": "completed" if row["status"] == 3 else "open",
+                    "start_date": self._convert_things3_date(row["startDate"]),
+                    "deadline": self._convert_things3_date(row["deadline"]),
+                    "creation_date": self._convert_things3_date(row["creationDate"]),
+                    "completion_date": self._convert_things3_date(row["stopDate"]),
+                    "project_title": row["project_title"] or "",
+                    "heading_title": row["heading_title"] or "",
+                    "checklist_items": checklist,
+                })
+
+            conn.close()
+            return meetings
+
+        except Exception as e:
+            print(f"Error getting meeting todos: {e}")
+            return []
+
+    def get_checklist_items(self, conn: sqlite3.Connection, task_uuid: str) -> List[Dict[str, Any]]:
+        """Get checklist items for a specific task.
+        Uses an existing connection to avoid opening/closing multiple times.
+        """
+        try:
+            cursor = conn.cursor()
+
+            query = """
+                SELECT
+                    uuid,
+                    title,
+                    status,
+                    stopDate
+                FROM TMChecklistItem
+                WHERE task = ?
+                ORDER BY 'index' ASC
+            """
+
+            cursor.execute(query, (task_uuid,))
+            rows = cursor.fetchall()
+
+            items = []
+            for row in rows:
+                items.append({
+                    "uuid": row["uuid"],
+                    "title": row["title"] or "",
+                    "is_completed": row["status"] == 3,
+                    "completed_date": self._convert_things3_date(row["stopDate"]),
+                })
+
+            return items
+
+        except Exception as e:
+            print(f"Error getting checklist items for {task_uuid}: {e}")
+            return []
+
     def get_project_tasks(self, project_title: str) -> List[Dict[str, Any]]:
         """Get all tasks for a specific project."""
         try:

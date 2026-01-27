@@ -1425,6 +1425,125 @@ async def get_subconsciousness_summary():
 
 
 # ============================================================
+# Meeting Notes
+# ============================================================
+
+@app.get("/api/meetings")
+async def get_meetings(limit: int = Query(50, ge=1, le=200)):
+    """Fetch all meeting notes ordered by date desc"""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT
+                mn.meeting_id::text, mn.things3_uuid, mn.title,
+                mn.meeting_type, mn.location,
+                mn.meeting_date, mn.time_range,
+                mn.attendees, mn.agenda, mn.key_points,
+                mn.decisions_made, mn.issues_risks, mn.next_steps,
+                mn.personal_notes, mn.project_name,
+                mn.things3_status, mn.morning_notes,
+                mn.afternoon_notes, mn.site_observations,
+                mn.synced_at, mn.created_at, mn.updated_at,
+                (SELECT COUNT(*) FROM meeting_action_items
+                 WHERE meeting_id = mn.meeting_id) as total_actions,
+                (SELECT COUNT(*) FROM meeting_action_items
+                 WHERE meeting_id = mn.meeting_id AND is_completed = TRUE) as completed_actions
+            FROM meeting_notes mn
+            ORDER BY mn.meeting_date DESC NULLS LAST, mn.created_at DESC
+            LIMIT $1
+        """, limit)
+        return [dict(r) for r in rows]
+
+
+@app.get("/api/meetings/stats")
+async def get_meeting_stats():
+    """Fetch meeting statistics"""
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT
+                (SELECT COUNT(*) FROM meeting_notes) as total_meetings,
+                (SELECT COUNT(*) FROM meeting_notes
+                 WHERE meeting_date >= date_trunc('month', CURRENT_DATE)) as this_month,
+                (SELECT COUNT(*) FROM meeting_action_items
+                 WHERE is_completed = FALSE) as open_actions,
+                (SELECT COUNT(*) FROM meeting_action_items) as total_actions,
+                (SELECT COUNT(*) FROM meeting_action_items
+                 WHERE is_completed = TRUE) as completed_actions,
+                (SELECT COUNT(*) FROM meeting_notes
+                 WHERE meeting_type = 'site_visit') as site_visits
+        """)
+        total = row['total_actions'] or 0
+        completed = row['completed_actions'] or 0
+        return {
+            "total_meetings": row['total_meetings'] or 0,
+            "this_month": row['this_month'] or 0,
+            "open_actions": row['open_actions'] or 0,
+            "total_actions": total,
+            "completed_actions": completed,
+            "completion_rate": round(completed / total * 100, 1) if total > 0 else 0.0,
+            "site_visits": row['site_visits'] or 0,
+        }
+
+
+@app.get("/api/meetings/action-items")
+async def get_open_action_items():
+    """Fetch all open (incomplete) action items across meetings"""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT
+                ai.action_id::text, ai.meeting_id::text,
+                ai.action_text, ai.assignee, ai.due_date,
+                ai.is_completed, ai.completed_at, ai.priority,
+                ai.created_at,
+                mn.title as meeting_title,
+                mn.meeting_date,
+                mn.project_name
+            FROM meeting_action_items ai
+            JOIN meeting_notes mn ON ai.meeting_id = mn.meeting_id
+            WHERE ai.is_completed = FALSE
+            ORDER BY ai.priority ASC, mn.meeting_date DESC NULLS LAST
+        """)
+        return [dict(r) for r in rows]
+
+
+@app.get("/api/meetings/{meeting_id}")
+async def get_meeting_detail(meeting_id: str):
+    """Fetch single meeting with action items"""
+    async with pool.acquire() as conn:
+        meeting = await conn.fetchrow("""
+            SELECT
+                meeting_id::text, things3_uuid, title,
+                meeting_type, location, meeting_date, time_range,
+                attendees, agenda, key_points,
+                decisions_made, issues_risks, next_steps,
+                personal_notes, raw_notes, project_name,
+                things3_status, morning_notes,
+                afternoon_notes, site_observations,
+                synced_at, created_at, updated_at
+            FROM meeting_notes
+            WHERE meeting_id = $1::uuid
+        """, meeting_id)
+
+        if not meeting:
+            raise HTTPException(status_code=404, detail="Meeting not found")
+
+        result = dict(meeting)
+
+        # Fetch action items
+        actions = await conn.fetch("""
+            SELECT
+                action_id::text, meeting_id::text,
+                action_text, assignee, due_date,
+                is_completed, completed_at, priority, created_at
+            FROM meeting_action_items
+            WHERE meeting_id = $1::uuid
+            ORDER BY is_completed ASC, priority ASC
+        """, meeting_id)
+
+        result['action_items'] = [dict(a) for a in actions]
+        return result
+
+
+# ============================================================
 # Main Entry Point
 # ============================================================
 

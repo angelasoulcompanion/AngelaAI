@@ -533,6 +533,24 @@ class DatabaseService: ObservableObject {
         return (response.coreMemories, response.pinnedMemories, response.activeDreams, response.totalMirrorings)
     }
 
+    // MARK: - Meeting Notes
+
+    func fetchMeetings(limit: Int = 50) async throws -> [MeetingNote] {
+        return try await get("/meetings?limit=\(limit)")
+    }
+
+    func fetchMeetingDetail(meetingId: String) async throws -> MeetingNote {
+        return try await get("/meetings/\(meetingId)")
+    }
+
+    func fetchMeetingStats() async throws -> MeetingStats {
+        return try await get("/meetings/stats")
+    }
+
+    func fetchOpenActionItems() async throws -> [MeetingActionItem] {
+        return try await get("/meetings/action-items")
+    }
+
     // MARK: - Angela Code Prompt (Local File - Not via API)
 
     func fetchAngelaCodePrompt() async -> String {
