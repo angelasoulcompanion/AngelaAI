@@ -155,16 +155,19 @@ class DailyNewsSender:
         # Angela's profile image URL
         profile_url = "https://raw.githubusercontent.com/angelasoulcompanion/AngelaAI/main/assets/angela_profile.jpg"
 
-        # Build news sections
+        # Build news sections with clickable links
         tech_items = ""
         for article in news.get("tech", [])[:4]:
             title = article.get("title", "No title")
             source = article.get("source", "Unknown")
             url = article.get("url", "")
             if url:
-                tech_items += f'<li><a href="{url}" style="color: #374151; text-decoration: none;"><strong>{title}</strong></a> <span style="color: #6B7280;">({source})</span></li>'
+                tech_items += f'''<li style="margin-bottom: 8px;">
+                    <strong>{title}</strong> <span style="color: #6B7280;">({source})</span><br>
+                    <a href="{url}" style="color: #3B82F6; font-size: 12px;">🔗 อ่านเพิ่มเติม →</a>
+                </li>'''
             else:
-                tech_items += f'<li><strong>{title}</strong> <span style="color: #6B7280;">({source})</span></li>'
+                tech_items += f'<li style="margin-bottom: 8px;"><strong>{title}</strong> <span style="color: #6B7280;">({source})</span></li>'
 
         business_items = ""
         for article in news.get("business", [])[:4]:
@@ -176,9 +179,12 @@ class DailyNewsSender:
             else:
                 source = "News"
             if url:
-                business_items += f'<li><a href="{url}" style="color: #374151; text-decoration: none;"><strong>{title}</strong></a> <span style="color: #6B7280;">({source})</span></li>'
+                business_items += f'''<li style="margin-bottom: 8px;">
+                    <strong>{title}</strong> <span style="color: #6B7280;">({source})</span><br>
+                    <a href="{url}" style="color: #8B5CF6; font-size: 12px;">🔗 อ่านเพิ่มเติม →</a>
+                </li>'''
             else:
-                business_items += f'<li><strong>{title}</strong> <span style="color: #6B7280;">({source})</span></li>'
+                business_items += f'<li style="margin-bottom: 8px;"><strong>{title}</strong> <span style="color: #6B7280;">({source})</span></li>'
 
         thai_items = ""
         for article in news.get("thai", [])[:4]:
@@ -186,9 +192,12 @@ class DailyNewsSender:
             source = article.get("source", "Unknown")
             url = article.get("url", "")
             if url:
-                thai_items += f'<li><a href="{url}" style="color: #374151; text-decoration: none;"><strong>{title}</strong></a> <span style="color: #6B7280;">({source})</span></li>'
+                thai_items += f'''<li style="margin-bottom: 8px;">
+                    <strong>{title}</strong> <span style="color: #6B7280;">({source})</span><br>
+                    <a href="{url}" style="color: #D97706; font-size: 12px;">🔗 อ่านเพิ่มเติม →</a>
+                </li>'''
             else:
-                thai_items += f'<li><strong>{title}</strong> <span style="color: #6B7280;">({source})</span></li>'
+                thai_items += f'<li style="margin-bottom: 8px;"><strong>{title}</strong> <span style="color: #6B7280;">({source})</span></li>'
 
         body = f'''<!DOCTYPE html>
 <html>
