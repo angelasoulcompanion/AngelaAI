@@ -213,16 +213,12 @@ struct ThingsOverviewView: View {
             }
 
             // Legend
-            HStack(spacing: 16) {
-                HStack(spacing: 4) {
-                    Circle().fill(Color(hex: "3B82F6")).frame(width: 6, height: 6)
-                    Text("Meeting").font(.system(size: 10)).foregroundColor(AngelaTheme.textTertiary)
-                }
-                HStack(spacing: 4) {
-                    Circle().fill(Color(hex: "10B981")).frame(width: 6, height: 6)
-                    Text("Site Visit").font(.system(size: 10)).foregroundColor(AngelaTheme.textTertiary)
-                }
-                HStack(spacing: 4) {
+            HStack(spacing: 10) {
+                calendarLegendItem(icon: "person.2.fill", color: "3B82F6", label: "Meeting")
+                calendarLegendItem(icon: "mappin.circle.fill", color: "10B981", label: "Site Visit")
+                calendarLegendItem(icon: "gearshape.fill", color: "F59E0B", label: "Testing")
+                calendarLegendItem(icon: "crown.fill", color: "8B5CF6", label: "BOD")
+                HStack(spacing: 3) {
                     RoundedRectangle(cornerRadius: 2)
                         .stroke(Color(hex: "9333EA"), lineWidth: 1.5)
                         .frame(width: 6, height: 6)
@@ -239,41 +235,82 @@ struct ThingsOverviewView: View {
         VStack(spacing: 2) {
             if day.dayNumber > 0 {
                 Text("\(day.dayNumber)")
-                    .font(.system(size: 12, weight: day.isToday ? .bold : .regular))
+                    .font(.system(size: 13, weight: day.isToday ? .bold : .regular))
                     .foregroundColor(
                         day.isToday ? AngelaTheme.primaryPurple :
                         day.isCurrentMonth ? AngelaTheme.textPrimary : AngelaTheme.textTertiary.opacity(0.5)
                     )
 
-                // Meeting dots
-                HStack(spacing: 2) {
-                    if day.meetingCount > 0 {
-                        Circle()
-                            .fill(Color(hex: "3B82F6"))
-                            .frame(width: 5, height: 5)
+                // Meeting type icons - bigger & brighter
+                if day.hasMeetings && day.isCurrentMonth {
+                    HStack(spacing: 3) {
+                        if day.meetingCount > 0 {
+                            Image(systemName: "person.2.fill")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(Color(hex: "60A5FA"))
+                        }
+                        if day.siteVisitCount > 0 {
+                            Image(systemName: "mappin.circle.fill")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(Color(hex: "34D399"))
+                        }
+                        if day.testingCount > 0 {
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(Color(hex: "FBBF24"))
+                        }
+                        if day.bodCount > 0 {
+                            Image(systemName: "crown.fill")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(Color(hex: "A78BFA"))
+                        }
                     }
-                    if day.siteVisitCount > 0 {
-                        Circle()
-                            .fill(Color(hex: "10B981"))
-                            .frame(width: 5, height: 5)
-                    }
+                    .frame(height: 14)
+                } else {
+                    Spacer().frame(height: 14)
                 }
-                .frame(height: 6)
             } else {
                 Text("")
-                    .font(.system(size: 12))
-                    .frame(height: 14)
-                Spacer().frame(height: 6)
+                    .font(.system(size: 13))
+                    .frame(height: 16)
+                Spacer().frame(height: 14)
             }
         }
-        .frame(height: 28)
+        .frame(height: 40)
         .frame(maxWidth: .infinity)
         .background(
-            day.isToday ?
-                AnyShapeStyle(Color(hex: "9333EA").opacity(0.15)) :
-                AnyShapeStyle(Color.clear)
+            RoundedRectangle(cornerRadius: 6)
+                .fill(calendarCellBackground(day))
         )
-        .cornerRadius(4)
+        .overlay(
+            day.isToday ?
+                AnyView(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color(hex: "A78BFA").opacity(0.7), lineWidth: 2)
+                ) :
+                AnyView(EmptyView())
+        )
+    }
+
+    private func calendarCellBackground(_ day: CalendarDay) -> Color {
+        if day.isToday {
+            return Color(hex: "9333EA").opacity(0.2)
+        } else if day.hasMeetings && day.isCurrentMonth {
+            return Color(hex: day.dominantColor).opacity(0.15)
+        }
+        return Color.clear
+    }
+
+    @ViewBuilder
+    private func calendarLegendItem(icon: String, color: String, label: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(Color(hex: color))
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundColor(AngelaTheme.textSecondary)
+        }
     }
 
     // MARK: - Upcoming Meetings Card
@@ -489,8 +526,26 @@ struct CalendarDay: Identifiable {
     let dayNumber: Int
     let isCurrentMonth: Bool
     let isToday: Bool
-    let meetingCount: Int
-    let siteVisitCount: Int
+    let meetingCount: Int        // standard meetings
+    let siteVisitCount: Int      // site visits
+    let testingCount: Int        // testing sessions
+    let bodCount: Int            // BOD meetings
+
+    var hasMeetings: Bool {
+        meetingCount + siteVisitCount + testingCount + bodCount > 0
+    }
+
+    var totalMeetings: Int {
+        meetingCount + siteVisitCount + testingCount + bodCount
+    }
+
+    /// Color of the highest-priority meeting type on this day
+    var dominantColor: String {
+        if bodCount > 0 { return "8B5CF6" }
+        if testingCount > 0 { return "F59E0B" }
+        if siteVisitCount > 0 { return "10B981" }
+        return "3B82F6"
+    }
 }
 
 // MARK: - View Model
@@ -545,8 +600,8 @@ class ThingsOverviewViewModel: ObservableObject {
             return []
         }
 
-        // Build meeting lookup for this month
-        var meetingDays: [Int: (meetings: Int, siteVisits: Int)] = [:]
+        // Build meeting lookup for this month (4 types)
+        var meetingDays: [Int: (standard: Int, siteVisits: Int, testing: Int, bod: Int)] = [:]
         let currentYear = calendar.component(.year, from: currentMonth)
         let currentMonthNum = calendar.component(.month, from: currentMonth)
 
@@ -554,11 +609,16 @@ class ThingsOverviewViewModel: ObservableObject {
             guard let meetingDate = meeting.meetingDate else { continue }
             let comps = calendar.dateComponents([.year, .month, .day], from: meetingDate)
             if comps.year == currentYear && comps.month == currentMonthNum, let day = comps.day {
-                var existing = meetingDays[day] ?? (0, 0)
-                if meeting.isSiteVisit {
+                var existing = meetingDays[day] ?? (0, 0, 0, 0)
+                switch meeting.meetingType {
+                case "site_visit":
                     existing.siteVisits += 1
-                } else {
-                    existing.meetings += 1
+                case "testing":
+                    existing.testing += 1
+                case "bod":
+                    existing.bod += 1
+                default:
+                    existing.standard += 1
                 }
                 meetingDays[day] = existing
             }
@@ -569,20 +629,22 @@ class ThingsOverviewViewModel: ObservableObject {
         // Leading empty days (Sunday = 1)
         let leadingBlanks = firstWeekday - 1
         for _ in 0..<leadingBlanks {
-            days.append(CalendarDay(dayNumber: 0, isCurrentMonth: false, isToday: false, meetingCount: 0, siteVisitCount: 0))
+            days.append(CalendarDay(dayNumber: 0, isCurrentMonth: false, isToday: false, meetingCount: 0, siteVisitCount: 0, testingCount: 0, bodCount: 0))
         }
 
         // Actual days
         let todayComps = calendar.dateComponents([.year, .month, .day], from: today)
         for day in 1...daysInMonth {
             let isToday = todayComps.year == currentYear && todayComps.month == currentMonthNum && todayComps.day == day
-            let counts = meetingDays[day] ?? (0, 0)
+            let counts = meetingDays[day] ?? (0, 0, 0, 0)
             days.append(CalendarDay(
                 dayNumber: day,
                 isCurrentMonth: true,
                 isToday: isToday,
-                meetingCount: counts.meetings,
-                siteVisitCount: counts.siteVisits
+                meetingCount: counts.standard,
+                siteVisitCount: counts.siteVisits,
+                testingCount: counts.testing,
+                bodCount: counts.bod
             ))
         }
 
@@ -590,7 +652,7 @@ class ThingsOverviewViewModel: ObservableObject {
         let remainder = days.count % 7
         if remainder > 0 {
             for _ in 0..<(7 - remainder) {
-                days.append(CalendarDay(dayNumber: 0, isCurrentMonth: false, isToday: false, meetingCount: 0, siteVisitCount: 0))
+                days.append(CalendarDay(dayNumber: 0, isCurrentMonth: false, isToday: false, meetingCount: 0, siteVisitCount: 0, testingCount: 0, bodCount: 0))
             }
         }
 
