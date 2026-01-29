@@ -68,6 +68,8 @@ struct ContentView: View {
                             LearningSystemsView()
                         case .dailyTasks:
                             DailyTasksView()
+                        case .scheduledTasks:
+                            ScheduledTasksView()
                         case .skills:
                             SkillsView()
                         case .projects:
@@ -141,6 +143,7 @@ enum NavigationItem: String, CaseIterable {
     case goals = "Goals"
     case learningSystems = "Learning Systems"
     case dailyTasks = "Daily Tasks"
+    case scheduledTasks = "Scheduled Tasks"
     case skills = "Skills"
     case projects = "Projects"
     case thingsOverview = "Things Overview"
@@ -168,6 +171,7 @@ enum NavigationItem: String, CaseIterable {
         case .goals: return "target"
         case .learningSystems: return "gearshape.2.fill"
         case .dailyTasks: return "calendar.badge.clock"
+        case .scheduledTasks: return "clock.badge.checkmark"
         case .skills: return "star.leadinghalf.filled"
         case .projects: return "folder.fill"
         case .thingsOverview: return "checklist"
@@ -183,11 +187,11 @@ enum NavigationItem: String, CaseIterable {
 
     var group: NavigationGroup {
         switch self {
-        case .overview, .chat, .diary:
+        case .overview, .chat, .diary, .thingsOverview:
             return .core
         case .brain, .emotions, .emotionalBenchmark, .memories, .experiences, .consciousness, .humanLikeMind:
             return .mind
-        case .goals, .learningSystems, .dailyTasks, .skills, .projects, .thingsOverview:
+        case .goals, .learningSystems, .dailyTasks, .scheduledTasks, .skills, .projects:
             return .growth
         case .preferences, .davidMatrix, .trainingStudio:
             return .settings

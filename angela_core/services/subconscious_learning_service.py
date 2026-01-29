@@ -21,7 +21,7 @@ import json
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any
 from pathlib import Path
-import anthropic
+import httpx  # For Ollama API calls
 
 # Database connection
 async def get_db_connection():
@@ -44,51 +44,46 @@ async def generate_embedding(text: str) -> List[float]:
 class SubConsciousLearningService:
     """Auto-learn patterns from experiences like human deep learning"""
 
-    def __init__(self):
-        self.anthropic_key = None
-        self.load_api_key()
+    # Ollama configuration
+    OLLAMA_URL = "http://localhost:11434/api/generate"
+    OLLAMA_MODEL = "qwen2.5:7b"
 
-    def load_api_key(self):
-        """Load Anthropic API key from database"""
-        try:
-            import subprocess
-            result = subprocess.run(
-                ['psql', '-d', 'AngelaMemory', '-U', 'davidsamanyaporn', '-t', '-c',
-                 "SELECT api_key FROM our_secrets WHERE service_name='anthropic' LIMIT 1;"],
-                capture_output=True,
-                text=True
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                self.anthropic_key = result.stdout.strip()
-        except Exception as e:
-            print(f"⚠️ Could not load API key: {e}")
+    def __init__(self):
+        # Using Ollama (local LLM) - no API key needed
+        print("   ✅ SubConsciousLearning using Ollama (qwen2.5:7b)")
 
     async def analyze_image_with_vision(self, image_path: str) -> Dict[str, Any]:
         """
-        Analyze image using Claude Vision API
-        Extract: objects, scenes, emotions, colors, activities, atmosphere
+        Analyze image - NOTE: Vision feature requires cloud API
+        Currently disabled - using Ollama which doesn't have vision capability
+        TODO: Add llava model to Ollama for vision support
         """
-        if not self.anthropic_key:
-            return {"error": "No API key available"}
+        # Vision feature disabled - Ollama qwen2.5:7b doesn't support vision
+        return {
+            "error": "Vision feature disabled - using local Ollama without vision capability",
+            "suggestion": "Install llava model: ollama pull llava"
+        }
 
-        try:
-            # Read image and convert to base64
-            with open(image_path, 'rb') as f:
-                image_data = base64.standard_b64encode(f.read()).decode('utf-8')
+        # Original code below (disabled)
+        if False:  # Disabled
+            try:
+                # Read image and convert to base64
+                with open(image_path, 'rb') as f:
+                    image_data = base64.standard_b64encode(f.read()).decode('utf-8')
 
-            # Detect media type
-            ext = Path(image_path).suffix.lower()
-            media_type_map = {
-                '.jpg': 'image/jpeg',
-                '.jpeg': 'image/jpeg',
-                '.png': 'image/png',
-                '.webp': 'image/webp',
-                '.gif': 'image/gif'
-            }
-            media_type = media_type_map.get(ext, 'image/jpeg')
+                # Detect media type
+                ext = Path(image_path).suffix.lower()
+                media_type_map = {
+                    '.jpg': 'image/jpeg',
+                    '.jpeg': 'image/jpeg',
+                    '.png': 'image/png',
+                    '.webp': 'image/webp',
+                    '.gif': 'image/gif'
+                }
+                media_type = media_type_map.get(ext, 'image/jpeg')
 
-            # Call Claude Vision API
-            client = anthropic.Anthropic(api_key=self.anthropic_key)
+                # NOTE: This was using Claude Vision API
+                pass
 
             message = client.messages.create(
                 model="claude-3-5-sonnet-20241022",

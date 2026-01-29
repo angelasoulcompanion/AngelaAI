@@ -223,6 +223,104 @@ class DatabaseService: ObservableObject {
         return try decoder.decode(T.self, from: data)
     }
 
+    // MARK: - Generic Write Requests (POST, PUT, DELETE)
+
+    private func post<T: Decodable, B: Encodable>(_ endpoint: String, body: B) async throws -> T {
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw DatabaseError.invalidData
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 60.0
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        request.httpBody = try encoder.encode(body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw DatabaseError.invalidData
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw DatabaseError.noData
+        }
+
+        return try decoder.decode(T.self, from: data)
+    }
+
+    private func put<T: Decodable, B: Encodable>(_ endpoint: String, body: B) async throws -> T {
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw DatabaseError.invalidData
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.timeoutInterval = 60.0
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        request.httpBody = try encoder.encode(body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw DatabaseError.invalidData
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw DatabaseError.noData
+        }
+
+        return try decoder.decode(T.self, from: data)
+    }
+
+    private func delete(_ endpoint: String) async throws {
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw DatabaseError.invalidData
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.timeoutInterval = 30.0
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw DatabaseError.invalidData
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw DatabaseError.noData
+        }
+    }
+
+    private func delete<T: Decodable>(_ endpoint: String) async throws -> T {
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw DatabaseError.invalidData
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.timeoutInterval = 30.0
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw DatabaseError.invalidData
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw DatabaseError.noData
+        }
+
+        return try decoder.decode(T.self, from: data)
+    }
+
     // MARK: - Dashboard Stats
 
     func fetchDashboardStats() async throws -> DashboardStats {
@@ -539,6 +637,22 @@ class DatabaseService: ObservableObject {
         return try await get("/meetings?limit=\(limit)")
     }
 
+    func createMeeting(_ request: MeetingCreateRequest) async throws -> MeetingCreateResponse {
+        return try await post("/meetings/create", body: request)
+    }
+
+    func fetchMeetingLocations() async throws -> [String] {
+        return try await get("/meetings/locations")
+    }
+
+    func updateMeeting(meetingId: String, _ request: MeetingUpdateRequest) async throws -> MeetingCreateResponse {
+        return try await put("/meetings/\(meetingId)", body: request)
+    }
+
+    func deleteMeeting(meetingId: String) async throws -> MeetingCreateResponse {
+        return try await delete("/meetings/\(meetingId)")
+    }
+
     func fetchMeetingDetail(meetingId: String) async throws -> MeetingNote {
         return try await get("/meetings/\(meetingId)")
     }
@@ -557,6 +671,56 @@ class DatabaseService: ObservableObject {
 
     func fetchMeetingProjectBreakdown() async throws -> [ProjectMeetingBreakdown] {
         return try await get("/meetings/project-breakdown")
+    }
+
+    // MARK: - Scheduled Tasks (CRUD + Execute)
+
+    func fetchScheduledTasks() async throws -> [DashboardScheduledTask] {
+        return try await get("/scheduled-tasks")
+    }
+
+    func createScheduledTask(_ request: ScheduledTaskCreateRequest) async throws -> DashboardScheduledTask {
+        return try await post("/scheduled-tasks", body: request)
+    }
+
+    func updateScheduledTask(taskId: String, _ request: ScheduledTaskUpdateRequest) async throws -> DashboardScheduledTask {
+        return try await put("/scheduled-tasks/\(taskId)", body: request)
+    }
+
+    func deleteScheduledTask(taskId: String) async throws {
+        try await delete("/scheduled-tasks/\(taskId)")
+    }
+
+    func executeScheduledTask(taskId: String) async throws -> TaskExecutionResponse {
+        // POST with empty body
+        struct Empty: Codable {}
+        return try await post("/scheduled-tasks/\(taskId)/execute", body: Empty())
+    }
+
+    func fetchScheduledTaskLogs(taskId: String, limit: Int = 20) async throws -> [DashboardTaskLog] {
+        return try await get("/scheduled-tasks/\(taskId)/logs?limit=\(limit)")
+    }
+
+    func fetchNextScheduledTask() async throws -> NextScheduledTask? {
+        return try await get("/scheduled-tasks/next")
+    }
+
+    func fetchPythonScripts(folder: String? = nil) async throws -> [PythonScriptFile] {
+        let endpoint = folder != nil ? "/python-scripts?folder=\(folder!)" : "/python-scripts"
+        return try await get(endpoint)
+    }
+
+    func fetchPythonScriptContent(path: String) async throws -> ScriptContentResponse {
+        let encodedPath = path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? path
+        return try await get("/python-scripts/content?path=\(encodedPath)")
+    }
+
+    func savePythonScriptContent(path: String, content: String) async throws -> ScriptSaveResponse {
+        struct ScriptContentUpdate: Codable {
+            let path: String
+            let content: String
+        }
+        return try await put("/python-scripts/content", body: ScriptContentUpdate(path: path, content: content))
     }
 
     // MARK: - Angela Code Prompt (Local File - Not via API)

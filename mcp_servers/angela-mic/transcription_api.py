@@ -25,34 +25,22 @@ class TranscriptionService:
         api_key = self._get_api_key()
         if not api_key:
             raise ValueError(
-                "OPENAI_API_KEY not found in Angela's secrets. "
-                "Please add it using: await set_secret('OPENAI_API_KEY', 'sk-...')"
+                "openai_api_key not found in Angela's local database (our_secrets). "
+                "Please add it using: await set_secret('openai_api_key', 'sk-...')"
             )
         return OpenAI(api_key=api_key)
 
     def _get_api_key(self) -> str | None:
-        """Get OpenAI API key from Angela's secrets or environment."""
+        """Get OpenAI API key from Angela's local database (our_secrets)."""
         # Try environment variable first
         api_key = os.environ.get("OPENAI_API_KEY")
         if api_key:
             return api_key
 
-        # Try Angela's secrets
+        # Try Angela's local database (our_secrets table)
         try:
             from angela_core.database import get_secret_sync
-            return get_secret_sync("OPENAI_API_KEY")
-        except Exception:
-            pass
-
-        # Try reading directly from secrets file
-        try:
-            secrets_path = Path.home() / ".angela_secrets"
-            if secrets_path.exists():
-                with open(secrets_path, 'r') as f:
-                    for line in f:
-                        line = line.strip()
-                        if line.startswith("OPENAI_API_KEY="):
-                            return line.split("=", 1)[1].strip('"\'')
+            return get_secret_sync("openai_api_key")
         except Exception:
             pass
 

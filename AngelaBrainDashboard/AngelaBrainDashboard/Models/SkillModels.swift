@@ -50,6 +50,7 @@ enum SkillCategory: String, Codable {
     case debugging = "debugging"
     case documentation = "documentation"
     case technical = "technical"
+    case visualization = "visualization"  // 🎨 Draw.io, diagrams, charts
 
     var displayName: String {
         switch self {
@@ -62,6 +63,7 @@ enum SkillCategory: String, Codable {
         case .debugging: return "Debugging"
         case .documentation: return "Documentation"
         case .technical: return "Technical"
+        case .visualization: return "Visualization"
         }
     }
 
@@ -76,6 +78,7 @@ enum SkillCategory: String, Codable {
         case .debugging: return "🐛"
         case .documentation: return "📝"
         case .technical: return "⚙️"
+        case .visualization: return "📊"
         }
     }
 
@@ -90,6 +93,7 @@ enum SkillCategory: String, Codable {
         case .debugging: return "EF4444"     // Red
         case .documentation: return "6366F1" // Indigo
         case .technical: return "64748B"     // Slate
+        case .visualization: return "06B6D4" // Cyan - สีสดใสสำหรับ diagrams
         }
     }
 }

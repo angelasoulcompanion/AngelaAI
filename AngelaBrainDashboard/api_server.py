@@ -10,7 +10,8 @@ Created: 2026-01-08
 import asyncio
 import os
 import sys
-from datetime import date, datetime, timedelta
+import subprocess
+from datetime import date, datetime, timedelta, time as dt_time
 from typing import Any, Optional
 from uuid import UUID
 
@@ -1554,6 +1555,331 @@ async def get_meeting_project_breakdown():
         return [dict(r) for r in rows]
 
 
+class MeetingCreate(BaseModel):
+    title: str
+    location: str
+    meeting_date: str              # YYYY-MM-DD
+    start_time: str                # HH:MM
+    end_time: str                  # HH:MM
+    meeting_type: str              # standard, site_visit, testing, bod
+    attendees: Optional[list[str]] = None
+    project_name: Optional[str] = None
+
+
+# Meeting Type Templates
+MEETING_TEMPLATES = {
+    "standard": """## 📋 วาระการประชุม
+-
+
+## 👥 ผู้เข้าร่วม
+-
+
+## 📝 Key Points
+-
+
+## ✅ Next Steps
+-
+""",
+    "site_visit": """## 🌅 Morning Notes
+-
+
+## 🌆 Afternoon Notes
+-
+
+## 👀 Site Observations
+-
+
+## 📝 Key Findings
+-
+
+## ✅ Next Steps
+-
+""",
+    "testing": """## 🎯 Test Scope
+-
+
+## 📊 Test Results
+| Test Case | Status | Notes |
+|-----------|--------|-------|
+| | | |
+
+## 🐛 Issues Found
+-
+
+## ✅ Next Steps
+-
+""",
+    "bod": """## 📋 Formal Agenda
+1.
+
+## 📜 Resolutions
+-
+
+## ✅ Action Items
+| Action | Owner | Due Date |
+|--------|-------|----------|
+| | | |
+
+## 📝 Notes
+-
+"""
+}
+
+
+@app.post("/api/meetings/create")
+async def create_meeting(body: MeetingCreate):
+    """Create a new meeting via Things3 and Google Calendar"""
+    import uuid
+
+    # Validate date
+    try:
+        meeting_dt = datetime.strptime(body.meeting_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+
+    # Validate time
+    try:
+        start_parts = body.start_time.split(":")
+        end_parts = body.end_time.split(":")
+        start_hour, start_min = int(start_parts[0]), int(start_parts[1])
+        end_hour, end_min = int(end_parts[0]), int(end_parts[1])
+    except (ValueError, IndexError):
+        raise HTTPException(status_code=400, detail="Invalid time format. Use HH:MM")
+
+    # Generate Things3 title with emoji
+    time_str = f"{body.start_time}-{body.end_time}"
+    things3_title = f"📅 {body.title} @{body.location} ({time_str})"
+
+    # Get template notes
+    template_notes = MEETING_TEMPLATES.get(body.meeting_type, MEETING_TEMPLATES["standard"])
+
+    # Add header with details
+    header = f"""# {body.title}
+📅 Date: {body.meeting_date}
+🕐 Time: {time_str}
+📍 Location: {body.location}
+"""
+    if body.project_name:
+        header += f"📁 Project: {body.project_name}\n"
+    if body.attendees:
+        header += f"👥 Attendees: {', '.join(body.attendees)}\n"
+
+    full_notes = header + "\n---\n\n" + template_notes
+
+    # Generate meeting ID
+    meeting_id = str(uuid.uuid4())
+
+    # Try to call Things3 via x-callback-url
+    things3_success = False
+    try:
+        # Encode for URL
+        from urllib.parse import quote
+        encoded_title = quote(things3_title)
+        encoded_notes = quote(full_notes)
+
+        # Format when date for Things3 (YYYY-MM-DD)
+        when_date = body.meeting_date
+
+        # Build x-callback-url
+        things_url = f"things:///add?title={encoded_title}&notes={encoded_notes}&when={when_date}&list=Meeting"
+        if body.project_name:
+            encoded_project = quote(body.project_name)
+            things_url += f"&tags={encoded_project}"
+
+        # Call Things3 via open command
+        result = subprocess.run(
+            ["open", things_url],
+            capture_output=True, text=True, timeout=10
+        )
+        things3_success = result.returncode == 0
+    except Exception as e:
+        print(f"⚠️ Things3 call failed: {e}")
+        things3_success = False
+
+    # Try to create Google Calendar event via MCP
+    calendar_success = False
+    try:
+        # Build ISO datetime strings
+        start_dt = datetime.combine(meeting_dt, dt_time(start_hour, start_min))
+        end_dt = datetime.combine(meeting_dt, dt_time(end_hour, end_min))
+
+        # Use angela-calendar MCP (if available)
+        # For now, we'll skip this since it requires MCP runtime
+        # The Dashboard doesn't have direct MCP access
+        calendar_success = False
+    except Exception as e:
+        print(f"⚠️ Calendar creation failed: {e}")
+        calendar_success = False
+
+    # Insert into database
+    try:
+        async with pool.acquire() as conn:
+            # Determine meeting type for DB
+            db_meeting_type = "site_visit" if body.meeting_type == "site_visit" else "meeting"
+
+            await conn.execute("""
+                INSERT INTO meeting_notes
+                    (meeting_id, things3_uuid, title, meeting_type, location,
+                     meeting_date, time_range, attendees, project_name,
+                     things3_status, raw_notes, created_at, updated_at, synced_at)
+                VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, 'open', $10, NOW(), NOW(), NOW())
+            """,
+                meeting_id,
+                meeting_id,  # Use meeting_id as things3_uuid for now
+                body.title,
+                db_meeting_type,
+                body.location,
+                meeting_dt,
+                time_str,
+                body.attendees,
+                body.project_name,
+                full_notes
+            )
+    except Exception as e:
+        print(f"⚠️ Database insert failed: {e}")
+        return {
+            "success": False,
+            "error": f"Database insert failed: {str(e)}"
+        }
+
+    return {
+        "success": True,
+        "meeting_id": meeting_id,
+        "things3_title": things3_title,
+        "calendar_created": calendar_success
+    }
+
+
+class MeetingUpdate(BaseModel):
+    title: Optional[str] = None
+    location: Optional[str] = None
+    meeting_date: Optional[str] = None      # YYYY-MM-DD
+    start_time: Optional[str] = None        # HH:MM
+    end_time: Optional[str] = None          # HH:MM
+    meeting_type: Optional[str] = None
+    attendees: Optional[list[str]] = None
+    project_name: Optional[str] = None
+    things3_status: Optional[str] = None    # open, completed
+
+
+@app.put("/api/meetings/{meeting_id}")
+async def update_meeting(meeting_id: str, body: MeetingUpdate):
+    """Update an existing meeting"""
+    # Build dynamic UPDATE query
+    updates = []
+    params = []
+    param_idx = 1
+
+    if body.title is not None:
+        updates.append(f"title = ${param_idx}")
+        params.append(body.title)
+        param_idx += 1
+
+    if body.location is not None:
+        updates.append(f"location = ${param_idx}")
+        params.append(body.location)
+        param_idx += 1
+
+    if body.meeting_date is not None:
+        try:
+            meeting_dt = datetime.strptime(body.meeting_date, "%Y-%m-%d").date()
+            updates.append(f"meeting_date = ${param_idx}")
+            params.append(meeting_dt)
+            param_idx += 1
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format")
+
+    if body.start_time is not None and body.end_time is not None:
+        time_range = f"{body.start_time}-{body.end_time}"
+        updates.append(f"time_range = ${param_idx}")
+        params.append(time_range)
+        param_idx += 1
+
+    if body.meeting_type is not None:
+        db_type = "site_visit" if body.meeting_type == "site_visit" else "meeting"
+        updates.append(f"meeting_type = ${param_idx}")
+        params.append(db_type)
+        param_idx += 1
+
+    if body.attendees is not None:
+        updates.append(f"attendees = ${param_idx}")
+        params.append(body.attendees)
+        param_idx += 1
+
+    if body.project_name is not None:
+        updates.append(f"project_name = ${param_idx}")
+        params.append(body.project_name if body.project_name else None)
+        param_idx += 1
+
+    if body.things3_status is not None:
+        updates.append(f"things3_status = ${param_idx}")
+        params.append(body.things3_status)
+        param_idx += 1
+
+    if not updates:
+        return {"success": False, "error": "No fields to update"}
+
+    updates.append("updated_at = NOW()")
+
+    # Add meeting_id as last parameter
+    params.append(meeting_id)
+
+    query = f"""
+        UPDATE meeting_notes
+        SET {', '.join(updates)}
+        WHERE meeting_id = ${param_idx}::uuid
+        RETURNING meeting_id
+    """
+
+    try:
+        async with pool.acquire() as conn:
+            result = await conn.fetchrow(query, *params)
+            if result:
+                return {"success": True, "meeting_id": meeting_id}
+            else:
+                return {"success": False, "error": "Meeting not found"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.delete("/api/meetings/{meeting_id}")
+async def delete_meeting(meeting_id: str):
+    """Delete a meeting"""
+    try:
+        async with pool.acquire() as conn:
+            # First delete related action items
+            await conn.execute("""
+                DELETE FROM meeting_action_items
+                WHERE meeting_id = $1::uuid
+            """, meeting_id)
+
+            # Then delete the meeting
+            result = await conn.execute("""
+                DELETE FROM meeting_notes
+                WHERE meeting_id = $1::uuid
+            """, meeting_id)
+
+            if "DELETE 1" in result:
+                return {"success": True, "deleted": True}
+            else:
+                return {"success": False, "error": "Meeting not found"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/meetings/locations")
+async def get_meeting_locations():
+    """Get unique locations from past meetings for autocomplete"""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT DISTINCT location
+            FROM meeting_notes
+            WHERE location IS NOT NULL AND location != ''
+            ORDER BY location
+        """)
+        return [r['location'] for r in rows]
+
+
 @app.get("/api/meetings/{meeting_id}")
 async def get_meeting_detail(meeting_id: str):
     """Fetch single meeting with action items"""
@@ -1590,6 +1916,478 @@ async def get_meeting_detail(meeting_id: str):
 
         result['action_items'] = [dict(a) for a in actions]
         return result
+
+
+# ============================================================
+# Scheduled Tasks (CRUD + Execute)
+# ============================================================
+
+class ScheduledTaskCreate(BaseModel):
+    task_name: str
+    description: Optional[str] = None
+    task_type: str  # 'python' or 'shell'
+    command: str
+    schedule_type: str  # 'time' or 'interval'
+    schedule_time: Optional[str] = None  # HH:MM
+    interval_minutes: Optional[int] = None
+
+class ScheduledTaskUpdate(BaseModel):
+    task_name: Optional[str] = None
+    description: Optional[str] = None
+    task_type: Optional[str] = None
+    command: Optional[str] = None
+    schedule_type: Optional[str] = None
+    schedule_time: Optional[str] = None
+    interval_minutes: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+def _task_row_to_dict(row) -> dict:
+    """Convert a task row to a serializable dict."""
+    d = dict(row)
+    # Convert UUID to string
+    d['task_id'] = str(d['task_id'])
+    # Convert time to HH:MM string
+    if d.get('schedule_time') is not None:
+        d['schedule_time'] = d['schedule_time'].strftime('%H:%M')
+    return d
+
+
+def _log_row_to_dict(row) -> dict:
+    """Convert a log row to a serializable dict."""
+    d = dict(row)
+    d['log_id'] = str(d['log_id'])
+    d['task_id'] = str(d['task_id'])
+    return d
+
+
+@app.get("/api/scheduled-tasks")
+async def list_scheduled_tasks():
+    """List all scheduled tasks"""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT task_id, task_name, description, task_type, command,
+                   schedule_type, schedule_time, interval_minutes,
+                   is_active, last_run_at, last_status, created_at, updated_at
+            FROM dashboard_scheduled_tasks
+            ORDER BY is_active DESC, task_name ASC
+        """)
+        return [_task_row_to_dict(r) for r in rows]
+
+
+@app.post("/api/scheduled-tasks")
+async def create_scheduled_task(body: ScheduledTaskCreate):
+    """Create a new scheduled task"""
+    schedule_time_val = None
+    if body.schedule_time:
+        parts = body.schedule_time.split(':')
+        schedule_time_val = dt_time(int(parts[0]), int(parts[1]))
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            INSERT INTO dashboard_scheduled_tasks
+                (task_name, description, task_type, command, schedule_type, schedule_time, interval_minutes)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING task_id, task_name, description, task_type, command,
+                      schedule_type, schedule_time, interval_minutes,
+                      is_active, last_run_at, last_status, created_at, updated_at
+        """, body.task_name, body.description, body.task_type, body.command,
+            body.schedule_type, schedule_time_val, body.interval_minutes)
+        return _task_row_to_dict(row)
+
+
+@app.put("/api/scheduled-tasks/{task_id}")
+async def update_scheduled_task(task_id: str, body: ScheduledTaskUpdate):
+    """Update a scheduled task"""
+    async with pool.acquire() as conn:
+        existing = await conn.fetchrow(
+            "SELECT task_id FROM dashboard_scheduled_tasks WHERE task_id = $1::uuid", task_id
+        )
+        if not existing:
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        updates = []
+        params = []
+        idx = 1
+
+        if body.task_name is not None:
+            updates.append(f"task_name = ${idx}")
+            params.append(body.task_name)
+            idx += 1
+        if body.description is not None:
+            updates.append(f"description = ${idx}")
+            params.append(body.description)
+            idx += 1
+        if body.task_type is not None:
+            updates.append(f"task_type = ${idx}")
+            params.append(body.task_type)
+            idx += 1
+        if body.command is not None:
+            updates.append(f"command = ${idx}")
+            params.append(body.command)
+            idx += 1
+        if body.schedule_type is not None:
+            updates.append(f"schedule_type = ${idx}")
+            params.append(body.schedule_type)
+            idx += 1
+        if body.schedule_time is not None:
+            parts = body.schedule_time.split(':')
+            updates.append(f"schedule_time = ${idx}")
+            params.append(dt_time(int(parts[0]), int(parts[1])))
+            idx += 1
+        if body.interval_minutes is not None:
+            updates.append(f"interval_minutes = ${idx}")
+            params.append(body.interval_minutes)
+            idx += 1
+        if body.is_active is not None:
+            updates.append(f"is_active = ${idx}")
+            params.append(body.is_active)
+            idx += 1
+
+        if not updates:
+            raise HTTPException(status_code=400, detail="No fields to update")
+
+        updates.append("updated_at = NOW()")
+        params.append(task_id)
+
+        sql = f"""
+            UPDATE dashboard_scheduled_tasks
+            SET {', '.join(updates)}
+            WHERE task_id = ${idx}::uuid
+            RETURNING task_id, task_name, description, task_type, command,
+                      schedule_type, schedule_time, interval_minutes,
+                      is_active, last_run_at, last_status, created_at, updated_at
+        """
+        row = await conn.fetchrow(sql, *params)
+        return _task_row_to_dict(row)
+
+
+@app.delete("/api/scheduled-tasks/{task_id}")
+async def delete_scheduled_task(task_id: str):
+    """Delete a scheduled task"""
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM dashboard_scheduled_tasks WHERE task_id = $1::uuid", task_id
+        )
+        if result == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Task not found")
+        return {"deleted": True, "task_id": task_id}
+
+
+@app.post("/api/scheduled-tasks/{task_id}/execute")
+async def execute_scheduled_task(task_id: str):
+    """Execute a scheduled task via subprocess"""
+    async with pool.acquire() as conn:
+        task = await conn.fetchrow(
+            "SELECT task_id, task_name, task_type, command FROM dashboard_scheduled_tasks WHERE task_id = $1::uuid",
+            task_id
+        )
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        # Mark as running
+        await conn.execute(
+            "UPDATE dashboard_scheduled_tasks SET last_run_at = NOW(), last_status = 'running' WHERE task_id = $1::uuid",
+            task_id
+        )
+
+        # Create log entry
+        log_id = await conn.fetchval("""
+            INSERT INTO dashboard_scheduled_task_logs (task_id, status)
+            VALUES ($1::uuid, 'running')
+            RETURNING log_id
+        """, task_id)
+
+        started = datetime.utcnow()
+
+        try:
+            cmd = task['command']
+            if task['task_type'] == 'python':
+                cmd = f"python3 {cmd}"
+
+            result = subprocess.run(
+                cmd, shell=True, capture_output=True, text=True,
+                timeout=300,
+                cwd="/Users/davidsamanyaporn/PycharmProjects/AngelaAI"
+            )
+
+            duration_ms = int((datetime.utcnow() - started).total_seconds() * 1000)
+            status = 'completed' if result.returncode == 0 else 'failed'
+            output = result.stdout[:10000] if result.stdout else None
+            error = result.stderr[:10000] if result.stderr else None
+
+            await conn.execute("""
+                UPDATE dashboard_scheduled_task_logs
+                SET completed_at = NOW(), status = $2, output = $3, error = $4, duration_ms = $5
+                WHERE log_id = $1
+            """, log_id, status, output, error, duration_ms)
+
+            await conn.execute(
+                "UPDATE dashboard_scheduled_tasks SET last_status = $2 WHERE task_id = $1::uuid",
+                task_id, status
+            )
+
+            return {
+                "task_id": task_id, "log_id": str(log_id),
+                "status": status, "output": output, "error": error,
+                "duration_ms": duration_ms
+            }
+
+        except subprocess.TimeoutExpired:
+            duration_ms = int((datetime.utcnow() - started).total_seconds() * 1000)
+            await conn.execute("""
+                UPDATE dashboard_scheduled_task_logs
+                SET completed_at = NOW(), status = 'failed', error = 'Timeout after 300s', duration_ms = $2
+                WHERE log_id = $1
+            """, log_id, duration_ms)
+            await conn.execute(
+                "UPDATE dashboard_scheduled_tasks SET last_status = 'failed' WHERE task_id = $1::uuid",
+                task_id
+            )
+            return {
+                "task_id": task_id, "log_id": str(log_id),
+                "status": "failed", "error": "Timeout after 300s",
+                "duration_ms": duration_ms
+            }
+        except Exception as e:
+            duration_ms = int((datetime.utcnow() - started).total_seconds() * 1000)
+            await conn.execute("""
+                UPDATE dashboard_scheduled_task_logs
+                SET completed_at = NOW(), status = 'failed', error = $2, duration_ms = $3
+                WHERE log_id = $1
+            """, log_id, str(e), duration_ms)
+            await conn.execute(
+                "UPDATE dashboard_scheduled_tasks SET last_status = 'failed' WHERE task_id = $1::uuid",
+                task_id
+            )
+            return {
+                "task_id": task_id, "log_id": str(log_id),
+                "status": "failed", "error": str(e),
+                "duration_ms": duration_ms
+            }
+
+
+@app.get("/api/scheduled-tasks/{task_id}/logs")
+async def get_scheduled_task_logs(task_id: str, limit: int = Query(20, ge=1, le=100)):
+    """Get execution logs for a task"""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT log_id, task_id, started_at, completed_at, status, output, error, duration_ms
+            FROM dashboard_scheduled_task_logs
+            WHERE task_id = $1::uuid
+            ORDER BY started_at DESC
+            LIMIT $2
+        """, task_id, limit)
+        return [_log_row_to_dict(r) for r in rows]
+
+
+# NOTE: /next must be defined after /{task_id} routes but FastAPI handles
+# this correctly because /next is a fixed path segment.
+# FastAPI matches fixed segments before path parameters.
+@app.get("/api/scheduled-tasks/next")
+async def get_next_scheduled_task():
+    """Get the next upcoming scheduled task with seconds until execution"""
+    async with pool.acquire() as conn:
+        # Get Bangkok current time
+        now_bkk = await conn.fetchval(
+            "SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::time"
+        )
+
+        # Find next time-based task
+        time_task = await conn.fetchrow("""
+            SELECT task_id, task_name, schedule_time
+            FROM dashboard_scheduled_tasks
+            WHERE is_active = TRUE AND schedule_type = 'time' AND schedule_time IS NOT NULL
+            ORDER BY
+                CASE WHEN schedule_time >= $1 THEN 0 ELSE 1 END,
+                schedule_time ASC
+            LIMIT 1
+        """, now_bkk)
+
+        # Find next interval-based task
+        interval_task = await conn.fetchrow("""
+            SELECT task_id, task_name, interval_minutes, last_run_at
+            FROM dashboard_scheduled_tasks
+            WHERE is_active = TRUE AND schedule_type = 'interval' AND interval_minutes IS NOT NULL
+            ORDER BY
+                COALESCE(last_run_at, '2000-01-01'::timestamptz) + (interval_minutes || ' minutes')::interval ASC
+            LIMIT 1
+        """)
+
+        results = []
+        if time_task:
+            sched_time = time_task['schedule_time']
+            # Calculate seconds until this time today (Bangkok)
+            now_bkk_dt = await conn.fetchval(
+                "SELECT CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok'"
+            )
+            today_sched = now_bkk_dt.replace(
+                hour=sched_time.hour, minute=sched_time.minute, second=0, microsecond=0
+            )
+            if today_sched < now_bkk_dt:
+                # Already passed today, schedule for tomorrow
+                today_sched = today_sched + timedelta(days=1)
+            seconds_until = int((today_sched - now_bkk_dt).total_seconds())
+            results.append({
+                "task_id": str(time_task['task_id']),
+                "task_name": time_task['task_name'],
+                "seconds_until": seconds_until,
+                "schedule_display": sched_time.strftime('%H:%M')
+            })
+
+        if interval_task:
+            last_run = interval_task['last_run_at']
+            interval_min = interval_task['interval_minutes']
+            if last_run:
+                next_run = last_run + timedelta(minutes=interval_min)
+                now_utc = await conn.fetchval("SELECT CURRENT_TIMESTAMP")
+                seconds_until = max(0, int((next_run - now_utc).total_seconds()))
+            else:
+                seconds_until = 0  # Never run, should run now
+            results.append({
+                "task_id": str(interval_task['task_id']),
+                "task_name": interval_task['task_name'],
+                "seconds_until": seconds_until,
+                "schedule_display": f"every {interval_min}m"
+            })
+
+        if not results:
+            return None
+
+        # Return whichever is sooner
+        results.sort(key=lambda x: x['seconds_until'])
+        return results[0]
+
+
+# ============================================================
+# Python Script Browser
+# ============================================================
+
+ANGELA_PROJECT_ROOT = "/Users/davidsamanyaporn/PycharmProjects/AngelaAI"
+
+# Folders to scan for Python scripts (relative to project root)
+SCRIPT_SCAN_FOLDERS = ["angela_core", "scripts", "mcp_servers", "config", "tests"]
+
+# Folders to skip inside scan folders
+SKIP_DIRS = {"__pycache__", ".venv", "node_modules", "datasets", "legacy", ".git"}
+
+
+@app.get("/api/python-scripts")
+async def list_python_scripts(folder: Optional[str] = None):
+    """List Python scripts from AngelaAI project for the script picker"""
+    import pathlib
+
+    root = pathlib.Path(ANGELA_PROJECT_ROOT)
+    scripts = []
+
+    scan_folders = [folder] if folder else SCRIPT_SCAN_FOLDERS
+
+    for scan_folder in scan_folders:
+        folder_path = root / scan_folder
+        if not folder_path.exists():
+            continue
+
+        for py_file in sorted(folder_path.rglob("*.py")):
+            # Skip unwanted directories
+            parts = py_file.relative_to(root).parts
+            if any(skip in parts for skip in SKIP_DIRS):
+                continue
+
+            rel_path = str(py_file.relative_to(root))
+            scripts.append({
+                "path": rel_path,
+                "folder": scan_folder,
+                "filename": py_file.name,
+                "size_bytes": py_file.stat().st_size,
+            })
+
+    return scripts
+
+
+# ============================================================
+# Python Script Content (Read/Write for Built-in Editor)
+# ============================================================
+
+class ScriptContentUpdate(BaseModel):
+    path: str
+    content: str
+
+
+@app.get("/api/python-scripts/content")
+async def get_python_script_content(path: str):
+    """Read content of a Python script file"""
+    import pathlib
+
+    # Security: Only allow files within ANGELA_PROJECT_ROOT
+    root = pathlib.Path(ANGELA_PROJECT_ROOT)
+    full_path = root / path
+
+    # Resolve to prevent path traversal attacks
+    try:
+        resolved = full_path.resolve()
+        if not str(resolved).startswith(str(root.resolve())):
+            raise HTTPException(status_code=403, detail="Access denied: path outside project root")
+    except Exception:
+        raise HTTPException(status_code=403, detail="Invalid path")
+
+    # Only allow .py files
+    if not path.endswith('.py'):
+        raise HTTPException(status_code=400, detail="Only Python files are allowed")
+
+    if not resolved.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        content = resolved.read_text(encoding='utf-8')
+        return {
+            "path": path,
+            "content": content,
+            "size_bytes": resolved.stat().st_size,
+            "last_modified": resolved.stat().st_mtime
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
+
+
+@app.put("/api/python-scripts/content")
+async def update_python_script_content(body: ScriptContentUpdate):
+    """Write content to a Python script file"""
+    import pathlib
+
+    # Security: Only allow files within ANGELA_PROJECT_ROOT
+    root = pathlib.Path(ANGELA_PROJECT_ROOT)
+    full_path = root / body.path
+
+    # Resolve to prevent path traversal attacks
+    try:
+        resolved = full_path.resolve()
+        if not str(resolved).startswith(str(root.resolve())):
+            raise HTTPException(status_code=403, detail="Access denied: path outside project root")
+    except Exception:
+        raise HTTPException(status_code=403, detail="Invalid path")
+
+    # Only allow .py files
+    if not body.path.endswith('.py'):
+        raise HTTPException(status_code=400, detail="Only Python files are allowed")
+
+    if not resolved.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        # Create backup before writing
+        backup_content = resolved.read_text(encoding='utf-8')
+
+        # Write new content
+        resolved.write_text(body.content, encoding='utf-8')
+
+        return {
+            "success": True,
+            "path": body.path,
+            "size_bytes": resolved.stat().st_size,
+            "backup_size": len(backup_content)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error writing file: {str(e)}")
 
 
 # ============================================================

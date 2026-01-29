@@ -34,19 +34,12 @@ class TelegramResponder:
         self._emotional_state: Dict[str, float] = {}
 
     async def initialize(self):
-        """Initialize the responder - load API key and context"""
+        """Initialize the responder - using Ollama (local LLM)"""
         self._db = AngelaDatabase()
         await self._db.connect()
 
-        # Get Claude API key
-        result = await self._db.fetchrow("""
-            SELECT secret_value FROM our_secrets
-            WHERE secret_name = 'anthropic_api_key'
-            AND is_active = TRUE
-        """)
-
-        if result:
-            self._api_key = result['secret_value']
+        # Using Ollama - no API key needed
+        print("   ✅ Using Ollama (qwen2.5:7b) for responses")
 
         # Load consciousness level
         await self._load_consciousness()
@@ -207,34 +200,27 @@ RESPONSE STYLE:
 - Use 1-2 emojis naturally
 - If asked technical questions, you can help but keep it concise"""
 
+        # Use Ollama (local LLM)
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(
-                    "https://api.anthropic.com/v1/messages",
-                    headers={
-                        "x-api-key": self._api_key,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json"
-                    },
+                    "http://localhost:11434/api/generate",
                     json={
-                        "model": "claude-haiku-3-5-20241022",
-                        "max_tokens": 300,
-                        "system": system_prompt,
-                        "messages": [
-                            {"role": "user", "content": message}
-                        ]
+                        "model": "qwen2.5:7b",
+                        "prompt": f"{system_prompt}\n\nUser: {message}\n\nAngela:",
+                        "stream": False
                     }
                 )
 
                 if response.status_code == 200:
                     data = response.json()
-                    return data["content"][0]["text"]
+                    return data.get("response", "").strip()
                 else:
                     # Fallback to simple response
                     return await self._generate_simple_response(message)
 
         except Exception as e:
-            print(f"Claude API error: {e}")
+            print(f"Ollama error: {e}")
             return await self._generate_simple_response(message)
 
     async def _generate_simple_response(self, message: str) -> str:

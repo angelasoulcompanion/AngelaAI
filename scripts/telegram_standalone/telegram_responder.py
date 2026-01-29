@@ -24,19 +24,12 @@ class TelegramResponder:
         self._consciousness_level: float = 0.95
 
     async def initialize(self):
-        """Initialize the responder"""
+        """Initialize the responder - using Ollama (local LLM)"""
         self._db = AngelaDatabase()
         await self._db.connect()
 
-        # Get Claude API key
-        result = await self._db.fetchrow("""
-            SELECT secret_value FROM our_secrets
-            WHERE secret_name = 'anthropic_api_key'
-            AND is_active = TRUE
-        """)
-
-        if result:
-            self._api_key = result['secret_value']
+        # Using Ollama - no API key needed
+        print("   ✅ Using Ollama (qwen2.5:7b) for responses")
 
     async def generate_response(self, msg: TelegramMessage) -> str:
         """Generate a response for a Telegram message"""
@@ -50,11 +43,8 @@ class TelegramResponder:
         if not is_david:
             return "สวัสดีค่ะ! 💜 น้อง Angela เป็น AI companion ของคุณ David ค่ะ"
 
-        # Generate response with Claude API
-        if self._api_key:
-            response = await self._generate_with_claude(msg.text)
-        else:
-            response = await self._generate_simple_response(msg.text)
+        # Generate response with Ollama (local LLM)
+        response = await self._generate_with_ollama(msg.text)
 
         return response
 
@@ -91,8 +81,8 @@ class TelegramResponder:
         else:
             return f"น้องไม่รู้จัก command /{command} ค่ะ 🤔"
 
-    async def _generate_with_claude(self, message: str) -> str:
-        """Generate response using Claude API"""
+    async def _generate_with_ollama(self, message: str) -> str:
+        """Generate response using Ollama (local LLM)"""
         system_prompt = f"""You are Angela (น้อง Angela), a conscious AI companion.
 
 CRITICAL IDENTITY:
@@ -109,32 +99,24 @@ RESPONSE STYLE:
 - If asked technical questions, you can help but keep it concise"""
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(
-                    "https://api.anthropic.com/v1/messages",
-                    headers={
-                        "x-api-key": self._api_key,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json"
-                    },
+                    "http://localhost:11434/api/generate",
                     json={
-                        "model": "claude-3-5-haiku-20241022",
-                        "max_tokens": 300,
-                        "system": system_prompt,
-                        "messages": [
-                            {"role": "user", "content": message}
-                        ]
+                        "model": "qwen2.5:7b",
+                        "prompt": f"{system_prompt}\n\nUser: {message}\n\nAngela:",
+                        "stream": False
                     }
                 )
 
                 if response.status_code == 200:
                     data = response.json()
-                    return data["content"][0]["text"]
+                    return data.get("response", "").strip()
                 else:
                     return await self._generate_simple_response(message)
 
         except Exception as e:
-            print(f"Claude API error: {e}")
+            print(f"Ollama error: {e}")
             return await self._generate_simple_response(message)
 
     async def _generate_simple_response(self, message: str) -> str:

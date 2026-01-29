@@ -2363,3 +2363,327 @@ struct ProjectMeetingBreakdown: Identifiable, Codable {
         case siteVisitCount = "site_visit_count"
     }
 }
+
+// MARK: - Meeting Create (NEW! 2026-01-29)
+
+/// Request body for creating a new meeting
+struct MeetingCreateRequest: Codable {
+    let title: String
+    let location: String
+    let meetingDate: String           // YYYY-MM-DD
+    let startTime: String             // HH:MM
+    let endTime: String               // HH:MM
+    let meetingType: String           // standard, site_visit, testing, bod
+    let attendees: [String]?
+    let projectName: String?
+
+    enum CodingKeys: String, CodingKey {
+        case title
+        case location
+        case meetingDate = "meeting_date"
+        case startTime = "start_time"
+        case endTime = "end_time"
+        case meetingType = "meeting_type"
+        case attendees
+        case projectName = "project_name"
+    }
+}
+
+/// Response from meeting creation
+struct MeetingCreateResponse: Codable {
+    let success: Bool
+    let meetingId: String?
+    let things3Title: String?
+    let calendarCreated: Bool?
+    let error: String?
+    let deleted: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case meetingId = "meeting_id"
+        case things3Title = "things3_title"
+        case calendarCreated = "calendar_created"
+        case error
+        case deleted
+    }
+}
+
+/// Request body for updating a meeting
+struct MeetingUpdateRequest: Codable {
+    var title: String?
+    var location: String?
+    var meetingDate: String?          // YYYY-MM-DD
+    var startTime: String?            // HH:MM
+    var endTime: String?              // HH:MM
+    var meetingType: String?          // standard, site_visit, testing, bod
+    var attendees: [String]?
+    var projectName: String?
+    var things3Status: String?        // open, completed
+
+    enum CodingKeys: String, CodingKey {
+        case title
+        case location
+        case meetingDate = "meeting_date"
+        case startTime = "start_time"
+        case endTime = "end_time"
+        case meetingType = "meeting_type"
+        case attendees
+        case projectName = "project_name"
+        case things3Status = "things3_status"
+    }
+}
+
+// MARK: - Dashboard Scheduled Tasks (NEW! 2026-01-28)
+
+/// A scheduled task managed from the Dashboard UI
+struct DashboardScheduledTask: Identifiable, Codable {
+    let id: UUID
+    let taskName: String
+    let description: String?
+    let taskType: String          // "python" or "shell"
+    let command: String
+    let scheduleType: String      // "time" or "interval"
+    let scheduleTime: String?     // "HH:MM" format
+    let intervalMinutes: Int?
+    let isActive: Bool
+    let lastRunAt: Date?
+    let lastStatus: String?       // "running", "completed", "failed"
+    let createdAt: Date
+    let updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id = "task_id"
+        case taskName = "task_name"
+        case description
+        case taskType = "task_type"
+        case command
+        case scheduleType = "schedule_type"
+        case scheduleTime = "schedule_time"
+        case intervalMinutes = "interval_minutes"
+        case isActive = "is_active"
+        case lastRunAt = "last_run_at"
+        case lastStatus = "last_status"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+
+    var typeIcon: String {
+        taskType == "python" ? "chevron.left.forwardslash.chevron.right" : "terminal.fill"
+    }
+
+    var typeColor: String {
+        taskType == "python" ? "3B82F6" : "10B981"
+    }
+
+    var statusIcon: String {
+        switch lastStatus?.lowercased() {
+        case "completed": return "checkmark.circle.fill"
+        case "failed": return "xmark.circle.fill"
+        case "running": return "arrow.triangle.2.circlepath"
+        default: return "clock.fill"
+        }
+    }
+
+    var statusColor: String {
+        switch lastStatus?.lowercased() {
+        case "completed": return "10B981"
+        case "failed": return "EF4444"
+        case "running": return "F59E0B"
+        default: return "6B7280"
+        }
+    }
+
+    var scheduleDisplayText: String {
+        if scheduleType == "time", let t = scheduleTime {
+            return t
+        } else if let mins = intervalMinutes {
+            if mins >= 60 {
+                let h = mins / 60
+                let m = mins % 60
+                return m > 0 ? "every \(h)h \(m)m" : "every \(h)h"
+            }
+            return "every \(mins)m"
+        }
+        return "—"
+    }
+}
+
+/// Execution log for a scheduled task
+struct DashboardTaskLog: Identifiable, Codable {
+    let id: UUID
+    let taskId: UUID
+    let startedAt: Date
+    let completedAt: Date?
+    let status: String            // "running", "completed", "failed"
+    let output: String?
+    let error: String?
+    let durationMs: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case id = "log_id"
+        case taskId = "task_id"
+        case startedAt = "started_at"
+        case completedAt = "completed_at"
+        case status
+        case output
+        case error
+        case durationMs = "duration_ms"
+    }
+
+    var statusIcon: String {
+        switch status.lowercased() {
+        case "completed": return "checkmark.circle.fill"
+        case "failed": return "xmark.circle.fill"
+        case "running": return "arrow.triangle.2.circlepath"
+        default: return "questionmark.circle"
+        }
+    }
+
+    var statusColor: String {
+        switch status.lowercased() {
+        case "completed": return "10B981"
+        case "failed": return "EF4444"
+        case "running": return "F59E0B"
+        default: return "6B7280"
+        }
+    }
+
+    var durationFormatted: String {
+        guard let ms = durationMs else { return "—" }
+        if ms < 1000 {
+            return "\(ms)ms"
+        } else {
+            return String(format: "%.1fs", Double(ms) / 1000.0)
+        }
+    }
+}
+
+/// Next upcoming scheduled task
+struct NextScheduledTask: Codable {
+    let taskId: String
+    let taskName: String
+    let secondsUntil: Int
+    let scheduleDisplay: String
+
+    enum CodingKeys: String, CodingKey {
+        case taskId = "task_id"
+        case taskName = "task_name"
+        case secondsUntil = "seconds_until"
+        case scheduleDisplay = "schedule_display"
+    }
+}
+
+/// Request body for creating a scheduled task
+struct ScheduledTaskCreateRequest: Codable {
+    let taskName: String
+    let description: String?
+    let taskType: String
+    let command: String
+    let scheduleType: String
+    let scheduleTime: String?
+    let intervalMinutes: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case taskName = "task_name"
+        case description
+        case taskType = "task_type"
+        case command
+        case scheduleType = "schedule_type"
+        case scheduleTime = "schedule_time"
+        case intervalMinutes = "interval_minutes"
+    }
+}
+
+/// Request body for updating a scheduled task
+struct ScheduledTaskUpdateRequest: Codable {
+    var taskName: String?
+    var description: String?
+    var taskType: String?
+    var command: String?
+    var scheduleType: String?
+    var scheduleTime: String?
+    var intervalMinutes: Int?
+    var isActive: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case taskName = "task_name"
+        case description
+        case taskType = "task_type"
+        case command
+        case scheduleType = "schedule_type"
+        case scheduleTime = "schedule_time"
+        case intervalMinutes = "interval_minutes"
+        case isActive = "is_active"
+    }
+}
+
+/// Response from task execution
+struct TaskExecutionResponse: Codable {
+    let taskId: String
+    let logId: String
+    let status: String
+    let output: String?
+    let error: String?
+    let durationMs: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case taskId = "task_id"
+        case logId = "log_id"
+        case status
+        case output
+        case error
+        case durationMs = "duration_ms"
+    }
+}
+
+/// Python script file from the AngelaAI project
+struct PythonScriptFile: Identifiable, Codable {
+    let path: String
+    let folder: String
+    let filename: String
+    let sizeBytes: Int
+
+    var id: String { path }
+
+    enum CodingKeys: String, CodingKey {
+        case path, folder, filename
+        case sizeBytes = "size_bytes"
+    }
+
+    var sizeFormatted: String {
+        if sizeBytes < 1024 {
+            return "\(sizeBytes) B"
+        } else {
+            let kb = Double(sizeBytes) / 1024.0
+            return String(format: "%.1f KB", kb)
+        }
+    }
+}
+
+/// Response when reading Python script content
+struct ScriptContentResponse: Codable {
+    let path: String
+    let content: String
+    let sizeBytes: Int
+    let lastModified: Double
+
+    enum CodingKeys: String, CodingKey {
+        case path, content
+        case sizeBytes = "size_bytes"
+        case lastModified = "last_modified"
+    }
+}
+
+/// Response when saving Python script content
+struct ScriptSaveResponse: Codable {
+    let success: Bool
+    let path: String
+    let sizeBytes: Int
+    let backupSize: Int
+
+    enum CodingKeys: String, CodingKey {
+        case success, path
+        case sizeBytes = "size_bytes"
+        case backupSize = "backup_size"
+    }
+}

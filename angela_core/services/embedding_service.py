@@ -124,7 +124,7 @@ class EmbeddingService:
         try:
             # Import here to avoid circular dependency
             from angela_core.database import get_secret
-            self._hf_token = await get_secret('HUGGINGFACE_TOKEN')
+            self._hf_token = await get_secret('huggingface_token')
             return self._hf_token
         except Exception as e:
             logger.debug(f"Could not get HF token: {e}")

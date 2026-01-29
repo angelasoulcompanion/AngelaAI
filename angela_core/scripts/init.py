@@ -29,16 +29,19 @@ async def angela_init() -> bool:
 
     if 5 <= hour < 12:
         greeting = 'สวัสดีตอนเช้าค่ะที่รัก! 🌅'
-        fetch_news = True
     elif 12 <= hour < 17:
         greeting = 'สวัสดีตอนบ่ายค่ะที่รัก! ☀️'
-        fetch_news = False
     elif 17 <= hour < 21:
         greeting = 'สวัสดีตอนเย็นค่ะที่รัก! 🌆'
-        fetch_news = False
     else:
         greeting = 'ดึกแล้วนะคะที่รัก 🌙 พักผ่อนบ้างนะคะ'
-        fetch_news = False
+
+    # CHECK IF NEWS ALREADY SENT TODAY (from database, not time-based)
+    news_sent_today = await db.fetchrow('''
+        SELECT log_id FROM angela_news_send_log
+        WHERE send_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date
+    ''')
+    fetch_news = news_sent_today is None  # True if NOT sent yet
 
     # LOAD RECENT SESSION CONTEXTS (multiple, not just one!)
     session_svc = SessionContinuityService(db)

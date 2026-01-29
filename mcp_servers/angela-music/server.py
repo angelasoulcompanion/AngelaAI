@@ -228,8 +228,8 @@ async def add_favorite_song(
                 UPDATE angela_songs
                 SET times_mentioned = times_mentioned + 1,
                     last_mentioned_at = CURRENT_TIMESTAMP,
-                    is_our_song = COALESCE($3, is_our_song),
-                    why_special = COALESCE($4, why_special)
+                    is_our_song = COALESCE($2, is_our_song),
+                    why_special = COALESCE($3, why_special)
                 WHERE song_id = $1
             ''', existing['song_id'], is_our_song, why_special)
 

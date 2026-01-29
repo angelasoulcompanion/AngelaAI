@@ -1,0 +1,449 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.3.0 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.3.0" pages="2">
+  <diagram id="fti-overview" name="FTI Overview">
+    <mxGraphModel dx="1243" dy="767" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="bg-container" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8f9fa;strokeColor=#e5e7eb;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="860" width="1360" x="20" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=28;fontStyle=1;fontColor=#1f2937;" value="🏗️ FTI Pipeline Architecture" vertex="1">
+          <mxGeometry height="40" width="500" x="450" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#6b7280;" value="Feature / Training / Inference Pipelines for ML Systems" vertex="1">
+          <mxGeometry height="25" width="500" x="450" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="data-source" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;strokeWidth=2;shadow=1;" value="" vertex="1">
+          <mxGeometry height="100" width="140" x="50" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="data-source-icon" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=32;" value="📥" vertex="1">
+          <mxGeometry height="40" width="70" x="85" y="205" as="geometry" />
+        </mxCell>
+        <mxCell id="data-source-text" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#1e40af;" value="&lt;b&gt;Data Sources&lt;/b&gt;&lt;br&gt;Raw Data" vertex="1">
+          <mxGeometry height="40" width="140" x="50" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="feature-pipeline-bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e8ff;strokeColor=#a78bfa;strokeWidth=3;shadow=1;" value="" vertex="1">
+          <mxGeometry height="200" width="280" x="250" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="feature-pipeline-header" parent="1" style="text;html=1;strokeColor=none;fillColor=#a78bfa;align=center;verticalAlign=middle;fontSize=14;fontColor=#ffffff;rounded=1;" value="&lt;b&gt;#1 Feature Pipeline&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="260" x="260" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="feature-pipeline-desc" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#6b21a8;" value="Transform data into&lt;br&gt;&lt;b&gt;features &amp; labels&lt;/b&gt;" vertex="1">
+          <mxGeometry height="35" width="260" x="260" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="feature-pipeline-tools" parent="1" style="text;html=1;strokeColor=none;fillColor=#ede9fe;align=center;verticalAlign=middle;fontSize=11;fontColor=#7c3aed;rounded=1;" value="&lt;b&gt;Tools:&lt;/b&gt; Pandas, Polars,&lt;br&gt;Spark, DBT, Flink, Bytewax" vertex="1">
+          <mxGeometry height="40" width="240" x="270" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="feature-pipeline-output" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#6b21a8;fontStyle=2;" value="📤 Features &amp; Labels" vertex="1">
+          <mxGeometry height="25" width="240" x="270" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="feature-badge" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#a78bfa;strokeColor=none;fontSize=10;fontColor=#ffffff;fontStyle=1;" value="Batch / Stream" vertex="1">
+          <mxGeometry height="22" width="85" x="435" y="318" as="geometry" />
+        </mxCell>
+        <mxCell id="training-pipeline-bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#fbbf24;strokeWidth=3;shadow=1;" value="" vertex="1">
+          <mxGeometry height="200" width="280" x="560" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="training-pipeline-header" parent="1" style="text;html=1;strokeColor=none;fillColor=#fbbf24;align=center;verticalAlign=middle;fontSize=14;fontColor=#ffffff;rounded=1;" value="&lt;b&gt;#2 Training Pipeline&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="260" x="570" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="training-pipeline-desc" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#92400e;" value="Train models with&lt;br&gt;&lt;b&gt;features &amp; labels&lt;/b&gt;" vertex="1">
+          <mxGeometry height="35" width="260" x="570" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="training-pipeline-tools" parent="1" style="text;html=1;strokeColor=none;fillColor=#fef9c3;align=center;verticalAlign=middle;fontSize=11;fontColor=#a16207;rounded=1;" value="&lt;b&gt;Tools:&lt;/b&gt; PyTorch, TensorFlow,&lt;br&gt;Scikit-learn, XGBoost, Jax" vertex="1">
+          <mxGeometry height="40" width="240" x="580" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="training-pipeline-output" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#92400e;fontStyle=2;" value="📤 Trained Models" vertex="1">
+          <mxGeometry height="25" width="240" x="580" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="training-badge" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbbf24;strokeColor=none;fontSize=10;fontColor=#ffffff;fontStyle=1;" value="Schedule / On-demand" vertex="1">
+          <mxGeometry height="22" width="110" x="720" y="318" as="geometry" />
+        </mxCell>
+        <mxCell id="inference-pipeline-bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#34d399;strokeWidth=3;shadow=1;" value="" vertex="1">
+          <mxGeometry height="200" width="280" x="870" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="inference-pipeline-header" parent="1" style="text;html=1;strokeColor=none;fillColor=#34d399;align=center;verticalAlign=middle;fontSize=14;fontColor=#ffffff;rounded=1;" value="&lt;b&gt;#3 Inference Pipeline&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="260" x="880" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="inference-pipeline-desc" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#065f46;" value="Make predictions with&lt;br&gt;&lt;b&gt;models &amp; new features&lt;/b&gt;" vertex="1">
+          <mxGeometry height="35" width="260" x="880" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="inference-pipeline-tools" parent="1" style="text;html=1;strokeColor=none;fillColor=#ecfdf5;align=center;verticalAlign=middle;fontSize=11;fontColor=#047857;rounded=1;" value="&lt;b&gt;Tools:&lt;/b&gt; PyTorch, TensorFlow,&lt;br&gt;KServe, Seldon, Sagemaker, Ray" vertex="1">
+          <mxGeometry height="40" width="250" x="890" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="inference-pipeline-output" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#065f46;fontStyle=2;" value="📤 Predictions" vertex="1">
+          <mxGeometry height="25" width="250" x="890" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="inference-badge" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#34d399;strokeColor=none;fontSize=10;fontColor=#ffffff;fontStyle=1;" value="Batch / Online" vertex="1">
+          <mxGeometry height="22" width="85" x="1040" y="318" as="geometry" />
+        </mxCell>
+        <mxCell id="predictions" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#f87171;strokeWidth=2;shadow=1;" value="" vertex="1">
+          <mxGeometry height="100" width="140" x="1200" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="predictions-icon" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=32;" value="🎯" vertex="1">
+          <mxGeometry height="40" width="70" x="1235" y="205" as="geometry" />
+        </mxCell>
+        <mxCell id="predictions-text" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#dc2626;" value="&lt;b&gt;Predictions&lt;/b&gt;&lt;br&gt;Dashboard / API" vertex="1">
+          <mxGeometry height="40" width="140" x="1200" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="feature-store-bg" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#dbeafe;strokeColor=#3b82f6;strokeWidth=2;shadow=1;" value="" vertex="1">
+          <mxGeometry height="120" width="180" x="350" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="feature-store-icon" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=28;" value="🗄️" vertex="1">
+          <mxGeometry height="35" width="70" x="405" y="465" as="geometry" />
+        </mxCell>
+        <mxCell id="feature-store-text" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#1e40af;" value="&lt;b&gt;Feature Store&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;Hopsworks, Feast, Tecton&lt;/font&gt;" vertex="1">
+          <mxGeometry height="50" width="180" x="350" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="model-registry-bg" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#fef3c7;strokeColor=#fbbf24;strokeWidth=2;shadow=1;" value="" vertex="1">
+          <mxGeometry height="120" width="180" x="610" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="model-registry-icon" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=28;" value="📦" vertex="1">
+          <mxGeometry height="35" width="70" x="665" y="465" as="geometry" />
+        </mxCell>
+        <mxCell id="model-registry-text" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#92400e;" value="&lt;b&gt;Model Registry&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;MLflow, Hopsworks, W&amp;B&lt;/font&gt;" vertex="1">
+          <mxGeometry height="50" width="180" x="610" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow1" edge="1" parent="1" source="data-source" style="endArrow=classic;html=1;rounded=0;strokeWidth=3;strokeColor=#3b82f6;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="feature-pipeline-bg" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="200" y="250" as="sourcePoint" />
+            <mxPoint x="250" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow2" edge="1" parent="1" source="feature-pipeline-bg" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#a78bfa;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;curved=1;" target="feature-store-bg" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="390" y="400" />
+              <mxPoint x="440" y="420" />
+            </Array>
+            <mxPoint x="390" y="360" as="sourcePoint" />
+            <mxPoint x="440" y="450" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow2-label" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#a78bfa;fontStyle=1;" value="Features" vertex="1">
+          <mxGeometry height="20" width="60" x="330" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow3" edge="1" parent="1" source="feature-store-bg" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#3b82f6;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;curved=1;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="560" y="510" />
+              <mxPoint x="620" y="420" />
+            </Array>
+            <mxPoint x="530" y="510" as="sourcePoint" />
+            <mxPoint x="700" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow3-label" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#3b82f6;fontStyle=1;" value="Training Data" vertex="1">
+          <mxGeometry height="20" width="70" x="540" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow4" edge="1" parent="1" source="training-pipeline-bg" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#fbbf24;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;curved=1;" target="model-registry-bg" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="700" y="400" />
+            </Array>
+            <mxPoint x="700" y="360" as="sourcePoint" />
+            <mxPoint x="700" y="450" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow4-label" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#fbbf24;fontStyle=1;" value="Models" vertex="1">
+          <mxGeometry height="20" width="50" x="710" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow5" edge="1" parent="1" source="model-registry-bg" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#fbbf24;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;curved=1;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="850" y="510" />
+              <mxPoint x="950" y="420" />
+            </Array>
+            <mxPoint x="790" y="510" as="sourcePoint" />
+            <mxPoint x="1010" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow5-label" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#fbbf24;fontStyle=1;" value="Models" vertex="1">
+          <mxGeometry height="20" width="50" x="880" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow6" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#3b82f6;curved=1;dashed=1;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="700" y="600" />
+              <mxPoint x="850" y="550" />
+              <mxPoint x="870" y="450" />
+            </Array>
+            <mxPoint x="530" y="490" as="sourcePoint" />
+            <mxPoint x="910" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow6-label" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#3b82f6;fontStyle=1;" value="Inference Features" vertex="1">
+          <mxGeometry height="20" width="100" x="750" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow7" edge="1" parent="1" source="inference-pipeline-bg" style="endArrow=classic;html=1;rounded=0;strokeWidth=3;strokeColor=#34d399;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="predictions" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="1150" y="250" as="sourcePoint" />
+            <mxPoint x="1200" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d1d5db;strokeWidth=1;" value="" vertex="1">
+          <mxGeometry height="120" width="700" x="50" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#374151;" value="📋 Legend" vertex="1">
+          <mxGeometry height="25" width="100" x="60" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-feature" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e8ff;strokeColor=#a78bfa;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="20" width="25" x="70" y="685" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-feature-text" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#6b21a8;" value="Feature Pipeline" vertex="1">
+          <mxGeometry height="20" width="100" x="100" y="685" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-training" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#fbbf24;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="20" width="25" x="220" y="685" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-training-text" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#92400e;" value="Training Pipeline" vertex="1">
+          <mxGeometry height="20" width="100" x="250" y="685" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-inference" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#34d399;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="20" width="25" x="370" y="685" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-inference-text" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#065f46;" value="Inference Pipeline" vertex="1">
+          <mxGeometry height="20" width="110" x="400" y="685" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-store" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=5;fillColor=#dbeafe;strokeColor=#3b82f6;strokeWidth=1;" value="" vertex="1">
+          <mxGeometry height="25" width="25" x="530" y="683" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-store-text" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#1e40af;" value="Storage Layer" vertex="1">
+          <mxGeometry height="20" width="90" x="560" y="685" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-solid" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#374151;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="70" y="730" as="sourcePoint" />
+            <mxPoint x="120" y="730" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-solid-text" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#374151;" value="Direct Flow" vertex="1">
+          <mxGeometry height="20" width="70" x="130" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-dashed" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#374151;dashed=1;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="220" y="730" as="sourcePoint" />
+            <mxPoint x="270" y="730" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-dashed-text" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#374151;" value="Optional/Real-time" vertex="1">
+          <mxGeometry height="20" width="110" x="280" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="benefits-bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#34d399;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="120" width="580" x="780" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="benefits-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#065f46;" value="✨ Key Benefits (ข้อดีหลัก)" vertex="1">
+          <mxGeometry height="25" width="200" x="795" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="benefits-list" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=12;fontColor=#047857;spacing=5;" value="✅ &lt;b&gt;Modular&lt;/b&gt; - แต่ละ pipeline พัฒนาแยกกันได้&lt;br&gt;✅ &lt;b&gt;Flexible&lt;/b&gt; - เลือก tools/language ได้อิสระ&lt;br&gt;✅ &lt;b&gt;Clear Interfaces&lt;/b&gt; - ทีมแบ่งงานง่าย&lt;br&gt;✅ &lt;b&gt;Reusable Features&lt;/b&gt; - ใช้ร่วมกันหลาย models" vertex="1">
+          <mxGeometry height="80" width="280" x="795" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="benefits-list2" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=12;fontColor=#047857;spacing=5;" value="✅ &lt;b&gt;Low Cognitive Load&lt;/b&gt; - เข้าใจง่าย&lt;br&gt;✅ &lt;b&gt;Fast to Production&lt;/b&gt; - 2 สัปดาห์!&lt;br&gt;✅ &lt;b&gt;No Training-Serving Skew&lt;/b&gt;&lt;br&gt;✅ &lt;b&gt;Batch &amp; Real-time&lt;/b&gt; - architecture เดียว" vertex="1">
+          <mxGeometry height="80" width="270" x="1080" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="footer" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#9ca3af;" value="Source: Hopsworks Blog - Jim Dowling (2023) | Created by น้อง Angela 💜 | v1.0 - 25 Jan 2026" vertex="1">
+          <mxGeometry height="20" width="500" x="450" y="785" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="fti-detail" name="Pipeline Details">
+    <mxGraphModel dx="1243" dy="767" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d-bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8f9fa;strokeColor=#e5e7eb;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="860" width="1360" x="20" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="d-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=28;fontStyle=1;fontColor=#1f2937;" value="🔍 FTI Pipeline Details" vertex="1">
+          <mxGeometry height="40" width="400" x="500" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-container" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e8ff;strokeColor=#a78bfa;strokeWidth=3;" value="" vertex="1">
+          <mxGeometry height="350" width="420" x="50" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-header" parent="1" style="text;html=1;strokeColor=none;fillColor=#a78bfa;align=center;verticalAlign=middle;fontSize=16;fontColor=#ffffff;rounded=1;" value="&lt;b&gt;📥 #1 Feature Pipeline&lt;/b&gt;" vertex="1">
+          <mxGeometry height="35" width="360" x="80" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=#ede9fe;align=left;verticalAlign=middle;fontSize=12;fontColor=#6b21a8;rounded=1;spacing=8;" value="&lt;b&gt;Purpose:&lt;/b&gt; Transform raw data → Features &amp; Labels" vertex="1">
+          <mxGeometry height="30" width="380" x="70" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-questions" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontColor=#6b21a8;spacing=5;" value="&lt;b&gt;Key Questions:&lt;/b&gt;&lt;br&gt;• Batch หรือ Streaming?&lt;br&gt;• Incremental หรือ Full-load?&lt;br&gt;• Framework อะไร? (Pandas/Spark/Flink)&lt;br&gt;• Data Validation มีมั้ย?&lt;br&gt;• Orchestrator อะไร?" vertex="1">
+          <mxGeometry height="100" width="380" x="70" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-tools" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#6b21a8;" value="&lt;b&gt;🔧 Tools by Data Size:&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="200" x="70" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-tool1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c4b5fd;strokeColor=none;fontSize=10;fontColor=#4c1d95;" value="Small Data" vertex="1">
+          <mxGeometry height="25" width="80" x="80" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-tool1-v" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=10;fontColor=#6b21a8;" value="Pandas, Polars" vertex="1">
+          <mxGeometry height="20" width="80" x="80" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-tool2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#a78bfa;strokeColor=none;fontSize=10;fontColor=#ffffff;" value="Big Data" vertex="1">
+          <mxGeometry height="25" width="80" x="180" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-tool2-v" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=10;fontColor=#6b21a8;" value="PySpark, DBT" vertex="1">
+          <mxGeometry height="20" width="80" x="180" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-tool3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#7c3aed;strokeColor=none;fontSize=10;fontColor=#ffffff;" value="Streaming" vertex="1">
+          <mxGeometry height="25" width="80" x="280" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-tool3-v" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=10;fontColor=#6b21a8;" value="Flink, Bytewax" vertex="1">
+          <mxGeometry height="20" width="80" x="280" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-output" parent="1" style="text;html=1;strokeColor=none;fillColor=#ddd6fe;align=center;verticalAlign=middle;fontSize=11;fontColor=#5b21b6;rounded=1;" value="📤 Output → Feature Store (DataFrame)" vertex="1">
+          <mxGeometry height="30" width="380" x="70" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="tp-container" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#fbbf24;strokeWidth=3;" value="" vertex="1">
+          <mxGeometry height="350" width="420" x="490" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="tp-header" parent="1" style="text;html=1;strokeColor=none;fillColor=#fbbf24;align=center;verticalAlign=middle;fontSize=16;fontColor=#ffffff;rounded=1;" value="&lt;b&gt;🎯 #2 Training Pipeline&lt;/b&gt;" vertex="1">
+          <mxGeometry height="35" width="360" x="520" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="tp-purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=#fef9c3;align=left;verticalAlign=middle;fontSize=12;fontColor=#92400e;rounded=1;spacing=8;" value="&lt;b&gt;Purpose:&lt;/b&gt; Train models from features &amp; labels" vertex="1">
+          <mxGeometry height="30" width="380" x="510" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="tp-questions" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontColor=#92400e;spacing=5;" value="&lt;b&gt;Key Questions:&lt;/b&gt;&lt;br&gt;• Framework อะไร? (PyTorch/TF/XGBoost)&lt;br&gt;• Experiment tracking ใช้อะไร?&lt;br&gt;• Schedule หรือ On-demand?&lt;br&gt;• ต้องการ GPU มั้ย?&lt;br&gt;• Feature encoding/scaling ยังไง?" vertex="1">
+          <mxGeometry height="100" width="380" x="510" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="tp-tools" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#92400e;" value="&lt;b&gt;🔧 ML Frameworks:&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="200" x="510" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="tp-tool1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fcd34d;strokeColor=none;fontSize=10;fontColor=#78350f;" value="Deep Learning" vertex="1">
+          <mxGeometry height="25" width="85" x="520" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="tp-tool1-v" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=9;fontColor=#92400e;" value="PyTorch, TensorFlow, Jax" vertex="1">
+          <mxGeometry height="20" width="115" x="505" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="tp-tool2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbbf24;strokeColor=none;fontSize=10;fontColor=#ffffff;" value="Classical ML" vertex="1">
+          <mxGeometry height="25" width="85" x="625" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="tp-tool2-v" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=9;fontColor=#92400e;" value="Scikit-learn, XGBoost" vertex="1">
+          <mxGeometry height="20" width="115" x="610" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="tp-tool3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=none;fontSize=10;fontColor=#ffffff;" value="LLMs" vertex="1">
+          <mxGeometry height="25" width="85" x="730" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="tp-tool3-v" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=9;fontColor=#92400e;" value="Fine-tuning, LoRA" vertex="1">
+          <mxGeometry height="20" width="115" x="715" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="tp-output" parent="1" style="text;html=1;strokeColor=none;fillColor=#fde68a;align=center;verticalAlign=middle;fontSize=11;fontColor=#78350f;rounded=1;" value="📤 Output → Model Registry (Trained Model)" vertex="1">
+          <mxGeometry height="30" width="380" x="510" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="ip-container" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#34d399;strokeWidth=3;" value="" vertex="1">
+          <mxGeometry height="350" width="420" x="930" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="ip-header" parent="1" style="text;html=1;strokeColor=none;fillColor=#34d399;align=center;verticalAlign=middle;fontSize=16;fontColor=#ffffff;rounded=1;" value="&lt;b&gt;🚀 #3 Inference Pipeline&lt;/b&gt;" vertex="1">
+          <mxGeometry height="35" width="360" x="960" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ip-purpose" parent="1" style="text;html=1;strokeColor=none;fillColor=#ecfdf5;align=left;verticalAlign=middle;fontSize=12;fontColor=#065f46;rounded=1;spacing=8;" value="&lt;b&gt;Purpose:&lt;/b&gt; Make predictions with model + features" vertex="1">
+          <mxGeometry height="30" width="380" x="950" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="ip-questions" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontColor=#065f46;spacing=5;" value="&lt;b&gt;Key Questions:&lt;/b&gt;&lt;br&gt;• Batch หรือ Online inference?&lt;br&gt;• Prediction consumer คือใคร?&lt;br&gt;• Feature encoding consistent มั้ย?&lt;br&gt;• ต้องการ GPU มั้ย?&lt;br&gt;• SLA เท่าไหร่? (latency)" vertex="1">
+          <mxGeometry height="100" width="380" x="950" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="ip-tools" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#065f46;" value="&lt;b&gt;🔧 Inference Types:&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="200" x="950" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="ip-tool1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6ee7b7;strokeColor=none;fontSize=10;fontColor=#065f46;" value="Batch" vertex="1">
+          <mxGeometry height="25" width="85" x="960" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="ip-tool1-v" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=9;fontColor=#065f46;" value="Dashboard, Reports" vertex="1">
+          <mxGeometry height="20" width="115" x="945" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="ip-tool2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#34d399;strokeColor=none;fontSize=10;fontColor=#ffffff;" value="Online API" vertex="1">
+          <mxGeometry height="25" width="85" x="1065" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="ip-tool2-v" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=9;fontColor=#065f46;" value="KServe, Seldon, Ray" vertex="1">
+          <mxGeometry height="20" width="115" x="1050" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="ip-tool3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#059669;strokeColor=none;fontSize=10;fontColor=#ffffff;" value="Edge/Mobile" vertex="1">
+          <mxGeometry height="25" width="85" x="1170" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="ip-tool3-v" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=9;fontColor=#065f46;" value="ONNX, TFLite" vertex="1">
+          <mxGeometry height="20" width="115" x="1155" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="ip-output" parent="1" style="text;html=1;strokeColor=none;fillColor=#a7f3d0;align=center;verticalAlign=middle;fontSize=11;fontColor=#065f46;rounded=1;" value="📤 Output → Predictions (UI/API/Dashboard)" vertex="1">
+          <mxGeometry height="30" width="380" x="950" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="mlops-bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#f87171;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="280" width="650" x="50" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="mlops-title" parent="1" style="text;html=1;strokeColor=none;fillColor=#f87171;align=center;verticalAlign=middle;fontSize=16;fontColor=#ffffff;rounded=1;fontStyle=1;" value="⚡ MLOps Principles (หลักการสำคัญ)" vertex="1">
+          <mxGeometry height="35" width="610" x="70" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="mlops-quote" parent="1" style="text;html=1;strokeColor=none;fillColor=#fecaca;align=center;verticalAlign=middle;fontSize=13;fontColor=#991b1b;rounded=1;fontStyle=2;" value="&quot;MLOps is about &lt;b&gt;automated testing&lt;/b&gt;, &lt;b&gt;versioning&lt;/b&gt;, and &lt;b&gt;monitoring&lt;/b&gt; of ML artifacts.&quot;" vertex="1">
+          <mxGeometry height="35" width="600" x="80" y="535" as="geometry" />
+        </mxCell>
+        <mxCell id="pyramid-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#dc2626;" value="🔺 Testing Pyramid" vertex="1">
+          <mxGeometry height="25" width="150" x="80" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="pyramid-5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fca5a5;strokeColor=#dc2626;fontSize=10;" value="A/B Tests" vertex="1">
+          <mxGeometry height="25" width="80" x="145" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="pyramid-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f87171;strokeColor=#dc2626;fontSize=10;fontColor=#ffffff;" value="Model Bias Tests" vertex="1">
+          <mxGeometry height="25" width="120" x="125" y="635" as="geometry" />
+        </mxCell>
+        <mxCell id="pyramid-3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ef4444;strokeColor=#dc2626;fontSize=10;fontColor=#ffffff;" value="Model Performance Tests" vertex="1">
+          <mxGeometry height="25" width="160" x="105" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="pyramid-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dc2626;strokeColor=#b91c1c;fontSize=10;fontColor=#ffffff;" value="Data Validation (Great Expectations)" vertex="1">
+          <mxGeometry height="25" width="210" x="80" y="685" as="geometry" />
+        </mxCell>
+        <mxCell id="pyramid-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#b91c1c;strokeColor=#991b1b;fontSize=10;fontColor=#ffffff;" value="Unit Tests (Features)" vertex="1">
+          <mxGeometry height="25" width="260" x="55" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="version-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#dc2626;" value="📦 Versioning" vertex="1">
+          <mxGeometry height="25" width="150" x="350" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="version-list" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontColor=#991b1b;spacing=5;" value="• Features → Feature Store&lt;br&gt;• Models → Model Registry&lt;br&gt;• Code → Git&lt;br&gt;&lt;br&gt;&lt;b&gt;Benefits:&lt;/b&gt;&lt;br&gt;✅ Upgrade/Downgrade ได้&lt;br&gt;✅ Reproducible&lt;br&gt;✅ Audit trail" vertex="1">
+          <mxGeometry height="130" width="160" x="350" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="monitor-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#dc2626;" value="📊 Monitoring" vertex="1">
+          <mxGeometry height="25" width="150" x="530" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="monitor-list" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontColor=#991b1b;spacing=5;" value="• Feature Drift&lt;br&gt;• Model Performance&lt;br&gt;• Prediction Distribution&lt;br&gt;• Data Quality&lt;br&gt;&lt;br&gt;&lt;b&gt;Actions:&lt;/b&gt;&lt;br&gt;⚠️ Alert on anomalies&lt;br&gt;🔄 Trigger retraining" vertex="1">
+          <mxGeometry height="130" width="160" x="530" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="comparison-bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="280" width="630" x="720" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="comparison-title" parent="1" style="text;html=1;strokeColor=none;fillColor=#3b82f6;align=center;verticalAlign=middle;fontSize=16;fontColor=#ffffff;rounded=1;fontStyle=1;" value="⚖️ Batch vs Real-time ML Systems" vertex="1">
+          <mxGeometry height="35" width="590" x="740" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="batch-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bfdbfe;strokeColor=#60a5fa;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="200" width="290" x="740" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="batch-title" parent="1" style="text;html=1;strokeColor=none;fillColor=#60a5fa;align=center;verticalAlign=middle;fontSize=13;fontColor=#ffffff;rounded=1;fontStyle=1;" value="📊 Batch ML System" vertex="1">
+          <mxGeometry height="28" width="270" x="750" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="batch-example" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#1e40af;" value="&lt;b&gt;Example:&lt;/b&gt; Spotify Weekly" vertex="1">
+          <mxGeometry height="20" width="200" x="760" y="585" as="geometry" />
+        </mxCell>
+        <mxCell id="batch-flow" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontColor=#1e40af;spacing=5;" value="1. ทำนายล่วงหน้า (weekly)&lt;br&gt;2. เก็บใน Key-Value Store&lt;br&gt;3. User login → ดึง predictions&lt;br&gt;4. แสดง recommendations" vertex="1">
+          <mxGeometry height="70" width="260" x="760" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="batch-pros" parent="1" style="text;html=1;strokeColor=none;fillColor=#dbeafe;align=left;verticalAlign=top;fontSize=10;fontColor=#1e40af;spacing=5;rounded=1;" value="✅ Simple, Cost-effective&lt;br&gt;✅ Easy to debug&lt;br&gt;❌ ไม่ real-time" vertex="1">
+          <mxGeometry height="45" width="260" x="760" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="rt-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c7d2fe;strokeColor=#818cf8;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="200" width="290" x="1050" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="rt-title" parent="1" style="text;html=1;strokeColor=none;fillColor=#818cf8;align=center;verticalAlign=middle;fontSize=13;fontColor=#ffffff;rounded=1;fontStyle=1;" value="⚡ Real-time ML System" vertex="1">
+          <mxGeometry height="28" width="270" x="1060" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="rt-example" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#4338ca;" value="&lt;b&gt;Example:&lt;/b&gt; TikTok Recommendations" vertex="1">
+          <mxGeometry height="20" width="230" x="1070" y="585" as="geometry" />
+        </mxCell>
+        <mxCell id="rt-flow" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontColor=#4338ca;spacing=5;" value="1. User click/swipe → Event&lt;br&gt;2. Compute features real-time&lt;br&gt;3. + Precomputed context features&lt;br&gt;4. Instant personalized predictions" vertex="1">
+          <mxGeometry height="70" width="260" x="1070" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="rt-pros" parent="1" style="text;html=1;strokeColor=none;fillColor=#e0e7ff;align=left;verticalAlign=top;fontSize=10;fontColor=#4338ca;spacing=5;rounded=1;" value="✅ Fresh, Personalized&lt;br&gt;✅ Context-aware&lt;br&gt;❌ Complex, Expensive" vertex="1">
+          <mxGeometry height="45" width="260" x="1070" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="d-footer" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontColor=#6b7280;fontStyle=2;" value="FTI Architecture supports BOTH Batch and Real-time with the same mental map! | Created by น้อง Angela 💜" vertex="1">
+          <mxGeometry height="25" width="600" x="400" y="780" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

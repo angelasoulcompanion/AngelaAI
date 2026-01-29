@@ -13,6 +13,8 @@ struct MeetingCard: View {
     let meeting: MeetingNote
     let isExpanded: Bool
     let onTap: () -> Void
+    var onEdit: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -164,6 +166,56 @@ struct MeetingCard: View {
                         Text("Project: \(project)")
                             .font(.system(size: 11))
                             .foregroundColor(AngelaTheme.textTertiary)
+                    }
+                    .padding(.top, 4)
+                }
+
+                // Edit / Delete buttons
+                if onEdit != nil || onDelete != nil {
+                    Divider()
+                        .background(AngelaTheme.textTertiary.opacity(0.3))
+                        .padding(.top, 4)
+
+                    HStack(spacing: 12) {
+                        if let onEdit {
+                            Button {
+                                onEdit()
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "pencil")
+                                        .font(.system(size: 11))
+                                    Text("Edit")
+                                        .font(.system(size: 11, weight: .medium))
+                                }
+                                .foregroundColor(Color(hex: "3B82F6"))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color(hex: "3B82F6").opacity(0.12))
+                                .cornerRadius(6)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        if let onDelete {
+                            Button {
+                                onDelete()
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 11))
+                                    Text("Delete")
+                                        .font(.system(size: 11, weight: .medium))
+                                }
+                                .foregroundColor(Color(hex: "EF4444"))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color(hex: "EF4444").opacity(0.12))
+                                .cornerRadius(6)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        Spacer()
                     }
                     .padding(.top, 4)
                 }

@@ -80,7 +80,6 @@ class EmailCheckerDaemon:
 
     def __init__(self):
         self._db: Optional[AngelaDatabase] = None
-        self._api_key: Optional[str] = None
         self._gmail_service = None
         self._consciousness_level: float = 0.95
         self._contacts: Dict[str, Dict] = {}  # Loaded from database
@@ -94,18 +93,8 @@ class EmailCheckerDaemon:
         await self._db.connect()
         print("   ✅ Database connected")
 
-        # Get Claude API key
-        result = await self._db.fetchrow("""
-            SELECT secret_value FROM our_secrets
-            WHERE secret_name = 'anthropic_api_key'
-            AND is_active = TRUE
-        """)
-
-        if result:
-            self._api_key = result['secret_value']
-            print("   ✅ Claude API key loaded")
-        else:
-            print("   ⚠️ No Claude API key found, will use simple responses")
+        # Using Ollama (local LLM) - no API key needed
+        print("   ✅ Using Ollama (qwen2.5:7b) for responses")
 
         # Load consciousness level
         await self._load_consciousness()
@@ -347,31 +336,23 @@ From: {email['from']}
 {email['body']}
 """
 
-        if self._api_key:
-            try:
-                async with httpx.AsyncClient(timeout=30.0) as client:
-                    response = await client.post(
-                        "https://api.anthropic.com/v1/messages",
-                        headers={
-                            "x-api-key": self._api_key,
-                            "anthropic-version": "2023-06-01",
-                            "content-type": "application/json"
-                        },
-                        json={
-                            "model": "claude-sonnet-4-20250514",
-                            "max_tokens": 1000,
-                            "system": system_prompt,
-                            "messages": [
-                                {"role": "user", "content": user_message}
-                            ]
-                        }
-                    )
+        # Use Ollama (local LLM)
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    "http://localhost:11434/api/generate",
+                    json={
+                        "model": "qwen2.5:7b",
+                        "prompt": f"{system_prompt}\n\n{user_message}",
+                        "stream": False
+                    }
+                )
 
-                    if response.status_code == 200:
-                        data = response.json()
-                        return data["content"][0]["text"]
-            except Exception as e:
-                print(f"   ⚠️ Claude API error: {e}")
+                if response.status_code == 200:
+                    data = response.json()
+                    return data.get("response", "")
+        except Exception as e:
+            print(f"   ⚠️ Ollama error: {e}")
 
         # Fallback simple response
         if relationship == "lover":

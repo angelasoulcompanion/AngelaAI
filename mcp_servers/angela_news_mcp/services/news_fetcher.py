@@ -293,13 +293,82 @@ class NewsFetcher:
             soup = BeautifulSoup(entry.summary, "html.parser")
             summary = soup.get_text(strip=True)[:500]
 
+        # Get URL - extract direct URL from Google News if needed
+        url = entry.get("link", "")
+        url = self._extract_direct_url(url, entry)
+
         return {
             "title": entry.get("title", "No title"),
-            "url": entry.get("link", ""),
+            "url": url,
             "summary": summary,
             "published": published,
             "source": source
         }
+
+    def _extract_direct_url(self, url: str, entry: dict) -> str:
+        """
+        Extract direct URL from Google News redirect links.
+        Google News RSS returns URLs like:
+        - https://news.google.com/rss/articles/CBMi...
+        - https://news.google.com/stories/CAAq...
+
+        These redirect through Google - we need the actual article URL.
+        """
+        import base64
+        import re
+
+        # If not a Google News URL, return as-is
+        if "news.google.com" not in url:
+            return url
+
+        # Method 1: Try to get from entry's source element (best method)
+        # Some RSS entries have <source url="...">
+        if hasattr(entry, "source") and hasattr(entry.source, "href"):
+            return entry.source.href
+
+        # Method 2: Try to decode from the Google News URL itself
+        # Google News URLs contain base64-encoded original URL
+        try:
+            # Extract the article ID from URL
+            # Format: https://news.google.com/rss/articles/CBMi[base64]...
+            if "/articles/" in url:
+                article_id = url.split("/articles/")[-1].split("?")[0]
+
+                # Google uses a modified base64 encoding
+                # The original URL is encoded within the ID
+                # Try to decode it
+                if article_id.startswith("CBMi"):
+                    # Remove prefix and try to decode
+                    encoded_part = article_id[4:]  # Skip 'CBMi'
+
+                    # Add padding if needed
+                    padding = 4 - len(encoded_part) % 4
+                    if padding != 4:
+                        encoded_part += "=" * padding
+
+                    # Try standard base64 decode
+                    try:
+                        decoded = base64.urlsafe_b64decode(encoded_part).decode('utf-8', errors='ignore')
+                        # Find URL in decoded string (starts with http)
+                        url_match = re.search(r'https?://[^\s<>"]+', decoded)
+                        if url_match:
+                            return url_match.group(0)
+                    except:
+                        pass
+
+        except Exception as e:
+            print(f"Warning: Could not extract direct URL: {e}")
+
+        # Method 3: Check if there's a link in the summary/description
+        if hasattr(entry, "summary"):
+            soup = BeautifulSoup(entry.summary, "html.parser")
+            link = soup.find("a", href=True)
+            if link and "news.google.com" not in link["href"]:
+                return link["href"]
+
+        # Fallback: Return original Google News URL
+        # At least it will redirect to the article when clicked
+        return url
 
     async def close(self):
         """Close the aiohttp session"""
