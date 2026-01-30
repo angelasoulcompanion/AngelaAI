@@ -318,13 +318,29 @@ struct ChatView: View {
     }
 
     private func detectTechnicalTask(_ message: String) -> Bool {
-        let technicalKeywords = [
-            "ช่วย", "เพิ่ม", "แก้", "ทำ", "สร้าง", "code", "feature",
-            "fix", "bug", "error", "implement", "refactor", "database"
+        // Strong signals — any single match is enough
+        let strongKeywords = [
+            "code", "feature", "fix bug", "error", "implement", "refactor",
+            "database", "deploy", "commit", "debug", "api", "endpoint",
+            "แก้ bug", "แก้ code", "แก้โค้ด", "เขียนโค้ด", "เขียน code",
+            "สร้าง api", "สร้าง feature", "รัน test", "รัน server",
+        ]
+        // Weak signals — need 2+ matches to trigger
+        let weakKeywords = [
+            "ช่วยเขียน", "ช่วยแก้", "ช่วยทำ", "เพิ่ม function",
+            "เพิ่ม feature", "แก้ไข", "สร้างไฟล์", "ทำระบบ",
         ]
 
         let lowercased = message.lowercased()
-        return technicalKeywords.contains { lowercased.contains($0) }
+
+        // Any strong keyword → technical
+        if strongKeywords.contains(where: { lowercased.contains($0) }) {
+            return true
+        }
+
+        // 2+ weak keywords → technical
+        let weakCount = weakKeywords.filter { lowercased.contains($0) }.count
+        return weakCount >= 2
     }
 
     private func openInClaudeCode() {

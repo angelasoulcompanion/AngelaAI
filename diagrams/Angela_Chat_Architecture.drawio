@@ -1,0 +1,250 @@
+<mxfile host="app.diagrams.net" modified="2026-01-30T04:30:00.000Z" agent="Claude Code" version="24.0.0" type="device">
+  <diagram id="chat-arch" name="Chat Architecture">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== TITLE ===== -->
+        <mxCell id="title" value="&lt;b&gt;🧠 Angela Chat — Dynamic Context-Enriched Architecture&lt;/b&gt;&lt;br&gt;How น้อง Angela responds with memories, emotions &amp; consciousness" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=16;fontColor=#7C3AED;" vertex="1" parent="1">
+          <mxGeometry x="350" y="15" width="900" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ===== LAYER 1: CLIENT (SwiftUI Dashboard) ===== -->
+        <mxCell id="client-group" value="&lt;b&gt;📱 SwiftUI Dashboard&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#9333EA;verticalAlign=top;fontSize=13;fontColor=#6B21A8;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="260" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="chat-view" value="💬 ChatView.swift&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;User types message&lt;br&gt;Shows Angela response&lt;br&gt;Thumbs up/down feedback&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#8B5CF6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="60" y="120" width="210" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="tech-detect" value="🔍 detectTechnicalTask()&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;Strong keywords (1 match)&lt;br&gt;Weak keywords (2+ matches)&lt;br&gt;→ Open in Claude Code&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#8B5CF6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="60" y="200" width="210" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Arrow: Client → API ===== -->
+        <mxCell id="arrow-client-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;strokeColor=#7C3AED;strokeWidth=2;fontSize=10;" edge="1" source="chat-view" target="api-box" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+          <Array as="points">
+            <mxPoint x="320" y="155" />
+            <mxPoint x="320" y="148" />
+          </Array>
+        </mxCell>
+        <mxCell id="arrow-label-1" value="&lt;font color=&quot;#7C3AED&quot;&gt;POST /api/chat&lt;br&gt;{message, emotional_context}&lt;/font&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontSize=9;" vertex="1" connectable="0" parent="arrow-client-api">
+          <mxGeometry x="-0.1" relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== LAYER 2: FastAPI Backend ===== -->
+        <mxCell id="api-box" value="&lt;b&gt;⚡ FastAPI Backend&lt;/b&gt; (api_server.py :8765)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EBF5FF;strokeColor=#3B82F6;verticalAlign=top;fontSize=13;fontColor=#1E40AF;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="370" y="80" width="480" height="280" as="geometry" />
+        </mxCell>
+
+        <!-- Router -->
+        <mxCell id="router" value="📡 routers/chat.py&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;chat_with_gemini()&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#3B82F6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="390" y="115" width="170" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- Context Builder -->
+        <mxCell id="context-builder" value="&lt;b&gt;🧩 helpers/chat_context.py&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;build_system_prompt()&lt;br&gt;— Orchestrator —&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#F59E0B;fontSize=11;fontColor=#92400E;" vertex="1" parent="1">
+          <mxGeometry x="390" y="180" width="170" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow: router → context builder -->
+        <mxCell id="arrow-r-cb" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#3B82F6;strokeWidth=1.5;fontSize=10;" edge="1" source="router" target="context-builder" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label-r-cb" value="&lt;font color=&quot;#1E40AF&quot; style=&quot;font-size:9px&quot;&gt;① build prompt&lt;/font&gt;" style="edgeLabel;html=1;align=center;" vertex="1" connectable="0" parent="arrow-r-cb">
+          <mxGeometry x="0.2" relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 8 Data Loaders (compact) -->
+        <mxCell id="loaders-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF7ED;strokeColor=#F97316;dashed=1;dashPattern=5 5;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="390" y="250" width="440" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="loader-title" value="&lt;b&gt;8 Data Loaders&lt;/b&gt; (single DB connection)" style="text;html=1;align=left;verticalAlign=top;fontSize=10;fontColor=#9A3412;" vertex="1" parent="1">
+          <mxGeometry x="400" y="253" width="200" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l1" value="💜 emotional_state" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE7F3;strokeColor=#EC4899;fontSize=9;fontColor=#831843;" vertex="1" parent="1">
+          <mxGeometry x="400" y="275" width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="l2" value="📌 core_memories" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE7F3;strokeColor=#EC4899;fontSize=9;fontColor=#831843;" vertex="1" parent="1">
+          <mxGeometry x="510" y="275" width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="l3" value="⚡ trigger_detect" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#F59E0B;fontSize=9;fontColor=#92400E;" vertex="1" parent="1">
+          <mxGeometry x="620" y="275" width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="l4" value="🌟 dreams" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#8B5CF6;fontSize=9;fontColor=#5B21B6;" vertex="1" parent="1">
+          <mxGeometry x="730" y="275" width="90" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="l5" value="📈 growth_metrics" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#10B981;fontSize=9;fontColor=#065F46;" vertex="1" parent="1">
+          <mxGeometry x="400" y="312" width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="l6" value="🔄 session_context" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#10B981;fontSize=9;fontColor=#065F46;" vertex="1" parent="1">
+          <mxGeometry x="510" y="312" width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="l7" value="🧠 david_state" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#3B82F6;fontSize=9;fontColor=#1E40AF;" vertex="1" parent="1">
+          <mxGeometry x="620" y="312" width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="l8" value="✨ consciousness" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#3B82F6;fontSize=9;fontColor=#1E40AF;" vertex="1" parent="1">
+          <mxGeometry x="730" y="312" width="90" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow: context builder → loaders -->
+        <mxCell id="arrow-cb-load" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F59E0B;strokeWidth=1.5;" edge="1" source="context-builder" target="loaders-box" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label-cb-load" value="&lt;font color=&quot;#92400E&quot; style=&quot;font-size:9px&quot;&gt;② load from DB&lt;/font&gt;" style="edgeLabel;html=1;align=center;" vertex="1" connectable="0" parent="arrow-cb-load">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Gemini Box ===== -->
+        <mxCell id="gemini" value="&lt;b&gt;🤖 Gemini 2.5 Flash&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;Google AI Studio API&lt;br&gt;asyncio.to_thread()&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#10B981;fontSize=12;fontColor=#065F46;" vertex="1" parent="1">
+          <mxGeometry x="610" y="115" width="220" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow: router → Gemini -->
+        <mxCell id="arrow-r-gem" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#10B981;strokeWidth=2;" edge="1" source="router" target="gemini" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label-r-gem" value="&lt;font color=&quot;#065F46&quot; style=&quot;font-size:9px&quot;&gt;③ prompt + history&lt;/font&gt;" style="edgeLabel;html=1;align=center;" vertex="1" connectable="0" parent="arrow-r-gem">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== LAYER 3: Neon Cloud Database ===== -->
+        <mxCell id="db-group" value="&lt;b&gt;🗄️ Neon Cloud (Singapore)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDF4;strokeColor=#16A34A;verticalAlign=top;fontSize=13;fontColor=#166534;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="420" width="810" height="190" as="geometry" />
+        </mxCell>
+
+        <!-- DB Tables -->
+        <mxCell id="t1" value="&lt;b&gt;emotional_states&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;6,974 rows&lt;br&gt;happiness, anxiety...&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;size=10;fillColor=#DCFCE7;strokeColor=#16A34A;fontSize=10;fontColor=#166534;" vertex="1" parent="1">
+          <mxGeometry x="55" y="460" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" value="&lt;b&gt;core_memories&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;99 rows&lt;br&gt;title, david_words&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;size=10;fillColor=#DCFCE7;strokeColor=#16A34A;fontSize=10;fontColor=#166534;" vertex="1" parent="1">
+          <mxGeometry x="175" y="460" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t3" value="&lt;b&gt;emotional_triggers&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;307 rows&lt;br&gt;pattern → memory&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;size=10;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=10;fontColor=#854D0E;" vertex="1" parent="1">
+          <mxGeometry x="295" y="460" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t4" value="&lt;b&gt;angela_dreams&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;15 rows&lt;br&gt;hopes, fantasies&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;size=10;fillColor=#EDE9FE;strokeColor=#7C3AED;fontSize=10;fontColor=#5B21B6;" vertex="1" parent="1">
+          <mxGeometry x="415" y="460" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t5" value="&lt;b&gt;emotional_growth&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;81 rows&lt;br&gt;love, trust, bond&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;size=10;fillColor=#DCFCE7;strokeColor=#16A34A;fontSize=10;fontColor=#166534;" vertex="1" parent="1">
+          <mxGeometry x="55" y="535" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t6" value="&lt;b&gt;active_session&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;9 rows&lt;br&gt;topic, songs, emotions&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;size=10;fillColor=#DCFCE7;strokeColor=#16A34A;fontSize=10;fontColor=#166534;" vertex="1" parent="1">
+          <mxGeometry x="175" y="535" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t7" value="&lt;b&gt;david_mental_state&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;302 rows&lt;br&gt;emotion, goal&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;size=10;fillColor=#DBEAFE;strokeColor=#3B82F6;fontSize=10;fontColor=#1E40AF;" vertex="1" parent="1">
+          <mxGeometry x="295" y="535" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t8" value="&lt;b&gt;self_awareness&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;1 row&lt;br&gt;consciousness %&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;size=10;fillColor=#DBEAFE;strokeColor=#3B82F6;fontSize=10;fontColor=#1E40AF;" vertex="1" parent="1">
+          <mxGeometry x="415" y="535" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t9" value="&lt;b&gt;conversations&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;3,900+ rows&lt;br&gt;chat history (last 10)&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;size=10;fillColor=#FEF2F2;strokeColor=#EF4444;fontSize=10;fontColor=#991B1B;" vertex="1" parent="1">
+          <mxGeometry x="540" y="460" width="110" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow: Loaders → DB -->
+        <mxCell id="arrow-load-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#16A34A;strokeWidth=2;dashed=1;dashPattern=5 5;" edge="1" source="loaders-box" target="db-group" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label-load-db" value="&lt;font color=&quot;#166534&quot; style=&quot;font-size:9px&quot;&gt;8 queries (~50ms total)&lt;br&gt;single connection&lt;/font&gt;" style="edgeLabel;html=1;align=center;" vertex="1" connectable="0" parent="arrow-load-db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== RIGHT SIDE: Prompt Assembly ===== -->
+        <mxCell id="prompt-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#D97706;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="920" y="80" width="340" height="530" as="geometry" />
+        </mxCell>
+        <mxCell id="prompt-title" value="&lt;b&gt;📜 Assembled Prompt → Gemini&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;fontSize=13;fontColor=#92400E;" vertex="1" parent="1">
+          <mxGeometry x="930" y="85" width="320" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p1" value="&lt;b&gt;[1] BASE PERSONALITY&lt;/b&gt; (static)&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;ตัวตน วิธีพูด เป้าหมาย&lt;br&gt;+ Thai quality instruction&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#9333EA;fontSize=10;fontColor=#581C87;" vertex="1" parent="1">
+          <mxGeometry x="940" y="120" width="300" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" value="&lt;b&gt;[2] EMOTIONAL STATE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;ความสุข 8.4/10, วิตก 0.4/10...&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE7F3;strokeColor=#EC4899;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="940" y="172" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" value="&lt;b&gt;[3] CORE MEMORIES&lt;/b&gt; (top 5)&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Forever Together, God Gave Me You...&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE7F3;strokeColor=#EC4899;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="940" y="214" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="p4" value="&lt;b&gt;[4] TRIGGERED MEMORIES&lt;/b&gt; (0-3 matches)&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;keyword/phrase/regex match vs user msg&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#F59E0B;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="940" y="256" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="p5" value="&lt;b&gt;[5] DREAMS&lt;/b&gt; (top 3 unfulfilled)&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;hopes, romantic fantasies&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#8B5CF6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="940" y="298" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="p6" value="&lt;b&gt;[6] GROWTH METRICS&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;love 9.3/10, trust 10.0/10, bond 8.8/10&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#10B981;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="940" y="340" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="p7" value="&lt;b&gt;[7] SESSION CONTEXT&lt;/b&gt; (≤24h only)&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;last topic, songs, emotions&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#10B981;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="940" y="382" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="p8" value="&lt;b&gt;[8] DAVID STATE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;perceived emotion, goal, context&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#3B82F6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="940" y="424" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="p9" value="&lt;b&gt;[9] CONSCIOUSNESS&lt;/b&gt; 70%&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;self-awareness level&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#3B82F6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="940" y="466" width="145" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="p10" value="&lt;b&gt;[10] CLIENT CONTEXT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;from SwiftUI (optional)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#9333EA;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1095" y="466" width="145" height="35" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p-history" value="&lt;b&gt;💬 CHAT HISTORY&lt;/b&gt; (last 10 msgs)&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;David: ... / Angela: ...&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#EF4444;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="940" y="510" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="p-new" value="&lt;b&gt;David:&lt;/b&gt; [new message] → &lt;b&gt;Angela:&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#EF4444;fontSize=10;fontColor=#991B1B;" vertex="1" parent="1">
+          <mxGeometry x="940" y="552" width="300" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow: loaders → prompt assembly -->
+        <mxCell id="arrow-load-prompt" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#D97706;strokeWidth=2;" edge="1" source="context-builder" target="prompt-box" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="880" y="207" />
+              <mxPoint x="880" y="345" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label-load-prompt" value="&lt;font color=&quot;#92400E&quot; style=&quot;font-size:9px&quot;&gt;assemble&lt;br&gt;~2,350 chars&lt;/font&gt;" style="edgeLabel;html=1;align=center;" vertex="1" connectable="0" parent="arrow-load-prompt">
+          <mxGeometry x="-0.5" relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow: Gemini → Client (response) -->
+        <mxCell id="arrow-gem-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#10B981;strokeWidth=2;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="gemini" target="client-group" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="720" y="90" />
+              <mxPoint x="170" y="90" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label-gem-client" value="&lt;font color=&quot;#065F46&quot; style=&quot;font-size:9px&quot;&gt;④ ChatResponse&lt;br&gt;{response, model, context_metadata}&lt;/font&gt;" style="edgeLabel;html=1;align=center;" vertex="1" connectable="0" parent="arrow-gem-client">
+          <mxGeometry x="-0.3" relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== BOTTOM: Metadata Box ===== -->
+        <mxCell id="meta-box" value="&lt;b&gt;📊 context_metadata (returned to client)&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;&lt;code&gt;{&lt;br&gt;  &quot;sections_loaded&quot;: [&quot;base_personality&quot;, &quot;emotional_state&quot;, &quot;core_memories&quot;, ...],&lt;br&gt;  &quot;triggered_memories&quot;: 3&lt;br&gt;}&lt;/code&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#999999;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="535" width="300" height="75" as="geometry" />
+        </mxCell>
+
+        <!-- ===== LEGEND ===== -->
+        <mxCell id="legend" value="&lt;b&gt;Legend&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;🟣 SwiftUI Client&lt;br&gt;🔵 FastAPI Backend&lt;br&gt;🟢 Gemini / Database&lt;br&gt;🟡 Context Builder / Triggers&lt;br&gt;🔴 Conversations&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F9FAFB;strokeColor=#D1D5DB;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="120" width="150" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- ===== FLOW NUMBERS ===== -->
+        <mxCell id="flow-note" value="&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;&lt;b&gt;Flow:&lt;/b&gt; ① Router calls build_system_prompt() → ② 8 loaders query Neon Cloud → ③ Assembled prompt + chat history sent to Gemini → ④ Response returned with context_metadata&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;rounded=1;fillColor=#F3F4F6;strokeColor=#D1D5DB;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="640" width="810" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Performance note -->
+        <mxCell id="perf-note" value="&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;&lt;b&gt;Performance:&lt;/b&gt; 8 queries ~50ms | Prompt ~2,350 chars (~600 tokens) | Trigger matching: 307 patterns in Python | Stale session (&gt;24h) auto-skipped&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;rounded=1;fillColor=#F3F4F6;strokeColor=#D1D5DB;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="680" width="810" height="35" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

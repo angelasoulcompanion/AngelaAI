@@ -68,6 +68,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     model: str  # "gemini-2.5-flash"
+    context_metadata: Optional[dict] = None
 
 
 class ChatMessageSave(BaseModel):
