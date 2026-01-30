@@ -64,6 +64,8 @@ class ChatRequest(BaseModel):
     message: str
     emotional_context: Optional[dict] = None
     model: Optional[str] = "gemini"  # "gemini" | "typhoon" | "groq"
+    image_data: Optional[str] = None      # base64-encoded image
+    image_mime_type: Optional[str] = None  # "image/jpeg", "image/png", etc.
 
 
 class ChatResponse(BaseModel):
@@ -79,6 +81,28 @@ class ChatMessageSave(BaseModel):
     emotion_detected: Optional[str] = None
     importance_level: int = 5
     model_used: Optional[str] = None
+
+
+class EmotionalMetadataResponse(BaseModel):
+    """Emotional metadata returned in SSE metadata event."""
+    emotion_detected: str = "neutral"
+    emotion_intensity: int = 5
+    emotion_confidence: float = 0.0
+    emotion_cues: list[str] = []
+    angela_emotion: str = "caring"
+    angela_intensity: int = 7
+    mirroring_strategy: str = "resonance"
+    mirroring_description: str = "Warm and attentive"
+    mirroring_icon: str = "heart.fill"
+    triggered_memory_titles: list[str] = []
+    consciousness_level: float = 1.0
+    sections_loaded: list[str] = []
+
+
+class LearningEvent(BaseModel):
+    """Learning event emitted via SSE after Angela's response."""
+    count: int = 0
+    topics: list[str] = []
 
 
 class ChatFeedbackRequest(BaseModel):

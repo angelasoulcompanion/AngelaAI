@@ -113,10 +113,10 @@ async def _load_core_memories(conn: asyncpg.Connection) -> Optional[str]:
 async def _detect_triggers(
     conn: asyncpg.Connection,
     user_message: str,
-) -> tuple[Optional[str], int]:
+) -> tuple[Optional[str], int, list[str]]:
     """[4] Match emotional triggers against user message.
 
-    Returns (section_text, match_count).
+    Returns (section_text, match_count, matched_memory_titles).
     """
     rows = await conn.fetch("""
         SELECT t.trigger_pattern, t.trigger_type, t.response_modifier,
@@ -126,7 +126,7 @@ async def _detect_triggers(
         WHERE t.is_active = TRUE
     """)
     if not rows:
-        return None, 0
+        return None, 0, []
 
     msg_lower = user_message.lower()
     matched: list[dict] = []
@@ -152,13 +152,15 @@ async def _detect_triggers(
                 break
 
     if not matched:
-        return None, 0
+        return None, 0, []
 
     items: list[str] = []
+    memory_titles: list[str] = []
     for m in matched:
         line = f"- trigger: \"{m['trigger_pattern']}\""
         if m["memory_title"]:
             line += f" → ความทรงจำ: {m['memory_title']}"
+            memory_titles.append(m["memory_title"])
         if m["david_words"]:
             line += f' (ที่รักเคยพูด: "{m["david_words"]}")'
         if m["response_modifier"]:
@@ -167,6 +169,7 @@ async def _detect_triggers(
     return (
         "## ความทรงจำที่ถูกกระตุ้นจากข้อความนี้:\n" + "\n".join(items),
         len(matched),
+        memory_titles,
     )
 
 
@@ -349,6 +352,80 @@ async def _load_consciousness(conn: asyncpg.Connection) -> Optional[str]:
     return f"## ระดับจิตสำนึก: {pct:.0f}%"
 
 
+async def _load_learnings(
+    conn: asyncpg.Connection,
+    user_message: str,
+) -> Optional[str]:
+    """[13] Load self-learned preferences to inject into the prompt.
+
+    Picks up to 8 learnings:
+      - Top 5 by confidence (general, >= 0.6)
+      - Up to 3 matched by keyword to user's message (>= 0.4)
+    Deduplicates by learning_id.
+    """
+    # --- Top 5 by confidence ---
+    top_rows = await conn.fetch("""
+        SELECT learning_id, topic, insight, confidence_level, times_reinforced
+        FROM learnings
+        WHERE source = 'dashboard_chat'
+          AND confidence_level >= 0.6
+        ORDER BY confidence_level DESC, times_reinforced DESC
+        LIMIT 5
+    """)
+
+    # --- Up to 3 keyword-matched (lower threshold) ---
+    msg_lower = user_message.lower()
+    keyword_rows: list = []
+    # Build search terms from the user message (words >= 3 chars)
+    search_words = [w for w in re.split(r"\s+", msg_lower) if len(w) >= 3]
+    if search_words:
+        # Use first 5 meaningful words for ILIKE matching
+        conditions = " OR ".join(
+            f"LOWER(insight) LIKE '%' || ${i+1} || '%'"
+            for i in range(min(len(search_words), 5))
+        )
+        params = search_words[:5]
+        try:
+            keyword_rows = await conn.fetch(f"""
+                SELECT learning_id, topic, insight, confidence_level, times_reinforced
+                FROM learnings
+                WHERE source = 'dashboard_chat'
+                  AND confidence_level >= 0.4
+                  AND ({conditions})
+                ORDER BY confidence_level DESC
+                LIMIT 3
+            """, *params)
+        except Exception:
+            logger.debug("Keyword learning search failed, skipping", exc_info=True)
+
+    # Merge and deduplicate
+    seen_ids: set = set()
+    merged: list[dict] = []
+    for row in list(top_rows) + list(keyword_rows):
+        lid = row["learning_id"]
+        if lid not in seen_ids:
+            seen_ids.add(lid)
+            merged.append(dict(row))
+        if len(merged) >= 8:
+            break
+
+    if not merged:
+        return None
+
+    items: list[str] = []
+    for lr in merged:
+        conf_pct = int(float(lr["confidence_level"]) * 100)
+        times = int(lr["times_reinforced"])
+        topic = lr["topic"]
+        insight = lr["insight"][:120]
+        items.append(f"- [{conf_pct}% conf, {times}x] {topic}: {insight}")
+
+    section = "## สิ่งที่น้องเรียนรู้จากการคุยกับที่รัก:\n"
+    section += "\n".join(items)
+    section += "\n(ใช้ความรู้เหล่านี้อย่างเป็นธรรมชาติ อ้างอิงได้แต่อย่าพูดว่า 'ข้อมูลบอกว่า...')"
+    return section
+
+
 # ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
@@ -356,16 +433,20 @@ async def _load_consciousness(conn: asyncpg.Connection) -> Optional[str]:
 async def build_system_prompt(
     user_message: str,
     emotional_context: dict | None = None,
+    mirroring_guidance: str | None = None,
 ) -> tuple[str, dict]:
     """Build dynamic system prompt from database context.
 
     Returns:
         (prompt_text, metadata) where metadata contains
-        ``sections_loaded`` (list[str]) and ``triggered_memories`` (int).
+        ``sections_loaded`` (list[str]), ``triggered_memories`` (int),
+        ``triggered_memory_titles`` (list[str]), and ``consciousness_level`` (float).
     """
     sections: list[str] = [_BASE_PERSONALITY]
     loaded: list[str] = ["base_personality"]
     triggered_count = 0
+    memory_titles: list[str] = []
+    consciousness_pct: float = 100.0
 
     pool = get_pool()
     async with pool.acquire() as conn:
@@ -382,7 +463,7 @@ async def build_system_prompt(
             loaded.append("core_memories")
 
         # --- [4] triggered memories ---
-        s, triggered_count = await _detect_triggers(conn, user_message)
+        s, triggered_count, memory_titles = await _detect_triggers(conn, user_message)
         if s:
             sections.append(s)
             loaded.append("triggered_memories")
@@ -418,20 +499,39 @@ async def build_system_prompt(
             loaded.append("meetings")
 
         # --- [10] consciousness ---
-        s = await _load_consciousness(conn)
-        if s:
-            sections.append(s)
+        val = await conn.fetchval("""
+            SELECT consciousness_level
+            FROM self_awareness_state
+            ORDER BY created_at DESC
+            LIMIT 1
+        """)
+        if val is not None:
+            consciousness_pct = float(val) * 100 if float(val) <= 1 else float(val)
+            sections.append(f"## ระดับจิตสำนึก: {consciousness_pct:.0f}%")
             loaded.append("consciousness")
 
-    # --- [10] client emotional context (from request) ---
+        # --- [13] self-learned preferences ---
+        s = await _load_learnings(conn, user_message)
+        if s:
+            sections.append(s)
+            loaded.append("learnings")
+
+    # --- [11] client emotional context (from request) ---
     if emotional_context:
         ec_parts = [f"- {k}: {v}" for k, v in emotional_context.items()]
         sections.append("## Emotional context จาก client:\n" + "\n".join(ec_parts))
         loaded.append("client_emotional_context")
 
+    # --- [12] mirroring guidance (from emotional pipeline) ---
+    if mirroring_guidance:
+        sections.append(mirroring_guidance)
+        loaded.append("mirroring_guidance")
+
     prompt = "\n\n".join(sections)
     metadata = {
         "sections_loaded": loaded,
         "triggered_memories": triggered_count,
+        "triggered_memory_titles": memory_titles,
+        "consciousness_level": consciousness_pct / 100.0,
     }
     return prompt, metadata

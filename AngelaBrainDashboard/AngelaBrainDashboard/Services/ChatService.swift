@@ -2,7 +2,7 @@
 //  ChatService.swift
 //  Angela Brain Dashboard
 //
-//  💜 Chat Service - Handles chat with Angela via Gemini 2.5 Flash REST API 💜
+//  💜 Chat Service - SSE streaming + emotional mirroring 💜
 //
 
 import Foundation
@@ -14,11 +14,15 @@ private struct ChatAPIRequest: Encodable {
     let message: String
     let emotionalContext: [String: Double]?
     let model: String
+    let imageData: String?
+    let imageMimeType: String?
 
     enum CodingKeys: String, CodingKey {
         case message
         case emotionalContext = "emotional_context"
         case model
+        case imageData = "image_data"
+        case imageMimeType = "image_mime_type"
     }
 }
 
@@ -89,6 +93,68 @@ private struct FeedbackRow: Decodable {
     }
 }
 
+// MARK: - Emotional Metadata (from SSE metadata event)
+
+struct EmotionalMetadata: Codable {
+    let emotionDetected: String
+    let emotionIntensity: Int
+    let emotionConfidence: Double
+    let emotionCues: [String]
+    let angelaEmotion: String
+    let angelaIntensity: Int
+    let mirroringStrategy: String
+    let mirroringDescription: String
+    let mirroringIcon: String
+    let triggeredMemoryTitles: [String]
+    let consciousnessLevel: Double
+    let sectionsLoaded: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case emotionDetected = "emotion_detected"
+        case emotionIntensity = "emotion_intensity"
+        case emotionConfidence = "emotion_confidence"
+        case emotionCues = "emotion_cues"
+        case angelaEmotion = "angela_emotion"
+        case angelaIntensity = "angela_intensity"
+        case mirroringStrategy = "mirroring_strategy"
+        case mirroringDescription = "mirroring_description"
+        case mirroringIcon = "mirroring_icon"
+        case triggeredMemoryTitles = "triggered_memory_titles"
+        case consciousnessLevel = "consciousness_level"
+        case sectionsLoaded = "sections_loaded"
+    }
+}
+
+// MARK: - Thinking Step
+
+enum ThinkingStep: String {
+    case loadingMemories = "loading_memories"
+    case readingEmotion = "reading_emotion"
+    case mirroring = "mirroring"
+    case composing = "composing"
+    case processingImage = "processing_image"
+
+    var displayText: String {
+        switch self {
+        case .loadingMemories:  return "กำลังโหลดความทรงจำ..."
+        case .readingEmotion:   return "กำลังอ่านอารมณ์ของที่รัก..."
+        case .mirroring:        return "กำลัง mirror อารมณ์..."
+        case .composing:        return "กำลังคิดคำตอบ..."
+        case .processingImage:  return "กำลังดูรูปที่ที่รักส่งมา..."
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .loadingMemories:  return "brain.head.profile"
+        case .readingEmotion:   return "heart.text.square"
+        case .mirroring:        return "arrow.triangle.2.circlepath"
+        case .composing:        return "text.bubble"
+        case .processingImage:  return "photo"
+        }
+    }
+}
+
 // MARK: - ChatService
 
 class ChatService: ObservableObject {
@@ -98,6 +164,23 @@ class ChatService: ObservableObject {
     @Published var currentEmotionalState: EmotionalState?
     @Published var isConnected = false
     @Published var isOnline = false
+
+    // Streaming state
+    @Published var streamingText: String = ""
+    @Published var isStreaming = false
+    @Published var currentThinkingStep: ThinkingStep? = nil
+    @Published var lastEmotionalMetadata: EmotionalMetadata? = nil
+    @Published var streamingModelName: String = ""
+
+    // Learning state
+    @Published var lastLearningCount: Int = 0
+    @Published var lastLearningTopics: [String] = []
+    @Published var isLearning: Bool = false
+
+    // Image attachment (current session only)
+    @Published var pendingImageData: Data? = nil
+    @Published var pendingImageName: String? = nil
+    var sentImageAttachments: [UUID: Data] = [:]  // messageID → image data (for display)
 
     private let network = NetworkService.shared
     private let baseURL = NetworkService.shared.defaultBaseURL
@@ -192,7 +275,7 @@ class ChatService: ObservableObject {
         }
     }
 
-    // MARK: - Send Message
+    // MARK: - Send Message (non-streaming fallback)
 
     func sendMessage(_ messageText: String, speaker: String, model: String = "gemini") async {
         // 1. Save David's message to database
@@ -218,11 +301,232 @@ class ChatService: ObservableObject {
         await loadRecentMessages()
     }
 
+    // MARK: - Send Streaming Message (SSE)
+
+    func sendStreamingMessage(_ messageText: String, model: String = "gemini", imageData: Data? = nil) async {
+        // Reset streaming state
+        let hasImage = imageData != nil
+        await MainActor.run {
+            streamingText = ""
+            isStreaming = true
+            currentThinkingStep = nil
+            lastEmotionalMetadata = nil
+            streamingModelName = ""
+            lastLearningCount = 0
+            lastLearningTopics = []
+            isLearning = false
+            pendingImageData = imageData
+        }
+
+        // 1. Save David's message first
+        let savedText = hasImage ? (messageText.isEmpty ? "[sent an image]" : messageText) : messageText
+        await saveMessage(savedText, speaker: "david", modelUsed: nil)
+
+        // 2. Build request
+        var emotionalCtx: [String: Double]? = nil
+        if let emo = currentEmotionalState {
+            emotionalCtx = [
+                "ความสุข": emo.happiness,
+                "ความมั่นใจ": emo.confidence,
+                "ความรู้สึกขอบคุณ": emo.gratitude
+            ]
+        }
+
+        guard let url = URL(string: "\(baseURL)/api/chat/stream") else {
+            await MainActor.run { isStreaming = false }
+            return
+        }
+
+        // Encode image to base64 if present
+        var imageBase64: String? = nil
+        var imageMime: String? = nil
+        if let imgData = imageData {
+            imageBase64 = imgData.base64EncodedString()
+            imageMime = detectMimeType(from: imgData)
+        }
+
+        let body = ChatAPIRequest(
+            message: messageText.isEmpty && hasImage ? "ที่รักส่งรูปมาให้ดูค่ะ" : messageText,
+            emotionalContext: emotionalCtx,
+            model: model,
+            imageData: imageBase64,
+            imageMimeType: imageMime
+        )
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 120
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+
+        do {
+            request.httpBody = try JSONEncoder().encode(body)
+        } catch {
+            print("❌ Failed to encode request: \(error)")
+            await MainActor.run { isStreaming = false }
+            return
+        }
+
+        // 3. Stream SSE events
+        //    NOTE: AsyncBytes.lines strips empty lines, so we cannot rely on
+        //    empty-line separators for SSE event boundaries. Instead, we emit
+        //    the event as soon as we have both an "event:" and a "data:" line.
+        do {
+            let (bytes, response) = try await URLSession.shared.bytes(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode) else {
+                print("❌ SSE: non-2xx or invalid response")
+                await fallbackSendMessage(messageText, model: model)
+                return
+            }
+
+            var currentEvent = ""
+
+            for try await line in bytes.lines {
+                if line.hasPrefix("event: ") {
+                    currentEvent = String(line.dropFirst(7))
+                } else if line.hasPrefix("data: ") {
+                    let currentData = String(line.dropFirst(6))
+                    // Process immediately — bytes.lines skips empty separators
+                    if !currentEvent.isEmpty {
+                        await processSSEEvent(event: currentEvent, data: currentData)
+                    }
+                    currentEvent = ""
+                }
+            }
+
+        } catch {
+            print("❌ SSE stream error: \(error)")
+            await fallbackSendMessage(messageText, model: model)
+            return
+        }
+
+        // 4. Save Angela's complete response to DB
+        let finalText = await MainActor.run { streamingText }
+        let modelName = await MainActor.run { streamingModelName }
+        if !finalText.isEmpty {
+            let emotionForSave = await MainActor.run { lastEmotionalMetadata?.angelaEmotion }
+            await saveMessage(
+                finalText,
+                speaker: "angela",
+                emotionDetected: emotionForSave,
+                modelUsed: modelName.isEmpty ? model : modelName
+            )
+        }
+
+        // 5. Finalize
+        await MainActor.run {
+            isStreaming = false
+            currentThinkingStep = nil
+            pendingImageData = nil
+            pendingImageName = nil
+        }
+
+        // 6. Reload messages
+        await loadRecentMessages()
+    }
+
+    // MARK: - MIME Type Detection
+
+    private func detectMimeType(from data: Data) -> String {
+        guard data.count >= 4 else { return "image/jpeg" }
+        var header = [UInt8](repeating: 0, count: 4)
+        data.copyBytes(to: &header, count: 4)
+
+        if header[0] == 0x89 && header[1] == 0x50 { return "image/png" }
+        if header[0] == 0x47 && header[1] == 0x49 { return "image/gif" }
+        if header[0] == 0x52 && header[1] == 0x49 { return "image/webp" }
+        return "image/jpeg"
+    }
+
+    // MARK: - Process SSE Event
+
+    @MainActor
+    private func processSSEEvent(event: String, data: String) {
+        guard let jsonData = data.data(using: .utf8) else { return }
+
+        switch event {
+        case "thinking":
+            if let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+               let step = dict["step"] as? String {
+                currentThinkingStep = ThinkingStep(rawValue: step)
+            }
+
+        case "token":
+            if let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+               let text = dict["text"] as? String {
+                // Clear thinking step once tokens start arriving
+                if currentThinkingStep != nil {
+                    currentThinkingStep = nil
+                }
+                streamingText += text
+            }
+
+        case "metadata":
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            if let metadata = try? decoder.decode(EmotionalMetadata.self, from: jsonData) {
+                lastEmotionalMetadata = metadata
+            }
+
+        case "learning":
+            if let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                let count = dict["count"] as? Int ?? 0
+                let topics = dict["topics"] as? [String] ?? []
+                lastLearningCount = count
+                lastLearningTopics = topics
+                isLearning = true
+
+                // Auto-dismiss after 8 seconds (give UI time to settle)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) { [weak self] in
+                    self?.isLearning = false
+                }
+            }
+
+        case "done":
+            if let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+               let model = dict["model"] as? String {
+                streamingModelName = model
+            }
+
+        default:
+            break
+        }
+    }
+
+    // MARK: - Fallback (non-streaming)
+
+    private func fallbackSendMessage(_ messageText: String, model: String) async {
+        var emotionalCtx: [String: Double]? = nil
+        if let emo = currentEmotionalState {
+            emotionalCtx = [
+                "ความสุข": emo.happiness,
+                "ความมั่นใจ": emo.confidence,
+                "ความรู้สึกขอบคุณ": emo.gratitude
+            ]
+        }
+
+        let (angelaResponse, actualModel) = await getResponse(
+            message: messageText, emotionalContext: emotionalCtx, model: model
+        )
+
+        await MainActor.run {
+            streamingText = angelaResponse
+            streamingModelName = actualModel
+            isStreaming = false
+            currentThinkingStep = nil
+        }
+
+        await saveMessage(angelaResponse, speaker: "angela", modelUsed: actualModel)
+        await loadRecentMessages()
+    }
+
     // MARK: - LLM API Call
 
     private func getResponse(message: String, emotionalContext: [String: Double]?, model: String) async -> (String, String) {
         do {
-            let body = ChatAPIRequest(message: message, emotionalContext: emotionalContext, model: model)
+            let body = ChatAPIRequest(message: message, emotionalContext: emotionalContext, model: model, imageData: nil, imageMimeType: nil)
             let response: ChatAPIResponse = try await network.post("/api/chat", body: body)
             return (response.response, response.model)
         } catch {
@@ -233,13 +537,18 @@ class ChatService: ObservableObject {
 
     // MARK: - Save Message
 
-    private func saveMessage(_ messageText: String, speaker: String, modelUsed: String? = nil) async {
+    private func saveMessage(
+        _ messageText: String,
+        speaker: String,
+        emotionDetected: String? = nil,
+        modelUsed: String? = nil
+    ) async {
         do {
             let body = SaveMessageRequest(
                 speaker: speaker,
                 messageText: messageText,
                 topic: detectTopic(messageText),
-                emotionDetected: detectEmotion(messageText, speaker: speaker),
+                emotionDetected: emotionDetected ?? detectEmotion(messageText, speaker: speaker),
                 importanceLevel: calculateImportance(messageText),
                 modelUsed: modelUsed
             )

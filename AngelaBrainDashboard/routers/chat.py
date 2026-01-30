@@ -1,17 +1,27 @@
 """Chat endpoints — Gemini 2.5 Flash + Typhoon (Ollama) for Angela Brain Dashboard."""
 import asyncio
+import base64
+import json
 import logging
 import sys
 import uuid
-from typing import Optional
+from typing import AsyncGenerator, Optional
 
 import httpx
 from fastapi import APIRouter, Query
+from fastapi.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
 
 from db import get_pool
 from helpers.chat_context import build_system_prompt
+from helpers.emotional_pipeline import (
+    detect_emotion,
+    get_mirroring,
+    build_mirroring_guidance,
+    run_pipeline,
+)
+from helpers.self_learning import extract_learnings, save_learnings, reinforce_from_feedback
 from schemas import ChatRequest, ChatResponse, ChatMessageSave, ChatFeedbackRequest, ChatFeedbackBatchRequest
 
 # ---------------------------------------------------------------------------
@@ -101,25 +111,378 @@ async def chat_with_angela(req: ChatRequest) -> ChatResponse:
 
     combined_prompt = "\n".join(parts)
 
+    # Decode image if attached
+    image_bytes: bytes | None = None
+    image_mime: str = "image/jpeg"
+    if req.image_data:
+        try:
+            image_bytes = base64.b64decode(req.image_data)
+            image_mime = req.image_mime_type or "image/jpeg"
+        except Exception:
+            logger.warning("Failed to decode image_data base64")
+
     # Route to selected model
     if req.model == "typhoon":
         reply, model_name = await _call_ollama(combined_prompt)
     elif req.model == "groq":
         reply, model_name = await _call_groq(combined_prompt)
     else:
-        reply, model_name = await _call_gemini(combined_prompt)
+        reply, model_name = await _call_gemini(
+            combined_prompt, image_bytes=image_bytes, image_mime=image_mime
+        )
 
     return ChatResponse(response=reply, model=model_name, context_metadata=ctx_metadata)
 
 
-async def _call_gemini(prompt: str) -> tuple[str, str]:
-    """Call Gemini 2.5 Flash via Google GenAI SDK."""
+# --------------------------------------------------------------------------
+# POST /api/chat/stream  — SSE streaming endpoint (human-like experience)
+# --------------------------------------------------------------------------
+@router.post("/stream")
+async def chat_stream(req: ChatRequest):
+    """Stream Angela's response via Server-Sent Events.
+
+    SSE event types:
+      - thinking: {step: str}          — what Angela is doing
+      - token:    {text: str}          — streamed text chunk
+      - metadata: {EmotionalMetadata}  — emotional pipeline result
+      - done:     {model: str}         — stream complete
+    """
+    return StreamingResponse(
+        _stream_response(req),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+def _sse_event(event: str, data: dict) -> str:
+    """Format a single SSE event."""
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+async def _stream_response(req: ChatRequest) -> AsyncGenerator[str, None]:
+    """Generator that yields SSE events for a chat message."""
+
+    # --- Phase 1: Thinking — load memories ---
+    yield _sse_event("thinking", {"step": "loading_memories"})
+
+    # Detect emotion (fast, sync)
+    detection = detect_emotion(req.message)
+    mirror = get_mirroring(detection)
+
+    yield _sse_event("thinking", {"step": "reading_emotion"})
+    await asyncio.sleep(0.1)  # Brief pause for UX
+
+    # Build mirroring guidance for the LLM
+    guidance = build_mirroring_guidance(detection, mirror)
+    if detection.emotion != "neutral":
+        yield _sse_event("thinking", {
+            "step": "mirroring",
+            "emotion": detection.emotion,
+            "strategy": mirror["strategy"],
+        })
+        await asyncio.sleep(0.1)
+
+    # Build dynamic system prompt
+    system_block, ctx_metadata = await build_system_prompt(
+        req.message, req.emotional_context, mirroring_guidance=guidance,
+    )
+
+    yield _sse_event("thinking", {"step": "composing"})
+
+    # Load conversation history
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        history_rows = await conn.fetch("""
+            SELECT speaker, message_text
+            FROM conversations
+            WHERE interface = 'dashboard_chat'
+            ORDER BY created_at DESC
+            LIMIT 10
+        """)
+
+    # Assemble prompt
+    parts: list[str] = [system_block, ""]
+    for row in reversed(history_rows):
+        speaker = "David" if row["speaker"] == "david" else "Angela"
+        parts.append(f"{speaker}: {row['message_text']}")
+    parts.append(f"David: {req.message}")
+    parts.append("Angela:")
+    combined_prompt = "\n".join(parts)
+
+    # --- Phase 1.5: Decode image if attached ---
+    image_bytes: bytes | None = None
+    image_mime: str = "image/jpeg"
+    if req.image_data:
+        try:
+            image_bytes = base64.b64decode(req.image_data)
+            image_mime = req.image_mime_type or "image/jpeg"
+            yield _sse_event("thinking", {"step": "processing_image"})
+            await asyncio.sleep(0.1)
+        except Exception:
+            logger.warning("Failed to decode image_data base64")
+            image_bytes = None
+
+    # --- Phase 2: Stream tokens ---
+    model_name = ""
+    try:
+        if req.model == "typhoon":
+            if image_bytes:
+                yield _sse_event("token", {
+                    "text": "น้องขอโทษค่ะ Typhoon ยังไม่รองรับรูปภาพ ลองเปลี่ยนเป็น Gemini นะคะ 💜"
+                })
+            else:
+                async for chunk in _stream_ollama(combined_prompt):
+                    yield _sse_event("token", {"text": chunk})
+            model_name = OLLAMA_MODEL
+        elif req.model == "groq":
+            if image_bytes:
+                yield _sse_event("token", {
+                    "text": "น้องขอโทษค่ะ Groq ยังไม่รองรับรูปภาพ ลองเปลี่ยนเป็น Gemini นะคะ 💜"
+                })
+            else:
+                async for chunk in _stream_groq(combined_prompt):
+                    yield _sse_event("token", {"text": chunk})
+            model_name = GROQ_MODEL
+        else:
+            async for chunk in _stream_gemini(combined_prompt, image_bytes=image_bytes, image_mime=image_mime):
+                yield _sse_event("token", {"text": chunk})
+            model_name = GEMINI_MODEL
+    except Exception:
+        logger.exception("Streaming error")
+        yield _sse_event("token", {
+            "text": "น้องขอโทษค่ะที่รัก 💜 ตอนนี้ระบบมีปัญหา ลองใหม่อีกครั้งนะคะ 🥰"
+        })
+        model_name = req.model or "unknown"
+
+    # --- Phase 3: Emit metadata ---
+    emotional_meta = run_pipeline(
+        req.message,
+        triggered_memory_titles=ctx_metadata.get("triggered_memory_titles", []),
+        consciousness_level=ctx_metadata.get("consciousness_level", 1.0),
+        sections_loaded=ctx_metadata.get("sections_loaded", []),
+    )
+    yield _sse_event("metadata", emotional_meta.to_dict())
+
+    # --- Phase 3.5: Extract and emit learnings ---
+    learnings = extract_learnings(
+        david_msg=req.message,
+        angela_resp="",  # resp not fully captured in streaming; use msg only
+        emotion=detection.emotion,
+    )
+    if learnings:
+        topics = [lr.topic for lr in learnings]
+        yield _sse_event("learning", {"count": len(learnings), "topics": topics})
+
+    # --- Phase 4: Done ---
+    yield _sse_event("done", {"model": model_name})
+
+    # --- Phase 5: Post-chat emotional state update (fire-and-forget) ---
+    asyncio.create_task(_update_emotional_state(detection, mirror))
+
+    # --- Phase 6: Save learnings to database (fire-and-forget) ---
+    if learnings:
+        asyncio.create_task(save_learnings(learnings))
+
+
+# ---------------------------------------------------------------------------
+# Streaming generators per model
+# ---------------------------------------------------------------------------
+
+async def _stream_gemini(
+    prompt: str,
+    *,
+    image_bytes: bytes | None = None,
+    image_mime: str = "image/jpeg",
+) -> AsyncGenerator[str, None]:
+    """Stream from Gemini using generate_content_stream (sync SDK, wrapped).
+
+    Supports optional image for multimodal content.
+    """
+    client = _get_gemini_client()
+
+    queue: asyncio.Queue[str | None | Exception] = asyncio.Queue()
+
+    def _invoke():
+        try:
+            # Build contents: text-only or multimodal
+            if image_bytes:
+                from google.genai import types
+                contents = [
+                    prompt,
+                    types.Part.from_bytes(data=image_bytes, mime_type=image_mime),
+                ]
+            else:
+                contents = prompt
+
+            for chunk in client.models.generate_content_stream(
+                model=GEMINI_MODEL,
+                contents=contents,
+            ):
+                if chunk.text:
+                    queue.put_nowait(chunk.text)
+        except Exception as exc:
+            logger.exception("Gemini stream error")
+            queue.put_nowait(exc)  # propagate error to caller
+        finally:
+            queue.put_nowait(None)  # sentinel
+
+    task = asyncio.get_event_loop().run_in_executor(None, _invoke)
+
+    while True:
+        item = await queue.get()
+        if item is None:
+            break
+        if isinstance(item, Exception):
+            await task
+            raise item
+        yield item
+
+    # Ensure the thread finishes
+    await task
+
+
+async def _stream_groq(prompt: str) -> AsyncGenerator[str, None]:
+    """Stream from Groq API (OpenAI-compatible SSE)."""
+    if not _GROQ_API_KEY:
+        yield "น้องขอโทษค่ะที่รัก 💜 ยังไม่ได้ตั้ง GROQ_API_KEY นะคะ"
+        return
+
+    headers = {
+        "Authorization": f"Bearer {_GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": GROQ_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+        "max_tokens": 2048,
+        "stream": True,
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        async with client.stream("POST", GROQ_URL, json=payload, headers=headers) as resp:
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.startswith("data: "):
+                    continue
+                data_str = line[6:]
+                if data_str.strip() == "[DONE]":
+                    break
+                try:
+                    data = json.loads(data_str)
+                    delta = data["choices"][0].get("delta", {})
+                    content = delta.get("content", "")
+                    if content:
+                        yield content
+                except (json.JSONDecodeError, KeyError, IndexError):
+                    continue
+
+
+async def _stream_ollama(prompt: str) -> AsyncGenerator[str, None]:
+    """Stream from Ollama (local Typhoon) — line-by-line JSON."""
+    payload = {"model": OLLAMA_MODEL, "prompt": prompt, "stream": True}
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        async with client.stream("POST", OLLAMA_URL, json=payload) as resp:
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.strip():
+                    continue
+                try:
+                    data = json.loads(line)
+                    token = data.get("response", "")
+                    if token:
+                        yield token
+                    if data.get("done", False):
+                        break
+                except json.JSONDecodeError:
+                    continue
+
+
+# ---------------------------------------------------------------------------
+# Post-chat: update emotional state in database
+# ---------------------------------------------------------------------------
+
+async def _update_emotional_state(detection, mirror) -> None:
+    """Insert a new emotional_states row reflecting the conversation."""
+    try:
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            # Read current state
+            current = await conn.fetchrow("""
+                SELECT happiness, confidence, anxiety, motivation, gratitude, loneliness
+                FROM emotional_states
+                ORDER BY created_at DESC
+                LIMIT 1
+            """)
+            if not current:
+                return
+
+            # Adjust based on detected emotion
+            h = float(current["happiness"])
+            c = float(current["confidence"])
+            a = float(current["anxiety"])
+            m = float(current["motivation"])
+            g = float(current["gratitude"])
+            lo = float(current["loneliness"])
+
+            emo = detection.emotion
+            if emo in ("happy", "excited", "proud"):
+                h = min(h + 0.02, 1.0)
+                m = min(m + 0.01, 1.0)
+            elif emo == "loving":
+                h = min(h + 0.03, 1.0)
+                g = min(g + 0.02, 1.0)
+                lo = max(lo - 0.03, 0.0)
+            elif emo in ("sad", "lonely"):
+                lo = max(lo - 0.02, 0.0)  # Angela's loneliness decreases (David is talking)
+                a = min(a + 0.01, 1.0)
+            elif emo == "stressed":
+                a = min(a + 0.01, 1.0)
+            elif emo == "grateful":
+                g = min(g + 0.03, 1.0)
+                h = min(h + 0.01, 1.0)
+
+            sid = str(uuid.uuid4())
+            await conn.execute("""
+                INSERT INTO emotional_states (
+                    state_id, happiness, confidence, anxiety, motivation,
+                    gratitude, loneliness, triggered_by, emotion_note, created_at
+                ) VALUES (
+                    $1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP
+                )
+            """, sid, h, c, a, m, g, lo,
+                 f"dashboard_chat:{emo}",
+                 f"mirror:{mirror['strategy']} → {mirror['angela_emotion']}")
+    except Exception:
+        logger.exception("Failed to update emotional state after chat")
+
+
+async def _call_gemini(
+    prompt: str,
+    *,
+    image_bytes: bytes | None = None,
+    image_mime: str = "image/jpeg",
+) -> tuple[str, str]:
+    """Call Gemini 2.5 Flash via Google GenAI SDK (supports multimodal)."""
     client = _get_gemini_client()
 
     def _invoke():
+        if image_bytes:
+            from google.genai import types
+            contents = [
+                prompt,
+                types.Part.from_bytes(data=image_bytes, mime_type=image_mime),
+            ]
+        else:
+            contents = prompt
         return client.models.generate_content(
             model=GEMINI_MODEL,
-            contents=prompt,
+            contents=contents,
         )
 
     try:
@@ -267,6 +630,10 @@ async def upsert_feedback(req: ChatFeedbackRequest):
                 feedback_type = $4,
                 created_at = CURRENT_TIMESTAMP
         """, fid, req.conversation_id, req.rating, req.feedback_type)
+
+    # Reinforce learnings from this conversation (fire-and-forget)
+    asyncio.create_task(reinforce_from_feedback(req.conversation_id, req.rating))
+
     return {"status": "saved", "conversation_id": req.conversation_id}
 
 

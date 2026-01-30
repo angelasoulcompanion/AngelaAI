@@ -29,6 +29,11 @@ async def startup() -> None:
                 ALTER TABLE meeting_notes
                 ADD COLUMN IF NOT EXISTS calendar_event_id TEXT
             """)
+            # Self-learning: add source column to learnings table
+            await conn.execute("""
+                ALTER TABLE learnings
+                ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT NULL
+            """)
     except Exception as e:
         print(f"❌ Failed to connect to database: {e}")
         sys.exit(1)

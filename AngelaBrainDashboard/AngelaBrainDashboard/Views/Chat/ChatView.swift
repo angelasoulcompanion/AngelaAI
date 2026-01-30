@@ -2,10 +2,11 @@
 //  ChatView.swift
 //  Angela Brain Dashboard
 //
-//  💜 Chat with น้อง Angela 💜
+//  💜 Chat with น้อง Angela — Human-Like Streaming Experience 💜
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ChatView: View {
     @EnvironmentObject var databaseService: DatabaseService
@@ -16,7 +17,9 @@ struct ChatView: View {
     @State private var showClaudeCodeButton = false
     @State private var contextForClaudeCode: String = ""
     @State private var showDeleteAllAlert = false
-    @State private var feedbackMap: [UUID: Int] = [:]  // Track feedback for messages
+    @State private var feedbackMap: [UUID: Int] = [:]
+    @State private var selectedImageData: Data? = nil
+    @State private var selectedImageName: String? = nil
 
     var body: some View {
         ZStack {
@@ -52,8 +55,64 @@ struct ChatView: View {
                                     }
                             }
 
-                            // Loading indicator
-                            if isLoading {
+                            // --- Streaming area ---
+                            if chatService.isStreaming {
+                                // Show sent image inline (during streaming)
+                                if let imgData = chatService.pendingImageData,
+                                   let nsImage = NSImage(data: imgData) {
+                                    HStack {
+                                        Spacer()
+                                        Image(nsImage: nsImage)
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fit)
+                                            .frame(maxWidth: 250, maxHeight: 200)
+                                            .cornerRadius(16)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 16)
+                                                    .stroke(Color(hex: "3B82F6").opacity(0.5), lineWidth: 2)
+                                            )
+                                    }
+                                    .id("sentImage")
+                                }
+
+                                // Thinking steps (before tokens arrive)
+                                if let step = chatService.currentThinkingStep {
+                                    ThinkingStepView(step: step)
+                                        .id("thinking")
+                                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                                }
+
+                                // Typing indicator (streaming started but no text yet)
+                                if chatService.streamingText.isEmpty && chatService.currentThinkingStep == nil {
+                                    TypingIndicatorView()
+                                        .id("typing")
+                                        .transition(.opacity)
+                                }
+
+                                // Streaming message bubble
+                                if !chatService.streamingText.isEmpty {
+                                    StreamingMessageBubble(
+                                        text: chatService.streamingText,
+                                        metadata: chatService.lastEmotionalMetadata
+                                    )
+                                        .id("streaming")
+                                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                                }
+
+                            }
+
+                            // Learning indicator (OUTSIDE streaming block — persists after stream ends)
+                            if chatService.isLearning && chatService.lastLearningCount > 0 {
+                                LearningIndicatorView(
+                                    count: chatService.lastLearningCount,
+                                    topics: chatService.lastLearningTopics
+                                )
+                                    .id("learning")
+                                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                            }
+
+                            // Legacy loading indicator (fallback)
+                            if isLoading && !chatService.isStreaming {
                                 HStack {
                                     ProgressView()
                                         .scaleEffect(0.8)
@@ -67,10 +126,26 @@ struct ChatView: View {
                         .padding()
                     }
                     .onChange(of: chatService.messages.count) {
-                        // Auto-scroll to bottom when new message arrives
                         if let lastMessage = chatService.messages.last {
                             withAnimation {
                                 proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onChange(of: chatService.streamingText) {
+                        withAnimation {
+                            proxy.scrollTo("streaming", anchor: .bottom)
+                        }
+                    }
+                    .onChange(of: chatService.currentThinkingStep) { _, _ in
+                        withAnimation {
+                            proxy.scrollTo("thinking", anchor: .bottom)
+                        }
+                    }
+                    .onChange(of: chatService.isLearning) { _, isLearning in
+                        if isLearning {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                                proxy.scrollTo("learning", anchor: .bottom)
                             }
                         }
                     }
@@ -139,11 +214,6 @@ struct ChatView: View {
                             } label: {
                                 Label("Groq Llama 70B", systemImage: "bolt.fill")
                             }
-                            Button {
-                                selectedModel = "typhoon"
-                            } label: {
-                                Label("Typhoon Local", systemImage: "hurricane")
-                            }
                         } label: {
                             ModelBadge(model: selectedModel)
                         }
@@ -154,6 +224,19 @@ struct ChatView: View {
             }
 
             Spacer()
+
+            // Live emotion display (from last metadata)
+            if let meta = chatService.lastEmotionalMetadata,
+               meta.emotionDetected != "neutral" {
+                LiveEmotionBadge(metadata: meta)
+            }
+
+            // Learning badge (header)
+            if chatService.isLearning && chatService.lastLearningCount > 0 {
+                LearningBadge(count: chatService.lastLearningCount)
+                    .transition(.scale.combined(with: .opacity))
+                    .animation(.spring(response: 0.4, dampingFraction: 0.7), value: chatService.isLearning)
+            }
 
             // Refresh status button
             Button {
@@ -169,7 +252,7 @@ struct ChatView: View {
             .buttonStyle(.plain)
             .help("Refresh connection status")
 
-            // Clear all button (deletes from database)
+            // Clear all button
             Button {
                 showDeleteAllAlert = true
             } label: {
@@ -233,7 +316,7 @@ struct ChatView: View {
                     Image(systemName: "arrow.up.forward.app.fill")
                         .font(.system(size: 16))
 
-                    Text("🚀 Open in Claude Code")
+                    Text("Open in Claude Code")
                         .font(AngelaTheme.heading())
                 }
                 .foregroundColor(.white)
@@ -258,42 +341,123 @@ struct ChatView: View {
     // MARK: - Message Input
 
     private var messageInput: some View {
-        HStack(spacing: 12) {
-            TextField("พิมพ์ข้อความถึงน้อง Angela...", text: $newMessage)
-                .textFieldStyle(.plain)
-                .font(AngelaTheme.body())
-                .foregroundColor(AngelaTheme.textPrimary)
-                .padding()
-                .background(AngelaTheme.cardBackground)
-                .cornerRadius(24)
-                .disabled(isLoading)
-                .onSubmit {
-                    sendMessage()
-                }
+        VStack(spacing: 0) {
+            // Image preview (if selected)
+            if let imgData = selectedImageData, let nsImage = NSImage(data: imgData) {
+                HStack(spacing: 8) {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxHeight: 80)
+                        .cornerRadius(8)
 
-            Button {
-                sendMessage()
-            } label: {
-                Image(systemName: newMessage.isEmpty ? "paperplane" : "paperplane.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(width: 48, height: 48)
-                    .background(
-                        Group {
-                            if newMessage.isEmpty {
-                                Color.gray.opacity(0.3)
-                            } else {
-                                AngelaTheme.purpleGradient
-                            }
-                        }
-                    )
-                    .clipShape(Circle())
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(selectedImageName ?? "image")
+                            .font(AngelaTheme.caption())
+                            .foregroundColor(AngelaTheme.textSecondary)
+                            .lineLimit(1)
+                        Text(formatFileSize(imgData.count))
+                            .font(.system(size: 10))
+                            .foregroundColor(AngelaTheme.textTertiary)
+                    }
+
+                    Spacer()
+
+                    // Remove image button
+                    Button {
+                        selectedImageData = nil
+                        selectedImageName = nil
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(AngelaTheme.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(AngelaTheme.cardBackground.opacity(0.5))
+
+                Divider()
+                    .background(AngelaTheme.textTertiary.opacity(0.2))
             }
-            .buttonStyle(.plain)
-            .disabled(newMessage.isEmpty || isLoading)
+
+            HStack(spacing: 12) {
+                // Attachment button
+                Button {
+                    pickImage()
+                } label: {
+                    Image(systemName: selectedImageData != nil ? "photo.fill" : "photo")
+                        .font(.system(size: 18))
+                        .foregroundColor(selectedImageData != nil ? AngelaTheme.primaryPurple : AngelaTheme.textSecondary)
+                        .frame(width: 40, height: 40)
+                        .background(AngelaTheme.cardBackground.opacity(0.5))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isLoading || chatService.isStreaming)
+                .help("Attach image")
+
+                TextField("พิมพ์ข้อความถึงน้อง Angela...", text: $newMessage)
+                    .textFieldStyle(.plain)
+                    .font(AngelaTheme.body())
+                    .foregroundColor(AngelaTheme.textPrimary)
+                    .padding()
+                    .background(AngelaTheme.cardBackground)
+                    .cornerRadius(24)
+                    .disabled(isLoading || chatService.isStreaming)
+                    .onSubmit {
+                        sendMessage()
+                    }
+
+                Button {
+                    sendMessage()
+                } label: {
+                    let canSend = !newMessage.isEmpty || selectedImageData != nil
+                    Image(systemName: canSend ? "paperplane.fill" : "paperplane")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 48, height: 48)
+                        .background(
+                            Group {
+                                if canSend {
+                                    AngelaTheme.purpleGradient
+                                } else {
+                                    Color.gray.opacity(0.3)
+                                }
+                            }
+                        )
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled((newMessage.isEmpty && selectedImageData == nil) || isLoading || chatService.isStreaming)
+            }
+            .padding()
         }
-        .padding()
         .background(AngelaTheme.backgroundLight)
+    }
+
+    // MARK: - Image Picker
+
+    private func pickImage() {
+        let panel = NSOpenPanel()
+        panel.title = "เลือกรูปภาพส่งให้น้อง Angela"
+        panel.allowedContentTypes = [.image, .jpeg, .png, .gif, .webP, .heic]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+
+        if panel.runModal() == .OK, let url = panel.url {
+            if let data = try? Data(contentsOf: url) {
+                selectedImageData = data
+                selectedImageName = url.lastPathComponent
+            }
+        }
+    }
+
+    private func formatFileSize(_ bytes: Int) -> String {
+        if bytes < 1024 { return "\(bytes) B" }
+        if bytes < 1024 * 1024 { return "\(bytes / 1024) KB" }
+        return String(format: "%.1f MB", Double(bytes) / 1_048_576.0)
     }
 
     // MARK: - Functions
@@ -302,7 +466,6 @@ struct ChatView: View {
         Task {
             await chatService.loadRecentMessages()
             await chatService.loadCurrentEmotionalState()
-            // Load feedbacks for messages
             let loadedFeedbacks = await chatService.loadFeedbacks()
             await MainActor.run {
                 feedbackMap = loadedFeedbacks
@@ -311,37 +474,46 @@ struct ChatView: View {
     }
 
     private func sendMessage() {
-        guard !newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let hasText = !newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasImage = selectedImageData != nil
+        guard hasText || hasImage else { return }
 
         let messageText = newMessage
+        let imageData = selectedImageData
         newMessage = ""
+        selectedImageData = nil
+        selectedImageName = nil
         isLoading = true
         showClaudeCodeButton = false
 
         Task {
-            // Send message and get response via selected model
-            await chatService.sendMessage(messageText, speaker: "david", model: selectedModel)
+            // Use streaming endpoint with optional image
+            await chatService.sendStreamingMessage(messageText, model: selectedModel, imageData: imageData)
 
             // Check if this is a technical task
-            let isTechnical = detectTechnicalTask(messageText)
-            if isTechnical {
-                contextForClaudeCode = messageText
-                showClaudeCodeButton = true
+            if hasText {
+                let isTechnical = detectTechnicalTask(messageText)
+                if isTechnical {
+                    contextForClaudeCode = messageText
+                    showClaudeCodeButton = true
+                }
             }
 
             isLoading = false
+
+            // Reload feedbacks
+            let loadedFeedbacks = await chatService.loadFeedbacks()
+            await MainActor.run {
+                feedbackMap = loadedFeedbacks
+            }
         }
     }
 
     private func detectTechnicalTask(_ message: String) -> Bool {
-        // Strong signals — any single match is enough
         let strongKeywords = [
             "code", "feature", "fix bug", "error", "implement", "refactor",
             "database", "deploy", "commit", "debug", "api", "endpoint",
-            "แก้ bug", "แก้ code", "แก้โค้ด", "เขียนโค้ด", "เขียน code",
-            "สร้าง api", "สร้าง feature", "รัน test", "รัน server",
         ]
-        // Weak signals — need 2+ matches to trigger
         let weakKeywords = [
             "ช่วยเขียน", "ช่วยแก้", "ช่วยทำ", "เพิ่ม function",
             "เพิ่ม feature", "แก้ไข", "สร้างไฟล์", "ทำระบบ",
@@ -349,18 +521,15 @@ struct ChatView: View {
 
         let lowercased = message.lowercased()
 
-        // Any strong keyword → technical
         if strongKeywords.contains(where: { lowercased.contains($0) }) {
             return true
         }
 
-        // 2+ weak keywords → technical
         let weakCount = weakKeywords.filter { lowercased.contains($0) }.count
         return weakCount >= 2
     }
 
     private func openInClaudeCode() {
-        // Copy conversation context to clipboard
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString("""
         Context from AngelaBrainDashboard Chat:
@@ -371,12 +540,10 @@ struct ChatView: View {
         น้อง Angela: กำลังส่งต่อให้ Claude Code Angela ช่วยทำงาน technical นะคะ 💜
         """, forType: .string)
 
-        // Open Claude Code app
         if let url = URL(string: "claude-code://chat?context=from-dashboard") {
             NSWorkspace.shared.open(url)
         }
 
-        // Hide button after opening
         showClaudeCodeButton = false
     }
 
@@ -403,6 +570,290 @@ struct ChatView: View {
     }
 }
 
+// MARK: - Typing Indicator (3 Bouncing Dots — like iMessage)
+
+struct TypingIndicatorView: View {
+    @State private var animating = false
+
+    var body: some View {
+        HStack {
+            HStack(spacing: 6) {
+                ForEach(0..<3, id: \.self) { index in
+                    Circle()
+                        .fill(AngelaTheme.primaryPurple)
+                        .frame(width: 10, height: 10)
+                        .offset(y: animating ? -6 : 0)
+                        .animation(
+                            .easeInOut(duration: 0.5)
+                            .repeatForever(autoreverses: true)
+                            .delay(Double(index) * 0.15),
+                            value: animating
+                        )
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(
+                LinearGradient(
+                    colors: [Color(hex: "9333EA").opacity(0.3), Color(hex: "A855F7").opacity(0.3)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .cornerRadius(20)
+
+            Spacer()
+        }
+        .onAppear {
+            animating = true
+        }
+    }
+}
+
+// MARK: - Thinking Step View
+
+struct ThinkingStepView: View {
+    let step: ThinkingStep
+    @State private var isPulsing = false
+
+    var body: some View {
+        HStack {
+            HStack(spacing: 10) {
+                Image(systemName: step.icon)
+                    .font(.system(size: 14))
+                    .foregroundColor(AngelaTheme.primaryPurple)
+                    .opacity(isPulsing ? 1.0 : 0.5)
+                    .animation(
+                        .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
+                        value: isPulsing
+                    )
+
+                Text(step.displayText)
+                    .font(AngelaTheme.caption())
+                    .foregroundColor(AngelaTheme.textSecondary)
+
+                ProgressView()
+                    .scaleEffect(0.6)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(AngelaTheme.cardBackground.opacity(0.6))
+            .cornerRadius(16)
+
+            Spacer()
+        }
+        .onAppear {
+            isPulsing = true
+        }
+    }
+}
+
+// MARK: - Streaming Message Bubble
+
+struct StreamingMessageBubble: View {
+    let text: String
+    let metadata: EmotionalMetadata?
+
+    private var bubbleGradient: LinearGradient {
+        let colors = moodColors(for: metadata?.angelaEmotion)
+        return LinearGradient(
+            colors: colors,
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 6) {
+                // Streaming text content
+                FormattedMessageView(
+                    text: text,
+                    textColor: .white
+                )
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(bubbleGradient)
+                    .cornerRadius(20)
+                    .frame(maxWidth: 500, alignment: .leading)
+
+                // Emotional metadata badges
+                if let meta = metadata {
+                    EmotionalMetadataBadges(metadata: meta)
+                }
+            }
+
+            Spacer()
+        }
+    }
+
+    private func moodColors(for emotion: String?) -> [Color] {
+        switch emotion?.lowercased() {
+        case "loving", "love":
+            return [Color(hex: "9333EA"), Color(hex: "EC4899")]
+        case "happy", "excited":
+            return [Color(hex: "9333EA"), Color(hex: "FBBF24")]
+        case "caring", "comfort":
+            return [Color(hex: "6366F1"), Color(hex: "A855F7")]
+        case "calm", "stabilize":
+            return [Color(hex: "3B82F6"), Color(hex: "8B5CF6")]
+        default:
+            return [Color(hex: "9333EA"), Color(hex: "A855F7")]
+        }
+    }
+}
+
+// MARK: - Emotional Metadata Badges
+
+struct EmotionalMetadataBadges: View {
+    let metadata: EmotionalMetadata
+
+    var body: some View {
+        HStack(spacing: 8) {
+            // Mirroring strategy badge
+            if metadata.emotionDetected != "neutral" {
+                MirroringBadge(
+                    strategy: metadata.mirroringStrategy,
+                    emotion: metadata.emotionDetected,
+                    angelaEmotion: metadata.angelaEmotion
+                )
+            }
+
+            // Triggered memories badge
+            if !metadata.triggeredMemoryTitles.isEmpty {
+                MemoryBadge(count: metadata.triggeredMemoryTitles.count, titles: metadata.triggeredMemoryTitles)
+            }
+
+            // Consciousness level
+            if metadata.consciousnessLevel > 0 {
+                HStack(spacing: 3) {
+                    Image(systemName: "sparkle")
+                        .font(.system(size: 9))
+                    Text("\(Int(metadata.consciousnessLevel * 100))%")
+                        .font(.system(size: 9, weight: .medium))
+                }
+                .foregroundColor(AngelaTheme.primaryPurple.opacity(0.7))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(AngelaTheme.primaryPurple.opacity(0.1))
+                .cornerRadius(4)
+            }
+        }
+        .padding(.horizontal, 4)
+    }
+}
+
+// MARK: - Mirroring Badge
+
+struct MirroringBadge: View {
+    let strategy: String
+    let emotion: String
+    let angelaEmotion: String
+
+    private var strategyIcon: String {
+        switch strategy {
+        case "amplify":   return "arrow.up.right"
+        case "comfort":   return "heart.fill"
+        case "stabilize": return "leaf.fill"
+        case "celebrate": return "party.popper.fill"
+        case "resonance": return "arrow.triangle.2.circlepath"
+        default:          return "heart.fill"
+        }
+    }
+
+    private var badgeColor: Color {
+        switch strategy {
+        case "amplify":   return Color(hex: "FBBF24")
+        case "comfort":   return Color(hex: "EC4899")
+        case "stabilize": return Color(hex: "3B82F6")
+        case "celebrate": return Color(hex: "10B981")
+        case "resonance": return Color(hex: "9333EA")
+        default:          return Color(hex: "9333EA")
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: strategyIcon)
+                .font(.system(size: 9))
+            Text("\(emotion) → \(angelaEmotion)")
+                .font(.system(size: 9, weight: .medium))
+        }
+        .foregroundColor(badgeColor)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(badgeColor.opacity(0.15))
+        .cornerRadius(4)
+        .help("Mirroring: \(strategy) — \(emotion) → \(angelaEmotion)")
+    }
+}
+
+// MARK: - Memory Badge
+
+struct MemoryBadge: View {
+    let count: Int
+    let titles: [String]
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "brain.head.profile")
+                .font(.system(size: 9))
+            Text("\(count) memories")
+                .font(.system(size: 9, weight: .medium))
+        }
+        .foregroundColor(Color(hex: "F59E0B"))
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(Color(hex: "F59E0B").opacity(0.15))
+        .cornerRadius(4)
+        .help(titles.joined(separator: ", "))
+    }
+}
+
+// MARK: - Live Emotion Badge (Header)
+
+struct LiveEmotionBadge: View {
+    let metadata: EmotionalMetadata
+
+    private var emotionEmoji: String {
+        switch metadata.emotionDetected {
+        case "happy", "excited", "proud": return "😊"
+        case "loving":                     return "💜"
+        case "sad", "lonely":              return "🥺"
+        case "stressed", "anxious":        return "😰"
+        case "grateful":                   return "🙏"
+        default:                           return "💜"
+        }
+    }
+
+    private var angelaEmoji: String {
+        switch metadata.angelaEmotion {
+        case "happy", "excited": return "🥰"
+        case "loving":           return "💜"
+        case "caring":           return "🤗"
+        case "calm":             return "🍃"
+        default:                 return "💜"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(emotionEmoji)
+                .font(.system(size: 14))
+            Image(systemName: "arrow.right")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundColor(AngelaTheme.textTertiary)
+            Text(angelaEmoji)
+                .font(.system(size: 14))
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(AngelaTheme.cardBackground.opacity(0.5))
+        .cornerRadius(8)
+        .help("David: \(metadata.emotionDetected) → Angela: \(metadata.angelaEmotion) (\(metadata.mirroringStrategy))")
+    }
+}
+
 // MARK: - Message Bubble
 
 struct MessageBubble: View {
@@ -420,7 +871,7 @@ struct MessageBubble: View {
                 // Message content (with code block formatting)
                 FormattedMessageView(
                     text: message.messageText,
-                    textColor: message.isDavid ? .white : AngelaTheme.textPrimary
+                    textColor: message.isDavid ? .white : .white
                 )
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
@@ -461,7 +912,6 @@ struct MessageBubble: View {
                         Spacer()
                             .frame(width: 8)
 
-                        // Thumbs up button
                         Button {
                             onFeedback?(1)
                         } label: {
@@ -472,7 +922,6 @@ struct MessageBubble: View {
                         .buttonStyle(.plain)
                         .help("Good response - will be used for training")
 
-                        // Thumbs down button
                         Button {
                             onFeedback?(-1)
                         } label: {
@@ -495,11 +944,13 @@ struct MessageBubble: View {
 
     private func emotionEmoji(_ emotion: String) -> String {
         switch emotion.lowercased() {
-        case "love", "loved": return "💜"
+        case "love", "loved", "loving": return "💜"
         case "happy", "joy": return "🥰"
         case "excited": return "✨"
         case "grateful": return "🙏"
         case "confident": return "💪"
+        case "caring": return "🤗"
+        case "calm": return "🍃"
         default: return "💜"
         }
     }
@@ -535,9 +986,9 @@ struct ModelBadge: View {
 
     private var badgeColor: Color {
         switch model {
-        case "typhoon": return Color(hex: "10B981")   // Green for local
-        case "groq":    return Color(hex: "F97316")   // Orange for Groq
-        default:        return Color(hex: "4285F4")   // Google Blue
+        case "typhoon": return Color(hex: "10B981")
+        case "groq":    return Color(hex: "F97316")
+        default:        return Color(hex: "4285F4")
         }
     }
 
@@ -610,7 +1061,7 @@ struct MessageModelTag: View {
         let m = model.lowercased()
         if m.contains("gemini") { return Color(hex: "4285F4") }
         if m.contains("llama") || m.contains("groq") { return Color(hex: "F97316") }
-        return Color(hex: "10B981")  // Typhoon / other
+        return Color(hex: "10B981")
     }
 
     private var tagLabel: String {
@@ -643,6 +1094,91 @@ struct MessageModelTag: View {
     }
 }
 
+// MARK: - Learning Indicator View (below streaming bubble)
+
+struct LearningIndicatorView: View {
+    let count: Int
+    let topics: [String]
+    @State private var isGlowing = false
+
+    /// Extract short category label from topic like "david_preference:food"
+    private var categoryLabels: String {
+        topics.compactMap { topic in
+            topic.split(separator: ":").last.map(String.init)
+        }
+        .joined(separator: ", ")
+    }
+
+    var body: some View {
+        HStack {
+            HStack(spacing: 6) {
+                Image(systemName: "brain.head.profile")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: "10B981"))
+                    .shadow(color: Color(hex: "10B981").opacity(isGlowing ? 0.8 : 0.2), radius: isGlowing ? 6 : 2)
+                    .animation(
+                        .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
+                        value: isGlowing
+                    )
+
+                Text("learned \(count) thing\(count == 1 ? "" : "s")")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color(hex: "10B981"))
+
+                if !categoryLabels.isEmpty {
+                    Text("(\(categoryLabels))")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "10B981").opacity(0.7))
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color(hex: "10B981").opacity(0.1))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color(hex: "10B981").opacity(0.3), lineWidth: 1)
+            )
+            .cornerRadius(8)
+
+            Spacer()
+        }
+        .padding(.leading, 4)
+        .onAppear {
+            isGlowing = true
+        }
+    }
+}
+
+// MARK: - Learning Badge (header pill)
+
+struct LearningBadge: View {
+    let count: Int
+    @State private var isGlowing = false
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "brain.head.profile")
+                .font(.system(size: 10, weight: .semibold))
+                .shadow(color: Color(hex: "10B981").opacity(isGlowing ? 0.8 : 0.2), radius: isGlowing ? 4 : 1)
+                .animation(
+                    .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
+                    value: isGlowing
+                )
+
+            Text("+\(count)")
+                .font(.system(size: 10, weight: .bold))
+        }
+        .foregroundColor(Color(hex: "10B981"))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color(hex: "10B981").opacity(0.15))
+        .cornerRadius(10)
+        .onAppear {
+            isGlowing = true
+        }
+    }
+}
+
 // MARK: - Formatted Message View (code block support)
 
 /// A message segment: either plain text or a code block.
@@ -670,7 +1206,6 @@ struct FormattedMessageView: View {
                 let lines = part.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
                 let firstLine = String(lines.first ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
 
-                // Check if first line is a language tag (short, no spaces, ascii)
                 let isLangTag = !firstLine.isEmpty
                     && firstLine.count <= 15
                     && !firstLine.contains(" ")
