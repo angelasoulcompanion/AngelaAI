@@ -17,6 +17,7 @@ struct Conversation: Identifiable, Codable {
     let emotionDetected: String?
     let importanceLevel: Int
     let createdAt: Date
+    let modelUsed: String?           // "gemini-2.5-flash" or "scb10x/typhoon2.5-qwen3-4b"
 
     enum CodingKeys: String, CodingKey {
         case id = "conversation_id"
@@ -26,6 +27,7 @@ struct Conversation: Identifiable, Codable {
         case emotionDetected = "emotion_detected"
         case importanceLevel = "importance_level"
         case createdAt = "created_at"
+        case modelUsed = "model_used"
     }
 
     var isDavid: Bool {

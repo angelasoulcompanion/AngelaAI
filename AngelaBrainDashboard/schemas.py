@@ -63,6 +63,7 @@ class ScriptContentUpdate(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     emotional_context: Optional[dict] = None
+    model: Optional[str] = "gemini"  # "gemini" | "typhoon" | "groq"
 
 
 class ChatResponse(BaseModel):
@@ -77,6 +78,7 @@ class ChatMessageSave(BaseModel):
     topic: Optional[str] = None
     emotion_detected: Optional[str] = None
     importance_level: int = 5
+    model_used: Optional[str] = None
 
 
 class ChatFeedbackRequest(BaseModel):

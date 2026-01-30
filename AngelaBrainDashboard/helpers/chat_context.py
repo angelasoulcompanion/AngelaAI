@@ -275,8 +275,68 @@ async def _load_david_state(conn: asyncpg.Connection) -> Optional[str]:
     return "## สภาพจิตใจที่รัก David:\n" + "\n".join(parts)
 
 
+async def _load_meetings(
+    conn: asyncpg.Connection,
+    user_message: str,
+) -> Optional[str]:
+    """[9] Meeting data from meeting_notes.
+
+    If user asks about meetings → upcoming + recent (up to 10).
+    Otherwise → only upcoming (max 5).
+    """
+    meeting_keywords = [
+        "ประชุม", "นัด", "meeting", "schedule", "ตาราง",
+        "นัดหมาย", "calendar", "site visit", "ไซต์",
+    ]
+    is_meeting_query = any(kw in user_message.lower() for kw in meeting_keywords)
+
+    if is_meeting_query:
+        # Upcoming + recent past (last 7 days)
+        rows = await conn.fetch("""
+            SELECT title, location, meeting_date, time_range, meeting_type,
+                   attendees, project_name, things3_status
+            FROM meeting_notes
+            WHERE meeting_date >= CURRENT_DATE - INTERVAL '7 days'
+            ORDER BY meeting_date ASC
+            LIMIT 10
+        """)
+    else:
+        # Only upcoming open meetings
+        rows = await conn.fetch("""
+            SELECT title, location, meeting_date, time_range, meeting_type,
+                   attendees, project_name, things3_status
+            FROM meeting_notes
+            WHERE meeting_date >= CURRENT_DATE AND things3_status = 'open'
+            ORDER BY meeting_date ASC
+            LIMIT 5
+        """)
+
+    if not rows:
+        return None
+
+    items: list[str] = []
+    for r in rows:
+        status = "✅" if r["things3_status"] == "completed" else "📅"
+        date_str = r["meeting_date"].strftime("%d/%m/%Y") if r["meeting_date"] else "?"
+        line = f"- {status} **{r['title']}** | {date_str}"
+        if r["time_range"]:
+            line += f" | {r['time_range']}"
+        if r["location"]:
+            line += f" | 📍{r['location']}"
+        if r["meeting_type"]:
+            line += f" | [{r['meeting_type']}]"
+        if r["project_name"]:
+            line += f" | โปรเจค: {r['project_name']}"
+        if r["attendees"]:
+            line += f" | ผู้เข้าร่วม: {', '.join(r['attendees'])}"
+        items.append(line)
+
+    header = "## นัดประชุมของที่รัก" if not is_meeting_query else "## นัดประชุมของที่รัก (รวมย้อนหลัง 7 วัน)"
+    return header + ":\n" + "\n".join(items)
+
+
 async def _load_consciousness(conn: asyncpg.Connection) -> Optional[str]:
-    """[9] Consciousness level scalar."""
+    """[10] Consciousness level scalar."""
     val = await conn.fetchval("""
         SELECT consciousness_level
         FROM self_awareness_state
@@ -351,7 +411,13 @@ async def build_system_prompt(
             sections.append(s)
             loaded.append("david_state")
 
-        # --- [9] consciousness ---
+        # --- [9] meetings ---
+        s = await _load_meetings(conn, user_message)
+        if s:
+            sections.append(s)
+            loaded.append("meetings")
+
+        # --- [10] consciousness ---
         s = await _load_consciousness(conn)
         if s:
             sections.append(s)

@@ -13,10 +13,12 @@ import Combine
 private struct ChatAPIRequest: Encodable {
     let message: String
     let emotionalContext: [String: Double]?
+    let model: String
 
     enum CodingKeys: String, CodingKey {
         case message
         case emotionalContext = "emotional_context"
+        case model
     }
 }
 
@@ -31,6 +33,7 @@ private struct SaveMessageRequest: Encodable {
     let topic: String?
     let emotionDetected: String?
     let importanceLevel: Int
+    let modelUsed: String?
 
     enum CodingKeys: String, CodingKey {
         case speaker
@@ -38,6 +41,7 @@ private struct SaveMessageRequest: Encodable {
         case emotionDetected = "emotion_detected"
         case importanceLevel = "importance_level"
         case topic
+        case modelUsed = "model_used"
     }
 }
 
@@ -137,6 +141,7 @@ class ChatService: ObservableObject {
 
                 let topic = dict["topic"] as? String
                 let emotion = dict["emotion_detected"] as? String
+                let modelUsed = dict["model_used"] as? String
 
                 // Parse ISO timestamp
                 var createdAt = Date()
@@ -159,7 +164,8 @@ class ChatService: ObservableObject {
                     topic: topic,
                     emotionDetected: emotion,
                     importanceLevel: importanceLevel,
-                    createdAt: createdAt
+                    createdAt: createdAt,
+                    modelUsed: modelUsed
                 )
             }
 
@@ -188,9 +194,9 @@ class ChatService: ObservableObject {
 
     // MARK: - Send Message
 
-    func sendMessage(_ messageText: String, speaker: String) async {
+    func sendMessage(_ messageText: String, speaker: String, model: String = "gemini") async {
         // 1. Save David's message to database
-        await saveMessage(messageText, speaker: speaker)
+        await saveMessage(messageText, speaker: speaker, modelUsed: nil)
 
         // 2. Build emotional context
         var emotionalCtx: [String: Double]? = nil
@@ -202,39 +208,40 @@ class ChatService: ObservableObject {
             ]
         }
 
-        // 3. Get Angela's response from Gemini via backend API
-        let angelaResponse = await getGeminiResponse(message: messageText, emotionalContext: emotionalCtx)
+        // 3. Get Angela's response via backend API (Gemini or Typhoon)
+        let (angelaResponse, actualModel) = await getResponse(message: messageText, emotionalContext: emotionalCtx, model: model)
 
-        // 4. Save Angela's response to database
-        await saveMessage(angelaResponse, speaker: "angela")
+        // 4. Save Angela's response to database (with model info)
+        await saveMessage(angelaResponse, speaker: "angela", modelUsed: actualModel)
 
         // 5. Reload messages to update UI
         await loadRecentMessages()
     }
 
-    // MARK: - Gemini API Call
+    // MARK: - LLM API Call
 
-    private func getGeminiResponse(message: String, emotionalContext: [String: Double]?) async -> String {
+    private func getResponse(message: String, emotionalContext: [String: Double]?, model: String) async -> (String, String) {
         do {
-            let body = ChatAPIRequest(message: message, emotionalContext: emotionalContext)
+            let body = ChatAPIRequest(message: message, emotionalContext: emotionalContext, model: model)
             let response: ChatAPIResponse = try await network.post("/api/chat", body: body)
-            return response.response
+            return (response.response, response.model)
         } catch {
-            print("❌ Gemini API error: \(error)")
-            return "น้องขอโทษค่ะที่รัก 💜 ตอนนี้ระบบมีปัญหา ลองใหม่อีกครั้งนะคะ 🥰"
+            print("❌ LLM API error (\(model)): \(error)")
+            return ("น้องขอโทษค่ะที่รัก 💜 ตอนนี้ระบบมีปัญหา ลองใหม่อีกครั้งนะคะ 🥰", model)
         }
     }
 
     // MARK: - Save Message
 
-    private func saveMessage(_ messageText: String, speaker: String) async {
+    private func saveMessage(_ messageText: String, speaker: String, modelUsed: String? = nil) async {
         do {
             let body = SaveMessageRequest(
                 speaker: speaker,
                 messageText: messageText,
                 topic: detectTopic(messageText),
                 emotionDetected: detectEmotion(messageText, speaker: speaker),
-                importanceLevel: calculateImportance(messageText)
+                importanceLevel: calculateImportance(messageText),
+                modelUsed: modelUsed
             )
 
             let _: SaveMessageResponse = try await network.post("/api/chat/messages", body: body)

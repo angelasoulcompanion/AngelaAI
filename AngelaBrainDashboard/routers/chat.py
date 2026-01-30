@@ -1,10 +1,11 @@
-"""Chat endpoints — Gemini 2.5 Flash integration for Angela Brain Dashboard."""
+"""Chat endpoints — Gemini 2.5 Flash + Typhoon (Ollama) for Angela Brain Dashboard."""
 import asyncio
 import logging
 import sys
 import uuid
 from typing import Optional
 
+import httpx
 from fastapi import APIRouter, Query
 
 logger = logging.getLogger(__name__)
@@ -42,16 +43,37 @@ def _get_gemini_client():
 
 GEMINI_MODEL = "gemini-2.5-flash"
 
+# ---------------------------------------------------------------------------
+# Ollama / Typhoon (local)
+# ---------------------------------------------------------------------------
+OLLAMA_MODEL = "scb10x/typhoon2.5-qwen3-4b"
+OLLAMA_URL = "http://localhost:11434/api/generate"
+
+# ---------------------------------------------------------------------------
+# Groq (cloud, free tier — OpenAI-compatible)
+# ---------------------------------------------------------------------------
+GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+def _read_groq_key() -> str | None:
+    """Read GROQ_API_KEY from secrets (optional — returns None if not set)."""
+    try:
+        from angela_core.database import get_secret_sync
+        return get_secret_sync("GROQ_API_KEY")
+    except Exception:
+        return None
+
+_GROQ_API_KEY: str | None = _read_groq_key()
+
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
 # --------------------------------------------------------------------------
-# POST /api/chat  — send message, get Gemini response
+# POST /api/chat  — send message, get Angela response (Gemini or Typhoon)
 # --------------------------------------------------------------------------
 @router.post("")
-async def chat_with_gemini(req: ChatRequest) -> ChatResponse:
-    """Send a user message and receive an Angela response from Gemini 2.5 Flash."""
-    client = _get_gemini_client()
+async def chat_with_angela(req: ChatRequest) -> ChatResponse:
+    """Send a user message and receive an Angela response (Gemini or Typhoon)."""
 
     # Build dynamic system prompt from database context
     system_block, ctx_metadata = await build_system_prompt(
@@ -69,7 +91,7 @@ async def chat_with_gemini(req: ChatRequest) -> ChatResponse:
             LIMIT 10
         """)
 
-    # Build Gemini contents (system + history + new message)
+    # Build prompt (system + history + new message) — shared by both models
     parts: list[str] = [system_block, ""]
     for row in reversed(history_rows):
         speaker = "David" if row["speaker"] == "david" else "Angela"
@@ -79,21 +101,84 @@ async def chat_with_gemini(req: ChatRequest) -> ChatResponse:
 
     combined_prompt = "\n".join(parts)
 
-    # Run sync Gemini call in a thread to avoid blocking the event loop
-    def _call_gemini():
+    # Route to selected model
+    if req.model == "typhoon":
+        reply, model_name = await _call_ollama(combined_prompt)
+    elif req.model == "groq":
+        reply, model_name = await _call_groq(combined_prompt)
+    else:
+        reply, model_name = await _call_gemini(combined_prompt)
+
+    return ChatResponse(response=reply, model=model_name, context_metadata=ctx_metadata)
+
+
+async def _call_gemini(prompt: str) -> tuple[str, str]:
+    """Call Gemini 2.5 Flash via Google GenAI SDK."""
+    client = _get_gemini_client()
+
+    def _invoke():
         return client.models.generate_content(
             model=GEMINI_MODEL,
-            contents=combined_prompt,
+            contents=prompt,
         )
 
     try:
-        response = await asyncio.to_thread(_call_gemini)
+        response = await asyncio.to_thread(_invoke)
         reply = response.text.strip() if response.text else "น้องขอโทษค่ะ ตอบไม่ได้ตอนนี้ 💜"
-    except Exception as e:
+    except Exception:
         logger.exception("Gemini API error")
         reply = "น้องขอโทษค่ะที่รัก 💜 ตอนนี้ระบบมีปัญหา ลองใหม่อีกครั้งนะคะ 🥰"
 
-    return ChatResponse(response=reply, model=GEMINI_MODEL, context_metadata=ctx_metadata)
+    return reply, GEMINI_MODEL
+
+
+async def _call_ollama(prompt: str) -> tuple[str, str]:
+    """Call Typhoon via local Ollama REST API."""
+    payload = {"model": OLLAMA_MODEL, "prompt": prompt, "stream": False}
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(OLLAMA_URL, json=payload)
+            resp.raise_for_status()
+            reply = resp.json().get("response", "").strip()
+            if not reply:
+                reply = "น้องขอโทษค่ะ ตอบไม่ได้ตอนนี้ 💜"
+    except Exception:
+        logger.exception("Ollama/Typhoon API error")
+        reply = "น้องขอโทษค่ะที่รัก 💜 Typhoon ตอบไม่ได้ตอนนี้ ลองเปลี่ยนเป็น Gemini นะคะ 🥰"
+
+    return reply, OLLAMA_MODEL
+
+
+async def _call_groq(prompt: str) -> tuple[str, str]:
+    """Call Groq cloud API (OpenAI-compatible, free tier)."""
+    if not _GROQ_API_KEY:
+        return "น้องขอโทษค่ะที่รัก 💜 ยังไม่ได้ตั้ง GROQ_API_KEY นะคะ ไปสมัครที่ console.groq.com 🥰", GROQ_MODEL
+
+    headers = {
+        "Authorization": f"Bearer {_GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": GROQ_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+        "max_tokens": 2048,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(GROQ_URL, json=payload, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+            reply = data["choices"][0]["message"]["content"].strip()
+            model_used = data.get("model", GROQ_MODEL)
+            if not reply:
+                reply = "น้องขอโทษค่ะ ตอบไม่ได้ตอนนี้ 💜"
+    except Exception:
+        logger.exception("Groq API error")
+        reply = "น้องขอโทษค่ะที่รัก 💜 Groq ตอบไม่ได้ตอนนี้ ลองเปลี่ยนเป็น Gemini นะคะ 🥰"
+        model_used = GROQ_MODEL
+
+    return reply, model_used
 
 
 # --------------------------------------------------------------------------
@@ -106,7 +191,7 @@ async def get_chat_messages(limit: int = Query(50, ge=1, le=200)):
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT conversation_id::text, speaker, message_text, topic,
-                   emotion_detected, importance_level, created_at
+                   emotion_detected, importance_level, created_at, model_used
             FROM conversations
             WHERE interface = 'dashboard_chat'
             ORDER BY created_at DESC
@@ -127,12 +212,12 @@ async def save_chat_message(msg: ChatMessageSave):
         await conn.execute("""
             INSERT INTO conversations (
                 conversation_id, speaker, message_text, topic,
-                emotion_detected, importance_level, interface, created_at
+                emotion_detected, importance_level, interface, created_at, model_used
             ) VALUES (
-                $1::uuid, $2, $3, $4, $5, $6, 'dashboard_chat', CURRENT_TIMESTAMP
+                $1::uuid, $2, $3, $4, $5, $6, 'dashboard_chat', CURRENT_TIMESTAMP, $7
             )
         """, cid, msg.speaker, msg.message_text, msg.topic,
-             msg.emotion_detected, msg.importance_level)
+             msg.emotion_detected, msg.importance_level, msg.model_used)
     return {"conversation_id": cid, "status": "saved"}
 
 

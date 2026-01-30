@@ -12,6 +12,7 @@ struct ChatView: View {
     @StateObject private var chatService = ChatService.shared
     @State private var newMessage: String = ""
     @State private var isLoading = false
+    @State private var selectedModel: String = "gemini"
     @State private var showClaudeCodeButton = false
     @State private var contextForClaudeCode: String = ""
     @State private var showDeleteAllAlert = false
@@ -75,11 +76,6 @@ struct ChatView: View {
                     }
                 }
 
-                // Claude Code button (shown when technical task detected)
-                if showClaudeCodeButton {
-                    claudeCodeButton
-                }
-
                 Divider()
                     .background(AngelaTheme.textTertiary.opacity(0.3))
 
@@ -132,7 +128,27 @@ struct ChatView: View {
                         .foregroundColor(AngelaTheme.textSecondary)
 
                     if chatService.isOnline {
-                        GeminiBadge()
+                        Menu {
+                            Button {
+                                selectedModel = "gemini"
+                            } label: {
+                                Label("Gemini 2.5 Flash", systemImage: "sparkle")
+                            }
+                            Button {
+                                selectedModel = "groq"
+                            } label: {
+                                Label("Groq Llama 70B", systemImage: "bolt.fill")
+                            }
+                            Button {
+                                selectedModel = "typhoon"
+                            } label: {
+                                Label("Typhoon Local", systemImage: "hurricane")
+                            }
+                        } label: {
+                            ModelBadge(model: selectedModel)
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
                     }
                 }
             }
@@ -303,8 +319,8 @@ struct ChatView: View {
         showClaudeCodeButton = false
 
         Task {
-            // Send message and get response
-            await chatService.sendMessage(messageText, speaker: "david")
+            // Send message and get response via selected model
+            await chatService.sendMessage(messageText, speaker: "david", model: selectedModel)
 
             // Check if this is a technical task
             let isTechnical = detectTechnicalTask(messageText)
@@ -401,10 +417,11 @@ struct MessageBubble: View {
             }
 
             VStack(alignment: message.isDavid ? .trailing : .leading, spacing: 4) {
-                // Message content
-                Text(message.messageText)
-                    .font(AngelaTheme.body())
-                    .foregroundColor(message.isDavid ? .white : AngelaTheme.textPrimary)
+                // Message content (with code block formatting)
+                FormattedMessageView(
+                    text: message.messageText,
+                    textColor: message.isDavid ? .white : AngelaTheme.textPrimary
+                )
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .background(
@@ -423,7 +440,7 @@ struct MessageBubble: View {
                     .cornerRadius(20)
                     .frame(maxWidth: 500, alignment: message.isDavid ? .trailing : .leading)
 
-                // Timestamp, emotion, and feedback buttons
+                // Timestamp, model tag, emotion, and feedback buttons
                 HStack(spacing: 8) {
                     if let emotion = message.emotionDetected, !emotion.isEmpty {
                         Text(emotionEmoji(emotion))
@@ -433,6 +450,11 @@ struct MessageBubble: View {
                     Text(message.createdAt.formatted(date: .omitted, time: .shortened))
                         .font(AngelaTheme.caption())
                         .foregroundColor(AngelaTheme.textTertiary)
+
+                    // Model tag (only for Angela's messages with model info)
+                    if message.isAngela, let modelName = message.modelUsed, !modelName.isEmpty {
+                        MessageModelTag(model: modelName)
+                    }
 
                     // Feedback buttons (only for Angela's messages)
                     if message.isAngela {
@@ -506,21 +528,65 @@ struct EmotionIndicator: View {
     }
 }
 
-// MARK: - Gemini Badge
+// MARK: - Model Badge (tappable — shows selected LLM)
 
-struct GeminiBadge: View {
-    private let badgeColor = Color(hex: "4285F4")  // Google Blue
+struct ModelBadge: View {
+    let model: String
+
+    private var badgeColor: Color {
+        switch model {
+        case "typhoon": return Color(hex: "10B981")   // Green for local
+        case "groq":    return Color(hex: "F97316")   // Orange for Groq
+        default:        return Color(hex: "4285F4")   // Google Blue
+        }
+    }
+
+    private var iconName: String {
+        switch model {
+        case "typhoon": return "hurricane"
+        case "groq":    return "bolt.fill"
+        default:        return "sparkle"
+        }
+    }
+
+    private var label: String {
+        switch model {
+        case "typhoon": return "Typhoon Local"
+        case "groq":    return "Groq Llama 70B"
+        default:        return "Gemini 2.5 Flash"
+        }
+    }
+
+    private var trailingIcon: String {
+        switch model {
+        case "typhoon": return "🏠"
+        case "groq":    return "⚡"
+        default:        return "⚡"
+        }
+    }
+
+    private var helpText: String {
+        switch model {
+        case "typhoon": return "Typhoon 2.5 — Local Ollama"
+        case "groq":    return "Groq — Llama 3.3 70B (Free Cloud)"
+        default:        return "Gemini 2.5 Flash — Google AI"
+        }
+    }
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: "sparkle")
+            Image(systemName: iconName)
                 .font(.system(size: 10))
 
-            Text("Gemini 2.5 Flash")
+            Text(label)
                 .font(AngelaTheme.caption())
 
-            Text("⚡")
+            Text(trailingIcon)
                 .font(.system(size: 10))
+
+            Image(systemName: "chevron.down")
+                .font(.system(size: 8, weight: .semibold))
+                .opacity(0.6)
         }
         .foregroundColor(badgeColor)
         .padding(.horizontal, 8)
@@ -531,7 +597,128 @@ struct GeminiBadge: View {
                 .stroke(badgeColor.opacity(0.3), lineWidth: 1)
         )
         .cornerRadius(6)
-        .help("Gemini 2.5 Flash — Google AI")
+        .help(helpText)
+    }
+}
+
+// MARK: - Message Model Tag (per-message indicator)
+
+struct MessageModelTag: View {
+    let model: String
+
+    private var tagColor: Color {
+        let m = model.lowercased()
+        if m.contains("gemini") { return Color(hex: "4285F4") }
+        if m.contains("llama") || m.contains("groq") { return Color(hex: "F97316") }
+        return Color(hex: "10B981")  // Typhoon / other
+    }
+
+    private var tagLabel: String {
+        let m = model.lowercased()
+        if m.contains("gemini") { return "Gemini" }
+        if m.contains("llama")  { return "Groq" }
+        if m.contains("typhoon") { return "Typhoon" }
+        return model
+    }
+
+    private var tagIcon: String {
+        let m = model.lowercased()
+        if m.contains("gemini") { return "sparkle" }
+        if m.contains("llama") || m.contains("groq") { return "bolt.fill" }
+        return "hurricane"
+    }
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Image(systemName: tagIcon)
+                .font(.system(size: 8))
+            Text(tagLabel)
+                .font(.system(size: 9, weight: .medium))
+        }
+        .foregroundColor(tagColor)
+        .padding(.horizontal, 5)
+        .padding(.vertical, 2)
+        .background(tagColor.opacity(0.15))
+        .cornerRadius(4)
+    }
+}
+
+// MARK: - Formatted Message View (code block support)
+
+/// A message segment: either plain text or a code block.
+private struct MessageSegment: Identifiable {
+    let id = UUID()
+    let isCode: Bool
+    let language: String?
+    let content: String
+}
+
+struct FormattedMessageView: View {
+    let text: String
+    let textColor: Color
+
+    private var segments: [MessageSegment] {
+        var result: [MessageSegment] = []
+        let parts = text.components(separatedBy: "```")
+
+        for (index, part) in parts.enumerated() {
+            let trimmed = part.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+
+            if index % 2 == 1 {
+                // Inside ``` block — first line may be language hint
+                let lines = part.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
+                let firstLine = String(lines.first ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+
+                // Check if first line is a language tag (short, no spaces, ascii)
+                let isLangTag = !firstLine.isEmpty
+                    && firstLine.count <= 15
+                    && !firstLine.contains(" ")
+                    && firstLine.allSatisfy({ $0.isASCII })
+
+                if isLangTag && lines.count > 1 {
+                    let code = String(lines[1]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    result.append(MessageSegment(isCode: true, language: firstLine, content: code))
+                } else {
+                    result.append(MessageSegment(isCode: true, language: nil, content: trimmed))
+                }
+            } else {
+                result.append(MessageSegment(isCode: false, language: nil, content: trimmed))
+            }
+        }
+        return result
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(segments) { segment in
+                if segment.isCode {
+                    // Code block
+                    VStack(alignment: .leading, spacing: 4) {
+                        if let lang = segment.language {
+                            Text(lang)
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            Text(segment.content)
+                                .font(.system(size: 12, design: .monospaced))
+                                .foregroundColor(.green.opacity(0.9))
+                                .textSelection(.enabled)
+                        }
+                    }
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.black.opacity(0.85))
+                    .cornerRadius(8)
+                } else {
+                    // Normal text
+                    Text(segment.content)
+                        .font(AngelaTheme.body())
+                        .foregroundColor(textColor)
+                }
+            }
+        }
     }
 }
 
