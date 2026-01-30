@@ -54,3 +54,35 @@ class ScheduledTaskUpdate(BaseModel):
 class ScriptContentUpdate(BaseModel):
     path: str
     content: str
+
+
+# ---------------------------------------------------------------------------
+# Chat with Angela (Gemini 2.5 Flash)
+# ---------------------------------------------------------------------------
+
+class ChatRequest(BaseModel):
+    message: str
+    emotional_context: Optional[dict] = None
+
+
+class ChatResponse(BaseModel):
+    response: str
+    model: str  # "gemini-2.5-flash"
+
+
+class ChatMessageSave(BaseModel):
+    speaker: str  # "david" or "angela"
+    message_text: str
+    topic: Optional[str] = None
+    emotion_detected: Optional[str] = None
+    importance_level: int = 5
+
+
+class ChatFeedbackRequest(BaseModel):
+    conversation_id: str
+    rating: int  # 1 or -1
+    feedback_type: str  # "thumbs_up" or "thumbs_down"
+
+
+class ChatFeedbackBatchRequest(BaseModel):
+    conversation_ids: list[str]

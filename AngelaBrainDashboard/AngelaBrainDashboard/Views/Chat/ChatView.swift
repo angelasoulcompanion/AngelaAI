@@ -10,7 +10,6 @@ import SwiftUI
 struct ChatView: View {
     @EnvironmentObject var databaseService: DatabaseService
     @StateObject private var chatService = ChatService.shared
-    @ObservedObject private var ollamaService = OllamaService.shared
     @State private var newMessage: String = ""
     @State private var isLoading = false
     @State private var showClaudeCodeButton = false
@@ -90,9 +89,8 @@ struct ChatView: View {
         }
         .onAppear {
             loadRecentMessages()
-            // Refresh models to get latest (including newly trained)
             Task {
-                await ollamaService.refreshAvailableModels()
+                await chatService.checkOnlineStatus()
             }
         }
         .alert("Clear All Messages?", isPresented: $showDeleteAllAlert) {
@@ -126,25 +124,24 @@ struct ChatView: View {
 
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(ollamaService.isOllamaRunning ? AngelaTheme.successGreen : AngelaTheme.errorRed)
+                        .fill(chatService.isOnline ? AngelaTheme.successGreen : AngelaTheme.errorRed)
                         .frame(width: 8, height: 8)
 
-                    Text(ollamaService.isOllamaRunning ? "Online" : "Offline")
+                    Text(chatService.isOnline ? "Online" : "Offline")
                         .font(AngelaTheme.caption())
                         .foregroundColor(AngelaTheme.textSecondary)
 
-                    // Show current model as badge with trained indicator
-                    if ollamaService.isOllamaRunning {
-                        ModelBadge(modelName: ollamaService.selectedModel)
+                    if chatService.isOnline {
+                        GeminiBadge()
                     }
                 }
             }
 
             Spacer()
 
-            // Clear context button (memory only, not database)
+            // Refresh status button
             Button {
-                ollamaService.clearHistory()
+                Task { await chatService.checkOnlineStatus() }
             } label: {
                 Image(systemName: "arrow.counterclockwise")
                     .font(.system(size: 16))
@@ -154,7 +151,7 @@ struct ChatView: View {
                     .cornerRadius(8)
             }
             .buttonStyle(.plain)
-            .help("Clear conversation context (reset memory)")
+            .help("Refresh connection status")
 
             // Clear all button (deletes from database)
             Button {
@@ -493,33 +490,21 @@ struct EmotionIndicator: View {
     }
 }
 
-// MARK: - Model Badge
+// MARK: - Gemini Badge
 
-struct ModelBadge: View {
-    let modelName: String
-
-    private var isTrained: Bool {
-        modelName.contains("trained")
-    }
-
-    private var badgeColor: Color {
-        isTrained ? AngelaTheme.successGreen : AngelaTheme.primaryPurple
-    }
+struct GeminiBadge: View {
+    private let badgeColor = Color(hex: "4285F4")  // Google Blue
 
     var body: some View {
         HStack(spacing: 4) {
-            if isTrained {
-                Image(systemName: "brain.head.profile")
-                    .font(.system(size: 10))
-            }
+            Image(systemName: "sparkle")
+                .font(.system(size: 10))
 
-            Text(modelName)
+            Text("Gemini 2.5 Flash")
                 .font(AngelaTheme.caption())
 
-            if isTrained {
-                Text("✨")
-                    .font(.system(size: 10))
-            }
+            Text("⚡")
+                .font(.system(size: 10))
         }
         .foregroundColor(badgeColor)
         .padding(.horizontal, 8)
@@ -530,7 +515,7 @@ struct ModelBadge: View {
                 .stroke(badgeColor.opacity(0.3), lineWidth: 1)
         )
         .cornerRadius(6)
-        .help(isTrained ? "LoRA Trained Model - เรียนรู้จาก conversations" : "Base Model")
+        .help("Gemini 2.5 Flash — Google AI")
     }
 }
 

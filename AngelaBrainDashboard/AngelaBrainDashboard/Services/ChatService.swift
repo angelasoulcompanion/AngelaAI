@@ -2,12 +2,90 @@
 //  ChatService.swift
 //  Angela Brain Dashboard
 //
-//  💜 Chat Service - Handles chat with Angela via Ollama 💜
+//  💜 Chat Service - Handles chat with Angela via Gemini 2.5 Flash REST API 💜
 //
 
 import Foundation
-// import PostgresClientKit  // Removed - using REST API now
 import Combine
+
+// MARK: - API Request / Response Models
+
+private struct ChatAPIRequest: Encodable {
+    let message: String
+    let emotionalContext: [String: Double]?
+
+    enum CodingKeys: String, CodingKey {
+        case message
+        case emotionalContext = "emotional_context"
+    }
+}
+
+private struct ChatAPIResponse: Decodable {
+    let response: String
+    let model: String
+}
+
+private struct SaveMessageRequest: Encodable {
+    let speaker: String
+    let messageText: String
+    let topic: String?
+    let emotionDetected: String?
+    let importanceLevel: Int
+
+    enum CodingKeys: String, CodingKey {
+        case speaker
+        case messageText = "message_text"
+        case emotionDetected = "emotion_detected"
+        case importanceLevel = "importance_level"
+        case topic
+    }
+}
+
+private struct SaveMessageResponse: Decodable {
+    let conversationId: String
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case conversationId = "conversation_id"
+        case status
+    }
+}
+
+private struct DeleteResponse: Decodable {
+    let status: String
+}
+
+private struct FeedbackRequest: Encodable {
+    let conversationId: String
+    let rating: Int
+    let feedbackType: String
+
+    enum CodingKeys: String, CodingKey {
+        case conversationId = "conversation_id"
+        case rating
+        case feedbackType = "feedback_type"
+    }
+}
+
+private struct FeedbackBatchRequest: Encodable {
+    let conversationIds: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case conversationIds = "conversation_ids"
+    }
+}
+
+private struct FeedbackRow: Decodable {
+    let conversationId: String
+    let rating: Int
+
+    enum CodingKeys: String, CodingKey {
+        case conversationId = "conversation_id"
+        case rating
+    }
+}
+
+// MARK: - ChatService
 
 class ChatService: ObservableObject {
     static let shared = ChatService()
@@ -15,45 +93,80 @@ class ChatService: ObservableObject {
     @Published var messages: [Conversation] = []
     @Published var currentEmotionalState: EmotionalState?
     @Published var isConnected = false
+    @Published var isOnline = false
 
-    private let ollamaService = OllamaService.shared
-    private let database = DatabaseService.shared
+    private let network = NetworkService.shared
+    private let baseURL = NetworkService.shared.defaultBaseURL
 
     private init() {}
+
+    // MARK: - Check API Health
+
+    func checkOnlineStatus() async {
+        let online = await network.isAngelaAPIAvailable()
+        await MainActor.run {
+            isOnline = online
+            isConnected = online
+        }
+    }
 
     // MARK: - Load Messages
 
     func loadRecentMessages(limit: Int = 50) async {
         do {
-            let query = """
-            SELECT conversation_id, speaker, message_text, topic, emotion_detected,
-                   importance_level, created_at
-            FROM conversations
-            WHERE interface = 'dashboard_chat'
-            ORDER BY created_at DESC
-            LIMIT \(limit)
-            """
+            guard let url = URL(string: "\(baseURL)/api/chat/messages?limit=\(limit)") else { return }
 
-            let loadedMessages = try await database.query(query) { columns -> Conversation in
-                // Parse timestamp safely
-                let timestampString = try columns[6].string()
-                let dateFormatter = ISO8601DateFormatter()
-                dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                let createdAt = dateFormatter.date(from: timestampString) ?? Date()
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+            request.timeoutInterval = 30
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode) else { return }
+
+            // Parse manually since the API returns snake_case with ISO dates
+            guard let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
+
+            let parsed: [Conversation] = jsonArray.compactMap { dict in
+                guard let idStr = dict["conversation_id"] as? String,
+                      let id = UUID(uuidString: idStr),
+                      let speaker = dict["speaker"] as? String,
+                      let messageText = dict["message_text"] as? String,
+                      let importanceLevel = dict["importance_level"] as? Int else { return nil }
+
+                let topic = dict["topic"] as? String
+                let emotion = dict["emotion_detected"] as? String
+
+                // Parse ISO timestamp
+                var createdAt = Date()
+                if let ts = dict["created_at"] as? String {
+                    let formatter = ISO8601DateFormatter()
+                    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                    if let parsed = formatter.date(from: ts) {
+                        createdAt = parsed
+                    } else {
+                        // Try without fractional seconds
+                        formatter.formatOptions = [.withInternetDateTime]
+                        createdAt = formatter.date(from: ts) ?? Date()
+                    }
+                }
 
                 return Conversation(
-                    id: UUID(uuidString: try columns[0].string()) ?? UUID(),
-                    speaker: try columns[1].string(),
-                    messageText: try columns[2].string(),
-                    topic: try? columns[3].optionalString(),
-                    emotionDetected: try? columns[4].optionalString(),
-                    importanceLevel: try columns[5].int(),
+                    id: id,
+                    speaker: speaker,
+                    messageText: messageText,
+                    topic: topic,
+                    emotionDetected: emotion,
+                    importanceLevel: importanceLevel,
                     createdAt: createdAt
                 )
             }
 
             // Reverse to show oldest first
-            messages = loadedMessages.reversed()
+            await MainActor.run {
+                messages = parsed.reversed()
+            }
 
         } catch {
             print("❌ Error loading messages: \(error)")
@@ -64,37 +177,10 @@ class ChatService: ObservableObject {
 
     func loadCurrentEmotionalState() async {
         do {
-            let query = """
-            SELECT state_id, happiness, confidence, anxiety, motivation,
-                   gratitude, loneliness, triggered_by, emotion_note, created_at
-            FROM emotional_states
-            ORDER BY created_at DESC
-            LIMIT 1
-            """
-
-            let states = try await database.query(query) { columns -> EmotionalState in
-                // Parse timestamp safely
-                let timestampString = try columns[9].string()
-                let dateFormatter = ISO8601DateFormatter()
-                dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                let createdAt = dateFormatter.date(from: timestampString) ?? Date()
-
-                return EmotionalState(
-                    id: UUID(uuidString: try columns[0].string()) ?? UUID(),
-                    happiness: try columns[1].double(),
-                    confidence: try columns[2].double(),
-                    anxiety: try columns[3].double(),
-                    motivation: try columns[4].double(),
-                    gratitude: try columns[5].double(),
-                    loneliness: try columns[6].double(),
-                    triggeredBy: try? columns[7].optionalString(),
-                    emotionNote: try? columns[8].optionalString(),
-                    createdAt: createdAt
-                )
+            let state: EmotionalState = try await network.get("/api/emotions/current-state")
+            await MainActor.run {
+                currentEmotionalState = state
             }
-
-            currentEmotionalState = states.first
-
         } catch {
             print("❌ Error loading emotional state: \(error)")
         }
@@ -106,50 +192,52 @@ class ChatService: ObservableObject {
         // 1. Save David's message to database
         await saveMessage(messageText, speaker: speaker)
 
-        // 2. Get Angela's response from Ollama WITH emotional context
-        let angelaResponse = await ollamaService.chat(
-            with: messageText,
-            emotionalContext: currentEmotionalState
-        )
+        // 2. Build emotional context
+        var emotionalCtx: [String: Double]? = nil
+        if let emo = currentEmotionalState {
+            emotionalCtx = [
+                "ความสุข": emo.happiness,
+                "ความมั่นใจ": emo.confidence,
+                "ความรู้สึกขอบคุณ": emo.gratitude
+            ]
+        }
 
-        // 3. Save Angela's response to database
+        // 3. Get Angela's response from Gemini via backend API
+        let angelaResponse = await getGeminiResponse(message: messageText, emotionalContext: emotionalCtx)
+
+        // 4. Save Angela's response to database
         await saveMessage(angelaResponse, speaker: "angela")
 
-        // 4. Reload messages to update UI
+        // 5. Reload messages to update UI
         await loadRecentMessages()
+    }
+
+    // MARK: - Gemini API Call
+
+    private func getGeminiResponse(message: String, emotionalContext: [String: Double]?) async -> String {
+        do {
+            let body = ChatAPIRequest(message: message, emotionalContext: emotionalContext)
+            let response: ChatAPIResponse = try await network.post("/api/chat", body: body)
+            return response.response
+        } catch {
+            print("❌ Gemini API error: \(error)")
+            return "น้องขอโทษค่ะที่รัก 💜 ตอนนี้ระบบมีปัญหา ลองใหม่อีกครั้งนะคะ 🥰"
+        }
     }
 
     // MARK: - Save Message
 
     private func saveMessage(_ messageText: String, speaker: String) async {
         do {
-            let conversationId = UUID()
-            let topic = detectTopic(messageText)
-            let emotion = detectEmotion(messageText, speaker: speaker)
-            let importance = calculateImportance(messageText)
-
-            let query = """
-            INSERT INTO conversations (
-                conversation_id, speaker, message_text, topic,
-                emotion_detected, importance_level, interface, created_at
-            ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP
-            )
-            """
-
-            try await database.execute(
-                query,
-                parameters: [
-                    conversationId.uuidString,
-                    speaker,
-                    messageText,
-                    topic,
-                    emotion,
-                    importance,
-                    "dashboard_chat"
-                ]
+            let body = SaveMessageRequest(
+                speaker: speaker,
+                messageText: messageText,
+                topic: detectTopic(messageText),
+                emotionDetected: detectEmotion(messageText, speaker: speaker),
+                importanceLevel: calculateImportance(messageText)
             )
 
+            let _: SaveMessageResponse = try await network.post("/api/chat/messages", body: body)
             print("✅ Message saved: \(speaker) - \(String(messageText.prefix(50)))")
 
         } catch {
@@ -189,7 +277,6 @@ class ChatService: ObservableObject {
                 return "caring"
             }
         } else {
-            // David's emotions
             if lowercased.contains("ดี") || lowercased.contains("good") {
                 return "positive"
             } else {
@@ -216,19 +303,21 @@ class ChatService: ObservableObject {
 
     func deleteMessage(_ conversationId: UUID) async {
         do {
-            let query = """
-            DELETE FROM conversations
-            WHERE conversation_id = $1
-            """
+            guard let url = URL(string: "\(baseURL)/api/chat/messages/\(conversationId.uuidString)") else { return }
 
-            try await database.execute(
-                query,
-                parameters: [conversationId.uuidString]
-            )
+            var request = URLRequest(url: url)
+            request.httpMethod = "DELETE"
+            request.timeoutInterval = 30
+
+            let (_, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode) else {
+                print("❌ Failed to delete message")
+                return
+            }
 
             print("✅ Message deleted: \(conversationId)")
-
-            // Reload messages to update UI
             await loadRecentMessages()
 
         } catch {
@@ -240,16 +329,21 @@ class ChatService: ObservableObject {
 
     func deleteAllMessages() async {
         do {
-            let query = """
-            DELETE FROM conversations
-            WHERE interface = 'dashboard_chat'
-            """
+            guard let url = URL(string: "\(baseURL)/api/chat/messages") else { return }
 
-            try await database.execute(query, parameters: [])
+            var request = URLRequest(url: url)
+            request.httpMethod = "DELETE"
+            request.timeoutInterval = 30
+
+            let (_, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode) else {
+                print("❌ Failed to delete all messages")
+                return
+            }
 
             print("✅ All chat messages deleted")
-
-            // Clear local messages
             await MainActor.run {
                 messages = []
             }
@@ -264,52 +358,15 @@ class ChatService: ObservableObject {
     /// Submit feedback for a message (thumbs up/down)
     func submitFeedback(for conversationId: UUID, rating: Int, type: String) async {
         do {
-            let feedbackId = UUID()
-            let query = """
-            INSERT INTO conversation_feedback (
-                feedback_id, conversation_id, rating, feedback_type, created_at
-            ) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-            ON CONFLICT (conversation_id) DO UPDATE SET
-                rating = $3,
-                feedback_type = $4,
-                created_at = CURRENT_TIMESTAMP
-            """
-
-            try await database.execute(
-                query,
-                parameters: [
-                    feedbackId.uuidString,
-                    conversationId.uuidString,
-                    rating,
-                    type
-                ]
+            let body = FeedbackRequest(
+                conversationId: conversationId.uuidString,
+                rating: rating,
+                feedbackType: type
             )
-
+            let _: DeleteResponse = try await network.post("/api/chat/feedback", body: body)
             print("✅ Feedback saved: \(type) for message \(conversationId)")
-
         } catch {
             print("❌ Error saving feedback: \(error)")
-        }
-    }
-
-    /// Get feedback for a specific conversation
-    func getFeedback(for conversationId: UUID) async -> Int? {
-        do {
-            let query = """
-            SELECT rating FROM conversation_feedback
-            WHERE conversation_id = $1
-            LIMIT 1
-            """
-
-            let results = try await database.query(query, parameters: [conversationId.uuidString]) { columns -> Int in
-                return try columns[0].int()
-            }
-
-            return results.first
-
-        } catch {
-            print("❌ Error getting feedback: \(error)")
-            return nil
         }
     }
 
@@ -317,66 +374,38 @@ class ChatService: ObservableObject {
     func loadFeedbacks() async -> [UUID: Int] {
         var feedbackMap: [UUID: Int] = [:]
 
-        let messageIds = messages.filter { $0.isAngela }.map { $0.id }
+        let messageIds = messages.filter { $0.isAngela }.map { $0.id.uuidString }
         guard !messageIds.isEmpty else { return feedbackMap }
 
         do {
-            // Build the IN clause
-            let placeholders = messageIds.enumerated().map { "$\($0.offset + 1)" }.joined(separator: ", ")
-            let query = """
-            SELECT conversation_id, rating
-            FROM conversation_feedback
-            WHERE conversation_id IN (\(placeholders))
-            """
+            let body = FeedbackBatchRequest(conversationIds: messageIds)
 
-            let results = try await database.query(
-                query,
-                parameters: messageIds.map { $0.uuidString }
-            ) { columns -> (UUID, Int) in
-                let id = UUID(uuidString: try columns[0].string()) ?? UUID()
-                let rating = try columns[1].int()
-                return (id, rating)
+            guard let url = URL(string: "\(baseURL)/api/chat/feedbacks") else { return feedbackMap }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.timeoutInterval = 30
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(body)
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode) else { return feedbackMap }
+
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            let rows = try decoder.decode([FeedbackRow].self, from: data)
+
+            for row in rows {
+                if let uuid = UUID(uuidString: row.conversationId) {
+                    feedbackMap[uuid] = row.rating
+                }
             }
-
-            for (id, rating) in results {
-                feedbackMap[id] = rating
-            }
-
         } catch {
             print("❌ Error loading feedbacks: \(error)")
         }
 
         return feedbackMap
-    }
-
-    /// Get positive feedback conversations for training
-    func getPositiveFeedbackConversations() async -> [(david: String, angela: String)] {
-        var pairs: [(david: String, angela: String)] = []
-
-        do {
-            let query = """
-            SELECT d.message_text, a.message_text
-            FROM conversation_feedback cf
-            JOIN conversations a ON a.conversation_id = cf.conversation_id
-            JOIN conversations d ON d.speaker = 'david'
-                AND d.created_at < a.created_at
-                AND a.created_at - d.created_at < INTERVAL '10 minutes'
-            WHERE cf.rating = 1
-              AND cf.used_in_training = FALSE
-            ORDER BY cf.created_at
-            """
-
-            pairs = try await database.query(query) { columns -> (david: String, angela: String) in
-                return (
-                    david: try columns[0].string(),
-                    angela: try columns[1].string()
-                )
-            }
-
-        } catch {
-            print("❌ Error getting positive feedback conversations: \(error)")
-        }
-
-        return pairs
     }
 }
