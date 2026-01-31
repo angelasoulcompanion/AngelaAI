@@ -15,6 +15,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import db
 from routers import (
     chat,
+    consciousness,
+    control_center,
     conversations,
     dashboard,
     diary,
@@ -70,6 +72,8 @@ async def health_check():
 
 # Register all routers
 app.include_router(chat.router)
+app.include_router(consciousness.router)
+app.include_router(control_center.router)
 app.include_router(dashboard.router)
 app.include_router(emotions.router)
 app.include_router(conversations.router)

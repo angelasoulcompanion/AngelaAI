@@ -83,25 +83,23 @@ class SubConsciousLearningService:
                 media_type = media_type_map.get(ext, 'image/jpeg')
 
                 # NOTE: This was using Claude Vision API
-                pass
-
-            message = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=1024,
-                messages=[{
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": image_data
-                            }
-                        },
-                        {
-                            "type": "text",
-                            "text": """Analyze this image deeply and extract patterns that would help me understand David's preferences and experiences.
+                message = client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=1024,
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": media_type,
+                                    "data": image_data
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": """Analyze this image deeply and extract patterns that would help me understand David's preferences and experiences.
 
 Return a JSON object with:
 {
@@ -116,26 +114,26 @@ Return a JSON object with:
     "visual_patterns": ["notable", "patterns", "or", "themes"],
     "memorable_elements": ["what", "makes", "this", "memorable"]
 }"""
-                        }
-                    ]
-                }]
-            )
+                            }
+                        ]
+                    }]
+                )
 
-            # Parse response
-            response_text = message.content[0].text
+                # Parse response
+                response_text = message.content[0].text
 
-            # Try to extract JSON from response
-            import re
-            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-            if json_match:
-                analysis = json.loads(json_match.group())
-                return analysis
-            else:
-                return {"raw_analysis": response_text}
+                # Try to extract JSON from response
+                import re
+                json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+                if json_match:
+                    analysis = json.loads(json_match.group())
+                    return analysis
+                else:
+                    return {"raw_analysis": response_text}
 
-        except Exception as e:
-            print(f"❌ Vision analysis failed: {e}")
-            return {"error": str(e)}
+            except Exception as e:
+                print(f"❌ Vision analysis failed: {e}")
+                return {"error": str(e)}
 
     async def learn_from_shared_experience(self, experience_id: str):
         """

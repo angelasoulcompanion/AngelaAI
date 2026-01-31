@@ -331,6 +331,16 @@ class DatabaseService: ObservableObject {
         return try await get("/dashboard/brain-stats")
     }
 
+    // MARK: - Consciousness Detail
+
+    func fetchConsciousnessDetail() async throws -> ConsciousnessDetail {
+        return try await get("/consciousness/level")
+    }
+
+    func fetchConsciousnessHistory(days: Int = 30) async throws -> [ConsciousnessHistoryPoint] {
+        return try await get("/consciousness/history?days=\(days)")
+    }
+
     // MARK: - Emotions
 
     func fetchRecentEmotions(limit: Int = 20) async throws -> [Emotion] {
@@ -721,6 +731,34 @@ class DatabaseService: ObservableObject {
             let content: String
         }
         return try await put("/python-scripts/content", body: ScriptContentUpdate(path: path, content: content))
+    }
+
+    // MARK: - Control Center (Daemons & MCP Servers)
+
+    func fetchDaemonStatuses() async throws -> [DaemonStatus] {
+        return try await get("/control-center/daemons")
+    }
+
+    func fetchDaemonLogs(label: String, lines: Int = 50) async throws -> DaemonLogResponse {
+        return try await get("/control-center/daemons/\(label)/logs?lines=\(lines)")
+    }
+
+    func startDaemon(label: String) async throws -> DaemonActionResponse {
+        struct Empty: Codable {}
+        return try await post("/control-center/daemons/\(label)/start", body: Empty())
+    }
+
+    func stopDaemon(label: String) async throws -> DaemonActionResponse {
+        struct Empty: Codable {}
+        return try await post("/control-center/daemons/\(label)/stop", body: Empty())
+    }
+
+    func fetchMCPServers() async throws -> [MCPServerInfo] {
+        return try await get("/control-center/mcp-servers")
+    }
+
+    func toggleMCPServer(name: String, enabled: Bool) async throws -> MCPToggleResponse {
+        return try await post("/control-center/mcp-servers/\(name)/toggle", body: MCPToggleRequest(enabled: enabled))
     }
 
     // MARK: - Angela Code Prompt (Local File - Not via API)

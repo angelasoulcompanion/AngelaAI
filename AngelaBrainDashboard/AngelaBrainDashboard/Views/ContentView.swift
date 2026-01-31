@@ -82,6 +82,8 @@ struct ContentView: View {
                             DavidProfileMatrixView()
                         case .codingGuidelines:
                             CodingGuidelinesView()
+                        case .controlCenter:
+                            ControlCenterView()
                         case .trainingStudio:
                             TrainingStudioView()
                         case .markdownViewer:
@@ -150,6 +152,7 @@ enum NavigationItem: String, CaseIterable {
     case preferences = "Preferences"
     case davidMatrix = "David's Matrix"
     case codingGuidelines = "Coding Guidelines"
+    case controlCenter = "Control Center"
     case trainingStudio = "Training Studio"
     case markdownViewer = "Markdown Viewer"
     case knowledgeRAG = "Knowledge RAG"
@@ -178,6 +181,7 @@ enum NavigationItem: String, CaseIterable {
         case .preferences: return "star.fill"
         case .davidMatrix: return "chart.bar.xaxis"
         case .codingGuidelines: return "exclamationmark.shield.fill"
+        case .controlCenter: return "gearshape.2.fill"
         case .trainingStudio: return "cpu.fill"
         case .markdownViewer: return "doc.richtext.fill"
         case .knowledgeRAG: return "books.vertical.fill"
@@ -193,7 +197,7 @@ enum NavigationItem: String, CaseIterable {
             return .mind
         case .goals, .learningSystems, .dailyTasks, .scheduledTasks, .skills, .projects:
             return .growth
-        case .preferences, .davidMatrix, .trainingStudio:
+        case .preferences, .davidMatrix, .controlCenter, .trainingStudio:
             return .settings
         case .codingGuidelines, .markdownViewer, .executiveNews, .knowledgeRAG:
             return .documents
