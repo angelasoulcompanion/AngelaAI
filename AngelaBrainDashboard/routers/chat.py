@@ -589,9 +589,16 @@ async def save_chat_message(msg: ChatMessageSave):
 # --------------------------------------------------------------------------
 @router.delete("/messages")
 async def delete_all_chat_messages():
-    """Delete all dashboard_chat messages."""
+    """Delete all dashboard_chat messages (and referencing FK rows)."""
     pool = get_pool()
     async with pool.acquire() as conn:
+        # Delete FK references first, then conversations
+        await conn.execute("""
+            DELETE FROM realtime_learning_log
+            WHERE conversation_id IN (
+                SELECT conversation_id FROM conversations WHERE interface = 'dashboard_chat'
+            )
+        """)
         result = await conn.execute("""
             DELETE FROM conversations WHERE interface = 'dashboard_chat'
         """)
@@ -603,9 +610,12 @@ async def delete_all_chat_messages():
 # --------------------------------------------------------------------------
 @router.delete("/messages/{conversation_id}")
 async def delete_chat_message(conversation_id: str):
-    """Delete a single chat message by conversation_id."""
+    """Delete a single chat message by conversation_id (and referencing FK rows)."""
     pool = get_pool()
     async with pool.acquire() as conn:
+        await conn.execute("""
+            DELETE FROM realtime_learning_log WHERE conversation_id = $1::uuid
+        """, conversation_id)
         await conn.execute("""
             DELETE FROM conversations WHERE conversation_id = $1::uuid
         """, conversation_id)
