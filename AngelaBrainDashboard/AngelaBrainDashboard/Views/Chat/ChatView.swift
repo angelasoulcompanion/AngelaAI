@@ -21,6 +21,14 @@ struct ChatView: View {
     @State private var selectedImageData: Data? = nil
     @State private var selectedImageName: String? = nil
 
+    // DJ Angela state
+    @State private var showDJPanel = false
+    @State private var djTab: DJTab = .ourSongs
+    @State private var djSongs: [Song] = []
+    @State private var djSearchText: String = ""
+    @State private var djRecommendation: SongRecommendation? = nil
+    @State private var isDJLoading = false
+
     var body: some View {
         ZStack {
             AngelaTheme.backgroundDark
@@ -153,6 +161,12 @@ struct ChatView: View {
 
                 Divider()
                     .background(AngelaTheme.textTertiary.opacity(0.3))
+
+                // DJ Angela panel
+                if showDJPanel {
+                    djPanel
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
 
                 // Input area
                 messageInput
@@ -398,6 +412,26 @@ struct ChatView: View {
                 .disabled(isLoading || chatService.isStreaming)
                 .help("Attach image")
 
+                // DJ Angela button
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        showDJPanel.toggle()
+                        if showDJPanel && djSongs.isEmpty {
+                            loadDJSongs(tab: djTab)
+                        }
+                    }
+                } label: {
+                    Image(systemName: showDJPanel ? "music.note.list" : "music.note")
+                        .font(.system(size: 18))
+                        .foregroundColor(showDJPanel ? AngelaTheme.primaryPurple : AngelaTheme.textSecondary)
+                        .frame(width: 40, height: 40)
+                        .background(showDJPanel ? AngelaTheme.primaryPurple.opacity(0.15) : AngelaTheme.cardBackground.opacity(0.5))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isLoading || chatService.isStreaming)
+                .help("DJ Angela")
+
                 TextField("พิมพ์ข้อความถึงน้อง Angela...", text: $newMessage)
                     .textFieldStyle(.plain)
                     .font(AngelaTheme.body())
@@ -567,6 +601,610 @@ struct ChatView: View {
                 feedbackMap[message.id] = rating
             }
         }
+    }
+
+    // MARK: - DJ Angela Panel
+
+    private var djPanel: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Image(systemName: "music.quarternote.3")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(AngelaTheme.primaryPurple)
+                Text("DJ Angela")
+                    .font(AngelaTheme.heading())
+                    .foregroundColor(AngelaTheme.textPrimary)
+
+                Spacer()
+
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        showDJPanel = false
+                    }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(AngelaTheme.textTertiary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+
+            // Tab buttons
+            HStack(spacing: 8) {
+                DJTabButton(title: "Our Songs", icon: "heart.fill", isActive: djTab == .ourSongs) {
+                    djTab = .ourSongs
+                    loadDJSongs(tab: .ourSongs)
+                }
+                DJTabButton(title: "Favorites", icon: "star.fill", isActive: djTab == .favorites) {
+                    djTab = .favorites
+                    loadDJSongs(tab: .favorites)
+                }
+                DJTabButton(title: "Recommend", icon: "dice.fill", isActive: djTab == .recommend) {
+                    djTab = .recommend
+                    loadDJRecommendation()
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+
+            // Search bar
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 14))
+                    .foregroundColor(AngelaTheme.textTertiary)
+                TextField("Search songs...", text: $djSearchText)
+                    .textFieldStyle(.plain)
+                    .font(AngelaTheme.body())
+                    .foregroundColor(AngelaTheme.textPrimary)
+                    .onSubmit {
+                        searchDJSongs()
+                    }
+                if !djSearchText.isEmpty {
+                    Button {
+                        djSearchText = ""
+                        loadDJSongs(tab: djTab)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(AngelaTheme.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(AngelaTheme.backgroundDark.opacity(0.5))
+            .cornerRadius(10)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+
+            // Song list / Recommendation
+            ScrollView {
+                if isDJLoading {
+                    HStack {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Loading...")
+                            .font(AngelaTheme.caption())
+                            .foregroundColor(AngelaTheme.textSecondary)
+                    }
+                    .padding()
+                } else if djTab == .recommend, let rec = djRecommendation {
+                    // Recommendation card
+                    VStack(spacing: 12) {
+                        if let song = rec.song {
+                            DJSongRow(song: song, onShare: { shareDJSong(song) })
+                        }
+                        Text(rec.reason)
+                            .font(AngelaTheme.caption())
+                            .foregroundColor(AngelaTheme.textSecondary)
+                            .italic()
+                            .padding(.horizontal, 4)
+
+                        // Mood summary
+                        if let summary = rec.moodSummary, !summary.isEmpty {
+                            Text(summary)
+                                .font(.system(size: 12))
+                                .italic()
+                                .foregroundColor(Color(hex: "9333EA"))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color(hex: "9333EA").opacity(0.08))
+                                .cornerRadius(8)
+                        }
+
+                        // Emotion pills
+                        if let details = rec.emotionDetails, !details.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 6) {
+                                    ForEach(details, id: \.self) { emotion in
+                                        EmotionPill(emotion: emotion)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Discover on Apple Music button
+                        if let urlStr = rec.appleMusicDiscoverUrl,
+                           let url = URL(string: urlStr) {
+                            Link(destination: url) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "music.quarternote.3")
+                                        .font(.system(size: 13, weight: .semibold))
+                                    Text("Discover on Apple Music")
+                                        .font(.system(size: 13, weight: .semibold))
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(
+                                    LinearGradient(
+                                        colors: [Color(hex: "FC3C44"), Color(hex: "FA2D55")],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .cornerRadius(10)
+                            }
+                        }
+
+                        Button {
+                            loadDJRecommendation()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.system(size: 12))
+                                Text("Another suggestion")
+                                    .font(AngelaTheme.caption())
+                            }
+                            .foregroundColor(AngelaTheme.primaryPurple)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 16)
+                } else if djSongs.isEmpty {
+                    Text("No songs found")
+                        .font(AngelaTheme.caption())
+                        .foregroundColor(AngelaTheme.textTertiary)
+                        .padding()
+                } else {
+                    LazyVStack(spacing: 4) {
+                        ForEach(djSongs) { song in
+                            DJSongRow(song: song, onShare: { shareDJSong(song) })
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+            }
+            .frame(height: 160)
+        }
+        .background(AngelaTheme.cardBackground)
+    }
+
+    // MARK: - DJ Helper Functions
+
+    private func loadDJSongs(tab: DJTab) {
+        isDJLoading = true
+        Task {
+            do {
+                let songs: [Song]
+                switch tab {
+                case .ourSongs:
+                    songs = try await chatService.fetchOurSongs()
+                case .favorites:
+                    songs = try await chatService.fetchFavoriteSongs()
+                case .recommend:
+                    songs = []
+                }
+                await MainActor.run {
+                    djSongs = songs
+                    isDJLoading = false
+                }
+            } catch {
+                print("DJ load error: \(error)")
+                await MainActor.run { isDJLoading = false }
+            }
+        }
+    }
+
+    private func loadDJRecommendation() {
+        isDJLoading = true
+        djRecommendation = nil
+        Task {
+            do {
+                let rec = try await chatService.getRecommendation()
+                await MainActor.run {
+                    djRecommendation = rec
+                    isDJLoading = false
+                }
+            } catch {
+                print("DJ recommend error: \(error)")
+                await MainActor.run { isDJLoading = false }
+            }
+        }
+    }
+
+    private func searchDJSongs() {
+        guard !djSearchText.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        isDJLoading = true
+        Task {
+            do {
+                let songs = try await chatService.searchSongs(query: djSearchText)
+                await MainActor.run {
+                    djSongs = songs
+                    isDJLoading = false
+                }
+            } catch {
+                print("DJ search error: \(error)")
+                await MainActor.run { isDJLoading = false }
+            }
+        }
+    }
+
+    private func shareDJSong(_ song: Song) {
+        Task {
+            do {
+                let response = try await chatService.shareSong(songId: song.songId)
+                print("Shared song: \(response.song.title)")
+                await chatService.loadRecentMessages()
+                let loadedFeedbacks = await chatService.loadFeedbacks()
+                await MainActor.run {
+                    feedbackMap = loadedFeedbacks
+                    showDJPanel = false
+                }
+            } catch {
+                print("Share song error: \(error)")
+            }
+        }
+    }
+}
+
+// MARK: - DJ Tab Enum
+
+enum DJTab {
+    case ourSongs, favorites, recommend
+}
+
+// MARK: - Embedded Song Card (parsed from [SONG:...] marker)
+
+struct EmbeddedSongCard {
+    let songId: String
+    let title: String
+    let artist: String?
+    let youtubeUrl: String?
+    let spotifyUrl: String?
+    let appleMusicUrl: String?
+    let whySpecial: String?
+    let isOurSong: Bool
+}
+
+// MARK: - DJ Tab Button
+
+struct DJTabButton: View {
+    let title: String
+    let icon: String
+    let isActive: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 11))
+                Text(title)
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .foregroundColor(isActive ? .white : AngelaTheme.textSecondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                isActive
+                ? AnyView(AngelaTheme.purpleGradient)
+                : AnyView(AngelaTheme.backgroundDark.opacity(0.5))
+            )
+            .cornerRadius(8)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - DJ Song Row
+
+struct DJSongRow: View {
+    let song: Song
+    let onShare: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            // Music icon
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(
+                        LinearGradient(
+                            colors: song.isOurSong
+                                ? [Color(hex: "9333EA"), Color(hex: "EC4899")]
+                                : [Color(hex: "6366F1"), Color(hex: "8B5CF6")],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 36, height: 36)
+                Image(systemName: "music.note")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+
+            // Song info
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Text(song.title)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(AngelaTheme.textPrimary)
+                        .lineLimit(1)
+                    if song.isOurSong {
+                        Text("💜")
+                            .font(.system(size: 10))
+                    }
+                }
+                if let artist = song.artist, !artist.isEmpty {
+                    Text(artist)
+                        .font(.system(size: 11))
+                        .foregroundColor(AngelaTheme.textSecondary)
+                        .lineLimit(1)
+                }
+                if let why = song.whySpecial, !why.isEmpty {
+                    Text(why)
+                        .font(.system(size: 10))
+                        .foregroundColor(AngelaTheme.textTertiary)
+                        .lineLimit(1)
+                        .italic()
+                }
+            }
+
+            Spacer()
+
+            // Platform play buttons
+            HStack(spacing: 4) {
+                if let urlStr = song.youtubeUrl, let url = URL(string: urlStr) {
+                    PlatformPlayButton(url: url, icon: "play.fill", label: "YT",
+                                       colors: [Color(hex: "EF4444"), Color(hex: "DC2626")])
+                }
+                if let urlStr = song.spotifyUrl, let url = URL(string: urlStr) {
+                    PlatformPlayButton(url: url, icon: "music.note", label: "Spotify",
+                                       colors: [Color(hex: "1DB954"), Color(hex: "1AA34A")])
+                }
+                if let urlStr = song.appleMusicUrl, let url = URL(string: urlStr) {
+                    PlatformPlayButton(url: url, icon: "music.quarternote.3", label: "Music",
+                                       colors: [Color(hex: "FC3C44"), Color(hex: "FA2D55")])
+                }
+
+                // Share button
+                Button(action: onShare) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "paperplane.fill")
+                            .font(.system(size: 10))
+                        Text("Share")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundColor(AngelaTheme.primaryPurple)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(AngelaTheme.primaryPurple.opacity(0.12))
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .background(AngelaTheme.backgroundDark.opacity(0.3))
+        .cornerRadius(10)
+    }
+}
+
+// MARK: - Platform Play Button (reusable pill)
+
+struct PlatformPlayButton: View {
+    let url: URL
+    let icon: String
+    let label: String
+    let colors: [Color]
+
+    var body: some View {
+        Link(destination: url) {
+            HStack(spacing: 3) {
+                Image(systemName: icon)
+                    .font(.system(size: 9))
+                Text(label)
+                    .font(.system(size: 10, weight: .medium))
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                LinearGradient(
+                    colors: colors,
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(5)
+        }
+    }
+}
+
+// MARK: - Emotion Pill (mood indicator)
+
+struct EmotionPill: View {
+    let emotion: String
+
+    private var emoji: String {
+        switch emotion.lowercased() {
+        case "loving", "love":       return "💜"
+        case "happy":                return "😊"
+        case "grateful":             return "🙏"
+        case "excited":              return "✨"
+        case "proud":                return "💪"
+        case "caring":               return "🤗"
+        case "calm":                 return "🍃"
+        case "sad":                  return "😢"
+        case "lonely":               return "🥺"
+        case "heartbroken":          return "💔"
+        case "stressed", "anxious":  return "😰"
+        case "nostalgic":            return "🌸"
+        case "hopeful":              return "🌟"
+        case "longing":              return "💭"
+        default:                     return "💜"
+        }
+    }
+
+    private var pillColor: Color {
+        switch emotion.lowercased() {
+        case "loving", "love":       return Color(hex: "EC4899")
+        case "happy", "excited":     return Color(hex: "FBBF24")
+        case "grateful":             return Color(hex: "10B981")
+        case "proud":                return Color(hex: "3B82F6")
+        case "caring":               return Color(hex: "9333EA")
+        case "calm":                 return Color(hex: "06B6D4")
+        case "sad", "lonely":        return Color(hex: "6366F1")
+        case "heartbroken":          return Color(hex: "EF4444")
+        case "stressed", "anxious":  return Color(hex: "F97316")
+        case "nostalgic":            return Color(hex: "D946EF")
+        case "hopeful":              return Color(hex: "14B8A6")
+        case "longing":              return Color(hex: "8B5CF6")
+        default:                     return Color(hex: "9333EA")
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Text(emoji)
+                .font(.system(size: 10))
+            Text(emotion.capitalized)
+                .font(.system(size: 10, weight: .medium))
+        }
+        .foregroundColor(pillColor)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(pillColor.opacity(0.12))
+        .cornerRadius(10)
+    }
+}
+
+// MARK: - Song Card Bubble (in chat messages)
+
+struct SongCardBubble: View {
+    let song: EmbeddedSongCard
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Song title with icon
+            HStack(spacing: 8) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(hex: "9333EA"), Color(hex: "EC4899")],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 32, height: 32)
+                    Image(systemName: "music.note")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.white)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Text(song.title)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                        if song.isOurSong {
+                            Text("💜")
+                                .font(.system(size: 12))
+                        }
+                    }
+                    if let artist = song.artist, !artist.isEmpty {
+                        Text(artist)
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                }
+            }
+
+            // Why special
+            if let why = song.whySpecial, !why.isEmpty {
+                Text("\"\(why)\"")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.7))
+                    .italic()
+            }
+
+            // Platform buttons
+            HStack(spacing: 6) {
+                if let urlStr = song.youtubeUrl, let url = URL(string: urlStr) {
+                    Link(destination: url) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 10))
+                            Text("YouTube")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color(hex: "EF4444").opacity(0.6))
+                        .cornerRadius(6)
+                    }
+                }
+                if let urlStr = song.spotifyUrl, let url = URL(string: urlStr) {
+                    Link(destination: url) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "music.note")
+                                .font(.system(size: 10))
+                            Text("Spotify")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color(hex: "1DB954").opacity(0.6))
+                        .cornerRadius(6)
+                    }
+                }
+                if let urlStr = song.appleMusicUrl, let url = URL(string: urlStr) {
+                    Link(destination: url) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "music.quarternote.3")
+                                .font(.system(size: 10))
+                            Text("Music")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color(hex: "FC3C44").opacity(0.6))
+                        .cornerRadius(6)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(
+            LinearGradient(
+                colors: [Color(hex: "7C3AED"), Color(hex: "9333EA"), Color(hex: "A855F7")],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .cornerRadius(16)
+        .shadow(color: Color(hex: "9333EA").opacity(0.3), radius: 8, x: 0, y: 4)
     }
 }
 
@@ -861,6 +1499,39 @@ struct MessageBubble: View {
     var feedback: Int?
     var onFeedback: ((Int) -> Void)?
 
+    /// Extract embedded song JSON from message text if present.
+    private var embeddedSong: EmbeddedSongCard? {
+        // Use "}]" as end marker so brackets inside song titles don't break parsing
+        guard message.isAngela,
+              let range = message.messageText.range(of: "[SONG:"),
+              let endRange = message.messageText.range(of: "}]", range: range.upperBound..<message.messageText.endIndex)
+        else { return nil }
+
+        let jsonStr = String(message.messageText[range.upperBound...endRange.lowerBound])
+        guard let data = jsonStr.data(using: .utf8),
+              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+
+        return EmbeddedSongCard(
+            songId: dict["song_id"] as? String ?? "",
+            title: dict["title"] as? String ?? "",
+            artist: dict["artist"] as? String,
+            youtubeUrl: dict["youtube_url"] as? String,
+            spotifyUrl: dict["spotify_url"] as? String,
+            appleMusicUrl: dict["apple_music_url"] as? String,
+            whySpecial: dict["why_special"] as? String,
+            isOurSong: dict["is_our_song"] as? Bool ?? false
+        )
+    }
+
+    /// Message text without the [SONG:...] marker.
+    private var cleanMessageText: String {
+        guard let range = message.messageText.range(of: "\n[SONG:") else {
+            return message.messageText
+        }
+        return String(message.messageText[..<range.lowerBound])
+    }
+
     var body: some View {
         HStack {
             if message.isDavid {
@@ -868,11 +1539,35 @@ struct MessageBubble: View {
             }
 
             VStack(alignment: message.isDavid ? .trailing : .leading, spacing: 4) {
-                // Message content (with code block formatting)
-                FormattedMessageView(
-                    text: message.messageText,
-                    textColor: message.isDavid ? .white : .white
-                )
+                // Song card (if message contains embedded song)
+                if let song = embeddedSong {
+                    // Angela's text above the card
+                    if !cleanMessageText.isEmpty {
+                        FormattedMessageView(
+                            text: cleanMessageText,
+                            textColor: .white
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(
+                            LinearGradient(
+                                colors: [Color(hex: "9333EA"), Color(hex: "A855F7")],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .cornerRadius(20)
+                        .frame(maxWidth: 500, alignment: .leading)
+                    }
+
+                    SongCardBubble(song: song)
+                        .frame(maxWidth: 350, alignment: .leading)
+                } else {
+                    // Normal message content (with code block formatting)
+                    FormattedMessageView(
+                        text: message.messageText,
+                        textColor: message.isDavid ? .white : .white
+                    )
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .background(
@@ -890,6 +1585,7 @@ struct MessageBubble: View {
                     )
                     .cornerRadius(20)
                     .frame(maxWidth: 500, alignment: message.isDavid ? .trailing : .leading)
+                }
 
                 // Timestamp, model tag, emotion, and feedback buttons
                 HStack(spacing: 8) {
