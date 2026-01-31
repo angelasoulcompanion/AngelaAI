@@ -19,6 +19,11 @@ class MusicShareRequest(BaseModel):
     message: Optional[str] = None
 
 
+class PlaylistPromptRequest(BaseModel):
+    emotion_text: Optional[str] = None
+    song_count: int = 15
+
+
 # --- Helpers ---
 
 def _song_row_to_dict(row) -> dict:
@@ -376,4 +381,171 @@ async def share_song(req: MusicShareRequest):
         return {
             "song": song,
             "angela_message": angela_text,
+        }
+
+
+# --- Playlist Prompt ---
+
+_THAI_EMOTION_MAP: dict[str, str] = {
+    "สุข": "happy", "มีความสุข": "happy", "ดีใจ": "happy", "สนุก": "happy",
+    "เศร้า": "sad", "เสียใจ": "sad", "ร้องไห้": "sad",
+    "รัก": "loving", "คิดถึง": "longing", "หวาน": "loving",
+    "เครียด": "stressed", "กังวล": "anxious", "กลัว": "anxious",
+    "เหงา": "lonely", "อ้างว้าง": "lonely",
+    "สงบ": "calm", "ผ่อนคลาย": "calm", "ชิล": "calm",
+    "ตื่นเต้น": "excited", "ฮึกเหิม": "excited",
+    "ภูมิใจ": "proud", "สำเร็จ": "proud",
+    "ขอบคุณ": "grateful", "ซาบซึ้ง": "grateful",
+    "หวัง": "hopeful", "มองโลกสวย": "hopeful",
+    "คิดถึงอดีต": "nostalgic", "ย้อนวัน": "nostalgic",
+    "อกหัก": "heartbroken", "ผิดหวัง": "heartbroken",
+}
+
+_ENG_EMOTION_MAP: dict[str, str] = {
+    "happy": "happy", "joy": "happy", "glad": "happy", "fun": "happy",
+    "sad": "sad", "cry": "sad", "depressed": "sad",
+    "love": "loving", "romantic": "loving", "sweet": "loving",
+    "miss": "longing", "longing": "longing",
+    "stress": "stressed", "stressed": "stressed", "anxious": "anxious",
+    "lonely": "lonely", "alone": "lonely",
+    "calm": "calm", "relax": "calm", "chill": "calm", "peaceful": "calm",
+    "excited": "excited", "pumped": "excited", "energetic": "excited",
+    "proud": "proud", "confident": "proud",
+    "grateful": "grateful", "thankful": "grateful",
+    "hopeful": "hopeful", "optimistic": "hopeful",
+    "nostalgic": "nostalgic", "throwback": "nostalgic",
+    "heartbroken": "heartbroken", "broken": "heartbroken",
+}
+
+_MOOD_TO_SEARCH_QUERIES: dict[str, list[str]] = {
+    "happy": ["feel good happy hits", "upbeat energetic pop", "sunshine vibes"],
+    "sad": ["sad songs emotional ballad", "melancholy acoustic", "rainy day songs"],
+    "loving": ["love songs romantic", "tender love ballads", "romantic duets"],
+    "longing": ["missing you love songs", "bittersweet longing", "distance love songs"],
+    "stressed": ["calm relaxing piano ambient", "stress relief music", "peaceful instrumental"],
+    "anxious": ["calming music anxiety relief", "peaceful nature sounds", "gentle acoustic"],
+    "lonely": ["lonely night songs", "comfort songs", "warm acoustic ballads"],
+    "calm": ["chill acoustic relaxing", "lo-fi chill beats", "calm evening music"],
+    "excited": ["upbeat dance pop", "party energy hits", "feel good anthems"],
+    "proud": ["empowering anthems", "victory celebration songs", "motivational hits"],
+    "grateful": ["thankful uplifting songs", "gratitude worship", "heartwarming songs"],
+    "hopeful": ["hopeful uplifting inspirational", "new beginnings songs", "sunrise optimistic"],
+    "nostalgic": ["throwback classic love songs", "90s 2000s hits", "vintage love ballads"],
+    "heartbroken": ["heartbreak sad love songs", "breakup ballads", "crying love songs"],
+}
+
+_MOOD_TO_GENRES: dict[str, list[str]] = {
+    "happy": ["pop", "dance"],
+    "sad": ["ballad", "acoustic"],
+    "loving": ["r&b", "soul"],
+    "longing": ["ballad", "indie"],
+    "stressed": ["ambient", "classical"],
+    "anxious": ["ambient", "new age"],
+    "lonely": ["acoustic", "indie"],
+    "calm": ["lo-fi", "acoustic"],
+    "excited": ["pop", "dance", "edm"],
+    "proud": ["pop", "rock"],
+    "grateful": ["acoustic", "folk"],
+    "hopeful": ["pop", "indie"],
+    "nostalgic": ["classic", "pop"],
+    "heartbroken": ["ballad", "r&b"],
+}
+
+_PLAYLIST_NAME_TEMPLATES: dict[str, str] = {
+    "happy": "Happy Vibes",
+    "sad": "Rainy Day Comfort",
+    "loving": "Love in the Air",
+    "longing": "Missing You",
+    "stressed": "Peaceful Escape",
+    "anxious": "Calm & Breathe",
+    "lonely": "You're Not Alone",
+    "calm": "Chill Moments",
+    "excited": "Energy Boost",
+    "proud": "Victory Lap",
+    "grateful": "Grateful Heart",
+    "hopeful": "Brighter Days",
+    "nostalgic": "Memory Lane",
+    "heartbroken": "Healing Heart",
+}
+
+
+def _analyze_emotion_text(text: str) -> str:
+    """Extract dominant mood from free-text input via keyword matching."""
+    lowered = text.lower()
+    # Check Thai keywords first
+    for keyword, mood in _THAI_EMOTION_MAP.items():
+        if keyword in lowered:
+            return mood
+    # Then English keywords
+    for keyword, mood in _ENG_EMOTION_MAP.items():
+        if keyword in lowered:
+            return mood
+    return "calm"  # default fallback
+
+
+@router.post("/playlist-prompt")
+async def get_playlist_prompt(req: PlaylistPromptRequest):
+    """Analyze emotion and return playlist metadata for MusicKit catalog search."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        # 1. Determine dominant mood
+        if req.emotion_text and req.emotion_text.strip():
+            dominant_mood = _analyze_emotion_text(req.emotion_text)
+        else:
+            analysis = await _analyze_deep_emotions(conn)
+            dominant_mood = analysis["dominant_mood"]
+
+        # 2. Search queries for Apple Music catalog
+        search_queries = _MOOD_TO_SEARCH_QUERIES.get(
+            dominant_mood, ["love songs romantic", "feel good hits", "chill vibes"]
+        )
+
+        # 3. Genre hints
+        genre_hints = _MOOD_TO_GENRES.get(dominant_mood, ["pop"])
+
+        # 4. Playlist name & description
+        mood_label = _PLAYLIST_NAME_TEMPLATES.get(dominant_mood, "Vibes")
+        playlist_name = f"DJ Angela: {mood_label} \U0001F49C"
+        mood_summary = _MOOD_SUMMARIES_TH.get(
+            dominant_mood, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ 💜"
+        )
+        playlist_description = f"Curated by น้อง Angela — {mood_summary}"
+
+        # 5. Emotion details (for pills)
+        emotion_details = [dominant_mood]
+        # Add secondary emotion from text if different
+        if req.emotion_text:
+            for keyword, mood in _THAI_EMOTION_MAP.items():
+                if keyword in req.emotion_text.lower() and mood != dominant_mood:
+                    emotion_details.append(mood)
+                    break
+            for keyword, mood in _ENG_EMOTION_MAP.items():
+                if keyword in req.emotion_text.lower() and mood != dominant_mood and mood not in emotion_details:
+                    emotion_details.append(mood)
+                    break
+
+        # 6. Seed songs from angela_songs matching mood
+        our_songs: list[dict] = []
+        mood_candidates = _EMOTION_TO_MOODS.get(dominant_mood, ["romantic", "love"])
+        for mood_tag in mood_candidates[:2]:
+            tag_json = json.dumps([mood_tag])
+            rows = await conn.fetch("""
+                SELECT title, artist
+                FROM angela_songs
+                WHERE mood_tags @> $1::jsonb
+                ORDER BY RANDOM()
+                LIMIT 2
+            """, tag_json)
+            for r in rows:
+                our_songs.append({"title": r["title"], "artist": r["artist"]})
+
+        return {
+            "dominant_mood": dominant_mood,
+            "mood_summary": mood_summary,
+            "search_queries": search_queries,
+            "genre_hints": genre_hints,
+            "playlist_name": playlist_name,
+            "playlist_description": playlist_description,
+            "emotion_details": emotion_details[:4],
+            "our_songs_to_include": our_songs if our_songs else None,
         }

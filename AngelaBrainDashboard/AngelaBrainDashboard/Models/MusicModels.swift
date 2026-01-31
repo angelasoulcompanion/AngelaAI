@@ -59,3 +59,42 @@ struct MusicShareResponse: Codable {
     let song: Song
     let angelaMessage: String
 }
+
+// MARK: - Playlist Prompt Request (encoded — needs CodingKeys for snake_case output)
+
+struct PlaylistPromptRequest: Codable {
+    let emotionText: String?
+    let songCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case emotionText = "emotion_text"
+        case songCount = "song_count"
+    }
+}
+
+// MARK: - Playlist Prompt Response (decoded via .convertFromSnakeCase — NO CodingKeys)
+
+struct PlaylistPromptResponse: Codable {
+    let dominantMood: String
+    let moodSummary: String
+    let searchQueries: [String]
+    let genreHints: [String]?
+    let playlistName: String
+    let playlistDescription: String
+    let emotionDetails: [String]?
+    let ourSongsToInclude: [PlaylistSeedSong]?
+}
+
+struct PlaylistSeedSong: Codable {
+    let title: String
+    let artist: String
+}
+
+// MARK: - Playlist Generation State
+
+enum PlaylistGenerationState: Equatable {
+    case idle
+    case analyzing
+    case ready
+    case error(String)
+}

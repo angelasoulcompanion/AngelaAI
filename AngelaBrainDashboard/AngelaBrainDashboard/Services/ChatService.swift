@@ -686,6 +686,35 @@ class ChatService: ObservableObject {
         }
     }
 
+    // MARK: - Music (DJ Angela)
+
+    func fetchFavoriteSongs(limit: Int = 20) async throws -> [Song] {
+        return try await network.get("/api/music/favorites?limit=\(limit)")
+    }
+
+    func fetchOurSongs() async throws -> [Song] {
+        return try await network.get("/api/music/our-songs")
+    }
+
+    func searchSongs(query: String) async throws -> [Song] {
+        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        return try await network.get("/api/music/search?q=\(encoded)")
+    }
+
+    func getRecommendation() async throws -> SongRecommendation {
+        return try await network.get("/api/music/recommend")
+    }
+
+    func shareSong(songId: String, message: String? = nil) async throws -> MusicShareResponse {
+        let body = MusicShareRequest(songId: songId, message: message)
+        return try await network.post("/api/music/share", body: body)
+    }
+
+    func getPlaylistPrompt(emotionText: String?, songCount: Int = 15) async throws -> PlaylistPromptResponse {
+        let body = PlaylistPromptRequest(emotionText: emotionText, songCount: songCount)
+        return try await network.post("/api/music/playlist-prompt", body: body)
+    }
+
     /// Get all feedbacks for loaded messages (batch query)
     func loadFeedbacks() async -> [UUID: Int] {
         var feedbackMap: [UUID: Int] = [:]

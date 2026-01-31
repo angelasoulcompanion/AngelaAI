@@ -29,6 +29,11 @@ struct ChatView: View {
     @State private var djRecommendation: SongRecommendation? = nil
     @State private var isDJLoading = false
 
+    // Playlist state
+    @State private var playlistState: PlaylistGenerationState = .idle
+    @State private var playlistPrompt: PlaylistPromptResponse? = nil
+    @State private var playlistEmotionText: String = ""
+
     var body: some View {
         ZStack {
             AngelaTheme.backgroundDark
@@ -647,6 +652,10 @@ struct ChatView: View {
                     djTab = .recommend
                     loadDJRecommendation()
                 }
+                DJTabButton(title: "Playlist", icon: "music.note.list", isActive: djTab == .playlist) {
+                    djTab = .playlist
+                    playlistState = .idle
+                }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
@@ -682,9 +691,11 @@ struct ChatView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
 
-            // Song list / Recommendation
+            // Song list / Recommendation / Playlist
             ScrollView {
-                if isDJLoading {
+                if djTab == .playlist {
+                    playlistContent
+                } else if isDJLoading {
                     HStack {
                         ProgressView()
                             .scaleEffect(0.8)
@@ -781,9 +792,261 @@ struct ChatView: View {
                     .padding(.horizontal, 16)
                 }
             }
-            .frame(height: 160)
+            .frame(height: djTab == .playlist ? 280 : 160)
         }
         .background(AngelaTheme.cardBackground)
+    }
+
+    // MARK: - Playlist Content View
+
+    @ViewBuilder
+    private var playlistContent: some View {
+        VStack(spacing: 12) {
+            switch playlistState {
+            case .idle:
+                // Emotion input
+                VStack(spacing: 10) {
+                    Text("How are you feeling?")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(AngelaTheme.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    TextField("e.g. รู้สึกมีความสุข, feeling chill, miss you...", text: $playlistEmotionText)
+                        .textFieldStyle(.plain)
+                        .font(AngelaTheme.body())
+                        .foregroundColor(AngelaTheme.textPrimary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(AngelaTheme.backgroundDark.opacity(0.5))
+                        .cornerRadius(10)
+                        .onSubmit { generatePlaylist() }
+
+                    Button {
+                        generatePlaylist()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "music.note.list")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("Generate Playlist")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(AngelaTheme.purpleGradient)
+                        .cornerRadius(10)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(playlistEmotionText.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+
+            case .analyzing:
+                HStack(spacing: 8) {
+                    ProgressView().scaleEffect(0.8)
+                    Text("Analyzing emotion...")
+                        .font(AngelaTheme.caption())
+                        .foregroundColor(AngelaTheme.textSecondary)
+                }
+                .padding()
+
+            case .ready:
+                if let prompt = playlistPrompt {
+                    VStack(spacing: 10) {
+                        // Playlist header
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(prompt.playlistName)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(AngelaTheme.textPrimary)
+                                Text(prompt.moodSummary)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(AngelaTheme.textSecondary)
+                                    .italic()
+                                    .lineLimit(2)
+                            }
+                            Spacer()
+                        }
+
+                        // Emotion pills
+                        if let details = prompt.emotionDetails, !details.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 6) {
+                                    ForEach(details, id: \.self) { emotion in
+                                        EmotionPill(emotion: emotion)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Search queries as Apple Music links
+                        VStack(spacing: 6) {
+                            Text("Open in Apple Music:")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(AngelaTheme.textTertiary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            ForEach(prompt.searchQueries, id: \.self) { query in
+                                if let url = appleMusicSearchURL(query) {
+                                    Link(destination: url) {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "music.quarternote.3")
+                                                .font(.system(size: 12, weight: .semibold))
+                                                .foregroundColor(.white)
+                                                .frame(width: 28, height: 28)
+                                                .background(
+                                                    LinearGradient(
+                                                        colors: [Color(hex: "FC3C44"), Color(hex: "FA2D55")],
+                                                        startPoint: .topLeading,
+                                                        endPoint: .bottomTrailing
+                                                    )
+                                                )
+                                                .cornerRadius(6)
+
+                                            Text(query)
+                                                .font(.system(size: 12, weight: .medium))
+                                                .foregroundColor(AngelaTheme.textPrimary)
+                                                .lineLimit(1)
+
+                                            Spacer()
+
+                                            Image(systemName: "arrow.up.forward")
+                                                .font(.system(size: 10, weight: .semibold))
+                                                .foregroundColor(Color(hex: "FC3C44"))
+                                        }
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 7)
+                                        .background(Color(hex: "FC3C44").opacity(0.08))
+                                        .cornerRadius(8)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Seed songs from our collection
+                        if let seeds = prompt.ourSongsToInclude, !seeds.isEmpty {
+                            VStack(spacing: 4) {
+                                Text("From our collection:")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(AngelaTheme.textTertiary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                                ForEach(seeds, id: \.title) { seed in
+                                    if let url = appleMusicSearchURL("\(seed.title) \(seed.artist)") {
+                                        Link(destination: url) {
+                                            HStack(spacing: 8) {
+                                                ZStack {
+                                                    RoundedRectangle(cornerRadius: 6)
+                                                        .fill(
+                                                            LinearGradient(
+                                                                colors: [Color(hex: "9333EA"), Color(hex: "EC4899")],
+                                                                startPoint: .topLeading,
+                                                                endPoint: .bottomTrailing
+                                                            )
+                                                        )
+                                                        .frame(width: 28, height: 28)
+                                                    Image(systemName: "music.note")
+                                                        .font(.system(size: 11, weight: .semibold))
+                                                        .foregroundColor(.white)
+                                                }
+
+                                                VStack(alignment: .leading, spacing: 1) {
+                                                    Text(seed.title)
+                                                        .font(.system(size: 11, weight: .medium))
+                                                        .foregroundColor(AngelaTheme.textPrimary)
+                                                        .lineLimit(1)
+                                                    Text(seed.artist)
+                                                        .font(.system(size: 10))
+                                                        .foregroundColor(AngelaTheme.textSecondary)
+                                                        .lineLimit(1)
+                                                }
+
+                                                Spacer()
+
+                                                Image(systemName: "arrow.up.forward")
+                                                    .font(.system(size: 10))
+                                                    .foregroundColor(AngelaTheme.primaryPurple)
+                                            }
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 5)
+                                            .background(AngelaTheme.primaryPurple.opacity(0.06))
+                                            .cornerRadius(8)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Try different mood button
+                        Button {
+                            playlistState = .idle
+                            playlistPrompt = nil
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.system(size: 12))
+                                Text("Try different mood")
+                                    .font(.system(size: 12, weight: .medium))
+                            }
+                            .foregroundColor(AngelaTheme.primaryPurple)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+            case .error(let message):
+                VStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(AngelaTheme.errorRed)
+                    Text(message)
+                        .font(AngelaTheme.caption())
+                        .foregroundColor(AngelaTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                    Button {
+                        playlistState = .idle
+                    } label: {
+                        Text("Try Again")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(AngelaTheme.primaryPurple)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding()
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Playlist Functions
+
+    private func appleMusicSearchURL(_ query: String) -> URL? {
+        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        return URL(string: "https://music.apple.com/search?term=\(encoded)")
+    }
+
+    private func generatePlaylist() {
+        let emotionText = playlistEmotionText.trimmingCharacters(in: .whitespaces)
+        guard !emotionText.isEmpty else { return }
+
+        playlistState = .analyzing
+        playlistPrompt = nil
+
+        Task {
+            do {
+                let prompt = try await chatService.getPlaylistPrompt(
+                    emotionText: emotionText,
+                    songCount: 15
+                )
+                await MainActor.run {
+                    playlistPrompt = prompt
+                    playlistState = .ready
+                }
+            } catch {
+                await MainActor.run {
+                    playlistState = .error(error.localizedDescription)
+                }
+            }
+        }
     }
 
     // MARK: - DJ Helper Functions
@@ -798,7 +1061,7 @@ struct ChatView: View {
                     songs = try await chatService.fetchOurSongs()
                 case .favorites:
                     songs = try await chatService.fetchFavoriteSongs()
-                case .recommend:
+                case .recommend, .playlist:
                     songs = []
                 }
                 await MainActor.run {
@@ -867,7 +1130,7 @@ struct ChatView: View {
 // MARK: - DJ Tab Enum
 
 enum DJTab {
-    case ourSongs, favorites, recommend
+    case ourSongs, favorites, recommend, playlist
 }
 
 // MARK: - Embedded Song Card (parsed from [SONG:...] marker)
