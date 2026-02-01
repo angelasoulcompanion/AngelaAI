@@ -31,6 +31,7 @@ struct SongQueueView: View {
         case library = "Recent"
         case playlists = "Playlists"
         case ourSongs = "Our Songs"
+        case queued = "Queued"
         case forYou = "For You"
         case search = "Search"
 
@@ -39,6 +40,7 @@ struct SongQueueView: View {
             case .library: return "clock.arrow.circlepath"
             case .playlists: return "list.bullet.rectangle"
             case .ourSongs: return "heart.circle.fill"
+            case .queued: return "list.number"
             case .forYou: return "sparkles"
             case .search: return "magnifyingglass"
             }
@@ -50,6 +52,7 @@ struct SongQueueView: View {
             case .library: return "library"
             case .playlists: return "playlists"
             case .ourSongs: return "our_songs"
+            case .queued: return "queued"
             case .forYou: return "for_you"
             case .search: return "search"
             }
@@ -69,6 +72,8 @@ struct SongQueueView: View {
                         playlistsView
                     case .ourSongs:
                         ourSongsView
+                    case .queued:
+                        queuedView
                     case .forYou:
                         recommendationView
                     case .search:
@@ -350,6 +355,35 @@ struct SongQueueView: View {
 
                 ForEach(ourSongs) { song in
                     displaySongRow(song, allSongs: ourSongs)
+                }
+            }
+        }
+    }
+
+    // MARK: - Queued View
+
+    private var queuedView: some View {
+        Group {
+            if musicService.queue.isEmpty {
+                emptyView(message: "No songs in queue", icon: "list.number")
+            } else {
+                playControlBar(
+                    songCount: musicService.queue.count,
+                    showShuffle: false,
+                    showCount: true,
+                    onPlayAll: {
+                        musicService.currentSourceTab = QueueTab.queued.sourceKey
+                        if let first = musicService.queue.first {
+                            musicService.currentQueueIndex = 0
+                            Task { await musicService.playDisplaySong(first) }
+                        }
+                    }
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 4)
+
+                ForEach(Array(musicService.queue.enumerated()), id: \.element.id) { index, song in
+                    displaySongRow(song, allSongs: musicService.queue)
                 }
             }
         }
@@ -871,11 +905,9 @@ struct SongQueueView: View {
     private func onTabSelected(_ tab: QueueTab) async {
         switch tab {
         case .library:
-            if librarySongs.isEmpty {
-                isLoading = true
-                librarySongs = await musicService.fetchLibrarySongs()
-                isLoading = false
-            }
+            isLoading = librarySongs.isEmpty
+            librarySongs = await musicService.fetchLibrarySongs()
+            isLoading = false
         case .playlists:
             if userPlaylists.isEmpty {
                 isLoading = true
@@ -890,6 +922,8 @@ struct SongQueueView: View {
                 isLoading = false
                 Task { await enrichOurSongsArtwork() }
             }
+        case .queued:
+            break  // Queue reads directly from musicService.queue
         default:
             break
         }
@@ -910,6 +944,31 @@ struct SongQueueView: View {
         isLoading = false
     }
 
+    /// Max angela_songs (DB) to include — leaves room for playlist discovery.
+    private static let maxAngelaSongs = 2
+    private static let recommendTargetCount = 6
+
+    /// Playlist name keywords that suggest a mood.
+    private static let playlistMoodKeywords: [String: [String]] = [
+        "happy":     ["happy", "party", "dance", "fun", "hbd"],
+        "loving":    ["love", "romantic", "r&b", "valentine", "letter"],
+        "calm":      ["chill", "acoustic", "easy", "relax", "ambient", "lo-fi", "lofi"],
+        "excited":   ["party", "dance", "house", "energy", "workout", "hype"],
+        "grateful":  ["inspir", "grateful", "hope", "worship"],
+        "sad":       ["sad", "heartbreak", "cry", "miss", "blue"],
+        "lonely":    ["lonely", "alone", "miss", "night", "late night"],
+        "stressed":  ["chill", "calm", "relax", "meditation", "easy", "ambient"],
+        "nostalgic": ["80", "90", "classic", "throwback", "doo-wop", "retro", "old"],
+        "hopeful":   ["hope", "inspir", "dream", "uplift"],
+    ]
+
+    /// Check if a playlist name matches a mood.
+    private static func playlistMatchesMood(_ name: String, mood: String) -> Bool {
+        let lower = name.lowercased()
+        let keywords = playlistMoodKeywords[mood] ?? []
+        return keywords.contains { lower.contains($0) }
+    }
+
     private func loadRecommendation(mood: String? = nil) async {
         isLoading = true
         defer { isLoading = false }
@@ -918,19 +977,42 @@ struct SongQueueView: View {
         do {
             recommendation = try await chatService.getRecommendation(mood: mood ?? selectedMood)
 
-            // Build display list from songs array (or fallback to single song)
+            // --- 1. Angela DB songs (our_songs) — cap to leave room for playlist songs ---
             let songList = recommendation?.songs ?? [recommendation?.song].compactMap { $0 }
-            var displays = songList.map { DisplaySong(from: $0) }
+            let cappedList = Array(songList.prefix(Self.maxAngelaSongs))
+            var displays = cappedList.map { DisplaySong(from: $0) }
+            var seenKeys = Set(displays.map { "\($0.title.lowercased())|\($0.artist.lowercased())" })
 
-            // Show immediately, then enrich artwork in background
+            // Show angela_songs immediately while we load playlist songs
             recommendedDisplays = displays
 
-            // Enrich with Apple Music artwork
-            for (index, song) in songList.enumerated() {
+            // --- 2. Songs from user's OWN Apple Music playlists ---
+            let detectedMood = recommendation?.basedOnEmotion ?? "happy"
+            let pool = await musicService.loadPlaylistSongPool()
+
+            // Separate mood-matching playlists from the rest
+            let matched = pool.filter { Self.playlistMatchesMood($0.name, mood: detectedMood) }
+            let unmatched = pool.filter { !Self.playlistMatchesMood($0.name, mood: detectedMood) }
+
+            // Priority: songs from mood-matching playlists first
+            let orderedSongs = matched.flatMap(\.songs).shuffled()
+                + unmatched.flatMap(\.songs).shuffled()
+
+            for mkSong in orderedSongs {
+                if displays.count >= Self.recommendTargetCount { break }
+                let key = "\(mkSong.title.lowercased())|\(mkSong.artistName.lowercased())"
+                if seenKeys.insert(key).inserted {
+                    displays.append(DisplaySong(from: mkSong))
+                }
+            }
+
+            recommendedDisplays = displays
+
+            // Enrich angela_songs with Apple Music artwork
+            for (index, song) in cappedList.enumerated() {
                 if let mkSong = await musicService.searchAppleMusic(title: song.title, artist: song.artist) {
                     let artURL = mkSong.artwork?.url(width: 300, height: 300)
-                    displays[index] = DisplaySong(from: song, artwork: artURL)
-                    recommendedDisplays[index] = displays[index]
+                    recommendedDisplays[index] = DisplaySong(from: song, artwork: artURL)
                 }
             }
         } catch {

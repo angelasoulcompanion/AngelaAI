@@ -390,6 +390,50 @@ final class MusicPlayerService: ObservableObject {
         }
     }
 
+    // MARK: - User Playlist Song Pool
+
+    /// Cached pool of all songs from the user's Apple Music playlists.
+    /// Grouped by playlist name for mood-based filtering.
+    private var _playlistPool: [(name: String, songs: [MusicKit.Song])] = []
+    private var _poolLoaded = false
+
+    /// Load all songs from all user playlists (concurrent, cached after first call).
+    /// Returns songs grouped by playlist name so callers can filter by playlist mood.
+    func loadPlaylistSongPool() async -> [(name: String, songs: [MusicKit.Song])] {
+        if _poolLoaded { return _playlistPool }
+
+        let allPlaylists = await fetchUserPlaylists()
+        var result: [(name: String, songs: [MusicKit.Song])] = Array(
+            repeating: (name: "", songs: []), count: allPlaylists.count
+        )
+
+        // Load all playlists concurrently for speed
+        await withTaskGroup(of: (Int, String, [MusicKit.Song]).self) { group in
+            for (i, playlist) in allPlaylists.enumerated() {
+                group.addTask {
+                    let tracks = await self.fetchPlaylistTracks(playlist)
+                    return (i, playlist.name, tracks)
+                }
+            }
+            for await (i, name, tracks) in group {
+                result[i] = (name: name, songs: tracks)
+            }
+        }
+
+        // Remove empty playlists
+        result = result.filter { !$0.songs.isEmpty }
+        _playlistPool = result
+        _poolLoaded = true
+        print("[MusicPlayerService] Playlist pool loaded: \(result.count) playlists, \(result.map(\.songs.count).reduce(0, +)) songs total")
+        return result
+    }
+
+    /// Invalidate the cached pool (e.g., after user modifies playlists).
+    func invalidatePlaylistPool() {
+        _poolLoaded = false
+        _playlistPool = []
+    }
+
     /// Set queue from MusicKit songs
     func setMusicKitQueue(_ songs: [MusicKit.Song], startAt index: Int = 0) {
         queue = songs.map { DisplaySong(from: $0) }
