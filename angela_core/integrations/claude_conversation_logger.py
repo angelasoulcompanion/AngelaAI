@@ -307,6 +307,15 @@ async def log_conversations_bulk(
         if skipped:
             print(f"   ⚠️ Skipped {skipped} empty conversations")
 
+        # Feed to Learning Orchestrator
+        try:
+            from angela_core.services.session_learning_processor import process_session_learning
+            lr = await process_session_learning(conversations, sid)
+            if lr['processed'] > 0:
+                print(f"   🧠 Learned: {lr['total_concepts']} concepts, {lr['total_patterns']} patterns, {lr['total_preferences']} preferences")
+        except Exception as le:
+            logger.debug(f"Session learning skipped: {le}")
+
     except Exception as e:
         print(f"❌ Bulk insert failed: {e}")
         import traceback
@@ -432,29 +441,12 @@ async def log_conversation(
     )
 
     if result.get("inserted_count", 0) > 0:
-        # Queue for background deep analysis
+        # Direct learning via orchestrator (background_workers not available in Claude Code)
         try:
-            from angela_core.services.background_learning_workers import background_workers
-            if background_workers.is_running:
-                session_id = result.get("session_id", "")
-                task_id = await background_workers.queue_learning_task(
-                    conversation_data={
-                        'david_message': david_message,
-                        'angela_response': angela_response,
-                        'session_id': session_id,
-                        'topic': topic or 'claude_conversation',
-                        'emotion': emotion or 'neutral',
-                        'importance': importance,
-                        'timestamp': datetime.now(),
-                        'source': 'claude_code'
-                    },
-                    priority=importance
-                )
-                print(f"   🔄 Queued for background learning (Task: {task_id}, Priority: {importance})")
-            else:
-                logger.debug("Background workers not running - skipping queue")
+            from angela_core.services.unified_learning_orchestrator import learn_from_conversation
+            await learn_from_conversation(david_message, angela_response, source='claude_code')
         except Exception as e:
-            logger.warning(f"Failed to queue background learning: {e}")
+            logger.debug(f"Direct learning skipped: {e}")
 
         return True
 

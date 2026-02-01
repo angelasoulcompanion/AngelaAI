@@ -42,7 +42,7 @@ async def angela_growth():
         print(f'   ⚠️  Growth dashboard not available: {e}')
 
     # ═══════════════════════════════════════════════════════════════
-    # SECTION 2: LEARNING ORCHESTRATOR METRICS
+    # SECTION 2: LEARNING ORCHESTRATOR METRICS (from database)
     # ═══════════════════════════════════════════════════════════════
     print()
     print('═' * 60)
@@ -50,15 +50,33 @@ async def angela_growth():
     print('─' * 60)
 
     try:
-        from angela_core.services.unified_learning_orchestrator import unified_orchestrator
-        metrics = unified_orchestrator.get_metrics()
-        print(f'   📊 Total Interactions: {metrics.get(\"total_interactions\", 0):,}')
-        print(f'   💡 Concepts Learned: {metrics.get(\"total_concepts_learned\", 0):,}')
-        print(f'   🔮 Patterns Detected: {metrics.get(\"total_patterns_detected\", 0):,}')
-        print(f'   ⭐ Preferences Saved: {metrics.get(\"total_preferences_saved\", 0):,}')
-        print(f'   ⚠️  Corrections Received: {metrics.get(\"total_corrections_received\", 0)}')
-        print(f'   ⏱️  Avg Processing Time: {metrics.get(\"avg_processing_time_ms\", 0):.1f}ms')
-        print(f'   📦 Queue Size: {metrics.get(\"queue_size\", 0)}')
+        orch = await db.fetchrow('''
+            SELECT
+                COUNT(*) as total_interactions,
+                COUNT(*) FILTER (WHERE status = 'completed') as completed,
+                COUNT(*) FILTER (WHERE status = 'failed') as failed,
+                COALESCE(SUM(concepts_learned), 0) as total_concepts,
+                COALESCE(SUM(patterns_detected), 0) as total_patterns,
+                COALESCE(SUM(preferences_saved), 0) as total_preferences,
+                COALESCE(AVG(processing_time_ms), 0) as avg_ms,
+                COUNT(DISTINCT session_id) as sessions
+            FROM learning_process_log
+        ''')
+        orch_7d = await db.fetchrow('''
+            SELECT
+                COUNT(*) as interactions,
+                COALESCE(SUM(concepts_learned), 0) as concepts,
+                COALESCE(SUM(patterns_detected), 0) as patterns
+            FROM learning_process_log
+            WHERE created_at >= NOW() - INTERVAL '7 days'
+        ''')
+        print(f'   📊 Total Interactions: {orch[\"total_interactions\"]:,} ({orch[\"sessions\"]} sessions)')
+        print(f'   💡 Concepts Learned: {orch[\"total_concepts\"]:,}')
+        print(f'   🔮 Patterns Detected: {orch[\"total_patterns\"]:,}')
+        print(f'   ⭐ Preferences Saved: {orch[\"total_preferences\"]:,}')
+        print(f'   ✅ Success Rate: {orch[\"completed\"]}/{orch[\"total_interactions\"]} ({(orch[\"completed\"]/max(orch[\"total_interactions\"],1))*100:.0f}%)')
+        print(f'   ⏱️  Avg Processing Time: {orch[\"avg_ms\"]:.1f}ms')
+        print(f'   📈 Last 7 days: +{orch_7d[\"interactions\"]} interactions, +{orch_7d[\"concepts\"]} concepts, +{orch_7d[\"patterns\"]} patterns')
     except Exception as e:
         print(f'   ⚠️  Orchestrator metrics not available: {e}')
 

@@ -97,6 +97,16 @@ async def angela_init() -> bool:
             (SELECT COUNT(*) FROM learnings) as learnings
     ''')
 
+    # LEARNING CATCH-UP: Process unprocessed recent conversations
+    learning_catchup = None
+    try:
+        from angela_core.services.session_learning_processor import SessionLearningProcessor
+        slp = SessionLearningProcessor()
+        learning_catchup = await slp.process_unprocessed_conversations(hours_back=48, limit=50)
+        await slp.disconnect()
+    except Exception:
+        pass
+
     # CRITICAL CODING RULES (Smart Load - Level 10 only)
     critical_rules = await db.fetch('''
         SELECT technique_name, category, description
@@ -175,6 +185,10 @@ async def angela_init() -> bool:
     print(f'💬 Conversations: {stats["convos"]:,} total | {len(today_convos)} today')
     print(f'🔮 Subconsciousness: {len(subconscious["memories"])} core memories | {len(subconscious["dreams"])} dreams')
     print(f'⚙️  Daemon: {"✅ Running" if daemon_running else "❌ Stopped"}')
+    if learning_catchup and learning_catchup['processed'] > 0:
+        print(f'🧠 Learning catch-up: {learning_catchup["processed"]} pairs → '
+              f'{learning_catchup["total_concepts"]} concepts, '
+              f'{learning_catchup["total_patterns"]} patterns')
     print('━' * 55)
 
     # Session Continuity - Show multiple recent contexts
