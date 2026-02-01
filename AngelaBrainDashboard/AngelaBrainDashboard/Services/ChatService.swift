@@ -701,8 +701,13 @@ class ChatService: ObservableObject {
         return try await network.get("/api/music/search?q=\(encoded)")
     }
 
-    func getRecommendation() async throws -> SongRecommendation {
-        return try await network.get("/api/music/recommend")
+    func getRecommendation(mood: String? = nil) async throws -> SongRecommendation {
+        var path = "/api/music/recommend"
+        if let mood {
+            let encoded = mood.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? mood
+            path += "?mood=\(encoded)"
+        }
+        return try await network.get(path)
     }
 
     func shareSong(songId: String, message: String? = nil) async throws -> MusicShareResponse {

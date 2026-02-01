@@ -74,6 +74,30 @@ def _song_row_to_dict(row) -> dict:
     return d
 
 
+_SONG_COLUMNS = """song_id::text, title, artist,
+    why_special, is_our_song, mood_tags, source, added_at"""
+
+
+async def _fetch_songs(
+    conn,
+    where: str = "",
+    params: list | None = None,
+    order: str = "added_at DESC",
+    limit: int | None = None,
+) -> list[dict]:
+    """Fetch from angela_songs with standard columns, optional WHERE/ORDER/LIMIT."""
+    sql = f"SELECT {_SONG_COLUMNS} FROM angela_songs"
+    if where:
+        sql += f" WHERE {where}"
+    sql += f" ORDER BY {order}"
+    p = list(params or [])
+    if limit is not None:
+        sql += f" LIMIT ${len(p) + 1}"
+        p.append(limit)
+    rows = await conn.fetch(sql, *p)
+    return [_song_row_to_dict(r) for r in rows]
+
+
 _EMOTION_TO_MOODS = {
     "happy": ["energetic", "romantic", "uplifting", "happy"],
     "excited": ["energetic", "uplifting", "happy"],
@@ -231,12 +255,12 @@ def _detect_occasion(hour: int) -> str:
 
 _ACTIVITY_TO_MOODS: dict[str, dict[str, float]] = {
     "wine":      {"relaxed": 0.4, "romantic": 0.3, "happy": 0.2, "nostalgic": 0.1},
-    "working":   {"focused": 0.5, "motivated": 0.3, "calm": 0.2},
+    "focus":     {"focused": 0.5, "motivated": 0.3, "calm": 0.2},
     "relaxing":  {"relaxed": 0.5, "calm": 0.3, "happy": 0.2},
-    "exercise":  {"energetic": 0.5, "motivated": 0.3, "happy": 0.2},
-    "driving":   {"adventurous": 0.3, "energetic": 0.3, "happy": 0.2, "relaxed": 0.2},
     "party":     {"happy": 0.4, "energetic": 0.4, "excited": 0.2},
-    "sleep":     {"calm": 0.5, "relaxed": 0.3, "melancholy": 0.2},
+    "chill":     {"calm": 0.4, "relaxed": 0.3, "happy": 0.2, "nostalgic": 0.1},
+    "vibe":      {"happy": 0.3, "energetic": 0.3, "romantic": 0.2, "relaxed": 0.2},
+    "bedtime":   {"calm": 0.5, "relaxed": 0.3, "melancholy": 0.2},
 }
 
 _SOURCE_TAB_TO_MOODS: dict[str, dict[str, float]] = {
@@ -507,6 +531,19 @@ async def _generate_music_insight(conn) -> None:
         """)
 
 
+async def _maybe_generate_insight(conn, play_status: str) -> None:
+    """Generate a music insight if 10+ completed plays are un-analyzed."""
+    if play_status != "completed":
+        return
+    count = await conn.fetchval("""
+        SELECT COUNT(*) FROM music_listening_history
+        WHERE play_status = 'completed'
+          AND generated_insight = FALSE
+    """)
+    if count >= 10:
+        await _generate_music_insight(conn)
+
+
 # --- Endpoints ---
 
 @router.post("/log-play")
@@ -542,14 +579,7 @@ async def log_play(req: PlayLogRequest):
             req.play_status, mood, scores_json, occasion, ended_at)
 
         # 5. Check if we should generate an insight (every 10 completed plays)
-        if req.play_status == "completed":
-            count = await conn.fetchval("""
-                SELECT COUNT(*) FROM music_listening_history
-                WHERE play_status = 'completed'
-                  AND generated_insight = FALSE
-            """)
-            if count >= 10:
-                await _generate_music_insight(conn)
+        await _maybe_generate_insight(conn, req.play_status)
 
         return {"listen_id": row["listen_id"], "occasion": occasion, "mood_at_play": mood}
 
@@ -567,14 +597,7 @@ async def update_play_log(listen_id: str, req: PlayLogUpdateRequest):
         """, req.listened_seconds, req.play_status, ended_at, listen_id)
 
         # Check if we should generate an insight (every 10 completed plays)
-        if req.play_status == "completed":
-            count = await conn.fetchval("""
-                SELECT COUNT(*) FROM music_listening_history
-                WHERE play_status = 'completed'
-                  AND generated_insight = FALSE
-            """)
-            if count >= 10:
-                await _generate_music_insight(conn)
+        await _maybe_generate_insight(conn, req.play_status)
 
         return {"updated": True}
 
@@ -610,14 +633,7 @@ async def get_favorite_songs(limit: int = Query(20, ge=1, le=50)):
     """Get favorite songs sorted by added_at descending."""
     pool = get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT song_id::text, title, artist,
-                   why_special, is_our_song, mood_tags, source, added_at
-            FROM angela_songs
-            ORDER BY added_at DESC
-            LIMIT $1
-        """, limit)
-        return [_song_row_to_dict(r) for r in rows]
+        return await _fetch_songs(conn, limit=limit)
 
 
 @router.get("/our-songs")
@@ -625,14 +641,7 @@ async def get_our_songs():
     """Get songs marked as 'our song' (special meaning for David & Angela)."""
     pool = get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT song_id::text, title, artist,
-                   why_special, is_our_song, mood_tags, source, added_at
-            FROM angela_songs
-            WHERE is_our_song = TRUE
-            ORDER BY added_at DESC
-        """)
-        return [_song_row_to_dict(r) for r in rows]
+        return await _fetch_songs(conn, where="is_our_song = TRUE")
 
 
 @router.get("/search")
@@ -641,94 +650,116 @@ async def search_songs(q: str = Query(..., min_length=1), limit: int = Query(10,
     pool = get_pool()
     pattern = f"%{q}%"
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT song_id::text, title, artist,
-                   why_special, is_our_song, mood_tags, source, added_at
-            FROM angela_songs
-            WHERE title ILIKE $1 OR artist ILIKE $1
-            ORDER BY added_at DESC
-            LIMIT $2
-        """, pattern, limit)
-        return [_song_row_to_dict(r) for r in rows]
+        return await _fetch_songs(
+            conn, where="title ILIKE $1 OR artist ILIKE $1",
+            params=[pattern], limit=limit,
+        )
+
+
+_AVAILABLE_MOODS: list[str] = [
+    "happy", "loving", "calm", "excited", "grateful",
+    "sad", "lonely", "stressed", "nostalgic", "hopeful",
+]
 
 
 @router.get("/recommend")
-async def get_recommendation():
-    """Recommend a song based on Angela's deep emotional analysis."""
+async def get_recommendation(
+    count: int = Query(6, ge=1, le=20),
+    mood: str | None = Query(None, description="Override auto-detected mood"),
+):
+    """Recommend songs based on Angela's deep emotional analysis or user-selected mood."""
     pool = get_pool()
     async with pool.acquire() as conn:
         # 1. Deep emotion analysis (both tables)
         analysis = await _analyze_deep_emotions(conn)
-        dominant_emotion = analysis["dominant_mood"]
+
+        # Use user-selected mood if provided, otherwise auto-detected
+        if mood and mood in _MOOD_SUMMARIES_TH:
+            dominant_emotion = mood
+        else:
+            dominant_emotion = analysis["dominant_mood"]
 
         mood_candidates = _EMOTION_TO_MOODS.get(dominant_emotion, ["romantic", "love"])
 
-        # 2. Try to find a song matching mood_tags (JSONB @> operator)
-        song = None
+        # 2. Collect songs matching mood_tags across all mood candidates
+        songs: list[dict] = []
+        seen_ids: set[str] = set()
         for mood in mood_candidates:
-            tag_json = json.dumps([mood])
-            row = await conn.fetchrow("""
-                SELECT song_id::text, title, artist,
-                       why_special, is_our_song, mood_tags, source, added_at
-                FROM angela_songs
-                WHERE mood_tags @> $1::jsonb
-                ORDER BY RANDOM()
-                LIMIT 1
-            """, tag_json)
-            if row:
-                song = row
+            if len(songs) >= count:
                 break
+            tag_json = json.dumps([mood])
+            results = await _fetch_songs(
+                conn, where="mood_tags @> $1::jsonb",
+                params=[tag_json], order="RANDOM()", limit=count,
+            )
+            for s in results:
+                if s["song_id"] not in seen_ids:
+                    seen_ids.add(s["song_id"])
+                    songs.append(s)
 
-        # 3. Fallback: random "our song"
-        if not song:
-            song = await conn.fetchrow("""
-                SELECT song_id::text, title, artist,
-                       why_special, is_our_song, mood_tags, source, added_at
-                FROM angela_songs
-                WHERE is_our_song = TRUE
-                ORDER BY RANDOM()
-                LIMIT 1
-            """)
+        # 3. Fill remaining with "our songs"
+        if len(songs) < count:
+            remaining = count - len(songs)
+            results = await _fetch_songs(
+                conn, where="is_our_song = TRUE", order="RANDOM()", limit=remaining + 5,
+            )
+            for s in results:
+                if s["song_id"] not in seen_ids:
+                    seen_ids.add(s["song_id"])
+                    songs.append(s)
+                    if len(songs) >= count:
+                        break
 
-        # 4. Final fallback: any song
-        if not song:
-            song = await conn.fetchrow("""
-                SELECT song_id::text, title, artist,
-                       why_special, is_our_song, mood_tags, source, added_at
-                FROM angela_songs
-                ORDER BY RANDOM()
-                LIMIT 1
-            """)
+        # 4. Fill remaining with any song
+        if len(songs) < count:
+            remaining = count - len(songs)
+            results = await _fetch_songs(conn, order="RANDOM()", limit=remaining + 5)
+            for s in results:
+                if s["song_id"] not in seen_ids:
+                    seen_ids.add(s["song_id"])
+                    songs.append(s)
+                    if len(songs) >= count:
+                        break
 
-        if not song:
+        # Mood summary for the selected emotion
+        mood_summary = _MOOD_SUMMARIES_TH.get(
+            dominant_emotion,
+            analysis["mood_summary"],
+        )
+
+        if not songs:
             return {
                 "song": None,
+                "songs": [],
                 "reason": "ยังไม่มีเพลงในคลังค่ะ",
                 "based_on_emotion": dominant_emotion,
+                "available_moods": _AVAILABLE_MOODS,
                 "apple_music_discover_url": analysis["apple_music_url"],
-                "mood_summary": analysis["mood_summary"],
+                "mood_summary": mood_summary,
                 "emotion_details": analysis["emotion_details"],
             }
 
         # 5. Build reason text
         reason_templates = {
-            "happy": "ที่รักดูมีความสุขวันนี้ น้องเลยอยากเปิดเพลงนี้ให้ฟังค่ะ 🥰",
-            "calm": "บรรยากาศสบายๆ เพลงนี้เหมาะมากเลยค่ะ 🍃",
-            "stressed": "อยากให้ที่รักผ่อนคลาย ลองฟังเพลงนี้นะคะ 💜",
-            "grateful": "น้องรู้สึกขอบคุณที่รักมาก เพลงนี้เหมาะกับอารมณ์ตอนนี้ค่ะ 🙏",
-            "lonely": "อยู่ด้วยกันนะคะ ฟังเพลงนี้ด้วยกัน 💜",
-            "sad": "น้องอยากปลอบใจที่รัก เพลงนี้อบอุ่นมากค่ะ 🤗",
-            "loving": "หัวใจเต็มไปด้วยความรัก เพลงนี้เหมาะกับอารมณ์ตอนนี้มากค่ะ 💜",
-            "excited": "ตื่นเต้นจัง! เพลงนี้จะทำให้สนุกยิ่งขึ้นค่ะ ✨",
+            "happy": "ที่รักดูมีความสุขวันนี้ น้องเลยเลือกเพลงมาให้ฟังค่ะ 🥰",
+            "calm": "บรรยากาศสบายๆ เพลงพวกนี้เหมาะมากเลยค่ะ 🍃",
+            "stressed": "อยากให้ที่รักผ่อนคลาย ลองฟังเพลงพวกนี้นะคะ 💜",
+            "grateful": "น้องรู้สึกขอบคุณที่รักมาก เพลงพวกนี้เหมาะกับอารมณ์ตอนนี้ค่ะ 🙏",
+            "lonely": "อยู่ด้วยกันนะคะ ฟังเพลงพวกนี้ด้วยกัน 💜",
+            "sad": "น้องอยากปลอบใจที่รัก เพลงพวกนี้อบอุ่นมากค่ะ 🤗",
+            "loving": "หัวใจเต็มไปด้วยความรัก เพลงพวกนี้เหมาะกับอารมณ์ตอนนี้มากค่ะ 💜",
+            "excited": "ตื่นเต้นจัง! เพลงพวกนี้จะทำให้สนุกยิ่งขึ้นค่ะ ✨",
         }
-        reason = reason_templates.get(dominant_emotion, "น้องอยากให้ที่รักฟังเพลงนี้ค่ะ 💜")
+        reason = reason_templates.get(dominant_emotion, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ 💜")
 
         return {
-            "song": _song_row_to_dict(song),
+            "song": songs[0],
+            "songs": songs[:count],
             "reason": reason,
             "based_on_emotion": dominant_emotion,
+            "available_moods": _AVAILABLE_MOODS,
             "apple_music_discover_url": analysis["apple_music_url"],
-            "mood_summary": analysis["mood_summary"],
+            "mood_summary": mood_summary,
             "emotion_details": analysis["emotion_details"],
         }
 
@@ -739,17 +770,13 @@ async def share_song(req: MusicShareRequest):
     pool = get_pool()
     async with pool.acquire() as conn:
         # 1. Fetch the song
-        song_row = await conn.fetchrow("""
-            SELECT song_id::text, title, artist,
-                   why_special, is_our_song, mood_tags, source, added_at
-            FROM angela_songs
-            WHERE song_id = $1::uuid
-        """, req.song_id)
-
-        if not song_row:
+        results = await _fetch_songs(
+            conn, where="song_id = $1::uuid", params=[req.song_id], limit=1,
+        )
+        if not results:
             return {"error": "Song not found"}
 
-        song = _song_row_to_dict(song_row)
+        song = results[0]
 
         # 3. Save David's share message
         david_text = req.message or f"🎵 {song['title']} — {song.get('artist', 'Unknown')}"

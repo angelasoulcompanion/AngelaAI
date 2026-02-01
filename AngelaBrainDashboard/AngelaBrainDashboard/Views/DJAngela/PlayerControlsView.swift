@@ -14,12 +14,12 @@ struct PlayerControlsView: View {
 
     private let activities: [(key: String, emoji: String, label: String)] = [
         ("wine", "🍷", "Wine"),
-        ("working", "💻", "Work"),
+        ("focus", "🎯", "Focus"),
         ("relaxing", "😌", "Relax"),
-        ("exercise", "🏋️", "Gym"),
-        ("driving", "🚗", "Drive"),
         ("party", "🎉", "Party"),
-        ("sleep", "😴", "Sleep"),
+        ("chill", "🧊", "Chill"),
+        ("vibe", "🎧", "Vibe"),
+        ("bedtime", "🌙", "Bed Time"),
     ]
 
     var body: some View {
@@ -190,18 +190,17 @@ struct PlayerControlsView: View {
         let isOurSong = musicService.currentSongIsOurSong
 
         return VStack(spacing: 6) {
-            // Row 1: Our Song + first 4 activities
+            // Row 1: Our Songs + first 3 activities
             HStack(spacing: 8) {
-                // Our Song chip
                 Button {
                     musicService.toggleOurSong()
                 } label: {
-                    chipLabel("💜", "Our Song", highlighted: isOurSong)
+                    chipLabel("💜", "Our Songs", highlighted: isOurSong)
                 }
                 .buttonStyle(.plain)
                 .disabled(musicService.nowPlaying == nil)
 
-                ForEach(Array(activities.prefix(4)), id: \.key) { item in
+                ForEach(Array(activities.prefix(3)), id: \.key) { item in
                     Button {
                         musicService.currentActivity = (selected == item.key) ? nil : item.key
                     } label: {
@@ -210,9 +209,9 @@ struct PlayerControlsView: View {
                     .buttonStyle(.plain)
                 }
             }
-            // Row 2: remaining activities
+            // Row 2: remaining 4 activities
             HStack(spacing: 8) {
-                ForEach(Array(activities.suffix(3)), id: \.key) { item in
+                ForEach(Array(activities.suffix(4)), id: \.key) { item in
                     Button {
                         musicService.currentActivity = (selected == item.key) ? nil : item.key
                     } label: {

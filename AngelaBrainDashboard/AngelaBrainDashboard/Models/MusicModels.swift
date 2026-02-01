@@ -31,8 +31,10 @@ struct Song: Identifiable, Codable {
 
 struct SongRecommendation: Codable {
     let song: Song?
+    let songs: [Song]?
     let reason: String
     let basedOnEmotion: String
+    let availableMoods: [String]?
     let appleMusicDiscoverUrl: String?
     let moodSummary: String?
     let emotionDetails: [String]?

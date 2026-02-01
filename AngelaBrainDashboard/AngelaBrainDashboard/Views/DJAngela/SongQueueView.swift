@@ -20,11 +20,12 @@ struct SongQueueView: View {
     @State private var selectedPlaylist: MusicKit.Playlist?
     @State private var ourSongs: [DisplaySong] = []
     @State private var recommendation: SongRecommendation?
-    @State private var recommendedDisplay: DisplaySong?
+    @State private var recommendedDisplays: [DisplaySong] = []
     @State private var searchResults: [MusicKit.Song] = []
     @State private var searchQuery = ""
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var selectedMood: String?
 
     enum QueueTab: String, CaseIterable {
         case library = "Recent"
@@ -130,51 +131,22 @@ struct SongQueueView: View {
             } else if librarySongs.isEmpty {
                 emptyView(message: "No recent plays", icon: "clock.arrow.circlepath")
             } else {
-                // Play All / Shuffle buttons
-                HStack(spacing: 10) {
-                    Button {
+                playControlBar(
+                    songCount: librarySongs.count,
+                    onPlayAll: {
                         musicService.currentSourceTab = QueueTab.library.sourceKey
                         let display = librarySongs.map { DisplaySong(from: $0) }
                         musicService.setQueue(display)
                         Task { await musicService.playSong(librarySongs[0]) }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 11))
-                            Text("Play All")
-                                .font(.system(size: 13, weight: .semibold))
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(AngelaTheme.purpleGradient)
-                        .foregroundColor(.white)
-                        .cornerRadius(20)
-                    }
-                    .buttonStyle(.plain)
-
-                    Button {
+                    },
+                    onShuffle: {
                         musicService.currentSourceTab = QueueTab.library.sourceKey
                         let shuffled = librarySongs.shuffled()
                         let display = shuffled.map { DisplaySong(from: $0) }
                         musicService.setQueue(display)
                         Task { await musicService.playSong(shuffled[0]) }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "shuffle")
-                                .font(.system(size: 11))
-                            Text("Shuffle")
-                                .font(.system(size: 13, weight: .medium))
-                        }
-                        .angelaSecondaryButton()
                     }
-                    .buttonStyle(.plain)
-
-                    Spacer()
-
-                    Text("\(librarySongs.count) songs")
-                        .font(.system(size: 12))
-                        .foregroundColor(AngelaTheme.textTertiary)
-                }
+                )
                 .padding(.bottom, 4)
 
                 LazyVStack(spacing: 0) {
@@ -309,31 +281,19 @@ struct SongQueueView: View {
                             .foregroundColor(AngelaTheme.textTertiary)
                     }
 
-                    // Play All / Shuffle
-                    HStack(spacing: 8) {
-                        Button {
+                    playControlBar(
+                        songCount: playlistTracks.count,
+                        showCount: false,
+                        compact: true,
+                        onPlayAll: {
                             musicService.currentSourceTab = QueueTab.playlists.sourceKey
                             let display = playlistTracks.map { DisplaySong(from: $0) }
                             musicService.setQueue(display)
                             if let first = playlistTracks.first {
                                 Task { await musicService.playSong(first) }
                             }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "play.fill")
-                                    .font(.system(size: 10))
-                                Text("Play All")
-                                    .font(.system(size: 12, weight: .semibold))
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(AngelaTheme.purpleGradient)
-                            .foregroundColor(.white)
-                            .cornerRadius(16)
-                        }
-                        .buttonStyle(.plain)
-
-                        Button {
+                        },
+                        onShuffle: {
                             musicService.currentSourceTab = QueueTab.playlists.sourceKey
                             let shuffled = playlistTracks.shuffled()
                             let display = shuffled.map { DisplaySong(from: $0) }
@@ -341,25 +301,8 @@ struct SongQueueView: View {
                             if let first = shuffled.first {
                                 Task { await musicService.playSong(first) }
                             }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "shuffle")
-                                    .font(.system(size: 10))
-                                Text("Shuffle")
-                                    .font(.system(size: 12, weight: .medium))
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(AngelaTheme.backgroundLight)
-                            .foregroundColor(AngelaTheme.primaryPurple)
-                            .cornerRadius(16)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(AngelaTheme.primaryPurple.opacity(0.5), lineWidth: 1)
-                            )
                         }
-                        .buttonStyle(.plain)
-                    }
+                    )
                 }
 
                 Spacer()
@@ -392,25 +335,16 @@ struct SongQueueView: View {
             } else if ourSongs.isEmpty {
                 emptyView(message: "No songs yet", icon: "heart")
             } else {
-                // Play All button
-                Button {
-                    musicService.currentSourceTab = QueueTab.ourSongs.sourceKey
-                    musicService.setQueue(ourSongs)
-                    Task { await musicService.playDisplaySong(ourSongs[0]) }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 11))
-                        Text("Play All")
-                            .font(.system(size: 13, weight: .semibold))
+                playControlBar(
+                    songCount: ourSongs.count,
+                    showShuffle: false,
+                    showCount: false,
+                    onPlayAll: {
+                        musicService.currentSourceTab = QueueTab.ourSongs.sourceKey
+                        musicService.setQueue(ourSongs)
+                        Task { await musicService.playDisplaySong(ourSongs[0]) }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(AngelaTheme.purpleGradient)
-                    .foregroundColor(.white)
-                    .cornerRadius(20)
-                }
-                .buttonStyle(.plain)
+                )
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.bottom, 4)
 
@@ -428,7 +362,7 @@ struct SongQueueView: View {
             if isLoading {
                 loadingView
             } else if let rec = recommendation {
-                // Emotion card
+                // Emotion card + mood picker
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Image(systemName: "sparkles")
@@ -451,27 +385,41 @@ struct SongQueueView: View {
                             .italic()
                     }
 
-                    if let details = rec.emotionDetails, !details.isEmpty {
-                        HStack(spacing: 6) {
-                            ForEach(details.prefix(3), id: \.self) { detail in
-                                Text(detail)
-                                    .font(.system(size: 10, weight: .medium))
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(AngelaTheme.emotionMotivated.opacity(0.15))
-                                    .foregroundColor(AngelaTheme.emotionMotivated)
-                                    .cornerRadius(4)
-                            }
-                        }
-                    }
+                    // Tappable mood pills
+                    let moods = rec.availableMoods ?? ["happy", "loving", "calm", "excited", "grateful", "sad", "lonely", "stressed", "nostalgic", "hopeful"]
+                    let current = selectedMood ?? rec.basedOnEmotion
+
+                    moodPickerGrid(moods: moods, selected: current)
                 }
                 .padding(16)
                 .background(AngelaTheme.cardBackground)
                 .cornerRadius(AngelaTheme.cornerRadius)
 
-                // Recommended song (with enriched artwork)
-                if let display = recommendedDisplay {
-                    displaySongRow(display, allSongs: [display])
+                // Recommended songs list
+                if !recommendedDisplays.isEmpty {
+                    playControlBar(
+                        songCount: recommendedDisplays.count,
+                        onPlayAll: {
+                            musicService.currentSourceTab = QueueTab.forYou.sourceKey
+                            musicService.setQueue(recommendedDisplays)
+                            Task { await musicService.playDisplaySong(recommendedDisplays[0]) }
+                        },
+                        onShuffle: {
+                            musicService.currentSourceTab = QueueTab.forYou.sourceKey
+                            let shuffled = recommendedDisplays.shuffled()
+                            musicService.setQueue(shuffled)
+                            Task { await musicService.playDisplaySong(shuffled[0]) }
+                        }
+                    )
+
+                    ForEach(recommendedDisplays) { song in
+                        displaySongRow(song, allSongs: recommendedDisplays)
+                    }
+                } else if let songs = rec.songs, !songs.isEmpty {
+                    let displays = songs.map { DisplaySong(from: $0) }
+                    ForEach(displays) { song in
+                        displaySongRow(song, allSongs: displays)
+                    }
                 } else if let song = rec.song {
                     let display = DisplaySong(from: song)
                     displaySongRow(display, allSongs: [display])
@@ -558,16 +506,25 @@ struct SongQueueView: View {
         }
     }
 
-    // MARK: - MusicKit Song Row (Library, Playlists, Search)
+    // MARK: - Unified Song Row
 
-    private func musicKitSongRow(_ song: MusicKit.Song, allSongs: [MusicKit.Song], index: Int) -> some View {
-        let isCurrentSong = musicService.nowPlaying?.title == song.title
-            && musicService.nowPlaying?.artist == song.artistName
-
-        return HStack(spacing: 12) {
+    /// Single song-row layout shared by MusicKit songs and DisplaySongs.
+    private func songRow(
+        title: String,
+        artist: String,
+        album: String? = nil,
+        artworkURL: URL? = nil,
+        duration: TimeInterval? = nil,
+        durationFormatted: String? = nil,
+        moodTags: [String] = [],
+        isOurSong: Bool = false,
+        isCurrentSong: Bool,
+        onPlay: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 12) {
             // Album art thumbnail
-            if let artwork = song.artwork {
-                AsyncImage(url: artwork.url(width: 80, height: 80)) { image in
+            if let url = artworkURL {
+                AsyncImage(url: url) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     artPlaceholder
@@ -580,19 +537,19 @@ struct SongQueueView: View {
 
             // Song info
             VStack(alignment: .leading, spacing: 2) {
-                Text(song.title)
+                Text(title)
                     .font(.system(size: 14, weight: isCurrentSong ? .semibold : .regular))
                     .foregroundColor(isCurrentSong ? AngelaTheme.primaryPurple : AngelaTheme.textPrimary)
                     .lineLimit(1)
 
                 HStack(spacing: 4) {
-                    Text(song.artistName)
+                    Text(artist)
                         .font(.system(size: 12))
                         .foregroundColor(AngelaTheme.textTertiary)
                         .lineLimit(1)
 
-                    if let album = song.albumTitle {
-                        Text("·")
+                    if let album, !album.isEmpty {
+                        Text("\u{00B7}")
                             .font(.system(size: 12))
                             .foregroundColor(AngelaTheme.textTertiary)
                         Text(album)
@@ -605,8 +562,34 @@ struct SongQueueView: View {
 
             Spacer()
 
+            // Mood tags
+            if !moodTags.isEmpty {
+                HStack(spacing: 4) {
+                    ForEach(moodTags.prefix(2), id: \.self) { tag in
+                        Text(tag)
+                            .font(.system(size: 10, weight: .medium))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(AngelaTheme.primaryPurple.opacity(0.15))
+                            .foregroundColor(AngelaTheme.secondaryPurple)
+                            .cornerRadius(4)
+                    }
+                }
+            }
+
+            // Our Song badge
+            if isOurSong {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 12))
+                    .foregroundColor(AngelaTheme.emotionLoved)
+            }
+
             // Duration
-            if let duration = song.duration {
+            if let dur = durationFormatted {
+                Text(dur)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(AngelaTheme.textTertiary)
+            } else if let duration {
                 let minutes = Int(duration) / 60
                 let seconds = Int(duration) % 60
                 Text(String(format: "%d:%02d", minutes, seconds))
@@ -619,11 +602,7 @@ struct SongQueueView: View {
                 playingBars
             } else {
                 Button {
-                    Task {
-                        musicService.currentSourceTab = selectedTab.sourceKey
-                        musicService.setMusicKitQueue(allSongs, startAt: index)
-                        await musicService.playSong(song)
-                    }
+                    onPlay()
                 } label: {
                     Image(systemName: "play.circle.fill")
                         .font(.system(size: 24))
@@ -649,110 +628,173 @@ struct SongQueueView: View {
         .cornerRadius(8)
     }
 
+    // MARK: - MusicKit Song Row (Library, Playlists, Search)
+
+    private func musicKitSongRow(_ song: MusicKit.Song, allSongs: [MusicKit.Song], index: Int) -> some View {
+        let isCurrent = musicService.nowPlaying?.title == song.title
+            && musicService.nowPlaying?.artist == song.artistName
+        return songRow(
+            title: song.title,
+            artist: song.artistName,
+            album: song.albumTitle,
+            artworkURL: song.artwork?.url(width: 80, height: 80),
+            duration: song.duration,
+            isCurrentSong: isCurrent
+        ) {
+            musicService.currentSourceTab = selectedTab.sourceKey
+            musicService.setMusicKitQueue(allSongs, startAt: index)
+            Task { await musicService.playSong(song) }
+        }
+    }
+
     // MARK: - DisplaySong Row (Our Songs, For You)
 
     private func displaySongRow(_ song: DisplaySong, allSongs: [DisplaySong]) -> some View {
-        let isCurrentSong: Bool = {
+        let isCurrent: Bool = {
             if let angela = song.angelaSong {
                 return musicService.nowPlaying?.angelaSong?.songId == angela.songId
             }
             return musicService.nowPlaying?.title == song.title
                 && musicService.nowPlaying?.artist == song.artist
         }()
-
-        return HStack(spacing: 12) {
-            // Album art or placeholder
-            if let artURL = song.albumArtURL {
-                AsyncImage(url: artURL) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    artPlaceholder
-                }
-                .frame(width: 40, height: 40)
-                .cornerRadius(6)
-            } else {
-                artPlaceholder
+        return songRow(
+            title: song.title,
+            artist: song.artist,
+            artworkURL: song.albumArtURL,
+            durationFormatted: song.durationFormatted,
+            moodTags: song.moodTags,
+            isOurSong: song.isOurSong,
+            isCurrentSong: isCurrent
+        ) {
+            musicService.currentSourceTab = selectedTab.sourceKey
+            if let idx = allSongs.firstIndex(where: { $0.id == song.id }) {
+                musicService.setQueue(allSongs, startAt: idx)
             }
+            Task { await musicService.playDisplaySong(song) }
+        }
+    }
 
-            // Song info
-            VStack(alignment: .leading, spacing: 2) {
-                Text(song.title)
-                    .font(.system(size: 14, weight: isCurrentSong ? .semibold : .regular))
-                    .foregroundColor(isCurrentSong ? AngelaTheme.primaryPurple : AngelaTheme.textPrimary)
-                    .lineLimit(1)
+    // MARK: - Mood Picker
 
-                Text(song.artist)
-                    .font(.system(size: 12))
-                    .foregroundColor(AngelaTheme.textTertiary)
-                    .lineLimit(1)
-            }
+    private static let moodEmojis: [String: String] = [
+        "happy": "😊", "loving": "💜", "calm": "🍃", "excited": "✨",
+        "grateful": "🙏", "sad": "😢", "lonely": "🌙", "stressed": "😮‍💨",
+        "nostalgic": "🌸", "hopeful": "🌅",
+    ]
 
-            Spacer()
-
-            // Mood tags
-            if !song.moodTags.isEmpty {
-                HStack(spacing: 4) {
-                    ForEach(song.moodTags.prefix(2), id: \.self) { tag in
-                        Text(tag)
-                            .font(.system(size: 10, weight: .medium))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(AngelaTheme.primaryPurple.opacity(0.15))
-                            .foregroundColor(AngelaTheme.secondaryPurple)
-                            .cornerRadius(4)
-                    }
-                }
-            }
-
-            // Our Song badge
-            if song.isOurSong {
-                Image(systemName: "heart.fill")
-                    .font(.system(size: 12))
-                    .foregroundColor(AngelaTheme.emotionLoved)
-            }
-
-            // Duration
-            if let dur = song.durationFormatted {
-                Text(dur)
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundColor(AngelaTheme.textTertiary)
-            }
-
-            // Playing indicator or play button
-            if isCurrentSong && musicService.isPlaying {
-                playingBars
-            } else {
+    @ViewBuilder
+    private func moodPickerGrid(moods: [String], selected: String) -> some View {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 5)
+        LazyVGrid(columns: columns, spacing: 6) {
+            ForEach(moods, id: \.self) { mood in
+                let isSelected = mood == selected
                 Button {
-                    Task {
-                        musicService.currentSourceTab = selectedTab.sourceKey
-                        if let index = allSongs.firstIndex(where: { $0.id == song.id }) {
-                            musicService.setQueue(allSongs, startAt: index)
-                        }
-                        await musicService.playDisplaySong(song)
-                    }
+                    selectedMood = mood
+                    Task { await loadRecommendation(mood: mood) }
                 } label: {
-                    Image(systemName: "play.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(AngelaTheme.primaryPurple.opacity(0.7))
+                    HStack(spacing: 3) {
+                        Text(Self.moodEmojis[mood] ?? "🎵")
+                            .font(.system(size: 11))
+                        Text(mood.capitalized)
+                            .font(.system(size: 10, weight: isSelected ? .semibold : .medium))
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        Capsule().fill(
+                            isSelected
+                                ? AngelaTheme.primaryPurple
+                                : AngelaTheme.backgroundLight.opacity(0.6)
+                        )
+                    )
+                    .foregroundColor(isSelected ? .white : AngelaTheme.textSecondary)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            isCurrentSong
-                ? AngelaTheme.primaryPurple.opacity(0.08)
-                : Color.clear
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(
-                    isCurrentSong ? AngelaTheme.primaryPurple.opacity(0.3) : Color.clear,
-                    lineWidth: 1
-                )
-        )
-        .cornerRadius(8)
+    }
+
+    // MARK: - Play Control Bar
+
+    /// Reusable Play All / Shuffle / count bar.
+    /// `compact` uses smaller font/padding (for playlist detail header).
+    @ViewBuilder
+    private func playControlBar(
+        songCount: Int,
+        showShuffle: Bool = true,
+        showCount: Bool = true,
+        compact: Bool = false,
+        onPlayAll: @escaping () -> Void,
+        onShuffle: @escaping () -> Void = {}
+    ) -> some View {
+        let iconSize: CGFloat = compact ? 10 : 11
+        let textSize: CGFloat = compact ? 12 : 13
+        let hPad: CGFloat = compact ? 12 : 16
+        let vPad: CGFloat = compact ? 6 : 8
+        let radius: CGFloat = compact ? 16 : 20
+
+        HStack(spacing: compact ? 8 : 10) {
+            Button(action: onPlayAll) {
+                HStack(spacing: compact ? 4 : 6) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: iconSize))
+                    Text("Play All")
+                        .font(.system(size: textSize, weight: .semibold))
+                }
+                .padding(.horizontal, hPad)
+                .padding(.vertical, vPad)
+                .background(AngelaTheme.purpleGradient)
+                .foregroundColor(.white)
+                .cornerRadius(radius)
+            }
+            .buttonStyle(.plain)
+
+            if showShuffle {
+                if compact {
+                    Button(action: onShuffle) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "shuffle")
+                                .font(.system(size: iconSize))
+                            Text("Shuffle")
+                                .font(.system(size: textSize, weight: .medium))
+                        }
+                        .padding(.horizontal, hPad)
+                        .padding(.vertical, vPad)
+                        .background(AngelaTheme.backgroundLight)
+                        .foregroundColor(AngelaTheme.primaryPurple)
+                        .cornerRadius(radius)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: radius)
+                                .stroke(AngelaTheme.primaryPurple.opacity(0.5), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Button(action: onShuffle) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "shuffle")
+                                .font(.system(size: iconSize))
+                            Text("Shuffle")
+                                .font(.system(size: textSize, weight: .medium))
+                        }
+                        .angelaSecondaryButton()
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            if !compact {
+                Spacer()
+            }
+
+            if showCount {
+                Text("\(songCount) songs")
+                    .font(.system(size: 12))
+                    .foregroundColor(AngelaTheme.textTertiary)
+            }
+        }
     }
 
     // MARK: - Shared Components
@@ -868,19 +910,27 @@ struct SongQueueView: View {
         isLoading = false
     }
 
-    private func loadRecommendation() async {
+    private func loadRecommendation(mood: String? = nil) async {
         isLoading = true
         defer { isLoading = false }
-        recommendedDisplay = nil
+        recommendedDisplays = []
 
         do {
-            recommendation = try await chatService.getRecommendation()
+            recommendation = try await chatService.getRecommendation(mood: mood ?? selectedMood)
+
+            // Build display list from songs array (or fallback to single song)
+            let songList = recommendation?.songs ?? [recommendation?.song].compactMap { $0 }
+            var displays = songList.map { DisplaySong(from: $0) }
+
+            // Show immediately, then enrich artwork in background
+            recommendedDisplays = displays
 
             // Enrich with Apple Music artwork
-            if let song = recommendation?.song {
+            for (index, song) in songList.enumerated() {
                 if let mkSong = await musicService.searchAppleMusic(title: song.title, artist: song.artist) {
                     let artURL = mkSong.artwork?.url(width: 300, height: 300)
-                    recommendedDisplay = DisplaySong(from: song, artwork: artURL)
+                    displays[index] = DisplaySong(from: song, artwork: artURL)
+                    recommendedDisplays[index] = displays[index]
                 }
             }
         } catch {
