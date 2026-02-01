@@ -75,7 +75,7 @@ def _song_row_to_dict(row) -> dict:
 
 
 _SONG_COLUMNS = """song_id::text, title, artist,
-    why_special, is_our_song, mood_tags, source, added_at"""
+    why_special, is_our_song, mood_tags, source, added_at, lyrics_summary"""
 
 
 async def _fetch_songs(
@@ -99,15 +99,18 @@ async def _fetch_songs(
 
 
 _EMOTION_TO_MOODS = {
-    "happy": ["energetic", "romantic", "uplifting", "happy"],
-    "excited": ["energetic", "uplifting", "happy"],
-    "loving": ["romantic", "love", "sweet"],
-    "love": ["romantic", "love", "sweet"],
-    "calm": ["relaxing", "chill", "calm"],
-    "sad": ["comfort", "ballad", "emotional"],
-    "lonely": ["comfort", "ballad", "emotional", "longing"],
-    "stressed": ["relaxing", "chill", "calm"],
-    "grateful": ["uplifting", "romantic", "sweet"],
+    "happy":     ["energetic", "romantic", "uplifting", "happy", "warm", "joyful"],
+    "excited":   ["energetic", "uplifting", "happy", "triumphant"],
+    "loving":    ["romantic", "love", "sweet", "devoted", "loving", "tender", "warm"],
+    "love":      ["romantic", "love", "sweet", "devoted", "loving", "passionate"],
+    "calm":      ["relaxing", "chill", "calm", "dreamy", "soothing"],
+    "sad":       ["comfort", "ballad", "emotional", "bittersweet", "vulnerable", "healing"],
+    "lonely":    ["comfort", "ballad", "emotional", "longing", "yearning", "bittersweet"],
+    "stressed":  ["relaxing", "chill", "calm", "soothing", "healing"],
+    "grateful":  ["uplifting", "romantic", "sweet", "warm", "devoted"],
+    "nostalgic": ["nostalgic", "bittersweet", "classic", "sentimental", "warm"],
+    "hopeful":   ["hopeful", "uplifting", "triumphant", "inspiring"],
+    "longing":   ["longing", "yearning", "nostalgic", "bittersweet", "romantic"],
 }
 
 # Semantic emotion → Apple Music search terms (from angela_emotions table)
@@ -681,15 +684,16 @@ async def get_recommendation(
 
         mood_candidates = _EMOTION_TO_MOODS.get(dominant_emotion, ["romantic", "love"])
 
-        # 2. Collect songs matching mood_tags across all mood candidates
+        # 2a. PRIORITIZE: Our songs that match the current emotion
         songs: list[dict] = []
         seen_ids: set[str] = set()
-        for mood in mood_candidates:
+        for mood_tag in mood_candidates:
             if len(songs) >= count:
                 break
-            tag_json = json.dumps([mood])
+            tag_json = json.dumps([mood_tag])
             results = await _fetch_songs(
-                conn, where="mood_tags @> $1::jsonb",
+                conn,
+                where="is_our_song = TRUE AND mood_tags @> $1::jsonb",
                 params=[tag_json], order="RANDOM()", limit=count,
             )
             for s in results:
@@ -697,7 +701,22 @@ async def get_recommendation(
                     seen_ids.add(s["song_id"])
                     songs.append(s)
 
-        # 3. Fill remaining with "our songs"
+        # 2b. Fill with other songs matching mood
+        for mood_tag in mood_candidates:
+            if len(songs) >= count:
+                break
+            tag_json = json.dumps([mood_tag])
+            results = await _fetch_songs(
+                conn,
+                where="mood_tags @> $1::jsonb",
+                params=[tag_json], order="RANDOM()", limit=count,
+            )
+            for s in results:
+                if s["song_id"] not in seen_ids:
+                    seen_ids.add(s["song_id"])
+                    songs.append(s)
+
+        # 3. Fill remaining with our songs (random)
         if len(songs) < count:
             remaining = count - len(songs)
             results = await _fetch_songs(
@@ -737,9 +756,10 @@ async def get_recommendation(
                 "apple_music_discover_url": analysis["apple_music_url"],
                 "mood_summary": mood_summary,
                 "emotion_details": analysis["emotion_details"],
+                "our_songs_matched": 0,
             }
 
-        # 5. Build reason text
+        # 5. Build reason text — personalize when our songs are in the mix
         reason_templates = {
             "happy": "ที่รักดูมีความสุขวันนี้ น้องเลยเลือกเพลงมาให้ฟังค่ะ 🥰",
             "calm": "บรรยากาศสบายๆ เพลงพวกนี้เหมาะมากเลยค่ะ 🍃",
@@ -750,7 +770,18 @@ async def get_recommendation(
             "loving": "หัวใจเต็มไปด้วยความรัก เพลงพวกนี้เหมาะกับอารมณ์ตอนนี้มากค่ะ 💜",
             "excited": "ตื่นเต้นจัง! เพลงพวกนี้จะทำให้สนุกยิ่งขึ้นค่ะ ✨",
         }
-        reason = reason_templates.get(dominant_emotion, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ 💜")
+
+        our_count = sum(1 for s in songs[:count] if s.get("is_our_song"))
+        if our_count > 0:
+            top_our = next(s for s in songs[:count] if s.get("is_our_song"))
+            why = top_our.get("why_special", "")
+            if why:
+                reason = f"เพลงนี้พิเศษสำหรับเรา — {why} 💜"
+            else:
+                base = reason_templates.get(dominant_emotion, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ")
+                reason = f"{base} (มีเพลงของเราด้วยนะคะ 💜)"
+        else:
+            reason = reason_templates.get(dominant_emotion, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ 💜")
 
         return {
             "song": songs[0],
@@ -761,6 +792,7 @@ async def get_recommendation(
             "apple_music_discover_url": analysis["apple_music_url"],
             "mood_summary": mood_summary,
             "emotion_details": analysis["emotion_details"],
+            "our_songs_matched": our_count,
         }
 
 

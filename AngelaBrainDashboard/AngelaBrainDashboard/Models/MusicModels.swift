@@ -23,6 +23,7 @@ struct Song: Identifiable, Codable {
     let moodTags: [String]
     let source: String?
     let addedAt: String?
+    let lyricsSummary: String?
 
     var id: String { songId }
 }
@@ -38,6 +39,7 @@ struct SongRecommendation: Codable {
     let appleMusicDiscoverUrl: String?
     let moodSummary: String?
     let emotionDetails: [String]?
+    let ourSongsMatched: Int?
 }
 
 // MARK: - Music Share Request (encoded — needs CodingKeys for snake_case output)
