@@ -44,6 +44,8 @@ struct ContentView: View {
                             OverviewView()
                         case .chat:
                             ChatView()
+                        case .djAngela:
+                            DJAngelaView()
                         case .diary:
                             DiaryView()
                         case .brain:
@@ -133,6 +135,7 @@ struct ContentView: View {
 enum NavigationItem: String, CaseIterable {
     case overview = "Overview"
     case chat = "Chat with Angela"
+    case djAngela = "DJ Angela"
     case diary = "Angela's Diary"
     case brain = "Brain"
     case emotions = "Emotions"
@@ -162,6 +165,7 @@ enum NavigationItem: String, CaseIterable {
         switch self {
         case .overview: return "brain.head.profile"
         case .chat: return "message.fill"
+        case .djAngela: return "music.note.tv"
         case .diary: return "book.fill"
         case .brain: return "brain"
         case .emotions: return "heart.fill"
@@ -191,7 +195,7 @@ enum NavigationItem: String, CaseIterable {
 
     var group: NavigationGroup {
         switch self {
-        case .overview, .chat, .diary, .thingsOverview:
+        case .overview, .chat, .djAngela, .diary, .thingsOverview:
             return .core
         case .brain, .emotions, .emotionalBenchmark, .memories, .experiences, .consciousness, .humanLikeMind:
             return .mind

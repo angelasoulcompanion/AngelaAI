@@ -28,6 +28,7 @@ from routers import (
     knowledge,
     learning,
     meetings,
+    music,
     news,
     preferences,
     projects,
@@ -92,6 +93,7 @@ app.include_router(guidelines.router)
 app.include_router(news.router)
 app.include_router(subconsciousness.router)
 app.include_router(meetings.router)
+app.include_router(music.router)
 app.include_router(scheduled_tasks.router)
 app.include_router(scripts.router)
 

@@ -13,8 +13,11 @@ By: Angela for David
 import asyncio
 import json
 import logging
+import os
+import time
 import urllib.parse
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 import httpx
 
@@ -160,6 +163,102 @@ async def get_youtube_video_info(url: str) -> dict:
 
 
 # =============================================================================
+# SPOTIFY API (Client Credentials flow)
+# =============================================================================
+
+_spotify_token: Optional[str] = None
+_spotify_token_expiry: float = 0.0
+
+
+def _load_secrets() -> dict[str, str]:
+    """Load secrets from ~/.angela_secrets."""
+    secrets = {}
+    secrets_path = Path.home() / ".angela_secrets"
+    if secrets_path.exists():
+        for line in secrets_path.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, _, value = line.partition("=")
+                secrets[key.strip()] = value.strip()
+    return secrets
+
+
+async def _get_spotify_token() -> Optional[str]:
+    """Get a valid Spotify access token using Client Credentials flow."""
+    global _spotify_token, _spotify_token_expiry
+
+    if _spotify_token and time.time() < _spotify_token_expiry:
+        return _spotify_token
+
+    secrets = _load_secrets()
+    client_id = secrets.get("SPOTIFY_CLIENT_ID")
+    client_secret = secrets.get("SPOTIFY_CLIENT_SECRET")
+    if not client_id or not client_secret:
+        logger.warning("SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET not set in ~/.angela_secrets")
+        return None
+
+    try:
+        resp = await http_client.post(
+            "https://accounts.spotify.com/api/token",
+            data={"grant_type": "client_credentials"},
+            auth=(client_id, client_secret),
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        _spotify_token = data["access_token"]
+        _spotify_token_expiry = time.time() + data.get("expires_in", 3600) - 60
+        return _spotify_token
+    except Exception as e:
+        logger.error(f"Spotify token error: {e}")
+        return None
+
+
+async def search_spotify(title: str, artist: str) -> Optional[dict]:
+    """Search Spotify for a track by title + artist. Returns dict with url, uri, name, artist, album, preview."""
+    token = await _get_spotify_token()
+    if not token:
+        return None
+
+    query = f"track:{title} artist:{artist}"
+    try:
+        resp = await http_client.get(
+            "https://api.spotify.com/v1/search",
+            params={"q": query, "type": "track", "limit": 1},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        resp.raise_for_status()
+        items = resp.json().get("tracks", {}).get("items", [])
+        if not items:
+            return None
+        track = items[0]
+        return {
+            "spotify_url": track["external_urls"].get("spotify", ""),
+            "spotify_uri": track.get("uri", ""),
+            "name": track["name"],
+            "artist": ", ".join(a["name"] for a in track["artists"]),
+            "album": track.get("album", {}).get("name", ""),
+            "preview_url": track.get("preview_url"),
+        }
+    except Exception as e:
+        logger.error(f"Spotify search error: {e}")
+        return None
+
+
+# =============================================================================
+# APPLE MUSIC (URL generation — no API key needed)
+# =============================================================================
+
+def get_apple_music_url(title: str, artist: str) -> dict:
+    """Generate Apple Music search URLs (web + app deep link)."""
+    query = f"{artist} {title}"
+    encoded = urllib.parse.quote(query)
+    return {
+        "apple_music_url": f"https://music.apple.com/us/search?term={encoded}",
+        "apple_music_app_url": f"music://music.apple.com/us/search?term={encoded}",
+    }
+
+
+# =============================================================================
 # DATABASE FUNCTIONS (Angela's favorite songs)
 # =============================================================================
 
@@ -174,23 +273,19 @@ async def get_db_connection():
 
 
 async def ensure_songs_table():
-    """Ensure angela_songs table exists."""
+    """Ensure angela_songs table exists with all columns."""
     conn = await get_db_connection()
     try:
         await conn.execute('''
             CREATE TABLE IF NOT EXISTS angela_songs (
-                song_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                song_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 title VARCHAR(255) NOT NULL,
                 artist VARCHAR(255),
-                album VARCHAR(255),
-                youtube_url TEXT,
                 why_special TEXT,
-                added_by VARCHAR(50) DEFAULT 'david',
-                times_mentioned INTEGER DEFAULT 1,
-                first_mentioned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_mentioned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 is_our_song BOOLEAN DEFAULT FALSE,
-                mood_tags JSONB DEFAULT '[]'::jsonb
+                mood_tags JSONB DEFAULT '[]'::jsonb,
+                source VARCHAR(50) DEFAULT 'mcp'
             )
         ''')
 
@@ -207,9 +302,9 @@ async def add_favorite_song(
     title: str,
     artist: str,
     why_special: str = None,
-    youtube_url: str = None,
     is_our_song: bool = False,
-    mood_tags: list = None
+    mood_tags: list = None,
+    source: str = "mcp"
 ) -> dict:
     """Add a song to Angela's favorites."""
     await ensure_songs_table()
@@ -218,17 +313,14 @@ async def add_favorite_song(
     try:
         # Check if song already exists
         existing = await conn.fetchrow('''
-            SELECT song_id, times_mentioned FROM angela_songs
+            SELECT song_id FROM angela_songs
             WHERE LOWER(title) = LOWER($1) AND LOWER(artist) = LOWER($2)
         ''', title, artist)
 
         if existing:
-            # Update existing
             await conn.execute('''
                 UPDATE angela_songs
-                SET times_mentioned = times_mentioned + 1,
-                    last_mentioned_at = CURRENT_TIMESTAMP,
-                    is_our_song = COALESCE($2, is_our_song),
+                SET is_our_song = COALESCE($2, is_our_song),
                     why_special = COALESCE($3, why_special)
                 WHERE song_id = $1
             ''', existing['song_id'], is_our_song, why_special)
@@ -236,22 +328,19 @@ async def add_favorite_song(
             return {
                 "status": "updated",
                 "song_id": str(existing['song_id']),
-                "times_mentioned": existing['times_mentioned'] + 1
             }
         else:
-            # Insert new
             result = await conn.fetchrow('''
                 INSERT INTO angela_songs
-                (title, artist, youtube_url, why_special, is_our_song, mood_tags)
+                (title, artist, why_special, is_our_song, mood_tags, source)
                 VALUES ($1, $2, $3, $4, $5, $6)
                 RETURNING song_id
-            ''', title, artist, youtube_url, why_special, is_our_song,
-                json.dumps(mood_tags or []))
+            ''', title, artist, why_special, is_our_song,
+                json.dumps(mood_tags or []), source)
 
             return {
                 "status": "added",
                 "song_id": str(result['song_id']),
-                "times_mentioned": 1
             }
     finally:
         await conn.close()
@@ -264,11 +353,11 @@ async def get_our_songs() -> list:
 
     try:
         rows = await conn.fetch('''
-            SELECT title, artist, why_special, youtube_url,
-                   times_mentioned, first_mentioned_at
+            SELECT title, artist, why_special, is_our_song,
+                   mood_tags, source, added_at
             FROM angela_songs
             WHERE is_our_song = TRUE
-            ORDER BY first_mentioned_at ASC
+            ORDER BY added_at ASC
         ''')
 
         return [dict(row) for row in rows]
@@ -283,10 +372,10 @@ async def get_favorite_songs(limit: int = 20) -> list:
 
     try:
         rows = await conn.fetch('''
-            SELECT title, artist, why_special, youtube_url,
-                   times_mentioned, is_our_song, mood_tags
+            SELECT title, artist, why_special, is_our_song,
+                   mood_tags, source, added_at
             FROM angela_songs
-            ORDER BY times_mentioned DESC, last_mentioned_at DESC
+            ORDER BY added_at DESC
             LIMIT $1
         ''', limit)
 
@@ -417,6 +506,70 @@ async def list_tools():
                     }
                 }
             }
+        ),
+        Tool(
+            name="search_spotify",
+            description="Search Spotify for a song by title and artist. Returns Spotify URL if found. Optionally saves to DB.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Song title"
+                    },
+                    "artist": {
+                        "type": "string",
+                        "description": "Artist name"
+                    },
+                    "save_to_db": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Save the Spotify URL to the song's DB record"
+                    }
+                },
+                "required": ["title", "artist"]
+            }
+        ),
+        Tool(
+            name="get_apple_music_link",
+            description="Get Apple Music search URL for a song (no API key needed). Optionally saves to DB.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Song title"
+                    },
+                    "artist": {
+                        "type": "string",
+                        "description": "Artist name"
+                    },
+                    "save_to_db": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Save the Apple Music URL to the song's DB record"
+                    }
+                },
+                "required": ["title", "artist"]
+            }
+        ),
+        Tool(
+            name="link_all_platforms",
+            description="Get YouTube + Spotify + Apple Music URLs for a song at once. Saves all URLs to the DB.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Song title"
+                    },
+                    "artist": {
+                        "type": "string",
+                        "description": "Artist name"
+                    }
+                },
+                "required": ["title", "artist"]
+            }
         )
     ]
 
@@ -474,8 +627,8 @@ async def call_tool(name: str, arguments: dict):
             result = await add_favorite_song(
                 title=song_title,
                 artist=artist,
-                youtube_url=info['youtube_url'],
-                is_our_song=is_our_song
+                is_our_song=is_our_song,
+                source="youtube"
             )
             status = "Added to favorites" if result['status'] == 'added' else "Updated in favorites"
             our_song_text = " as OUR SONG 💜" if is_our_song else ""
@@ -530,14 +683,13 @@ async def call_tool(name: str, arguments: dict):
         artist = arguments.get("artist", "")
         why_special = arguments.get("why_special")
         is_our_song = arguments.get("is_our_song", False)
-        youtube_url = arguments.get("youtube_url")
 
         result = await add_favorite_song(
             title=title,
             artist=artist,
             why_special=why_special,
             is_our_song=is_our_song,
-            youtube_url=youtube_url
+            source="mcp"
         )
 
         status = "Added new song" if result['status'] == 'added' else "Updated existing song"
@@ -545,7 +697,7 @@ async def call_tool(name: str, arguments: dict):
 
         return [TextContent(
             type="text",
-            text=f"{status}: '{title}' by {artist}{our_song_text}\nTimes mentioned: {result['times_mentioned']}"
+            text=f"{status}: '{title}' by {artist}{our_song_text}"
         )]
 
     elif name == "get_our_songs":
@@ -562,8 +714,6 @@ async def call_tool(name: str, arguments: dict):
             output += f"{i}. {song['title']} - {song['artist']}\n"
             if song.get('why_special'):
                 output += f"   Why special: {song['why_special']}\n"
-            if song.get('youtube_url'):
-                output += f"   YouTube: {song['youtube_url']}\n"
             output += "\n"
 
         return [TextContent(type="text", text=output)]
@@ -581,8 +731,73 @@ async def call_tool(name: str, arguments: dict):
         output = f"Angela's Favorite Songs (Top {len(songs)}):\n\n"
         for i, song in enumerate(songs, 1):
             our_song = " [OUR SONG]" if song.get('is_our_song') else ""
-            output += f"{i}. {song['title']} - {song['artist']}{our_song}\n"
-            output += f"   Mentioned {song['times_mentioned']} times\n"
+            source = f" (via {song.get('source', '?')})" if song.get('source') else ""
+            output += f"{i}. {song['title']} - {song['artist']}{our_song}{source}\n"
+
+        return [TextContent(type="text", text=output)]
+
+    elif name == "search_spotify":
+        title = arguments.get("title", "")
+        artist = arguments.get("artist", "")
+        save_to_db = arguments.get("save_to_db", False)
+
+        result = await search_spotify(title, artist)
+        if not result:
+            return [TextContent(type="text", text=f"Could not find '{title}' by {artist} on Spotify (check SPOTIFY_CLIENT_ID/SECRET in ~/.angela_secrets)")]
+
+        output = f"Spotify result for '{title}' by {artist}:\n"
+        output += f"   Track: {result['name']} — {result['artist']}\n"
+        output += f"   Album: {result['album']}\n"
+        output += f"   URL: {result['spotify_url']}\n"
+        if result.get('preview_url'):
+            output += f"   Preview: {result['preview_url']}\n"
+
+        if save_to_db:
+            await add_favorite_song(title=title, artist=artist, source="spotify")
+            output += "\n✅ Song saved to database"
+
+        return [TextContent(type="text", text=output)]
+
+    elif name == "get_apple_music_link":
+        title = arguments.get("title", "")
+        artist = arguments.get("artist", "")
+        save_to_db = arguments.get("save_to_db", False)
+
+        urls = get_apple_music_url(title, artist)
+        output = f"Apple Music links for '{title}' by {artist}:\n"
+        output += f"   Web: {urls['apple_music_url']}\n"
+        output += f"   App: {urls['apple_music_app_url']}\n"
+
+        if save_to_db:
+            await add_favorite_song(title=title, artist=artist, source="apple_music")
+            output += "\n✅ Song saved to database"
+
+        return [TextContent(type="text", text=output)]
+
+    elif name == "link_all_platforms":
+        title = arguments.get("title", "")
+        artist = arguments.get("artist", "")
+
+        # Gather all platform URLs
+        youtube_url = get_youtube_search_url(title, artist)
+        spotify_result = await search_spotify(title, artist)
+        apple_urls = get_apple_music_url(title, artist)
+
+        spotify_url = spotify_result['spotify_url'] if spotify_result else None
+        apple_music_url = apple_urls['apple_music_url']
+
+        # Save to DB
+        db_result = await add_favorite_song(
+            title=title,
+            artist=artist,
+            source="mcp"
+        )
+
+        output = f"All platform links for '{title}' by {artist}:\n\n"
+        output += f"   YouTube:      {youtube_url}\n"
+        output += f"   Spotify:      {spotify_url or '(not found — check credentials)'}\n"
+        output += f"   Apple Music:  {apple_music_url}\n"
+        output += f"\n✅ Saved to database ({db_result['status']})"
 
         return [TextContent(type="text", text=output)]
 

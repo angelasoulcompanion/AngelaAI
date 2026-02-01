@@ -34,6 +34,41 @@ async def startup() -> None:
                 ALTER TABLE learnings
                 ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT NULL
             """)
+            # DJ Angela: source column for angela_songs
+            await conn.execute("ALTER TABLE angela_songs ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'dj_angela'")
+
+            # DJ Angela: Music listening history (play tracking + learning)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS music_listening_history (
+                    listen_id        UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                    title            VARCHAR(255) NOT NULL,
+                    artist           VARCHAR(255),
+                    album            VARCHAR(255),
+                    apple_music_id   VARCHAR(100),
+                    source_tab       VARCHAR(30),
+                    started_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ended_at         TIMESTAMP,
+                    duration_seconds NUMERIC,
+                    listened_seconds NUMERIC,
+                    play_status      VARCHAR(20) DEFAULT 'started',
+                    mood_at_play     VARCHAR(50),
+                    emotion_scores   JSONB,
+                    occasion         VARCHAR(50),
+                    generated_insight BOOLEAN DEFAULT FALSE
+                )
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_mlh_started
+                ON music_listening_history(started_at DESC)
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_mlh_title_artist
+                ON music_listening_history(title, artist)
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_mlh_mood
+                ON music_listening_history(mood_at_play)
+            """)
     except Exception as e:
         print(f"❌ Failed to connect to database: {e}")
         sys.exit(1)

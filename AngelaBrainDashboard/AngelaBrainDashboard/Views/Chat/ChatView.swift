@@ -1231,17 +1231,10 @@ struct DJSongRow: View {
 
             Spacer()
 
-            // Platform play buttons
+            // Play button (search on Apple Music)
             HStack(spacing: 4) {
-                if let urlStr = song.youtubeUrl, let url = URL(string: urlStr) {
-                    PlatformPlayButton(url: url, icon: "play.fill", label: "YT",
-                                       colors: [Color(hex: "EF4444"), Color(hex: "DC2626")])
-                }
-                if let urlStr = song.spotifyUrl, let url = URL(string: urlStr) {
-                    PlatformPlayButton(url: url, icon: "music.note", label: "Spotify",
-                                       colors: [Color(hex: "1DB954"), Color(hex: "1AA34A")])
-                }
-                if let urlStr = song.appleMusicUrl, let url = URL(string: urlStr) {
+                if let searchTerm = "\(song.title) \(song.artist ?? "")".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+                   let url = URL(string: "https://music.apple.com/search?term=\(searchTerm)") {
                     PlatformPlayButton(url: url, icon: "music.quarternote.3", label: "Music",
                                        colors: [Color(hex: "FC3C44"), Color(hex: "FA2D55")])
                 }

@@ -17,7 +17,7 @@ async def get_dashboard_stats():
         stats['total_experiences'] = await conn.fetchval("SELECT COUNT(*) FROM shared_experiences") or 0
         stats['total_knowledge_nodes'] = await conn.fetchval("SELECT COUNT(*) FROM knowledge_nodes") or 0
         stats['consciousness_level'] = float(await conn.fetchval(
-            "SELECT COALESCE(consciousness_level, 0.7) FROM self_awareness_state ORDER BY created_at DESC LIMIT 1"
+            "SELECT consciousness_level FROM calculate_consciousness_level()"
         ) or 0.7)
         stats['conversations_today'] = await conn.fetchval(
             "SELECT COUNT(*) FROM conversations WHERE DATE(created_at) = CURRENT_DATE"

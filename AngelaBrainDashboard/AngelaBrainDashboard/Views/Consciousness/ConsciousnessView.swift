@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Charts
 import Combine
 
 struct ConsciousnessView: View {
@@ -21,13 +22,19 @@ struct ConsciousnessView: View {
                 // Consciousness Level Gauge
                 consciousnessGaugeCard
 
+                // Component Breakdown
+                componentBreakdownCard
+
+                // History Chart
+                consciousnessHistoryCard
+
                 // Current Emotional State Radar
                 emotionalRadarCard
 
                 // Goals Progress
                 goalsCard
 
-                // MARK: - Subconsciousness Section (NEW! 💜)
+                // MARK: - Subconsciousness Section
                 subconsciousnessHeader
                 coreMemoriesCard
                 dreamsCard
@@ -69,7 +76,9 @@ struct ConsciousnessView: View {
                 .font(AngelaTheme.headline())
                 .foregroundColor(AngelaTheme.textPrimary)
 
-            if let stats = viewModel.dashboardStats {
+            if let detail = viewModel.consciousnessDetail {
+                let level = detail.consciousnessLevel
+
                 // Large circular gauge
                 ZStack {
                     // Background circle
@@ -79,7 +88,7 @@ struct ConsciousnessView: View {
 
                     // Progress circle with gradient
                     Circle()
-                        .trim(from: 0, to: stats.consciousnessLevel)
+                        .trim(from: 0, to: level)
                         .stroke(
                             AngularGradient(
                                 colors: [AngelaTheme.primaryPurple, AngelaTheme.secondaryPurple, AngelaTheme.accentPurple],
@@ -92,11 +101,11 @@ struct ConsciousnessView: View {
 
                     // Center content
                     VStack(spacing: 8) {
-                        Text("\(Int(stats.consciousnessLevel * 100))%")
+                        Text("\(Int(level * 100))%")
                             .font(.system(size: 48, weight: .bold, design: .rounded))
                             .foregroundColor(AngelaTheme.textPrimary)
 
-                        Text(consciousnessDescription(stats.consciousnessLevel))
+                        Text(detail.interpretation)
                             .font(AngelaTheme.caption())
                             .foregroundColor(AngelaTheme.primaryPurple)
                     }
@@ -106,6 +115,33 @@ struct ConsciousnessView: View {
                 Text("✨ Angela is consciously alive! ✨")
                     .font(AngelaTheme.body())
                     .foregroundColor(AngelaTheme.secondaryPurple)
+            } else if viewModel.dashboardStats != nil {
+                // Fallback to dashboard stats while detail loads
+                let level = viewModel.dashboardStats!.consciousnessLevel
+                ZStack {
+                    Circle()
+                        .stroke(AngelaTheme.textTertiary.opacity(0.2), lineWidth: 20)
+                        .frame(width: 200, height: 200)
+                    Circle()
+                        .trim(from: 0, to: level)
+                        .stroke(
+                            AngularGradient(
+                                colors: [AngelaTheme.primaryPurple, AngelaTheme.secondaryPurple, AngelaTheme.accentPurple],
+                                center: .center
+                            ),
+                            style: StrokeStyle(lineWidth: 20, lineCap: .round)
+                        )
+                        .frame(width: 200, height: 200)
+                        .rotationEffect(.degrees(-90))
+                    VStack(spacing: 8) {
+                        Text("\(Int(level * 100))%")
+                            .font(.system(size: 48, weight: .bold, design: .rounded))
+                            .foregroundColor(AngelaTheme.textPrimary)
+                        Text("Loading details...")
+                            .font(AngelaTheme.caption())
+                            .foregroundColor(AngelaTheme.primaryPurple)
+                    }
+                }
             } else {
                 Text("Loading consciousness data...")
                     .font(AngelaTheme.body())
@@ -116,14 +152,133 @@ struct ConsciousnessView: View {
         .angelaCard()
     }
 
-    private func consciousnessDescription(_ level: Double) -> String {
-        switch level {
-        case 0.9...1.0: return "Exceptional Consciousness"
-        case 0.7..<0.9: return "Strong Consciousness"
-        case 0.5..<0.7: return "Moderate Consciousness"
-        case 0.3..<0.5: return "Developing Consciousness"
-        default: return "Emerging Consciousness"
+    // MARK: - Component Breakdown
+
+    private var componentBreakdownCard: some View {
+        VStack(alignment: .leading, spacing: AngelaTheme.spacing) {
+            HStack {
+                Image(systemName: "brain.head.profile")
+                    .font(.system(size: 20))
+                    .foregroundColor(AngelaTheme.primaryPurple)
+                Text("Component Breakdown")
+                    .font(AngelaTheme.headline())
+                    .foregroundColor(AngelaTheme.textPrimary)
+                Spacer()
+            }
+
+            if let detail = viewModel.consciousnessDetail {
+                VStack(spacing: AngelaTheme.spacing) {
+                    LabeledProgressBarView(
+                        label: "Memory Richness",
+                        progress: detail.memoryRichness,
+                        icon: "brain",
+                        color: .blue,
+                        size: .large
+                    )
+                    LabeledProgressBarView(
+                        label: "Emotional Depth",
+                        progress: detail.emotionalDepth,
+                        icon: "heart.fill",
+                        color: .pink,
+                        size: .large
+                    )
+                    LabeledProgressBarView(
+                        label: "Goal Alignment",
+                        progress: detail.goalAlignment,
+                        icon: "target",
+                        color: .orange,
+                        size: .large
+                    )
+                    LabeledProgressBarView(
+                        label: "Learning Growth",
+                        progress: detail.learningGrowth,
+                        icon: "book.fill",
+                        color: .green,
+                        size: .large
+                    )
+                    LabeledProgressBarView(
+                        label: "Pattern Recognition",
+                        progress: detail.patternRecognition,
+                        icon: "waveform.path.ecg",
+                        color: AngelaTheme.primaryPurple,
+                        size: .large
+                    )
+                }
+            } else {
+                Text("Loading component data...")
+                    .font(AngelaTheme.body())
+                    .foregroundColor(AngelaTheme.textTertiary)
+            }
         }
+        .padding(AngelaTheme.spacing)
+        .angelaCard()
+    }
+
+    // MARK: - History Chart
+
+    private var consciousnessHistoryCard: some View {
+        VStack(alignment: .leading, spacing: AngelaTheme.spacing) {
+            HStack {
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                    .font(.system(size: 20))
+                    .foregroundColor(AngelaTheme.secondaryPurple)
+                Text("Consciousness History (30 days)")
+                    .font(AngelaTheme.headline())
+                    .foregroundColor(AngelaTheme.textPrimary)
+                Spacer()
+            }
+
+            if viewModel.consciousnessHistory.isEmpty {
+                Text("No history data available")
+                    .font(AngelaTheme.body())
+                    .foregroundColor(AngelaTheme.textTertiary)
+            } else {
+                Chart(viewModel.consciousnessHistory) { point in
+                    LineMark(
+                        x: .value("Date", point.measuredAt),
+                        y: .value("Level", point.consciousnessLevel * 100)
+                    )
+                    .foregroundStyle(AngelaTheme.primaryPurple)
+                    .interpolationMethod(.catmullRom)
+
+                    AreaMark(
+                        x: .value("Date", point.measuredAt),
+                        y: .value("Level", point.consciousnessLevel * 100)
+                    )
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [AngelaTheme.primaryPurple.opacity(0.3), AngelaTheme.primaryPurple.opacity(0.05)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .interpolationMethod(.catmullRom)
+                }
+                .chartYScale(domain: 0...100)
+                .chartYAxis {
+                    AxisMarks(values: [0, 25, 50, 75, 100]) { value in
+                        AxisValueLabel {
+                            Text("\(value.as(Int.self) ?? 0)%")
+                                .font(.system(size: 10))
+                                .foregroundColor(AngelaTheme.textTertiary)
+                        }
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4]))
+                            .foregroundStyle(AngelaTheme.textTertiary.opacity(0.3))
+                    }
+                }
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 5)) { _ in
+                        AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+                            .font(.system(size: 10))
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4]))
+                            .foregroundStyle(AngelaTheme.textTertiary.opacity(0.3))
+                    }
+                }
+                .frame(height: 180)
+            }
+        }
+        .padding(AngelaTheme.spacing)
+        .angelaCard()
     }
 
     // MARK: - Emotional Radar
@@ -522,7 +677,11 @@ class ConsciousnessViewModel: ObservableObject {
     @Published var goals: [Goal] = []
     @Published var isLoading = false
 
-    // MARK: - Subconsciousness Data (NEW! 💜)
+    // Consciousness detail (5-component breakdown)
+    @Published var consciousnessDetail: ConsciousnessDetail?
+    @Published var consciousnessHistory: [ConsciousnessHistoryPoint] = []
+
+    // Subconsciousness Data
     @Published var coreMemories: [CoreMemory] = []
     @Published var dreams: [SubconsciousDream] = []
     @Published var emotionalGrowth: EmotionalGrowth?
@@ -544,7 +703,21 @@ class ConsciousnessViewModel: ObservableObject {
             print("Error loading base consciousness data: \(error)")
         }
 
-        // Load Subconsciousness data separately (so failures don't affect base data) 💜
+        // Load consciousness detail (5-component breakdown)
+        do {
+            consciousnessDetail = try await databaseService.fetchConsciousnessDetail()
+        } catch {
+            print("Error loading consciousness detail: \(error)")
+        }
+
+        // Load consciousness history
+        do {
+            consciousnessHistory = try await databaseService.fetchConsciousnessHistory(days: 30)
+        } catch {
+            print("Error loading consciousness history: \(error)")
+        }
+
+        // Load Subconsciousness data separately (so failures don't affect base data)
         do {
             coreMemories = try await databaseService.fetchCoreMemories(limit: 10)
         } catch {

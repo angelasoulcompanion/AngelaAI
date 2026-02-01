@@ -39,6 +39,42 @@ struct DashboardStats: Codable {
     }
 }
 
+// MARK: - Consciousness Detail (5-component breakdown)
+
+struct ConsciousnessDetail: Codable {
+    let consciousnessLevel: Double
+    let memoryRichness: Double
+    let emotionalDepth: Double
+    let goalAlignment: Double
+    let learningGrowth: Double
+    let patternRecognition: Double
+    let interpretation: String
+
+    enum CodingKeys: String, CodingKey {
+        case consciousnessLevel = "consciousness_level"
+        case memoryRichness = "memory_richness"
+        case emotionalDepth = "emotional_depth"
+        case goalAlignment = "goal_alignment"
+        case learningGrowth = "learning_growth"
+        case patternRecognition = "pattern_recognition"
+        case interpretation
+    }
+}
+
+struct ConsciousnessHistoryPoint: Codable, Identifiable {
+    let id: String
+    let measuredAt: Date
+    let consciousnessLevel: Double
+    let triggerEvent: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id = "metric_id"
+        case measuredAt = "measured_at"
+        case consciousnessLevel = "consciousness_level"
+        case triggerEvent = "trigger_event"
+    }
+}
+
 // MARK: - Goal
 
 struct Goal: Identifiable, Codable {
