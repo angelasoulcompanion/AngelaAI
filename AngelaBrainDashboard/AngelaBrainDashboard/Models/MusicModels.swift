@@ -40,6 +40,7 @@ struct SongRecommendation: Codable {
     let moodSummary: String?
     let emotionDetails: [String]?
     let ourSongsMatched: Int?
+    let wineMessage: String?
 }
 
 // MARK: - Music Share Request (encoded — needs CodingKeys for snake_case output)
@@ -158,6 +159,20 @@ struct DisplaySong: Identifiable {
         self.moodTags = angelaSong.moodTags
     }
 
+    /// Init from iTunes Search API result (no MusicKit, no Angela Song)
+    init(title: String, artist: String, album: String? = nil, artworkURL: URL? = nil, duration: TimeInterval? = nil) {
+        self.id = UUID().uuidString
+        self.title = title
+        self.artist = artist
+        self.album = album
+        self.albumArtURL = artworkURL
+        self.duration = duration
+        self.musicKitSong = nil
+        self.angelaSong = nil
+        self.isOurSong = false
+        self.moodTags = []
+    }
+
     var durationFormatted: String? {
         guard let d = duration, d > 0 else { return nil }
         let minutes = Int(d) / 60
@@ -178,6 +193,7 @@ struct PlayLogBody: Codable {
     let listenedSeconds: Double?
     let playStatus: String
     let activity: String?
+    let wineType: String?
 
     enum CodingKeys: String, CodingKey {
         case title, artist, album, activity
@@ -186,6 +202,7 @@ struct PlayLogBody: Codable {
         case durationSeconds = "duration_seconds"
         case listenedSeconds = "listened_seconds"
         case playStatus = "play_status"
+        case wineType = "wine_type"
     }
 }
 
@@ -228,6 +245,28 @@ struct MarkOurSongBody: Codable {
 
 struct MarkOurSongResponse: Codable {
     let marked: Bool
+}
+
+// MARK: - Wine Reaction (encoded — needs CodingKeys for snake_case output)
+
+struct WineReactionBody: Codable {
+    let wineType: String
+    let reaction: String      // "up", "down", "love"
+    let targetType: String    // "pairing" or "song"
+    let songTitle: String?
+    let songArtist: String?
+
+    enum CodingKeys: String, CodingKey {
+        case reaction
+        case wineType = "wine_type"
+        case targetType = "target_type"
+        case songTitle = "song_title"
+        case songArtist = "song_artist"
+    }
+}
+
+struct WineReactionResponse: Codable {
+    let saved: Bool
 }
 
 // MARK: - Now Playing Info (for DJ Angela vinyl player)

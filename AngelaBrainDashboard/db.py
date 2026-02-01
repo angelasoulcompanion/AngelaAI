@@ -69,6 +69,25 @@ async def startup() -> None:
                 CREATE INDEX IF NOT EXISTS idx_mlh_mood
                 ON music_listening_history(mood_at_play)
             """)
+            # DJ Angela: Wine-to-Music pairing
+            await conn.execute("ALTER TABLE music_listening_history ADD COLUMN IF NOT EXISTS wine_type VARCHAR(50)")
+
+            # DJ Angela: Wine reaction feedback (thumbs up/down/love)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS wine_reactions (
+                    reaction_id  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                    wine_type    VARCHAR(50) NOT NULL,
+                    reaction     VARCHAR(10) NOT NULL,
+                    target_type  VARCHAR(20) NOT NULL,
+                    song_title   VARCHAR(255),
+                    song_artist  VARCHAR(255),
+                    created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_wr_wine
+                ON wine_reactions(wine_type)
+            """)
     except Exception as e:
         print(f"❌ Failed to connect to database: {e}")
         sys.exit(1)

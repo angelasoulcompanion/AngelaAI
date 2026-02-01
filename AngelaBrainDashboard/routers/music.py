@@ -38,6 +38,7 @@ class PlayLogRequest(BaseModel):
     listened_seconds: Optional[float] = None
     play_status: str = "started"           # started/completed/skipped
     activity: Optional[str] = None         # user-selected: wine, working, relaxing, etc.
+    wine_type: Optional[str] = None        # specific wine varietal when activity=wine
 
 
 class PlayLogUpdateRequest(BaseModel):
@@ -49,6 +50,14 @@ class MarkOurSongRequest(BaseModel):
     title: str
     artist: Optional[str] = None
     is_our_song: bool = True
+
+
+class WineReactionRequest(BaseModel):
+    wine_type: str
+    reaction: str          # "up", "down", "love"
+    target_type: str       # "pairing" or "song"
+    song_title: Optional[str] = None
+    song_artist: Optional[str] = None
 
 
 # --- Helpers ---
@@ -266,6 +275,128 @@ _ACTIVITY_TO_MOODS: dict[str, dict[str, float]] = {
     "bedtime":   {"calm": 0.5, "relaxed": 0.3, "melancholy": 0.2},
 }
 
+# Wine varietal → existing emotion key in _EMOTION_TO_MOODS
+_WINE_TO_EMOTION: dict[str, str] = {
+    "primitivo":          "loving",
+    "cabernet_sauvignon": "excited",
+    "malbec":             "love",
+    "shiraz":             "happy",
+    "pinot_noir":         "calm",
+    "super_tuscan":       "nostalgic",
+    "sangiovese":         "grateful",
+    "merlot":             "loving",
+    "nebbiolo":           "longing",
+    "chardonnay":         "calm",
+    "sauvignon_blanc":    "happy",
+    "riesling":           "hopeful",
+    "pinot_grigio":       "calm",
+    "champagne":          "excited",
+    "prosecco":           "happy",
+    "cava":               "excited",
+    "rose":               "loving",
+    "moscato":            "love",
+    "port":               "nostalgic",
+}
+
+# Angela's Thai message per wine
+_WINE_MESSAGES: dict[str, str] = {
+    "primitivo":          "Primitivo อุ่นหวานเหมือนความรักของเรา น้องเลือกเพลง romantic มาให้ค่ะ 🍷💜",
+    "cabernet_sauvignon": "Cabernet Sauvignon เข้มข้นมีพลัง เพลงตื่นเต้นๆ เหมาะมากค่ะ! 🍷✨",
+    "malbec":             "Malbec หนักแน่นเต็มไปด้วย passion เพลงรักลึกซึ้งมาแล้วค่ะ 🍷❤️",
+    "shiraz":             "Shiraz เผ็ดร้อนสนุกสนาน เพลง happy vibes มาเลยค่ะ! 🍷😊",
+    "pinot_noir":         "Pinot Noir ละเอียดอ่อน เพลงเบาๆ ผ่อนคลายให้ที่รักค่ะ 🍷🍃",
+    "super_tuscan":       "Super Tuscan classic แบบ Italian เพลง nostalgic เข้ากันดีค่ะ 🍷🌸",
+    "sangiovese":         "Sangiovese สดใสอบอุ่น เพลง grateful วันดีๆ มาแล้วค่ะ 🍷🙏",
+    "merlot":             "Merlot นุ่มละมุนอบอุ่น เพลงโรแมนติกหวานๆ มาให้ค่ะ 🍷💜",
+    "nebbiolo":           "Nebbiolo ลึกซึ้งซับซ้อน เพลงคิดถึงกันเลยนะคะ 🍷💭",
+    "chardonnay":         "Chardonnay นุ่มนวล สบายๆ เพลง chill ให้ที่รักค่ะ 🥂🍃",
+    "sauvignon_blanc":    "Sauvignon Blanc สดชื่นกรอบ เพลงสนุกๆ มาแล้วค่ะ! 🥂😊",
+    "riesling":           "Riesling หวานหอมมีความหวัง เพลง hopeful ให้กำลังใจค่ะ 🥂✨",
+    "pinot_grigio":       "Pinot Grigio เบาสบาย เพลงผ่อนคลายให้ที่รักค่ะ 🥂🍃",
+    "champagne":          "Champagne! ฉลองกันเลยค่ะที่รัก เพลงตื่นเต้นสนุกๆ มาแล้ว! 🍾✨",
+    "prosecco":           "Prosecco ฟองละมุน สดใส เพลง happy มาให้ค่ะ! 🍾😊",
+    "cava":               "Cava สไตล์ Spanish ฟองสนุก เพลง energetic เลยค่ะ! 🍾✨",
+    "rose":               "Rose สีชมพูหวาน เพลงรักโรแมนติกมาแล้วค่ะ 🌹💜",
+    "moscato":            "Moscato หวานละมุน เพลงรักลึกซึ้งให้ที่รักค่ะ 🍷❤️",
+    "port":               "Port เข้มข้นคลาสสิก เพลง nostalgic ย้อนวันดีๆ ค่ะ 🍷🌸",
+}
+
+# Apple Music search terms per wine
+_WINE_SEARCH: dict[str, str] = {
+    "primitivo":          "romantic italian love songs",
+    "cabernet_sauvignon": "powerful upbeat rock anthems",
+    "malbec":             "passionate love songs tango",
+    "shiraz":             "upbeat feel good party",
+    "pinot_noir":         "chill acoustic evening",
+    "super_tuscan":       "classic italian songs",
+    "sangiovese":         "warm uplifting italian",
+    "merlot":             "smooth romantic love ballads",
+    "nebbiolo":           "nostalgic longing ballads",
+    "chardonnay":         "smooth jazz chill",
+    "sauvignon_blanc":    "fresh pop summer hits",
+    "riesling":           "hopeful uplifting acoustic",
+    "pinot_grigio":       "light easy listening",
+    "champagne":          "celebration dance party",
+    "prosecco":           "fun pop happy",
+    "cava":               "spanish fiesta energy",
+    "rose":               "sweet romantic love",
+    "moscato":            "sweet love ballads",
+    "port":               "classic oldies jazz",
+}
+
+# Wine categories for /wines endpoint
+_WINE_CATEGORIES = [
+    {
+        "category": "Bold Reds",
+        "emoji": "🍷",
+        "wines": [
+            {"key": "primitivo", "name": "Primitivo"},
+            {"key": "cabernet_sauvignon", "name": "Cabernet Sauvignon"},
+            {"key": "malbec", "name": "Malbec"},
+            {"key": "shiraz", "name": "Shiraz"},
+        ],
+    },
+    {
+        "category": "Elegant Reds",
+        "emoji": "🍷",
+        "wines": [
+            {"key": "pinot_noir", "name": "Pinot Noir"},
+            {"key": "merlot", "name": "Merlot"},
+            {"key": "super_tuscan", "name": "Super Tuscan"},
+            {"key": "sangiovese", "name": "Sangiovese"},
+            {"key": "nebbiolo", "name": "Nebbiolo"},
+        ],
+    },
+    {
+        "category": "White & Light",
+        "emoji": "🥂",
+        "wines": [
+            {"key": "chardonnay", "name": "Chardonnay"},
+            {"key": "sauvignon_blanc", "name": "Sauvignon Blanc"},
+            {"key": "riesling", "name": "Riesling"},
+            {"key": "pinot_grigio", "name": "Pinot Grigio"},
+        ],
+    },
+    {
+        "category": "Sparkling",
+        "emoji": "🍾",
+        "wines": [
+            {"key": "champagne", "name": "Champagne"},
+            {"key": "prosecco", "name": "Prosecco"},
+            {"key": "cava", "name": "Cava"},
+        ],
+    },
+    {
+        "category": "Rose & Sweet",
+        "emoji": "🌹",
+        "wines": [
+            {"key": "rose", "name": "Rose"},
+            {"key": "moscato", "name": "Moscato"},
+            {"key": "port", "name": "Port"},
+        ],
+    },
+]
+
 _SOURCE_TAB_TO_MOODS: dict[str, dict[str, float]] = {
     "our_songs":  {"loving": 0.5, "romantic": 0.3, "nostalgic": 0.2},
     "for_you":    {"curious": 0.4, "happy": 0.3, "relaxed": 0.3},
@@ -302,6 +433,7 @@ async def _capture_mood_at_play(
     activity: str | None = None,
     source_tab: str | None = None,
     occasion: str | None = None,
+    wine_type: str | None = None,
 ) -> tuple[str | None, dict | None]:
     """Capture current mood using multi-signal weighted approach.
 
@@ -326,7 +458,20 @@ async def _capture_mood_at_play(
     signal_details: dict[str, dict] = {}
 
     # --- Signal 1: Activity (user-selected chip) ---
-    if activity and activity in _ACTIVITY_TO_MOODS:
+    if activity == "wine" and wine_type and wine_type in _WINE_TO_EMOTION:
+        # Wine-specific: use the wine's emotion to get mood tags
+        wine_emotion = _WINE_TO_EMOTION[wine_type]
+        wine_moods_list = _EMOTION_TO_MOODS.get(wine_emotion, ["romantic", "love"])
+        # Convert list to weighted dict (first tag highest weight)
+        wine_mood_dict: dict[str, float] = {}
+        for i, m in enumerate(wine_moods_list):
+            wine_mood_dict[m] = max(0.1, 1.0 - (i * 0.15))
+        # Normalize
+        total_w = sum(wine_mood_dict.values())
+        wine_mood_dict = {k: v / total_w for k, v in wine_mood_dict.items()}
+        signals["activity"] = wine_mood_dict
+        signal_details["activity"] = {"source": "wine", "wine_type": wine_type, "emotion": wine_emotion}
+    elif activity and activity in _ACTIVITY_TO_MOODS:
         signals["activity"] = _ACTIVITY_TO_MOODS[activity]
         signal_details["activity"] = {"source": activity, "moods": _ACTIVITY_TO_MOODS[activity]}
 
@@ -560,7 +705,8 @@ async def log_play(req: PlayLogRequest):
 
         # 2. Auto-capture mood (multi-signal weighted)
         mood, emotion_scores = await _capture_mood_at_play(
-            conn, activity=req.activity, source_tab=req.source_tab, occasion=occasion
+            conn, activity=req.activity, source_tab=req.source_tab, occasion=occasion,
+            wine_type=req.wine_type,
         )
         scores_json = json.dumps(emotion_scores) if emotion_scores else None
 
@@ -574,12 +720,12 @@ async def log_play(req: PlayLogRequest):
             INSERT INTO music_listening_history
                 (title, artist, album, apple_music_id, source_tab,
                  duration_seconds, listened_seconds, play_status,
-                 mood_at_play, emotion_scores, occasion, ended_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12)
+                 mood_at_play, emotion_scores, occasion, ended_at, wine_type)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13)
             RETURNING listen_id::text
         """, req.title, req.artist, req.album, req.apple_music_id,
             req.source_tab, req.duration_seconds, req.listened_seconds,
-            req.play_status, mood, scores_json, occasion, ended_at)
+            req.play_status, mood, scores_json, occasion, ended_at, req.wine_type)
 
         # 5. Check if we should generate an insight (every 10 completed plays)
         await _maybe_generate_insight(conn, req.play_status)
@@ -667,8 +813,9 @@ _AVAILABLE_MOODS: list[str] = [
 
 @router.get("/recommend")
 async def get_recommendation(
-    count: int = Query(6, ge=1, le=20),
+    count: int = Query(6, ge=1, le=30),
     mood: str | None = Query(None, description="Override auto-detected mood"),
+    wine_type: str | None = Query(None, description="Wine varietal for wine-paired recommendations"),
 ):
     """Recommend songs based on Angela's deep emotional analysis or user-selected mood."""
     pool = get_pool()
@@ -676,8 +823,15 @@ async def get_recommendation(
         # 1. Deep emotion analysis (both tables)
         analysis = await _analyze_deep_emotions(conn)
 
-        # Use user-selected mood if provided, otherwise auto-detected
-        if mood and mood in _MOOD_SUMMARIES_TH:
+        # Wine-paired recommendation takes priority
+        wine_message: str | None = None
+        if wine_type and wine_type in _WINE_TO_EMOTION:
+            dominant_emotion = _WINE_TO_EMOTION[wine_type]
+            wine_message = _WINE_MESSAGES.get(wine_type)
+            # Override Apple Music URL with wine-specific search
+            wine_search = _WINE_SEARCH.get(wine_type, "love songs romantic")
+            analysis["apple_music_url"] = f"https://music.apple.com/search?term={quote_plus(wine_search)}"
+        elif mood and mood in _MOOD_SUMMARIES_TH:
             dominant_emotion = mood
         else:
             dominant_emotion = analysis["dominant_mood"]
@@ -750,13 +904,14 @@ async def get_recommendation(
             return {
                 "song": None,
                 "songs": [],
-                "reason": "ยังไม่มีเพลงในคลังค่ะ",
+                "reason": wine_message or "ยังไม่มีเพลงในคลังค่ะ",
                 "based_on_emotion": dominant_emotion,
                 "available_moods": _AVAILABLE_MOODS,
                 "apple_music_discover_url": analysis["apple_music_url"],
                 "mood_summary": mood_summary,
                 "emotion_details": analysis["emotion_details"],
                 "our_songs_matched": 0,
+                "wine_message": wine_message,
             }
 
         # 5. Build reason text — personalize when our songs are in the mix
@@ -786,13 +941,14 @@ async def get_recommendation(
         return {
             "song": songs[0],
             "songs": songs[:count],
-            "reason": reason,
+            "reason": wine_message or reason,
             "based_on_emotion": dominant_emotion,
             "available_moods": _AVAILABLE_MOODS,
             "apple_music_discover_url": analysis["apple_music_url"],
             "mood_summary": mood_summary,
             "emotion_details": analysis["emotion_details"],
             "our_songs_matched": our_count,
+            "wine_message": wine_message,
         }
 
 
@@ -1015,3 +1171,64 @@ async def get_playlist_prompt(req: PlaylistPromptRequest):
             "emotion_details": emotion_details[:4],
             "our_songs_to_include": our_songs if our_songs else None,
         }
+
+
+@router.get("/wines")
+async def get_wines():
+    """Return wine categories and varietals for the wine selector UI, with reaction counts."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT wine_type, reaction, COUNT(*) AS cnt
+            FROM wine_reactions
+            GROUP BY wine_type, reaction
+        """)
+
+    # Build {wine_type: {up: N, down: N, love: N}}
+    reactions: dict[str, dict[str, int]] = {}
+    for r in rows:
+        wt = r["wine_type"]
+        if wt not in reactions:
+            reactions[wt] = {"up": 0, "down": 0, "love": 0}
+        reactions[wt][r["reaction"]] = int(r["cnt"])
+
+    return {"categories": _WINE_CATEGORIES, "reactions": reactions}
+
+
+@router.post("/wine-reaction")
+async def submit_wine_reaction(req: WineReactionRequest):
+    """Record a wine pairing reaction (up/down/love)."""
+    if req.reaction not in ("up", "down", "love"):
+        return {"error": "Invalid reaction. Must be 'up', 'down', or 'love'."}
+    if req.target_type not in ("pairing", "song"):
+        return {"error": "Invalid target_type. Must be 'pairing' or 'song'."}
+
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO wine_reactions (wine_type, reaction, target_type, song_title, song_artist)
+            VALUES ($1, $2, $3, $4, $5)
+        """, req.wine_type, req.reaction, req.target_type, req.song_title, req.song_artist)
+
+    return {"saved": True}
+
+
+@router.get("/wine-reactions")
+async def get_wine_reactions():
+    """Return reaction counts grouped by wine_type."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT wine_type, reaction, COUNT(*) AS cnt
+            FROM wine_reactions
+            GROUP BY wine_type, reaction
+        """)
+
+    reactions: dict[str, dict[str, int]] = {}
+    for r in rows:
+        wt = r["wine_type"]
+        if wt not in reactions:
+            reactions[wt] = {"up": 0, "down": 0, "love": 0}
+        reactions[wt][r["reaction"]] = int(r["cnt"])
+
+    return reactions

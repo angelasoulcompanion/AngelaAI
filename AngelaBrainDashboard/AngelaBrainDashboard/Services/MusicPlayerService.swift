@@ -9,6 +9,9 @@ import Foundation
 import MusicKit
 import Combine
 import AppKit
+import os.log
+
+private let djLog = Logger(subsystem: "com.david.angela", category: "DJAngela")
 
 @MainActor
 final class MusicPlayerService: ObservableObject {
@@ -32,7 +35,17 @@ final class MusicPlayerService: ObservableObject {
     @Published var currentSourceTab: String?
 
     /// User-selected activity (wine, working, relaxing, etc.) — overrides auto-detected occasion
-    @Published var currentActivity: String?
+    @Published var currentActivity: String? {
+        didSet {
+            // Clear wine type when switching away from wine activity
+            if currentActivity != "wine" {
+                currentWineType = nil
+            }
+        }
+    }
+
+    /// Selected wine varietal when activity is "wine"
+    @Published var currentWineType: String?
 
     /// Whether the currently playing song is marked as "our song"
     @Published var currentSongIsOurSong = false
@@ -120,6 +133,89 @@ final class MusicPlayerService: ObservableObject {
         }
 
         return nil
+    }
+
+    // MARK: - iTunes Search API (REST fallback for artwork)
+
+    /// Artwork URL cache (iTunes API results)
+    private var iTunesArtworkCache: [String: URL] = [:]
+
+    /// Fetch album artwork URL via iTunes Search API (no MusicKit dependency).
+    /// Uses standard URLSession — works even when MusicKit times out.
+    func fetchArtworkFromiTunes(title: String, artist: String?) async -> URL? {
+        var term = title
+        if let artist, !artist.isEmpty {
+            term += " \(artist)"
+        }
+
+        // Check cache
+        if let cached = iTunesArtworkCache[term] { return cached }
+
+        guard let encoded = term.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://itunes.apple.com/search?term=\(encoded)&media=music&entity=song&limit=1") else {
+            return nil
+        }
+
+        djLog.notice("[iTunes-Art] Fetching artwork for: \(term)")
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let results = json["results"] as? [[String: Any]],
+               let first = results.first,
+               let artworkStr = first["artworkUrl100"] as? String {
+                // Scale up: 100x100 → 300x300
+                let scaled = artworkStr.replacingOccurrences(of: "100x100", with: "300x300")
+                if let artURL = URL(string: scaled) {
+                    iTunesArtworkCache[term] = artURL
+                    djLog.notice("[iTunes-Art] Got artwork: \(artURL)")
+                    return artURL
+                }
+            }
+            djLog.notice("[iTunes-Art] No results for: \(term)")
+        } catch {
+            djLog.notice("[iTunes-Art] Error: \(error)")
+        }
+
+        return nil
+    }
+
+    // MARK: - iTunes Search API (catalog search — no MusicKit dependency)
+
+    /// Search iTunes catalog via REST API. Returns songs with artwork.
+    /// Use this when MusicKit catalog search times out.
+    func searchiTunes(query: String, limit: Int = 25) async -> [(title: String, artist: String, album: String?, artworkURL: URL?, durationSeconds: TimeInterval?)] {
+        guard let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://itunes.apple.com/search?term=\(encoded)&media=music&entity=song&limit=\(limit)") else {
+            djLog.notice("[iTunes] Bad URL for query: \(query)")
+            return []
+        }
+
+        djLog.notice("[iTunes] Searching: \(url.absoluteString)")
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let results = json["results"] as? [[String: Any]] else {
+                djLog.notice("[iTunes] Bad JSON response")
+                return []
+            }
+
+            let songs = results.compactMap { item -> (title: String, artist: String, album: String?, artworkURL: URL?, durationSeconds: TimeInterval?)? in
+                guard let title = item["trackName"] as? String,
+                      let artist = item["artistName"] as? String else { return nil }
+                let album = item["collectionName"] as? String
+                let artworkStr = (item["artworkUrl100"] as? String)?
+                    .replacingOccurrences(of: "100x100", with: "300x300")
+                let artworkURL = artworkStr.flatMap { URL(string: $0) }
+                let durationMs = item["trackTimeMillis"] as? Int
+                let durationSeconds = durationMs.map { TimeInterval($0) / 1000.0 }
+                return (title: title, artist: artist, album: album, artworkURL: artworkURL, durationSeconds: durationSeconds)
+            }
+            djLog.notice("[iTunes] Found \(songs.count) songs for '\(query)'")
+            return songs
+        } catch {
+            djLog.notice("[iTunes] Search error: \(error)")
+            return []
+        }
     }
 
     // MARK: - Play from Angela Song (DB -> Apple Music)
@@ -494,6 +590,7 @@ final class MusicPlayerService: ObservableObject {
         playStatus: String
     ) {
         let activity = currentActivity
+        let wineType = currentWineType
         Task {
             let body = PlayLogBody(
                 title: title,
@@ -504,7 +601,8 @@ final class MusicPlayerService: ObservableObject {
                 durationSeconds: durationSeconds,
                 listenedSeconds: listenedSeconds,
                 playStatus: playStatus,
-                activity: activity
+                activity: activity,
+                wineType: wineType
             )
             let response: PlayLogResponse? = try? await NetworkService.shared.post("/api/music/log-play", body: body)
             if playStatus == "started", let id = response?.listenId {

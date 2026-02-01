@@ -8,6 +8,9 @@
 
 import SwiftUI
 import MusicKit
+import os.log
+
+private let djLog = Logger(subsystem: "com.david.angela", category: "DJAngela")
 
 struct SongQueueView: View {
     @ObservedObject var musicService: MusicPlayerService
@@ -26,6 +29,11 @@ struct SongQueueView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var selectedMood: String?
+    /// Tracks which reaction was tapped — keyed by "pairing" or "title|artist", value is "up"/"down"/"love"
+    @State private var wineReactions: [String: String] = [:]
+    /// Wine selector popover in For You tab
+    @State private var showWineSelector = false
+    @State private var wineReactionCounts: [String: [String: Int]] = [:]
 
     enum QueueTab: String, CaseIterable {
         case library = "Recent"
@@ -399,11 +407,17 @@ struct SongQueueView: View {
                 // Emotion card + mood picker
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 16))
-                            .foregroundColor(AngelaTheme.accentGold)
+                        if rec.wineMessage != nil {
+                            Image(systemName: "wineglass.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.purple)
+                        } else {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 16))
+                                .foregroundColor(AngelaTheme.accentGold)
+                        }
 
-                        Text("Based on your emotions")
+                        Text(rec.wineMessage != nil ? "Wine Pairing" : "Based on your emotions")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(AngelaTheme.textPrimary)
                     }
@@ -419,11 +433,22 @@ struct SongQueueView: View {
                             .italic()
                     }
 
+                    // Wine pairing reaction buttons
+                    if rec.wineMessage != nil, let wineType = musicService.currentWineType {
+                        wineReactionBar(wineType: wineType, targetType: "pairing")
+                    }
+
                     // Tappable mood pills
                     let moods = rec.availableMoods ?? ["happy", "loving", "calm", "excited", "grateful", "sad", "lonely", "stressed", "nostalgic", "hopeful"]
                     let current = selectedMood ?? rec.basedOnEmotion
 
                     moodPickerGrid(moods: moods, selected: current)
+
+                    // Wine Pairing selector (separate from activity chips)
+                    Divider()
+                        .background(AngelaTheme.textTertiary.opacity(0.3))
+
+                    winePairingSection
                 }
                 .padding(16)
                 .background(AngelaTheme.cardBackground)
@@ -446,17 +471,20 @@ struct SongQueueView: View {
                         }
                     )
 
+                    let wineActive = musicService.currentWineType != nil
                     ForEach(recommendedDisplays) { song in
-                        displaySongRow(song, allSongs: recommendedDisplays)
+                        displaySongRow(song, allSongs: recommendedDisplays, showWineReaction: wineActive)
                     }
                 } else if let songs = rec.songs, !songs.isEmpty {
                     let displays = songs.map { DisplaySong(from: $0) }
+                    let wineActive = musicService.currentWineType != nil
                     ForEach(displays) { song in
-                        displaySongRow(song, allSongs: displays)
+                        displaySongRow(song, allSongs: displays, showWineReaction: wineActive)
                     }
                 } else if let song = rec.song {
                     let display = DisplaySong(from: song)
-                    displaySongRow(display, allSongs: [display])
+                    let wineActive = musicService.currentWineType != nil
+                    displaySongRow(display, allSongs: [display], showWineReaction: wineActive)
                 }
 
                 // Refresh button
@@ -553,8 +581,10 @@ struct SongQueueView: View {
         moodTags: [String] = [],
         isOurSong: Bool = false,
         isCurrentSong: Bool,
+        showWineReaction: Bool = false,
         onPlay: @escaping () -> Void
     ) -> some View {
+        VStack(spacing: 0) {
         HStack(spacing: 12) {
             // Album art thumbnail
             if let url = artworkURL {
@@ -645,6 +675,17 @@ struct SongQueueView: View {
                 .buttonStyle(.plain)
             }
         }
+        // Song-level wine reaction icons
+        if showWineReaction, let wineType = musicService.currentWineType {
+            wineReactionBar(
+                wineType: wineType,
+                targetType: "song",
+                songTitle: title,
+                songArtist: artist
+            )
+            .padding(.leading, 52) // align with text (past artwork)
+        }
+        } // end VStack
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(
@@ -683,7 +724,7 @@ struct SongQueueView: View {
 
     // MARK: - DisplaySong Row (Our Songs, For You)
 
-    private func displaySongRow(_ song: DisplaySong, allSongs: [DisplaySong]) -> some View {
+    private func displaySongRow(_ song: DisplaySong, allSongs: [DisplaySong], showWineReaction: Bool = false) -> some View {
         let isCurrent: Bool = {
             if let angela = song.angelaSong {
                 return musicService.nowPlaying?.angelaSong?.songId == angela.songId
@@ -698,7 +739,8 @@ struct SongQueueView: View {
             durationFormatted: song.durationFormatted,
             moodTags: song.moodTags,
             isOurSong: song.isOurSong,
-            isCurrentSong: isCurrent
+            isCurrentSong: isCurrent,
+            showWineReaction: showWineReaction
         ) {
             musicService.currentSourceTab = selectedTab.sourceKey
             if let idx = allSongs.firstIndex(where: { $0.id == song.id }) {
@@ -706,6 +748,68 @@ struct SongQueueView: View {
             }
             Task { await musicService.playDisplaySong(song) }
         }
+    }
+
+    // MARK: - Wine Reaction Bar
+
+    /// Compact row of 👍👎❤️ buttons for wine pairing feedback.
+    @ViewBuilder
+    private func wineReactionBar(
+        wineType: String,
+        targetType: String,
+        songTitle: String? = nil,
+        songArtist: String? = nil
+    ) -> some View {
+        let key = targetType == "pairing" ? "pairing" : "\(songTitle ?? "")|\(songArtist ?? "")"
+        let selected = wineReactions[key]
+
+        HStack(spacing: 10) {
+            ForEach(
+                [("up", "👍"), ("down", "👎"), ("love", "❤️")],
+                id: \.0
+            ) { reaction, emoji in
+                Button {
+                    wineReactions[key] = reaction
+                    djLog.notice("[WineReaction] Tapped \(reaction) for \(targetType) wine=\(wineType)")
+                    Task {
+                        do {
+                            try await chatService.submitWineReaction(
+                                wineType: wineType,
+                                reaction: reaction,
+                                targetType: targetType,
+                                songTitle: songTitle,
+                                songArtist: songArtist
+                            )
+                            djLog.notice("[WineReaction] Saved OK")
+                        } catch {
+                            djLog.notice("[WineReaction] ERROR: \(error)")
+                        }
+                    }
+                } label: {
+                    Text(emoji)
+                        .font(.system(size: 14))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            selected == reaction
+                                ? AngelaTheme.primaryPurple.opacity(0.2)
+                                : AngelaTheme.backgroundLight.opacity(0.5)
+                        )
+                        .cornerRadius(6)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(
+                                    selected == reaction
+                                        ? AngelaTheme.primaryPurple.opacity(0.5)
+                                        : Color.clear,
+                                    lineWidth: 1
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.top, 4)
     }
 
     // MARK: - Mood Picker
@@ -716,6 +820,55 @@ struct SongQueueView: View {
         "nostalgic": "🌸", "hopeful": "🌅",
     ]
 
+    private static let wineDisplayNames: [String: String] = [
+        "primitivo": "Primitivo", "cabernet_sauvignon": "Cab Sauv",
+        "malbec": "Malbec", "shiraz": "Shiraz",
+        "pinot_noir": "Pinot Noir", "merlot": "Merlot",
+        "super_tuscan": "Super Tuscan", "sangiovese": "Sangiovese",
+        "nebbiolo": "Nebbiolo", "chardonnay": "Chardonnay",
+        "sauvignon_blanc": "Sauv Blanc", "riesling": "Riesling",
+        "pinot_grigio": "Pinot Grigio", "champagne": "Champagne",
+        "prosecco": "Prosecco", "cava": "Cava",
+        "rose": "Rose", "moscato": "Moscato", "port": "Port",
+    ]
+
+    /// Mood → iTunes search terms (used when filling slots via iTunes API).
+    private static let moodSearchTerms: [String: String] = [
+        "happy": "feel good happy hits",
+        "loving": "love songs romantic ballads",
+        "calm": "chill acoustic relaxing",
+        "excited": "upbeat energetic pop dance",
+        "grateful": "thankful uplifting songs",
+        "sad": "sad songs emotional ballad",
+        "lonely": "missing you lonely songs",
+        "stressed": "calm relaxing piano ambient",
+        "nostalgic": "throwback classic love songs",
+        "hopeful": "hopeful uplifting inspirational",
+    ]
+
+    /// iTunes search terms per wine (mirrors backend _WINE_SEARCH).
+    private static let wineSearchTerms: [String: String] = [
+        "primitivo": "romantic italian love songs",
+        "cabernet_sauvignon": "powerful upbeat rock anthems",
+        "malbec": "passionate love songs tango",
+        "shiraz": "upbeat feel good party",
+        "pinot_noir": "chill acoustic evening",
+        "super_tuscan": "classic italian songs",
+        "sangiovese": "warm uplifting italian",
+        "merlot": "smooth romantic love ballads",
+        "nebbiolo": "nostalgic longing ballads",
+        "chardonnay": "smooth jazz chill",
+        "sauvignon_blanc": "fresh pop summer hits",
+        "riesling": "hopeful uplifting acoustic",
+        "pinot_grigio": "light easy listening",
+        "champagne": "celebration dance party",
+        "prosecco": "fun pop happy",
+        "cava": "spanish fiesta energy",
+        "rose": "sweet romantic love",
+        "moscato": "sweet love ballads",
+        "port": "classic oldies jazz",
+    ]
+
     @ViewBuilder
     private func moodPickerGrid(moods: [String], selected: String) -> some View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 5)
@@ -724,6 +877,7 @@ struct SongQueueView: View {
                 let isSelected = mood == selected
                 Button {
                     selectedMood = mood
+                    musicService.currentWineType = nil  // mood overrides wine
                     Task { await loadRecommendation(mood: mood) }
                 } label: {
                     HStack(spacing: 3) {
@@ -747,6 +901,65 @@ struct SongQueueView: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+    }
+
+    // MARK: - Wine Pairing Section (For You tab)
+
+    private var winePairingSection: some View {
+        HStack(spacing: 8) {
+            Button {
+                if musicService.currentWineType != nil {
+                    // Clear wine → revert to mood recommendation
+                    musicService.currentWineType = nil
+                    Task { await loadRecommendation() }
+                } else {
+                    showWineSelector = true
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text("🍷")
+                        .font(.system(size: 12))
+                    if let wineType = musicService.currentWineType,
+                       let name = Self.wineDisplayNames[wineType] {
+                        Text(name)
+                            .font(.system(size: 11, weight: .semibold))
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 10))
+                    } else {
+                        Text("Wine Pairing")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule().fill(
+                        musicService.currentWineType != nil
+                            ? Color.purple
+                            : AngelaTheme.backgroundLight.opacity(0.6)
+                    )
+                )
+                .foregroundColor(musicService.currentWineType != nil ? .white : AngelaTheme.textSecondary)
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $showWineSelector, arrowEdge: .bottom) {
+                WineSelectorView(onSelect: { wineKey in
+                    musicService.currentWineType = wineKey
+                    selectedMood = nil  // wine overrides mood
+                    showWineSelector = false
+                    Task { await loadRecommendation() }
+                }, reactions: wineReactionCounts)
+            }
+            .onChange(of: showWineSelector) { open in
+                if open {
+                    Task {
+                        wineReactionCounts = (try? await chatService.fetchWineReactions()) ?? [:]
+                    }
+                }
+            }
+
+            Spacer()
         }
     }
 
@@ -924,6 +1137,10 @@ struct SongQueueView: View {
             }
         case .queued:
             break  // Queue reads directly from musicService.queue
+        case .forYou:
+            if recommendation == nil {
+                await loadRecommendation()
+            }
         default:
             break
         }
@@ -944,9 +1161,11 @@ struct SongQueueView: View {
         isLoading = false
     }
 
-    /// Max angela_songs (DB) to include — leaves room for playlist discovery.
+    /// Max angela_songs (DB) to include — playlists fill the rest.
     private static let maxAngelaSongs = 2
+    private static let maxAngelaSongsWine = 5
     private static let recommendTargetCount = 6
+    private static let wineRecommendTargetCount = 25
 
     /// Playlist name keywords that suggest a mood.
     private static let playlistMoodKeywords: [String: [String]] = [
@@ -971,52 +1190,86 @@ struct SongQueueView: View {
 
     private func loadRecommendation(mood: String? = nil) async {
         isLoading = true
-        defer { isLoading = false }
         recommendedDisplays = []
 
         do {
-            recommendation = try await chatService.getRecommendation(mood: mood ?? selectedMood)
+            let wineType = musicService.currentWineType
+            let isWine = wineType != nil
+            let targetCount = isWine ? Self.wineRecommendTargetCount : Self.recommendTargetCount
+            recommendation = try await chatService.getRecommendation(
+                mood: mood ?? selectedMood,
+                wineType: wineType,
+                count: isWine ? targetCount : nil
+            )
 
-            // --- 1. Angela DB songs (our_songs) — cap to leave room for playlist songs ---
+            // --- 1. Angela DB songs (our songs) ---
             let songList = recommendation?.songs ?? [recommendation?.song].compactMap { $0 }
-            let cappedList = Array(songList.prefix(Self.maxAngelaSongs))
-            var displays = cappedList.map { DisplaySong(from: $0) }
+            let dbSongLimit = isWine ? Self.maxAngelaSongsWine : Self.maxAngelaSongs
+            let usedList = Array(songList.prefix(dbSongLimit))
+            var displays = usedList.map { DisplaySong(from: $0) }
             var seenKeys = Set(displays.map { "\($0.title.lowercased())|\($0.artist.lowercased())" })
 
-            // Show angela_songs immediately while we load playlist songs
-            recommendedDisplays = displays
+            // --- 2. Fill from user's Apple Music playlists (primary source) ---
+            if displays.count < targetCount {
+                let detectedMood = recommendation?.basedOnEmotion ?? "happy"
+                let pool = await musicService.loadPlaylistSongPool()
 
-            // --- 2. Songs from user's OWN Apple Music playlists ---
-            let detectedMood = recommendation?.basedOnEmotion ?? "happy"
-            let pool = await musicService.loadPlaylistSongPool()
+                let matched = pool.filter { Self.playlistMatchesMood($0.name, mood: detectedMood) }
+                let unmatched = pool.filter { !Self.playlistMatchesMood($0.name, mood: detectedMood) }
 
-            // Separate mood-matching playlists from the rest
-            let matched = pool.filter { Self.playlistMatchesMood($0.name, mood: detectedMood) }
-            let unmatched = pool.filter { !Self.playlistMatchesMood($0.name, mood: detectedMood) }
+                let orderedSongs = matched.flatMap(\.songs).shuffled()
+                    + unmatched.flatMap(\.songs).shuffled()
 
-            // Priority: songs from mood-matching playlists first
-            let orderedSongs = matched.flatMap(\.songs).shuffled()
-                + unmatched.flatMap(\.songs).shuffled()
+                for mkSong in orderedSongs {
+                    if displays.count >= targetCount { break }
+                    let key = "\(mkSong.title.lowercased())|\(mkSong.artistName.lowercased())"
+                    if seenKeys.insert(key).inserted {
+                        displays.append(DisplaySong(from: mkSong))
+                    }
+                }
+            }
+            djLog.notice("[ForYou] After playlists: \(displays.count)/\(targetCount) isWine=\(isWine)")
 
-            for mkSong in orderedSongs {
-                if displays.count >= Self.recommendTargetCount { break }
-                let key = "\(mkSong.title.lowercased())|\(mkSong.artistName.lowercased())"
-                if seenKeys.insert(key).inserted {
-                    displays.append(DisplaySong(from: mkSong))
+            // --- 3. Fill remaining from Apple Music catalog (MusicKit) ---
+            if displays.count < targetCount {
+                let searchTerm: String
+                if isWine, let wt = wineType, let term = Self.wineSearchTerms[wt] {
+                    searchTerm = term
+                } else {
+                    let detectedMood = recommendation?.basedOnEmotion ?? "happy"
+                    searchTerm = Self.moodSearchTerms[detectedMood] ?? "love songs romantic"
+                }
+
+                let remaining = targetCount - displays.count
+                djLog.notice("[ForYou] MusicKit catalog search: '\(searchTerm)' limit=\(remaining)")
+                let catalogSongs = await musicService.searchCatalog(query: searchTerm, limit: remaining)
+                djLog.notice("[ForYou] MusicKit returned \(catalogSongs.count) songs")
+                for mkSong in catalogSongs {
+                    if displays.count >= targetCount { break }
+                    let key = "\(mkSong.title.lowercased())|\(mkSong.artistName.lowercased())"
+                    if seenKeys.insert(key).inserted {
+                        displays.append(DisplaySong(from: mkSong))
+                    }
                 }
             }
 
+            // Show songs immediately
             recommendedDisplays = displays
+            isLoading = false
 
-            // Enrich angela_songs with Apple Music artwork
-            for (index, song) in cappedList.enumerated() {
-                if let mkSong = await musicService.searchAppleMusic(title: song.title, artist: song.artist) {
+            // --- 4. Enrich DB songs (no artwork) via MusicKit search ---
+            for (index, song) in displays.enumerated() {
+                guard song.albumArtURL == nil, let angela = song.angelaSong else { continue }
+                if let mkSong = await musicService.searchAppleMusic(title: angela.title, artist: angela.artist) {
                     let artURL = mkSong.artwork?.url(width: 300, height: 300)
-                    recommendedDisplays[index] = DisplaySong(from: song, artwork: artURL)
+                    if index < recommendedDisplays.count {
+                        recommendedDisplays[index] = DisplaySong(from: angela, artwork: artURL)
+                    }
                 }
             }
         } catch {
             errorMessage = error.localizedDescription
+            isLoading = false
         }
     }
 
@@ -1028,7 +1281,7 @@ struct SongQueueView: View {
         searchResults = await musicService.searchCatalog(query: searchQuery)
     }
 
-    /// Enrich Our Songs with Apple Music album art (background)
+    /// Enrich Our Songs with album art via iTunes Search API (REST, no MusicKit)
     private func enrichOurSongsArtwork() async {
         for (index, song) in ourSongs.enumerated() {
             guard song.albumArtURL == nil, let angela = song.angelaSong else { continue }

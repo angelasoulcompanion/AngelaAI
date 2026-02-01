@@ -701,11 +701,22 @@ class ChatService: ObservableObject {
         return try await network.get("/api/music/search?q=\(encoded)")
     }
 
-    func getRecommendation(mood: String? = nil) async throws -> SongRecommendation {
+    func getRecommendation(mood: String? = nil, wineType: String? = nil, count: Int? = nil) async throws -> SongRecommendation {
         var path = "/api/music/recommend"
+        var params: [String] = []
         if let mood {
             let encoded = mood.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? mood
-            path += "?mood=\(encoded)"
+            params.append("mood=\(encoded)")
+        }
+        if let wineType {
+            let encoded = wineType.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? wineType
+            params.append("wine_type=\(encoded)")
+        }
+        if let count {
+            params.append("count=\(count)")
+        }
+        if !params.isEmpty {
+            path += "?" + params.joined(separator: "&")
         }
         return try await network.get(path)
     }
@@ -713,6 +724,27 @@ class ChatService: ObservableObject {
     func shareSong(songId: String, message: String? = nil) async throws -> MusicShareResponse {
         let body = MusicShareRequest(songId: songId, message: message)
         return try await network.post("/api/music/share", body: body)
+    }
+
+    func submitWineReaction(
+        wineType: String,
+        reaction: String,
+        targetType: String,
+        songTitle: String? = nil,
+        songArtist: String? = nil
+    ) async throws {
+        let body = WineReactionBody(
+            wineType: wineType,
+            reaction: reaction,
+            targetType: targetType,
+            songTitle: songTitle,
+            songArtist: songArtist
+        )
+        let _: WineReactionResponse = try await network.post("/api/music/wine-reaction", body: body)
+    }
+
+    func fetchWineReactions() async throws -> [String: [String: Int]] {
+        return try await network.get("/api/music/wine-reactions")
     }
 
     func getPlaylistPrompt(emotionText: String?, songCount: Int = 15) async throws -> PlaylistPromptResponse {

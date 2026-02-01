@@ -183,14 +183,14 @@ struct PlayerControlsView: View {
         }
     }
 
-    // MARK: - Activity Picker
+    // MARK: - Activity Picker (Occasion only — wine pairing lives in For You tab)
 
     private var activityPickerSection: some View {
         let selected = musicService.currentActivity
         let isOurSong = musicService.currentSongIsOurSong
 
         return VStack(spacing: 6) {
-            // Row 1: Our Songs + first 3 activities
+            // Row 1: Our Songs + Wine + Focus + Relax
             HStack(spacing: 8) {
                 Button {
                     musicService.toggleOurSong()
@@ -209,7 +209,7 @@ struct PlayerControlsView: View {
                     .buttonStyle(.plain)
                 }
             }
-            // Row 2: remaining 4 activities
+            // Row 2: Party + Chill + Vibe + Bed Time
             HStack(spacing: 8) {
                 ForEach(Array(activities.suffix(4)), id: \.key) { item in
                     Button {
