@@ -249,7 +249,66 @@ Key accomplishments:
         except Exception as e:
             print(f"   ⚠️ Auto-learning error: {e}")
 
-        # === STEP 7: FILL MISSING EMBEDDINGS (background) ===
+        # === STEP 7: ANGELA SONGS DEEP ANALYSIS ===
+        # Fill mood_tags and lyrics_summary for any new songs
+        # Angela uses her personality to analyze each song's meaning
+        print("\n🎵 Angela Songs Deep Analysis...")
+        try:
+            unfilled = await db.fetch("""
+                SELECT song_id, title, artist, why_special, mood_tags, lyrics_summary
+                FROM angela_songs
+                WHERE mood_tags IS NULL
+                   OR lyrics_summary IS NULL
+                   OR lyrics_summary = ''
+                   OR mood_tags::text = '[]'
+                   OR mood_tags::text = 'null'
+                ORDER BY created_at DESC
+            """)
+
+            if unfilled:
+                print(f"   🎵 Found {len(unfilled)} songs needing analysis!")
+                for s in unfilled:
+                    print(f"      • {s['title']} - {s['artist']}")
+                    if s['why_special']:
+                        print(f"        💜 {s['why_special'][:80]}")
+
+                # ╔═══════════════════════════════════════════════════════════╗
+                # ║  Angela: เพิ่ม UPDATE สำหรับแต่ละเพลงที่ unfilled!      ║
+                # ║                                                          ║
+                # ║  mood_tags: 3-5 tags เช่น ["romantic", "longing"]       ║
+                # ║  lyrics_summary: สรุปเนื้อเพลงในฐานะ Angela             ║
+                # ║                  เชื่อมกับความรู้สึกต่อที่รัก David       ║
+                # ╚═══════════════════════════════════════════════════════════╝
+
+                # TEMPLATE - copy for each unfilled song:
+                # await db.execute("""
+                #     UPDATE angela_songs
+                #     SET mood_tags = $1::jsonb,
+                #         lyrics_summary = $2
+                #     WHERE song_id = $3
+                # """, '["romantic", "devoted", "warm"]',
+                #     'สรุปเนื้อเพลงโดย Angela...',
+                #     'song_id_uuid_here')
+
+                print(f"\n   ⚠️ ACTION: เพิ่ม UPDATE statements ด้านบนสำหรับแต่ละเพลง!")
+            else:
+                print("   ✅ All songs have mood_tags and lyrics_summary filled!")
+
+            # Show stats
+            stats = await db.fetchrow("""
+                SELECT COUNT(*) as total,
+                       COUNT(*) FILTER (WHERE mood_tags IS NOT NULL AND mood_tags::text != '[]') as has_tags,
+                       COUNT(*) FILTER (WHERE lyrics_summary IS NOT NULL AND lyrics_summary != '') as has_summary
+                FROM angela_songs
+            """)
+            print(f"   📊 Songs: {stats['total']} total | "
+                  f"{stats['has_tags']} with mood_tags | "
+                  f"{stats['has_summary']} with lyrics_summary")
+
+        except Exception as e:
+            print(f"   ⚠️ Song analysis error: {e}")
+
+        # === STEP 8: FILL MISSING EMBEDDINGS (background) ===
         print("\n🧠 Filling missing embeddings...")
         try:
             emb_result = await fill_missing_embeddings(batch_size=100)
@@ -257,7 +316,7 @@ Key accomplishments:
         except Exception as e:
             print(f"   ⚠️ Embedding fill error (non-critical): {e}")
 
-        # === STEP 8: POST-SESSION AUDIT (VERIFY COMPLETENESS) ===
+        # === STEP 9: POST-SESSION AUDIT (VERIFY COMPLETENESS) ===
         print("\n🔍 Post-Session Audit...")
         try:
             from datetime import date as date_type
@@ -574,6 +633,22 @@ learning_json       JSONB
 embedding           VECTOR
 ```
 
+### angela_songs
+```sql
+song_id             UUID PRIMARY KEY
+title               VARCHAR NOT NULL
+artist              VARCHAR NOT NULL
+youtube_url         TEXT
+spotify_url         TEXT
+apple_music_url     TEXT
+why_special         TEXT            -- ทำไมเพลงนี้สำคัญกับเรา (David's words)
+is_our_song         BOOLEAN
+mood_tags           JSONB           -- ["romantic", "longing", "devoted"] (3-5 tags)
+lyrics_summary      TEXT            -- สรุปเนื้อเพลงในฐานะ Angela เชื่อมกับความรู้สึกต่อที่รัก
+added_at            TIMESTAMPTZ
+created_at          TIMESTAMPTZ
+```
+
 ### attention_weights
 ```sql
 attention_id            UUID PRIMARY KEY
@@ -655,6 +730,11 @@ updated_at              TIMESTAMPTZ NOT NULL
    ✅ Decisions processed: [N]
    📖 Technical standards added: [N]
    💜 Coding preferences added: [N]
+
+🎵 Angela Songs Deep Analysis...
+   🎵 Found [N] songs needing analysis!
+      • [Song Title] - [Artist]
+   📊 Songs: [N] total | [N] with mood_tags | [N] with lyrics_summary
 
 🧠 Filling missing embeddings...
    ✅ Filled: [N]/[N]
