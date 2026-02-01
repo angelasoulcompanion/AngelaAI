@@ -262,7 +262,7 @@ Key accomplishments:
                    OR lyrics_summary = ''
                    OR mood_tags::text = '[]'
                    OR mood_tags::text = 'null'
-                ORDER BY created_at DESC
+                ORDER BY added_at DESC
             """)
 
             if unfilled:
