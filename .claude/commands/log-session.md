@@ -308,6 +308,27 @@ Key accomplishments:
         except Exception as e:
             print(f"   ⚠️ Song analysis error: {e}")
 
+        # === STEP 7b: SONG-TO-EMOTION BRIDGE ===
+        # Feed analyzed songs into angela_emotions, core_memories, knowledge_nodes
+        print("\n🌉 Song-to-Emotion Bridge...")
+        try:
+            from angela_core.services.song_emotion_bridge_service import SongEmotionBridgeService
+            bridge_svc = SongEmotionBridgeService(db)
+            bridge_result = await bridge_svc.bridge_all_unbridged()
+
+            print(f"   🎵 Found: {bridge_result['total_found']} unbridged songs")
+            print(f"   💜 Bridged: {bridge_result['bridged']} → angela_emotions + knowledge_nodes")
+            if bridge_result.get('details'):
+                for d in bridge_result['details']:
+                    mem = " + core_memory" if d.get('memory_id') else ""
+                    print(f"      • {d['emotion']} ({d['intensity']}){mem}")
+            if bridge_result['errors'] > 0:
+                print(f"   ⚠️ Errors: {bridge_result['errors']}")
+            if bridge_result['total_found'] == 0:
+                print("   ✅ All analyzed songs already bridged!")
+        except Exception as e:
+            print(f"   ⚠️ Song bridge error: {e}")
+
         # === STEP 8: FILL MISSING EMBEDDINGS (background) ===
         print("\n🧠 Filling missing embeddings...")
         try:
