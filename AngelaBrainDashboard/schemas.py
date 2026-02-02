@@ -30,6 +30,22 @@ class MeetingUpdate(BaseModel):
     notes: Optional[str] = None             # raw meeting notes
 
 
+class ActionItemCreate(BaseModel):
+    meeting_id: str
+    action_text: str
+    assignee: Optional[str] = None
+    due_date: Optional[str] = None    # YYYY-MM-DD
+    priority: int = 5                 # 1-3=High, 4-6=Medium, 7+=Low
+
+
+class ActionItemUpdate(BaseModel):
+    action_text: Optional[str] = None
+    assignee: Optional[str] = None
+    due_date: Optional[str] = None
+    priority: Optional[int] = None
+    is_completed: Optional[bool] = None
+
+
 class ScheduledTaskCreate(BaseModel):
     task_name: str
     description: Optional[str] = None

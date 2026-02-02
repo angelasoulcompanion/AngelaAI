@@ -683,6 +683,27 @@ class DatabaseService: ObservableObject {
         return try await get("/meetings/project-breakdown")
     }
 
+    func fetchMeetingActionItems(meetingId: String) async throws -> [MeetingActionItem] {
+        return try await get("/meetings/\(meetingId)/action-items")
+    }
+
+    func createActionItem(_ request: ActionItemCreateRequest) async throws -> ActionItemResponse {
+        return try await post("/meetings/action-items", body: request)
+    }
+
+    func updateActionItem(actionId: String, _ request: ActionItemUpdateRequest) async throws -> ActionItemResponse {
+        return try await put("/meetings/action-items/\(actionId)", body: request)
+    }
+
+    func toggleActionItem(actionId: String) async throws -> ActionItemResponse {
+        struct Empty: Codable {}
+        return try await put("/meetings/action-items/\(actionId)/toggle", body: Empty())
+    }
+
+    func deleteActionItem(actionId: String) async throws -> ActionItemResponse {
+        return try await delete("/meetings/action-items/\(actionId)")
+    }
+
     // MARK: - Scheduled Tasks (CRUD + Execute)
 
     func fetchScheduledTasks() async throws -> [DashboardScheduledTask] {

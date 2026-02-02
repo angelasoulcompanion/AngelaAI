@@ -170,9 +170,8 @@ struct MeetingStats: Codable {
     let totalMeetings: Int
     let thisMonth: Int
     let upcoming: Int?
-    let openActions: Int
-    let totalActions: Int
-    let completedActions: Int
+    let openMeetings: Int
+    let completedMeetings: Int
     let completionRate: Double
     let siteVisits: Int
 
@@ -180,9 +179,8 @@ struct MeetingStats: Codable {
         case totalMeetings = "total_meetings"
         case thisMonth = "this_month"
         case upcoming
-        case openActions = "open_actions"
-        case totalActions = "total_actions"
-        case completedActions = "completed_actions"
+        case openMeetings = "open_meetings"
+        case completedMeetings = "completed_meetings"
         case completionRate = "completion_rate"
         case siteVisits = "site_visits"
     }
@@ -247,6 +245,99 @@ struct MeetingCreateResponse: Codable {
         case calendarCreated = "calendar_created"
         case error
         case deleted
+    }
+}
+
+// MARK: - Action Item CRUD
+
+/// Priority levels for action items
+enum ActionPriority: Int, CaseIterable {
+    case high = 1
+    case medium = 5
+    case low = 8
+
+    var label: String {
+        switch self {
+        case .high: return "High"
+        case .medium: return "Medium"
+        case .low: return "Low"
+        }
+    }
+
+    var color: String {
+        switch self {
+        case .high: return "EF4444"
+        case .medium: return "F59E0B"
+        case .low: return "6B7280"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .high: return "exclamationmark.triangle.fill"
+        case .medium: return "minus.circle.fill"
+        case .low: return "arrow.down.circle.fill"
+        }
+    }
+
+    /// Map any priority int to an ActionPriority case
+    static func from(_ value: Int) -> ActionPriority {
+        switch value {
+        case 1...3: return .high
+        case 4...6: return .medium
+        default: return .low
+        }
+    }
+}
+
+/// Request body for creating a new action item
+struct ActionItemCreateRequest: Codable {
+    let meetingId: String
+    let actionText: String
+    var assignee: String?
+    var dueDate: String?        // YYYY-MM-DD
+    var priority: Int = 5
+
+    enum CodingKeys: String, CodingKey {
+        case meetingId = "meeting_id"
+        case actionText = "action_text"
+        case assignee
+        case dueDate = "due_date"
+        case priority
+    }
+}
+
+/// Request body for updating an action item
+struct ActionItemUpdateRequest: Codable {
+    var actionText: String?
+    var assignee: String?
+    var dueDate: String?
+    var priority: Int?
+    var isCompleted: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case actionText = "action_text"
+        case assignee
+        case dueDate = "due_date"
+        case priority
+        case isCompleted = "is_completed"
+    }
+}
+
+/// Response from action item create/update/toggle/delete
+struct ActionItemResponse: Codable {
+    let success: Bool
+    var actionId: String?
+    var isCompleted: Bool?
+    var deleted: Bool?
+    var error: String?
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case actionId = "action_id"
+        case isCompleted = "is_completed"
+        case deleted
+        case error
     }
 }
 

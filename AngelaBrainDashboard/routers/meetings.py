@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 from db import get_pool
 from helpers.calendar_helpers import calendar_create, calendar_update, calendar_delete
 from helpers.things3_helpers import things3_complete_todo, things3_create_todo
-from schemas import MeetingCreate, MeetingUpdate
+from schemas import ActionItemCreate, ActionItemUpdate, MeetingCreate, MeetingUpdate
 
 router = APIRouter(prefix="/api/meetings", tags=["meetings"])
 
@@ -111,23 +111,21 @@ async def get_meeting_stats():
                  WHERE meeting_date >= date_trunc('month', CURRENT_DATE)) as this_month,
                 (SELECT COUNT(*) FROM meeting_notes
                  WHERE meeting_date >= CURRENT_DATE) as upcoming,
-                (SELECT COUNT(*) FROM meeting_action_items
-                 WHERE is_completed = FALSE) as open_actions,
-                (SELECT COUNT(*) FROM meeting_action_items) as total_actions,
-                (SELECT COUNT(*) FROM meeting_action_items
-                 WHERE is_completed = TRUE) as completed_actions,
+                (SELECT COUNT(*) FROM meeting_notes
+                 WHERE things3_status = 'open') as open_meetings,
+                (SELECT COUNT(*) FROM meeting_notes
+                 WHERE things3_status = 'completed') as completed_meetings,
                 (SELECT COUNT(*) FROM meeting_notes
                  WHERE meeting_type = 'site_visit') as site_visits
         """)
-        total = row['total_actions'] or 0
-        completed = row['completed_actions'] or 0
+        total = row['total_meetings'] or 0
+        completed = row['completed_meetings'] or 0
         return {
-            "total_meetings": row['total_meetings'] or 0,
+            "total_meetings": total,
             "this_month": row['this_month'] or 0,
             "upcoming": row['upcoming'] or 0,
-            "open_actions": row['open_actions'] or 0,
-            "total_actions": total,
-            "completed_actions": completed,
+            "open_meetings": row['open_meetings'] or 0,
+            "completed_meetings": completed,
             "completion_rate": round(completed / total * 100, 1) if total > 0 else 0.0,
             "site_visits": row['site_visits'] or 0,
         }
@@ -152,6 +150,143 @@ async def get_open_action_items():
             WHERE ai.is_completed = FALSE
             ORDER BY ai.priority ASC, mn.meeting_date DESC NULLS LAST
         """)
+        return [dict(r) for r in rows]
+
+
+@router.post("/action-items")
+async def create_action_item(body: ActionItemCreate):
+    """Create a new action item for a meeting"""
+    action_id = str(uuid.uuid4())
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        due = None
+        if body.due_date:
+            try:
+                due = datetime.strptime(body.due_date, "%Y-%m-%d").date()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid due_date format. Use YYYY-MM-DD")
+
+        await conn.execute("""
+            INSERT INTO meeting_action_items
+                (action_id, meeting_id, action_text, assignee, due_date, priority, is_completed, created_at)
+            VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, FALSE, NOW())
+        """, action_id, body.meeting_id, body.action_text, body.assignee, due, body.priority)
+
+        return {"success": True, "action_id": action_id}
+
+
+@router.put("/action-items/{action_id}")
+async def update_action_item(action_id: str, body: ActionItemUpdate):
+    """Update an existing action item"""
+    updates = []
+    params = []
+    idx = 1
+
+    if body.action_text is not None:
+        updates.append(f"action_text = ${idx}")
+        params.append(body.action_text)
+        idx += 1
+
+    if body.assignee is not None:
+        updates.append(f"assignee = ${idx}")
+        params.append(body.assignee if body.assignee else None)
+        idx += 1
+
+    if body.due_date is not None:
+        try:
+            due = datetime.strptime(body.due_date, "%Y-%m-%d").date() if body.due_date else None
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid due_date format")
+        updates.append(f"due_date = ${idx}")
+        params.append(due)
+        idx += 1
+
+    if body.priority is not None:
+        updates.append(f"priority = ${idx}")
+        params.append(body.priority)
+        idx += 1
+
+    if body.is_completed is not None:
+        updates.append(f"is_completed = ${idx}")
+        params.append(body.is_completed)
+        idx += 1
+        if body.is_completed:
+            updates.append("completed_at = NOW()")
+        else:
+            updates.append("completed_at = NULL")
+
+    if not updates:
+        return {"success": False, "error": "No fields to update"}
+
+    params.append(action_id)
+    query = f"""
+        UPDATE meeting_action_items
+        SET {', '.join(updates)}
+        WHERE action_id = ${idx}::uuid
+        RETURNING action_id::text, is_completed
+    """
+
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(query, *params)
+        if not row:
+            return {"success": False, "error": "Action item not found"}
+        return {"success": True, "action_id": row['action_id'], "is_completed": row['is_completed']}
+
+
+@router.put("/action-items/{action_id}/toggle")
+async def toggle_action_item(action_id: str):
+    """Toggle action item completion status"""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            UPDATE meeting_action_items
+            SET is_completed = NOT is_completed,
+                completed_at = CASE WHEN is_completed THEN NULL ELSE NOW() END
+            WHERE action_id = $1::uuid
+            RETURNING action_id::text, is_completed
+        """, action_id)
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Action item not found")
+
+        return {"success": True, "action_id": row['action_id'], "is_completed": row['is_completed']}
+
+
+@router.delete("/action-items/{action_id}")
+async def delete_action_item(action_id: str):
+    """Delete an action item"""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute("""
+            DELETE FROM meeting_action_items
+            WHERE action_id = $1::uuid
+        """, action_id)
+
+        if "DELETE 1" in result:
+            return {"success": True, "deleted": True}
+        return {"success": False, "error": "Action item not found"}
+
+
+@router.get("/{meeting_id}/action-items")
+async def get_meeting_action_items(meeting_id: str):
+    """Fetch action items for a specific meeting"""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT
+                ai.action_id::text, ai.meeting_id::text,
+                ai.action_text, ai.assignee, ai.due_date,
+                ai.is_completed, ai.completed_at, ai.priority,
+                ai.created_at,
+                mn.title as meeting_title,
+                mn.meeting_date,
+                mn.project_name
+            FROM meeting_action_items ai
+            JOIN meeting_notes mn ON ai.meeting_id = mn.meeting_id
+            WHERE ai.meeting_id = $1::uuid
+            ORDER BY ai.is_completed ASC, ai.priority ASC
+        """, meeting_id)
         return [dict(r) for r in rows]
 
 

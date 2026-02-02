@@ -15,6 +15,9 @@ struct MeetingCard: View {
     let onTap: () -> Void
     var onEdit: (() -> Void)? = nil
     var onDelete: (() -> Void)? = nil
+    var onToggleStatus: (() -> Void)? = nil
+    var databaseService: DatabaseService? = nil
+    var onActionChanged: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -157,6 +160,15 @@ struct MeetingCard: View {
                     }
                 }
 
+                // Action Items Section (interactive CRUD)
+                if let db = databaseService {
+                    ActionItemsSection(
+                        meetingId: meeting.id.uuidString,
+                        databaseService: db,
+                        onActionChanged: onActionChanged
+                    )
+                }
+
                 // Project info (always shown)
                 if let project = meeting.projectName, !project.isEmpty {
                     HStack {
@@ -170,13 +182,32 @@ struct MeetingCard: View {
                     .padding(.top, 4)
                 }
 
-                // Edit / Delete buttons
-                if onEdit != nil || onDelete != nil {
+                // Action buttons
+                if onEdit != nil || onDelete != nil || onToggleStatus != nil {
                     Divider()
                         .background(AngelaTheme.textTertiary.opacity(0.3))
                         .padding(.top, 4)
 
                     HStack(spacing: 12) {
+                        if let onToggleStatus {
+                            Button {
+                                onToggleStatus()
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: meeting.isOpen ? "checkmark.circle" : "arrow.uturn.backward")
+                                        .font(.system(size: 11))
+                                    Text(meeting.isOpen ? "Complete" : "Reopen")
+                                        .font(.system(size: 11, weight: .medium))
+                                }
+                                .foregroundColor(Color(hex: meeting.isOpen ? "10B981" : "3B82F6"))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color(hex: meeting.isOpen ? "10B981" : "3B82F6").opacity(0.12))
+                                .cornerRadius(6)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
                         if let onEdit {
                             Button {
                                 onEdit()
@@ -350,28 +381,69 @@ struct RawNotesView: View {
     }
 }
 
-// MARK: - Action Item Row Component
+// MARK: - Action Item Row Component (Interactive)
 
 struct ActionItemRow: View {
     let action: MeetingActionItem
+    var onToggle: (() -> Void)? = nil
+    var onEdit: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
+    var showMeetingTitle: Bool = true
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: action.statusIcon)
-                .font(.system(size: 16))
-                .foregroundColor(Color(hex: action.statusColor))
+            // Tappable toggle circle
+            Button {
+                onToggle?()
+            } label: {
+                Image(systemName: action.statusIcon)
+                    .font(.system(size: 16))
+                    .foregroundColor(Color(hex: action.statusColor))
+            }
+            .buttonStyle(.plain)
+            .disabled(onToggle == nil)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(action.actionText)
-                    .font(AngelaTheme.body())
-                    .foregroundColor(AngelaTheme.textPrimary)
-                    .strikethrough(action.isCompleted)
+                // Tappable text for edit
+                Group {
+                    if onEdit != nil {
+                        Text(action.actionText)
+                            .onTapGesture { onEdit?() }
+                    } else {
+                        Text(action.actionText)
+                    }
+                }
+                .font(AngelaTheme.body())
+                .foregroundColor(AngelaTheme.textPrimary)
+                .strikethrough(action.isCompleted)
 
-                if let title = action.meetingTitle {
-                    Text(title)
+                HStack(spacing: 6) {
+                    if showMeetingTitle, let title = action.meetingTitle {
+                        Text(title)
+                            .font(.system(size: 10))
+                            .foregroundColor(AngelaTheme.textTertiary)
+                            .lineLimit(1)
+                    }
+
+                    if let assignee = action.assignee, !assignee.isEmpty {
+                        HStack(spacing: 2) {
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 8))
+                            Text(assignee)
+                        }
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "8B5CF6"))
+                    }
+
+                    if let dueDate = action.dueDate {
+                        HStack(spacing: 2) {
+                            Image(systemName: "calendar")
+                                .font(.system(size: 8))
+                            Text(dueDateFormatted(dueDate))
+                        }
                         .font(.system(size: 10))
                         .foregroundColor(AngelaTheme.textTertiary)
-                        .lineLimit(1)
+                    }
                 }
             }
 
@@ -385,11 +457,172 @@ struct ActionItemRow: View {
                 .padding(.vertical, 2)
                 .background(Color(hex: action.priorityColor).opacity(0.12))
                 .cornerRadius(4)
+
+            // Delete button
+            if onDelete != nil {
+                Button {
+                    onDelete?()
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "EF4444").opacity(0.6))
+                }
+                .buttonStyle(.plain)
+            }
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 10)
         .background(AngelaTheme.backgroundLight.opacity(0.5))
         .cornerRadius(AngelaTheme.smallCornerRadius)
+    }
+
+    private func dueDateFormatted(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: - Action Items Section (CRUD inside MeetingCard)
+
+struct ActionItemsSection: View {
+    let meetingId: String
+    let databaseService: DatabaseService
+    var onActionChanged: (() -> Void)? = nil
+
+    @State private var actionItems: [MeetingActionItem] = []
+    @State private var newActionText: String = ""
+    @State private var isLoading = false
+    @State private var editingItem: MeetingActionItem?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Header
+            HStack(spacing: 6) {
+                Image(systemName: "checklist")
+                    .font(.system(size: 12))
+                    .foregroundColor(Color(hex: "F59E0B"))
+                Text("Action Items")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: "F59E0B"))
+
+                if !actionItems.isEmpty {
+                    let completed = actionItems.filter(\.isCompleted).count
+                    Text("\(completed)/\(actionItems.count)")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(Color(hex: "F59E0B"))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color(hex: "F59E0B").opacity(0.15))
+                        .cornerRadius(4)
+                }
+
+                Spacer()
+
+                if isLoading {
+                    ProgressView()
+                        .scaleEffect(0.5)
+                }
+            }
+
+            // Action item list
+            ForEach(actionItems) { item in
+                ActionItemRow(
+                    action: item,
+                    onToggle: {
+                        Task { await toggleItem(item) }
+                    },
+                    onEdit: {
+                        editingItem = item
+                    },
+                    onDelete: {
+                        Task { await deleteItem(item) }
+                    },
+                    showMeetingTitle: false
+                )
+            }
+
+            // Inline add field
+            HStack(spacing: 8) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(hex: "F59E0B").opacity(0.6))
+
+                TextField("Add action item...", text: $newActionText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                    .onSubmit {
+                        Task { await addItem() }
+                    }
+
+                if !newActionText.isEmpty {
+                    Button {
+                        Task { await addItem() }
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(Color(hex: "F59E0B"))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .background(AngelaTheme.backgroundLight.opacity(0.3))
+            .cornerRadius(AngelaTheme.smallCornerRadius)
+            .overlay(
+                RoundedRectangle(cornerRadius: AngelaTheme.smallCornerRadius)
+                    .stroke(Color(hex: "F59E0B").opacity(0.2), lineWidth: 1)
+            )
+        }
+        .padding(.leading, 4)
+        .task { await loadItems() }
+        .sheet(item: $editingItem) { item in
+            EditActionItemSheet(
+                databaseService: databaseService,
+                actionItem: item
+            ) {
+                Task {
+                    await loadItems()
+                    onActionChanged?()
+                }
+            }
+        }
+    }
+
+    // MARK: - Actions
+
+    private func loadItems() async {
+        isLoading = true
+        actionItems = (try? await databaseService.fetchMeetingActionItems(meetingId: meetingId)) ?? []
+        isLoading = false
+    }
+
+    private func addItem() async {
+        let text = newActionText.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+
+        let request = ActionItemCreateRequest(
+            meetingId: meetingId,
+            actionText: text
+        )
+        _ = try? await databaseService.createActionItem(request)
+        newActionText = ""
+        await loadItems()
+        onActionChanged?()
+    }
+
+    private func toggleItem(_ item: MeetingActionItem) async {
+        _ = try? await databaseService.toggleActionItem(actionId: item.id.uuidString)
+        await loadItems()
+        onActionChanged?()
+    }
+
+    private func deleteItem(_ item: MeetingActionItem) async {
+        _ = try? await databaseService.deleteActionItem(actionId: item.id.uuidString)
+        await loadItems()
+        onActionChanged?()
     }
 }
 

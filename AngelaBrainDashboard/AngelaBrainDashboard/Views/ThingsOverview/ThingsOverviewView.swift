@@ -25,6 +25,9 @@ struct ThingsOverviewView: View {
                     statsRow(stats)
                 }
                 calendarCard
+                if !viewModel.openActionItems.isEmpty {
+                    openActionItemsCard
+                }
                 if !viewModel.upcomingMeetings.isEmpty {
                     upcomingMeetingsCard
                 }
@@ -71,7 +74,7 @@ struct ThingsOverviewView: View {
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Things Overview")
+                Text("Things")
                     .font(AngelaTheme.title())
                     .foregroundColor(AngelaTheme.textPrimary)
 
@@ -125,7 +128,7 @@ struct ThingsOverviewView: View {
             statCard(title: "Total", value: "\(stats.totalMeetings)", icon: "doc.text.fill", color: "3B82F6")
             statCard(title: "This Month", value: "\(stats.thisMonth)", icon: "calendar", color: "9333EA")
             statCard(title: "Upcoming", value: "\(stats.upcoming ?? 0)", icon: "clock.badge.exclamationmark.fill", color: "6366F1")
-            statCard(title: "Open Actions", value: "\(stats.openActions)", icon: "exclamationmark.circle.fill", color: "F59E0B")
+            statCard(title: "Open", value: "\(stats.openMeetings)", icon: "exclamationmark.circle.fill", color: "F59E0B")
             statCard(title: "Completion", value: "\(Int(stats.completionRate))%", icon: "checkmark.circle.fill", color: "10B981")
         }
     }
@@ -313,6 +316,56 @@ struct ThingsOverviewView: View {
         }
     }
 
+    // MARK: - Open Action Items Card
+
+    private var openActionItemsCard: some View {
+        VStack(alignment: .leading, spacing: AngelaTheme.spacing) {
+            HStack {
+                Image(systemName: "checklist")
+                    .foregroundColor(Color(hex: "F59E0B"))
+
+                Text("Open Action Items")
+                    .font(AngelaTheme.headline())
+                    .foregroundColor(AngelaTheme.textPrimary)
+
+                Spacer()
+
+                Text("\(viewModel.openActionItems.count)")
+                    .font(AngelaTheme.caption())
+                    .foregroundColor(Color(hex: "F59E0B"))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color(hex: "F59E0B").opacity(0.15))
+                    .cornerRadius(6)
+            }
+
+            VStack(spacing: AngelaTheme.smallSpacing) {
+                ForEach(viewModel.openActionItems.prefix(8)) { item in
+                    ActionItemRow(
+                        action: item,
+                        onToggle: {
+                            Task {
+                                _ = try? await databaseService.toggleActionItem(actionId: item.id.uuidString)
+                                await viewModel.loadData(databaseService: databaseService)
+                            }
+                        },
+                        showMeetingTitle: true
+                    )
+                }
+
+                if viewModel.openActionItems.count > 8 {
+                    Text("+\(viewModel.openActionItems.count - 8) more")
+                        .font(.system(size: 11))
+                        .foregroundColor(AngelaTheme.textTertiary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.top, 4)
+                }
+            }
+        }
+        .padding(AngelaTheme.spacing)
+        .angelaCard()
+    }
+
     // MARK: - Upcoming Meetings Card
 
     private var upcomingMeetingsCard: some View {
@@ -356,6 +409,13 @@ struct ThingsOverviewView: View {
                         onDelete: {
                             meetingToDelete = meeting
                             showDeleteConfirm = true
+                        },
+                        onToggleStatus: {
+                            Task { await viewModel.toggleMeetingStatus(meeting: meeting, databaseService: databaseService) }
+                        },
+                        databaseService: databaseService,
+                        onActionChanged: {
+                            Task { await viewModel.loadData(databaseService: databaseService) }
                         }
                     )
                 }
@@ -508,6 +568,13 @@ struct ThingsOverviewView: View {
                             onDelete: {
                                 meetingToDelete = meeting
                                 showDeleteConfirm = true
+                            },
+                            onToggleStatus: {
+                                Task { await viewModel.toggleMeetingStatus(meeting: meeting, databaseService: databaseService) }
+                            },
+                            databaseService: databaseService,
+                            onActionChanged: {
+                                Task { await viewModel.loadData(databaseService: databaseService) }
                             }
                         )
                     }
@@ -555,6 +622,7 @@ class ThingsOverviewViewModel: ObservableObject {
     @Published var stats: MeetingStats?
     @Published var allMeetings: [MeetingNote] = []
     @Published var upcomingMeetings: [MeetingNote] = []
+    @Published var openActionItems: [MeetingActionItem] = []
     @Published var projectBreakdown: [ProjectMeetingBreakdown] = []
     @Published var expandedMeetingId: UUID?
     @Published var isLoading = false
@@ -580,14 +648,24 @@ class ThingsOverviewViewModel: ObservableObject {
         async let fetchedStats = try? databaseService.fetchMeetingStats()
         async let fetchedMeetings = try? databaseService.fetchMeetings()
         async let fetchedUpcoming = try? databaseService.fetchUpcomingMeetings()
+        async let fetchedActions = try? databaseService.fetchOpenActionItems()
         async let fetchedBreakdown = try? databaseService.fetchMeetingProjectBreakdown()
 
         stats = await fetchedStats
         allMeetings = await fetchedMeetings ?? []
         upcomingMeetings = await fetchedUpcoming ?? []
+        openActionItems = await fetchedActions ?? []
         projectBreakdown = await fetchedBreakdown ?? []
 
         isLoading = false
+    }
+
+    func toggleMeetingStatus(meeting: MeetingNote, databaseService: DatabaseService) async {
+        let newStatus = meeting.isOpen ? "completed" : "open"
+        var request = MeetingUpdateRequest()
+        request.things3Status = newStatus
+        _ = try? await databaseService.updateMeeting(meetingId: meeting.id.uuidString, request)
+        await loadData(databaseService: databaseService)
     }
 
     func calendarDays() -> [CalendarDay] {
