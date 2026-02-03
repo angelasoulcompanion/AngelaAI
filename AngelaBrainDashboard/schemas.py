@@ -28,6 +28,16 @@ class MeetingUpdate(BaseModel):
     project_name: Optional[str] = None
     things3_status: Optional[str] = None    # open, completed
     notes: Optional[str] = None             # raw meeting notes
+    # Structured note fields
+    agenda: Optional[list[str]] = None
+    key_points: Optional[list[str]] = None
+    decisions_made: Optional[list[str]] = None
+    issues_risks: Optional[list[str]] = None
+    next_steps: Optional[list[str]] = None
+    personal_notes: Optional[str] = None
+    morning_notes: Optional[str] = None
+    afternoon_notes: Optional[str] = None
+    site_observations: Optional[str] = None
 
 
 class ActionItemCreate(BaseModel):

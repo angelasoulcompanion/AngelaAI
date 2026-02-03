@@ -354,6 +354,17 @@ struct MeetingUpdateRequest: Codable {
     var things3Status: String?        // open, completed
     var notes: String?                // raw meeting notes
 
+    // Structured note fields
+    var agenda: [String]?
+    var keyPoints: [String]?
+    var decisionsMade: [String]?
+    var issuesRisks: [String]?
+    var nextSteps: [String]?
+    var personalNotes: String?
+    var morningNotes: String?
+    var afternoonNotes: String?
+    var siteObservations: String?
+
     enum CodingKeys: String, CodingKey {
         case title
         case location
@@ -365,5 +376,14 @@ struct MeetingUpdateRequest: Codable {
         case projectName = "project_name"
         case things3Status = "things3_status"
         case notes
+        case agenda
+        case keyPoints = "key_points"
+        case decisionsMade = "decisions_made"
+        case issuesRisks = "issues_risks"
+        case nextSteps = "next_steps"
+        case personalNotes = "personal_notes"
+        case morningNotes = "morning_notes"
+        case afternoonNotes = "afternoon_notes"
+        case siteObservations = "site_observations"
     }
 }

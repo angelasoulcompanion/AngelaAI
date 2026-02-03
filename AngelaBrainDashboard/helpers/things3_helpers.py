@@ -7,18 +7,19 @@ from urllib.parse import quote
 
 
 def things3_complete_todo(title_search: str) -> bool:
-    """Complete a Things3 todo by searching its title via AppleScript."""
+    """Complete ALL matching open Things3 todos by title (prevents stale duplicates)."""
     safe_title = title_search.replace('\\', '\\\\').replace('"', '\\"')
     script = f'''
     tell application "Things3"
         set allTodos to to dos
+        set completedCount to 0
         repeat with t in allTodos
             if name of t contains "{safe_title}" and status of t is not completed then
                 set status of t to completed
-                return "COMPLETED"
+                set completedCount to completedCount + 1
             end if
         end repeat
-        return "NOT_FOUND"
+        return completedCount as text
     end tell
     '''
     try:
@@ -26,7 +27,8 @@ def things3_complete_todo(title_search: str) -> bool:
             ['osascript', '-e', script],
             capture_output=True, text=True, timeout=15
         )
-        return "COMPLETED" in result.stdout
+        count = int(result.stdout.strip()) if result.stdout.strip().isdigit() else 0
+        return count > 0
     except Exception:
         return False
 

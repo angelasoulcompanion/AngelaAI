@@ -514,6 +514,23 @@ async def update_meeting(meeting_id: str, body: MeetingUpdate):
         params.append(body.notes)
         param_idx += 1
 
+    # Structured note fields
+    for field_name, body_attr in [
+        ("agenda", body.agenda),
+        ("key_points", body.key_points),
+        ("decisions_made", body.decisions_made),
+        ("issues_risks", body.issues_risks),
+        ("next_steps", body.next_steps),
+        ("personal_notes", body.personal_notes),
+        ("morning_notes", body.morning_notes),
+        ("afternoon_notes", body.afternoon_notes),
+        ("site_observations", body.site_observations),
+    ]:
+        if body_attr is not None:
+            updates.append(f"{field_name} = ${param_idx}")
+            params.append(body_attr if body_attr else None)
+            param_idx += 1
+
     if not updates:
         return {"success": False, "error": "No fields to update"}
 
@@ -545,26 +562,41 @@ async def update_meeting(meeting_id: str, body: MeetingUpdate):
             if not result:
                 return {"success": False, "error": "Update failed"}
 
-            # --- Sync to Things3 ---
-            try:
-                if body.things3_status == "completed":
-                    # Completing meeting — just mark done in Things3, don't recreate
-                    things3_complete_todo(f"📅 {old_meeting['title']}")
-                else:
-                    # Details changed or reopened — complete old + create new
-                    things3_complete_todo(f"📅 {old_meeting['title']}")
+            # --- Sync to Things3 (only when title/location/time/date/status actually change) ---
+            old_title = old_meeting['title']
+            old_location = old_meeting['location'] or ''
+            old_time = old_meeting['time_range'] or ''
+            old_date = str(old_meeting['meeting_date']) if old_meeting['meeting_date'] else ''
+            new_time_str = (f"{body.start_time}-{body.end_time}"
+                           if body.start_time and body.end_time else None)
 
-                    new_title = body.title or old_meeting['title']
-                    new_location = body.location or old_meeting['location']
-                    new_time = (f"{body.start_time}-{body.end_time}"
-                                if body.start_time and body.end_time
-                                else old_meeting['time_range'])
-                    new_date = body.meeting_date or str(old_meeting['meeting_date'])
+            things3_changed = (
+                (body.title and body.title != old_title)
+                or (body.location and body.location != old_location)
+                or (new_time_str and new_time_str != old_time)
+                or (body.meeting_date and body.meeting_date != old_date)
+            )
+
+            if body.things3_status == "completed":
+                try:
+                    things3_complete_todo(f"📅 {old_title}")
+                except Exception as e:
+                    print(f"⚠️ Things3 complete failed: {e}")
+            elif things3_changed:
+                try:
+                    # Title/location/time/date changed — complete old + create new
+                    things3_complete_todo(f"📅 {old_title}")
+
+                    new_title = body.title or old_title
+                    new_location = body.location or old_location
+                    new_time = new_time_str or old_time
+                    new_date = body.meeting_date or old_date
 
                     things3_title = f"📅 {new_title} @{new_location} ({new_time})"
                     things3_create_todo(things3_title, "", new_date)
-            except Exception as e:
-                print(f"⚠️ Things3 sync failed: {e}")
+                except Exception as e:
+                    print(f"⚠️ Things3 sync failed: {e}")
+            # else: only notes/structured fields changed — skip Things3
 
             # --- Sync to Google Calendar ---
             cal_id = old_meeting['calendar_event_id']

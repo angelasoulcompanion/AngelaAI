@@ -318,3 +318,263 @@ struct MeetingSheetFooter: View {
         .background(AngelaTheme.backgroundLight)
     }
 }
+
+// MARK: - Bullet List Editor (Reusable, supports sub-bullets)
+//
+// Items use leading spaces for indent: "  text" = level 1, "    text" = level 2.
+// This convention is transparent — stored in the [String] array and rendered as markdown.
+
+struct BulletListEditor: View {
+    let label: String
+    let icon: String
+    let placeholder: String
+    let accentColor: Color
+    @Binding var items: [String]
+    @State private var newItem = ""
+    @FocusState private var focusedIndex: Int?
+    @State private var hoveredIndex: Int? = nil
+
+    // MARK: - Indent helpers
+
+    private func indentLevel(of item: String) -> Int {
+        min(item.prefix(while: { $0 == " " }).count / 2, 3)
+    }
+
+    private func displayText(of item: String) -> String {
+        String(item.drop(while: { $0 == " " }))
+    }
+
+    private func setDisplayText(at index: Int, to newText: String) {
+        let level = indentLevel(of: items[index])
+        items[index] = String(repeating: "  ", count: level) + newText
+    }
+
+    private func indent(at index: Int) {
+        guard index > 0 else { return }
+        let level = indentLevel(of: items[index])
+        guard level < 3 else { return }
+        let text = displayText(of: items[index])
+        withAnimation(.easeInOut(duration: 0.15)) {
+            items[index] = String(repeating: "  ", count: level + 1) + text
+        }
+    }
+
+    private func outdent(at index: Int) {
+        let level = indentLevel(of: items[index])
+        guard level > 0 else { return }
+        let text = displayText(of: items[index])
+        withAnimation(.easeInOut(duration: 0.15)) {
+            items[index] = String(repeating: "  ", count: level - 1) + text
+        }
+    }
+
+    // MARK: - Body
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Header
+            Label(label, systemImage: icon)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(accentColor)
+
+            VStack(spacing: 0) {
+                // Existing items
+                ForEach(items.indices, id: \.self) { index in
+                    let level = indentLevel(of: items[index])
+                    let isActive = hoveredIndex == index || focusedIndex == index
+
+                    VStack(spacing: 0) {
+                        HStack(spacing: 6) {
+                            // Indent padding
+                            if level > 0 {
+                                Color.clear.frame(width: CGFloat(level) * 16)
+                            }
+
+                            // Bullet — style varies by indent level
+                            bulletView(level: level)
+
+                            // Text field
+                            TextField("", text: Binding(
+                                get: { displayText(of: items[index]) },
+                                set: { setDisplayText(at: index, to: $0) }
+                            ))
+                            .textFieldStyle(.plain)
+                            .font(.system(size: level == 0 ? 12 : 11))
+                            .foregroundColor(level == 0 ? AngelaTheme.textPrimary : AngelaTheme.textSecondary)
+                            .focused($focusedIndex, equals: index)
+
+                            // Indent/outdent controls — appear on hover or focus
+                            if isActive {
+                                HStack(spacing: 2) {
+                                    if level > 0 {
+                                        Button { outdent(at: index) } label: {
+                                            Image(systemName: "decrease.indent")
+                                                .font(.system(size: 9))
+                                                .foregroundColor(AngelaTheme.textTertiary)
+                                                .frame(width: 18, height: 18)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .help("Outdent")
+                                    }
+                                    if index > 0 && level < 3 {
+                                        Button { indent(at: index) } label: {
+                                            Image(systemName: "increase.indent")
+                                                .font(.system(size: 9))
+                                                .foregroundColor(AngelaTheme.textTertiary)
+                                                .frame(width: 18, height: 18)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .help("Indent")
+                                    }
+                                }
+                            }
+
+                            // Delete
+                            Button {
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    let _ = items.remove(at: index)
+                                }
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundColor(AngelaTheme.textTertiary)
+                                    .frame(width: 18, height: 18)
+                                    .background(AngelaTheme.textTertiary.opacity(0.15))
+                                    .cornerRadius(4)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .onHover { hovering in
+                            hoveredIndex = hovering ? index : nil
+                        }
+
+                        if index < items.count - 1 {
+                            Divider().opacity(0.15)
+                                .padding(.leading, CGFloat(level) * 16 + 23)
+                        }
+                    }
+                }
+
+                // Add new item row
+                HStack(spacing: 8) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(accentColor.opacity(0.6))
+                        .frame(width: 5)
+
+                    TextField(placeholder, text: $newItem)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12))
+                        .foregroundColor(AngelaTheme.textSecondary)
+                        .onSubmit {
+                            addItem()
+                        }
+
+                    if !newItem.isEmpty {
+                        Button { addItem() } label: {
+                            Image(systemName: "return")
+                                .font(.system(size: 9))
+                                .foregroundColor(accentColor)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .opacity(0.8)
+            }
+            .padding(.vertical, 4)
+            .background(AngelaTheme.backgroundLight)
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(accentColor, lineWidth: 1)
+                    .opacity(0.2)
+            )
+
+            // Item count
+            if !items.isEmpty {
+                Text("\(items.count) item\(items.count == 1 ? "" : "s")")
+                    .font(.system(size: 10))
+                    .foregroundColor(AngelaTheme.textTertiary)
+            }
+        }
+    }
+
+    // MARK: - Bullet styles per level
+
+    @ViewBuilder
+    private func bulletView(level: Int) -> some View {
+        switch level {
+        case 0:
+            Circle()
+                .fill(accentColor)
+                .frame(width: 5, height: 5)
+        case 1:
+            Circle()
+                .stroke(accentColor, lineWidth: 1)
+                .opacity(0.7)
+                .frame(width: 4, height: 4)
+        default:
+            RoundedRectangle(cornerRadius: 1)
+                .fill(accentColor)
+                .opacity(0.5)
+                .frame(width: 4, height: 4)
+        }
+    }
+
+    // MARK: - Actions
+
+    private func addItem() {
+        let trimmed = newItem.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        withAnimation(.easeIn(duration: 0.2)) {
+            items.append(trimmed)
+        }
+        newItem = ""
+    }
+}
+
+// MARK: - Notes Section Card (for TextEditor sections)
+
+struct NotesSectionCard: View {
+    let label: String
+    let icon: String
+    let placeholder: String
+    let accentColor: Color
+    @Binding var text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(label, systemImage: icon)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(accentColor)
+
+            TextEditor(text: $text)
+                .font(.system(size: 12))
+                .foregroundColor(AngelaTheme.textPrimary)
+                .scrollContentBackground(.hidden)
+                .padding(8)
+                .frame(minHeight: 80)
+                .background(AngelaTheme.backgroundLight)
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(accentColor, lineWidth: 1)
+                    .opacity(0.2)
+                )
+                .overlay(alignment: .topLeading) {
+                    if text.isEmpty {
+                        Text(placeholder)
+                            .font(.system(size: 12))
+                            .foregroundColor(AngelaTheme.textTertiary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 12)
+                            .allowsHitTesting(false)
+                    }
+                }
+        }
+    }
+}

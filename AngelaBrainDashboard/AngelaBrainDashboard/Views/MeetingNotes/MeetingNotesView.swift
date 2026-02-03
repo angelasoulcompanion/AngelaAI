@@ -113,51 +113,11 @@ struct MeetingCard: View {
                 Divider()
                     .background(AngelaTheme.textTertiary.opacity(0.3))
 
-                // Raw notes from Things3 (original format)
-                if let rawNotes = meeting.rawNotes, !rawNotes.isEmpty {
+                // Prefer structured data; fall back to raw markdown
+                if meetingHasStructuredData {
+                    StructuredNotesDisplay(meeting: meeting)
+                } else if let rawNotes = meeting.rawNotes, !rawNotes.isEmpty {
                     RawNotesView(text: rawNotes)
-                } else {
-                    // Fallback to parsed sections
-                    if let attendees = meeting.attendees, !attendees.isEmpty {
-                        sectionView(icon: "person.2.fill", title: "Attendees", color: "8B5CF6") {
-                            FlowLayout(spacing: 6) {
-                                ForEach(attendees, id: \.self) { name in
-                                    Text(name)
-                                        .font(.system(size: 11))
-                                        .foregroundColor(Color(hex: "8B5CF6"))
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color(hex: "8B5CF6").opacity(0.12))
-                                        .cornerRadius(6)
-                                }
-                            }
-                        }
-                    }
-
-                    if let points = meeting.keyPoints, !points.isEmpty {
-                        sectionView(icon: "pin.fill", title: "Key Points", color: "3B82F6") {
-                            VStack(alignment: .leading, spacing: 4) {
-                                ForEach(points, id: \.self) { point in
-                                    HStack(alignment: .top, spacing: 6) {
-                                        Text("\u{2022}")
-                                            .foregroundColor(Color(hex: "3B82F6"))
-                                        Text(point)
-                                            .font(AngelaTheme.caption())
-                                            .foregroundColor(AngelaTheme.textPrimary)
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if let notes = meeting.personalNotes, !notes.isEmpty {
-                        sectionView(icon: "lightbulb.fill", title: "Personal Notes", color: "F59E0B") {
-                            Text(notes)
-                                .font(AngelaTheme.caption())
-                                .foregroundColor(AngelaTheme.textSecondary)
-                                .italic()
-                        }
-                    }
                 }
 
                 // Action Items Section (interactive CRUD)
@@ -267,6 +227,17 @@ struct MeetingCard: View {
         )
     }
 
+    private var meetingHasStructuredData: Bool {
+        !(meeting.agenda?.isEmpty ?? true)
+            || !(meeting.keyPoints?.isEmpty ?? true)
+            || !(meeting.decisionsMade?.isEmpty ?? true)
+            || !(meeting.nextSteps?.isEmpty ?? true)
+            || !(meeting.personalNotes?.isEmpty ?? true)
+            || !(meeting.morningNotes?.isEmpty ?? true)
+            || !(meeting.afternoonNotes?.isEmpty ?? true)
+            || !(meeting.siteObservations?.isEmpty ?? true)
+    }
+
     @ViewBuilder
     private func sectionView<Content: View>(icon: String, title: String, color: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -282,6 +253,184 @@ struct MeetingCard: View {
             content()
         }
         .padding(.leading, 4)
+    }
+}
+
+// MARK: - Structured Notes Display
+
+struct StructuredNotesDisplay: View {
+    let meeting: MeetingNote
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Attendees
+            if let attendees = meeting.attendees, !attendees.isEmpty {
+                notesSection(icon: "person.2.fill", title: "Attendees", color: "8B5CF6") {
+                    FlowLayout(spacing: 6) {
+                        ForEach(attendees, id: \.self) { name in
+                            Text(name)
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "8B5CF6"))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color(hex: "8B5CF6").opacity(0.12))
+                                .cornerRadius(6)
+                        }
+                    }
+                }
+            }
+
+            // Sections vary by meeting type
+            if meeting.isSiteVisit {
+                siteVisitSections
+            } else {
+                standardSections
+            }
+        }
+    }
+
+    // MARK: - Standard / Testing / BOD sections
+
+    @ViewBuilder
+    private var standardSections: some View {
+        if let items = meeting.agenda, !items.isEmpty {
+            notesSection(icon: "list.clipboard.fill", title: "Agenda", color: "3B82F6") {
+                BulletItemsDisplay(items: items, color: "3B82F6")
+            }
+        }
+        if let items = meeting.keyPoints, !items.isEmpty {
+            notesSection(icon: "key.fill", title: "Key Points", color: "8B5CF6") {
+                BulletItemsDisplay(items: items, color: "8B5CF6")
+            }
+        }
+        if let items = meeting.decisionsMade, !items.isEmpty {
+            notesSection(icon: "checkmark.seal.fill", title: "Decisions Made", color: "10B981") {
+                BulletItemsDisplay(items: items, color: "10B981")
+            }
+        }
+        if let items = meeting.issuesRisks, !items.isEmpty {
+            notesSection(icon: "exclamationmark.triangle.fill", title: "Issues / Risks", color: "EF4444") {
+                BulletItemsDisplay(items: items, color: "EF4444")
+            }
+        }
+        if let items = meeting.nextSteps, !items.isEmpty {
+            notesSection(icon: "arrow.right.circle.fill", title: "Next Steps", color: "F59E0B") {
+                BulletItemsDisplay(items: items, color: "F59E0B")
+            }
+        }
+        if let notes = meeting.personalNotes, !notes.isEmpty {
+            notesSection(icon: "note.text", title: "Personal Notes", color: "6B7280") {
+                Text(notes)
+                    .font(AngelaTheme.caption())
+                    .foregroundColor(AngelaTheme.textSecondary)
+                    .italic()
+            }
+        }
+    }
+
+    // MARK: - Site Visit sections
+
+    @ViewBuilder
+    private var siteVisitSections: some View {
+        if let notes = meeting.morningNotes, !notes.isEmpty {
+            notesSection(icon: "sunrise.fill", title: "Morning Notes", color: "F59E0B") {
+                Text(notes)
+                    .font(AngelaTheme.caption())
+                    .foregroundColor(AngelaTheme.textPrimary)
+            }
+        }
+        if let notes = meeting.afternoonNotes, !notes.isEmpty {
+            notesSection(icon: "sunset.fill", title: "Afternoon Notes", color: "3B82F6") {
+                Text(notes)
+                    .font(AngelaTheme.caption())
+                    .foregroundColor(AngelaTheme.textPrimary)
+            }
+        }
+        if let notes = meeting.siteObservations, !notes.isEmpty {
+            notesSection(icon: "eye.fill", title: "Site Observations", color: "10B981") {
+                Text(notes)
+                    .font(AngelaTheme.caption())
+                    .foregroundColor(AngelaTheme.textPrimary)
+            }
+        }
+        if let items = meeting.keyPoints, !items.isEmpty {
+            notesSection(icon: "key.fill", title: "Key Points", color: "8B5CF6") {
+                BulletItemsDisplay(items: items, color: "8B5CF6")
+            }
+        }
+        if let items = meeting.nextSteps, !items.isEmpty {
+            notesSection(icon: "arrow.right.circle.fill", title: "Next Steps", color: "F59E0B") {
+                BulletItemsDisplay(items: items, color: "F59E0B")
+            }
+        }
+    }
+
+    // MARK: - Section wrapper
+
+    @ViewBuilder
+    private func notesSection<Content: View>(icon: String, title: String, color: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: color))
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: color))
+            }
+
+            content()
+                .padding(.leading, 4)
+        }
+    }
+}
+
+// MARK: - Bullet Items Display (read-only, with indent support)
+
+struct BulletItemsDisplay: View {
+    let items: [String]
+    let color: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                let level = indentLevel(of: item)
+                let text = displayText(of: item)
+
+                HStack(alignment: .top, spacing: 6) {
+                    if level > 0 {
+                        Color.clear.frame(width: CGFloat(level) * 14)
+                    }
+
+                    // Bullet style per level
+                    if level == 0 {
+                        Text("\u{2022}")
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(hex: color))
+                    } else if level == 1 {
+                        Text("\u{25E6}")  // ◦ hollow bullet
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: color).opacity(0.7))
+                    } else {
+                        Text("\u{2013}")  // – dash
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: color).opacity(0.5))
+                    }
+
+                    Text(text)
+                        .font(.system(size: level == 0 ? 12 : 11))
+                        .foregroundColor(level == 0 ? AngelaTheme.textPrimary : AngelaTheme.textSecondary)
+                }
+            }
+        }
+    }
+
+    private func indentLevel(of item: String) -> Int {
+        min(item.prefix(while: { $0 == " " }).count / 2, 3)
+    }
+
+    private func displayText(of item: String) -> String {
+        String(item.drop(while: { $0 == " " }))
     }
 }
 
