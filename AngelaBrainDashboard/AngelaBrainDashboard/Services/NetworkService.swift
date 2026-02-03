@@ -37,7 +37,7 @@ class NetworkService {
     static let shared = NetworkService()
 
     /// Default base URL for Angela API
-    let defaultBaseURL = "http://127.0.0.1:8765"
+    let defaultBaseURL = APIConfig.baseURL
 
     /// Shared JSON decoder with common date strategies
     private let decoder: JSONDecoder = {

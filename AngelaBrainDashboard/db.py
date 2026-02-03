@@ -2,7 +2,7 @@
 Database pool + lifecycle management for Angela Brain Dashboard API.
 """
 import sys
-from typing import Optional
+from typing import AsyncGenerator, Optional
 
 import asyncpg
 
@@ -106,3 +106,10 @@ def get_pool() -> asyncpg.Pool:
     if pool is None:
         raise RuntimeError("Database pool not initialized. Call startup() first.")
     return pool
+
+
+async def get_conn() -> AsyncGenerator[asyncpg.Connection, None]:
+    """FastAPI dependency that yields a connection from the pool."""
+    p = get_pool()
+    async with p.acquire() as conn:
+        yield conn

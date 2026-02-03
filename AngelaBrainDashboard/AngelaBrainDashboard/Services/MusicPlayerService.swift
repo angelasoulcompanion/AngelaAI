@@ -546,6 +546,26 @@ final class MusicPlayerService: ObservableObject {
         currentQueueIndex = index
     }
 
+    /// Play all songs in order, starting from the first.
+    @discardableResult
+    func playAll(_ songs: [MusicKit.Song]) async -> Bool {
+        setMusicKitQueue(songs)
+        if let first = songs.first {
+            return await playSong(first)
+        }
+        return false
+    }
+
+    /// Shuffle songs and play from the first shuffled position.
+    @discardableResult
+    func shufflePlay(_ songs: [MusicKit.Song]) async -> Bool {
+        setMusicKitQueue(songs.shuffled())
+        if let first = queue.first?.musicKitSong {
+            return await playSong(first)
+        }
+        return false
+    }
+
     // MARK: - Position Tracking (every 0.5s)
 
     private func startPositionTracking() {

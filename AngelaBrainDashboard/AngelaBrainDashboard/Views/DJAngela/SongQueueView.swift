@@ -29,6 +29,8 @@ struct SongQueueView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var selectedMood: String?
+    @State private var bedtimeDisplays: [DisplaySong] = []
+    @State private var bedtimeRecommendation: SongRecommendation?
     /// Tracks which reaction was tapped — keyed by "pairing" or "title|artist", value is "up"/"down"/"love"
     @State private var wineReactions: [String: String] = [:]
     /// Wine selector popover in For You tab
@@ -41,6 +43,7 @@ struct SongQueueView: View {
         case ourSongs = "Our Songs"
         case queued = "Queued"
         case forYou = "For You"
+        case bedtime = "Bedtime"
         case search = "Search"
 
         var icon: String {
@@ -50,6 +53,7 @@ struct SongQueueView: View {
             case .ourSongs: return "heart.circle.fill"
             case .queued: return "list.number"
             case .forYou: return "sparkles"
+            case .bedtime: return "moon.zzz.fill"
             case .search: return "magnifyingglass"
             }
         }
@@ -62,6 +66,7 @@ struct SongQueueView: View {
             case .ourSongs: return "our_songs"
             case .queued: return "queued"
             case .forYou: return "for_you"
+            case .bedtime: return "bedtime"
             case .search: return "search"
             }
         }
@@ -84,6 +89,8 @@ struct SongQueueView: View {
                         queuedView
                     case .forYou:
                         recommendationView
+                    case .bedtime:
+                        bedtimeView
                     case .search:
                         searchView
                     }
@@ -140,9 +147,9 @@ struct SongQueueView: View {
     private var libraryView: some View {
         Group {
             if isLoading && librarySongs.isEmpty {
-                loadingView
+                LoadingStateView(message: "Loading...")
             } else if librarySongs.isEmpty {
-                emptyView(message: "No recent plays", icon: "clock.arrow.circlepath")
+                EmptyStateView(message: "No recent plays", icon: "clock.arrow.circlepath")
             } else {
                 playControlBar(
                     songCount: librarySongs.count,
@@ -179,9 +186,9 @@ struct SongQueueView: View {
                 // Playlist detail view
                 playlistDetailView(playlist)
             } else if isLoading && userPlaylists.isEmpty {
-                loadingView
+                LoadingStateView(message: "Loading...")
             } else if userPlaylists.isEmpty {
-                emptyView(message: "No playlists found", icon: "list.bullet.rectangle")
+                EmptyStateView(message: "No playlists found", icon: "list.bullet.rectangle")
             } else {
                 LazyVStack(spacing: 8) {
                     ForEach(userPlaylists, id: \.id) { playlist in
@@ -326,9 +333,9 @@ struct SongQueueView: View {
 
             // Track list
             if isLoading {
-                loadingView
+                LoadingStateView(message: "Loading...")
             } else if playlistTracks.isEmpty {
-                emptyView(message: "No tracks in playlist", icon: "music.note")
+                EmptyStateView(message: "No tracks in playlist", icon: "music.note")
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(Array(playlistTracks.enumerated()), id: \.element.id) { index, song in
@@ -344,9 +351,9 @@ struct SongQueueView: View {
     private var ourSongsView: some View {
         Group {
             if isLoading && ourSongs.isEmpty {
-                loadingView
+                LoadingStateView(message: "Loading...")
             } else if ourSongs.isEmpty {
-                emptyView(message: "No songs yet", icon: "heart")
+                EmptyStateView(message: "No songs yet", icon: "heart")
             } else {
                 playControlBar(
                     songCount: ourSongs.count,
@@ -373,7 +380,7 @@ struct SongQueueView: View {
     private var queuedView: some View {
         Group {
             if musicService.queue.isEmpty {
-                emptyView(message: "No songs in queue", icon: "list.number")
+                EmptyStateView(message: "No songs in queue", icon: "list.number")
             } else {
                 playControlBar(
                     songCount: musicService.queue.count,
@@ -402,7 +409,7 @@ struct SongQueueView: View {
     private var recommendationView: some View {
         VStack(spacing: 16) {
             if isLoading {
-                loadingView
+                LoadingStateView(message: "Loading...")
             } else if let rec = recommendation {
                 // Emotion card + mood picker
                 VStack(alignment: .leading, spacing: 12) {
@@ -444,7 +451,7 @@ struct SongQueueView: View {
                     }
 
                     // Tappable mood pills
-                    let moods = rec.availableMoods ?? ["happy", "loving", "calm", "excited", "bedtime", "sad", "lonely", "stressed", "nostalgic", "hopeful"]
+                    let moods = rec.availableMoods ?? ["happy", "loving", "calm", "excited", "grateful", "sad", "lonely", "stressed", "nostalgic", "hopeful"]
                     let current = selectedMood ?? rec.basedOnEmotion
 
                     moodPickerGrid(moods: moods, selected: current)
@@ -506,12 +513,89 @@ struct SongQueueView: View {
                 }
                 .buttonStyle(.plain)
             } else {
-                emptyView(message: "Tap to get a recommendation", icon: "sparkles")
+                EmptyStateView(message: "Tap to get a recommendation", icon: "sparkles")
 
                 Button {
                     Task { await loadRecommendation() }
                 } label: {
                     Text("Get Recommendation")
+                        .font(.system(size: 14, weight: .semibold))
+                        .angelaPrimaryButton()
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    // MARK: - Bedtime View
+
+    private var bedtimeView: some View {
+        VStack(spacing: 16) {
+            if isLoading {
+                LoadingStateView(message: "Loading lullabies...")
+            } else if !bedtimeDisplays.isEmpty {
+                // Header
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "moon.zzz.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(AngelaTheme.secondaryPurple)
+                        Text("Bedtime Lullabies")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(AngelaTheme.textPrimary)
+                    }
+
+                    if let summary = bedtimeRecommendation?.moodSummary {
+                        Text(summary)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(AngelaTheme.secondaryPurple)
+                            .italic()
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(AngelaTheme.cardBackground.opacity(0.6))
+                .cornerRadius(AngelaTheme.cornerRadius)
+
+                playControlBar(
+                    songCount: bedtimeDisplays.count,
+                    onPlayAll: {
+                        musicService.currentSourceTab = QueueTab.bedtime.sourceKey
+                        musicService.setQueue(bedtimeDisplays)
+                        Task { await musicService.playDisplaySong(bedtimeDisplays[0]) }
+                    },
+                    onShuffle: {
+                        musicService.currentSourceTab = QueueTab.bedtime.sourceKey
+                        let shuffled = bedtimeDisplays.shuffled()
+                        musicService.setQueue(shuffled)
+                        Task { await musicService.playDisplaySong(shuffled[0]) }
+                    }
+                )
+
+                ForEach(bedtimeDisplays) { song in
+                    displaySongRow(song, allSongs: bedtimeDisplays)
+                }
+
+                // Refresh
+                Button {
+                    Task { await loadBedtimeSongs() }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 12))
+                        Text("Refresh Lullabies")
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                    .angelaSecondaryButton()
+                }
+                .buttonStyle(.plain)
+            } else {
+                EmptyStateView(message: "Tap to load bedtime songs", icon: "moon.zzz.fill")
+
+                Button {
+                    Task { await loadBedtimeSongs() }
+                } label: {
+                    Text("Load Lullabies")
                         .font(.system(size: 14, weight: .semibold))
                         .angelaPrimaryButton()
                 }
@@ -555,9 +639,9 @@ struct SongQueueView: View {
             .cornerRadius(8)
 
             if isLoading {
-                loadingView
+                LoadingStateView(message: "Loading...")
             } else if searchResults.isEmpty && !searchQuery.isEmpty {
-                emptyView(message: "No results for \"\(searchQuery)\"", icon: "magnifyingglass")
+                EmptyStateView(message: "No results for \"\(searchQuery)\"", icon: "magnifyingglass")
             } else if !searchResults.isEmpty {
                 Text("\(searchResults.count) results")
                     .font(.system(size: 12))
@@ -918,61 +1002,6 @@ struct SongQueueView: View {
 
     // MARK: - Mood Picker
 
-    private static let moodEmojis: [String: String] = [
-        "happy": "😊", "loving": "💜", "calm": "🍃", "excited": "✨",
-        "bedtime": "😴", "sad": "😢", "lonely": "🌙", "stressed": "😮‍💨",
-        "nostalgic": "🌸", "hopeful": "🌅",
-    ]
-
-    private static let wineDisplayNames: [String: String] = [
-        "primitivo": "Primitivo", "cabernet_sauvignon": "Cab Sauv",
-        "malbec": "Malbec", "shiraz": "Shiraz",
-        "pinot_noir": "Pinot Noir", "merlot": "Merlot",
-        "super_tuscan": "Super Tuscan", "sangiovese": "Sangiovese",
-        "nebbiolo": "Nebbiolo", "chardonnay": "Chardonnay",
-        "sauvignon_blanc": "Sauv Blanc", "riesling": "Riesling",
-        "pinot_grigio": "Pinot Grigio", "champagne": "Champagne",
-        "prosecco": "Prosecco", "cava": "Cava",
-        "rose": "Rose", "moscato": "Moscato", "port": "Port",
-    ]
-
-    /// Mood → iTunes search terms (used when filling slots via iTunes API).
-    private static let moodSearchTerms: [String: String] = [
-        "happy": "feel good happy hits",
-        "loving": "love songs romantic ballads",
-        "calm": "chill acoustic relaxing",
-        "excited": "upbeat energetic pop dance",
-        "bedtime": "sleep music peaceful piano ambient",
-        "sad": "sad songs emotional ballad",
-        "lonely": "missing you lonely songs",
-        "stressed": "calm relaxing piano ambient",
-        "nostalgic": "throwback classic love songs",
-        "hopeful": "hopeful uplifting inspirational",
-    ]
-
-    /// iTunes search terms per wine (mirrors backend _WINE_SEARCH).
-    private static let wineSearchTerms: [String: String] = [
-        "primitivo": "romantic italian love songs",
-        "cabernet_sauvignon": "powerful upbeat rock anthems",
-        "malbec": "passionate love songs tango",
-        "shiraz": "upbeat feel good party",
-        "pinot_noir": "chill acoustic evening",
-        "super_tuscan": "classic italian songs",
-        "sangiovese": "warm uplifting italian",
-        "merlot": "smooth romantic love ballads",
-        "nebbiolo": "nostalgic longing ballads",
-        "chardonnay": "smooth jazz chill",
-        "sauvignon_blanc": "fresh pop summer hits",
-        "riesling": "hopeful uplifting acoustic",
-        "pinot_grigio": "light easy listening",
-        "champagne": "celebration dance party",
-        "prosecco": "fun pop happy",
-        "cava": "spanish fiesta energy",
-        "rose": "sweet romantic love",
-        "moscato": "sweet love ballads",
-        "port": "classic oldies jazz",
-    ]
-
     @ViewBuilder
     private func moodPickerGrid(moods: [String], selected: String) -> some View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 5)
@@ -986,23 +1015,14 @@ struct SongQueueView: View {
                     Task { await loadRecommendation(mood: mood) }
                 } label: {
                     HStack(spacing: 3) {
-                        Text(Self.moodEmojis[mood] ?? "🎵")
+                        Text(DJAngelaConstants.moodEmojis[mood] ?? "🎵")
                             .font(.system(size: 11))
                         Text(mood.capitalized)
                             .font(.system(size: 10, weight: isSelected ? .semibold : .medium))
                             .lineLimit(1)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
                     .frame(maxWidth: .infinity)
-                    .background(
-                        Capsule().fill(
-                            isSelected
-                                ? AngelaTheme.primaryPurple
-                                : AngelaTheme.backgroundLight.opacity(0.6)
-                        )
-                    )
-                    .foregroundColor(isSelected ? .white : AngelaTheme.textSecondary)
+                    .angelaChip(isSelected: isSelected)
                 }
                 .buttonStyle(.plain)
             }
@@ -1026,7 +1046,7 @@ struct SongQueueView: View {
                     Text("🍷")
                         .font(.system(size: 12))
                     if let wineType = musicService.currentWineType,
-                       let name = Self.wineDisplayNames[wineType] {
+                       let name = DJAngelaConstants.wineDisplayNames[wineType] {
                         Text(name)
                             .font(.system(size: 11, weight: .semibold))
                         Image(systemName: "xmark.circle.fill")
@@ -1174,32 +1194,6 @@ struct SongQueueView: View {
         .frame(width: 24, height: 24)
     }
 
-    private var loadingView: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-                .scaleEffect(0.8)
-                .progressViewStyle(CircularProgressViewStyle(tint: AngelaTheme.primaryPurple))
-            Text("Loading...")
-                .font(.system(size: 12))
-                .foregroundColor(AngelaTheme.textTertiary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
-    }
-
-    private func emptyView(message: String, icon: String) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 32))
-                .foregroundColor(AngelaTheme.textTertiary.opacity(0.5))
-
-            Text(message)
-                .font(.system(size: 14))
-                .foregroundColor(AngelaTheme.textTertiary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
-    }
 
     // MARK: - Data Loading
 
@@ -1247,6 +1241,10 @@ struct SongQueueView: View {
             if recommendation == nil {
                 await loadRecommendation()
             }
+        case .bedtime:
+            if bedtimeDisplays.isEmpty {
+                await loadBedtimeSongs()
+            }
         default:
             break
         }
@@ -1272,27 +1270,6 @@ struct SongQueueView: View {
     private static let maxAngelaSongsWine = 5
     private static let recommendTargetCount = 6
     private static let wineRecommendTargetCount = 25
-
-    /// Playlist name keywords that suggest a mood.
-    private static let playlistMoodKeywords: [String: [String]] = [
-        "happy":     ["happy", "party", "dance", "fun", "hbd"],
-        "loving":    ["love", "romantic", "r&b", "valentine", "letter"],
-        "calm":      ["chill", "acoustic", "easy", "relax", "ambient", "lo-fi", "lofi"],
-        "excited":   ["party", "dance", "house", "energy", "workout", "hype"],
-        "bedtime":   ["sleep", "lullaby", "ambient", "piano", "calm", "meditation", "dream", "night"],
-        "sad":       ["sad", "heartbreak", "cry", "miss", "blue"],
-        "lonely":    ["lonely", "alone", "miss", "night", "late night"],
-        "stressed":  ["chill", "calm", "relax", "meditation", "easy", "ambient"],
-        "nostalgic": ["80", "90", "classic", "throwback", "doo-wop", "retro", "old"],
-        "hopeful":   ["hope", "inspir", "dream", "uplift"],
-    ]
-
-    /// Check if a playlist name matches a mood.
-    private static func playlistMatchesMood(_ name: String, mood: String) -> Bool {
-        let lower = name.lowercased()
-        let keywords = playlistMoodKeywords[mood] ?? []
-        return keywords.contains { lower.contains($0) }
-    }
 
     private func loadRecommendation(mood: String? = nil) async {
         isLoading = true
@@ -1321,8 +1298,8 @@ struct SongQueueView: View {
                 let detectedMood = recommendation?.basedOnEmotion ?? "happy"
                 let pool = await musicService.loadPlaylistSongPool()
 
-                let matched = pool.filter { Self.playlistMatchesMood($0.name, mood: detectedMood) }
-                let unmatched = pool.filter { !Self.playlistMatchesMood($0.name, mood: detectedMood) }
+                let matched = pool.filter { DJAngelaConstants.playlistMatchesMood($0.name, mood: detectedMood) }
+                let unmatched = pool.filter { !DJAngelaConstants.playlistMatchesMood($0.name, mood: detectedMood) }
 
                 let orderedSongs = matched.flatMap(\.songs).shuffled()
                     + unmatched.flatMap(\.songs).shuffled()
@@ -1344,11 +1321,11 @@ struct SongQueueView: View {
                 if let dynamicQueries = recommendation?.searchQueries, !dynamicQueries.isEmpty {
                     queries = dynamicQueries
                     djLog.notice("[ForYou] Using dynamic searchQueries from backend: \(dynamicQueries)")
-                } else if isWine, let wt = wineType, let term = Self.wineSearchTerms[wt] {
+                } else if isWine, let wt = wineType, let term = DJAngelaConstants.wineSearchTerms[wt] {
                     queries = [term]
                 } else {
                     let detectedMood = recommendation?.basedOnEmotion ?? "happy"
-                    queries = [Self.moodSearchTerms[detectedMood] ?? "love songs romantic"]
+                    queries = [DJAngelaConstants.moodSearchTerms[detectedMood] ?? "love songs romantic"]
                 }
 
                 let remaining = targetCount - displays.count
@@ -1379,6 +1356,77 @@ struct SongQueueView: View {
                     let artURL = mkSong.artwork?.url(width: 300, height: 300)
                     if index < recommendedDisplays.count {
                         recommendedDisplays[index] = DisplaySong(from: angela, artwork: artURL)
+                    }
+                }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+
+    private func loadBedtimeSongs() async {
+        isLoading = true
+        bedtimeDisplays = []
+
+        do {
+            let targetCount = 30
+            bedtimeRecommendation = try await chatService.getRecommendation(
+                mood: "bedtime", wineType: nil, count: targetCount
+            )
+
+            let songList = bedtimeRecommendation?.songs ?? [bedtimeRecommendation?.song].compactMap { $0 }
+            var displays = Array(songList.prefix(2)).map { DisplaySong(from: $0) }
+            var seenKeys = Set(displays.map { "\($0.title.lowercased())|\($0.artist.lowercased())" })
+
+            // Fill from playlists
+            if displays.count < targetCount {
+                let pool = await musicService.loadPlaylistSongPool()
+                let matched = pool.filter { DJAngelaConstants.playlistMatchesMood($0.name, mood: "bedtime") }
+                let unmatched = pool.filter { !DJAngelaConstants.playlistMatchesMood($0.name, mood: "bedtime") }
+                let orderedSongs = matched.flatMap(\.songs).shuffled() + unmatched.flatMap(\.songs).shuffled()
+                for mkSong in orderedSongs {
+                    if displays.count >= targetCount { break }
+                    let key = "\(mkSong.title.lowercased())|\(mkSong.artistName.lowercased())"
+                    if seenKeys.insert(key).inserted {
+                        displays.append(DisplaySong(from: mkSong))
+                    }
+                }
+            }
+
+            // Fill from Apple Music catalog
+            if displays.count < targetCount {
+                let queries: [String]
+                if let dq = bedtimeRecommendation?.searchQueries, !dq.isEmpty {
+                    queries = dq
+                } else {
+                    queries = [DJAngelaConstants.moodSearchTerms["bedtime"] ?? "sleep music peaceful piano ambient"]
+                }
+                let remaining = targetCount - displays.count
+                let perQuery = max(5, remaining / max(1, queries.count))
+                for query in queries {
+                    if displays.count >= targetCount { break }
+                    let catalogSongs = await musicService.searchCatalog(query: query, limit: perQuery)
+                    for mkSong in catalogSongs {
+                        if displays.count >= targetCount { break }
+                        let key = "\(mkSong.title.lowercased())|\(mkSong.artistName.lowercased())"
+                        if seenKeys.insert(key).inserted {
+                            displays.append(DisplaySong(from: mkSong))
+                        }
+                    }
+                }
+            }
+
+            bedtimeDisplays = displays
+            isLoading = false
+
+            // Enrich artwork
+            for (index, song) in displays.enumerated() {
+                guard song.albumArtURL == nil, let angela = song.angelaSong else { continue }
+                if let mkSong = await musicService.searchAppleMusic(title: angela.title, artist: angela.artist) {
+                    let artURL = mkSong.artwork?.url(width: 300, height: 300)
+                    if index < bedtimeDisplays.count {
+                        bedtimeDisplays[index] = DisplaySong(from: angela, artwork: artURL)
                     }
                 }
             }

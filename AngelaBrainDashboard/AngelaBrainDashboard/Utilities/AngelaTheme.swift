@@ -178,4 +178,13 @@ extension View {
                     .stroke(AngelaTheme.primaryPurple.opacity(0.5), lineWidth: 1)
             )
     }
+
+    /// Capsule chip style used in mood/wine selectors.
+    func angelaChip(isSelected: Bool) -> some View {
+        self
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(isSelected ? AngelaTheme.primaryPurple : AngelaTheme.backgroundLight.opacity(0.6)))
+            .foregroundColor(isSelected ? .white : AngelaTheme.textSecondary)
+    }
 }

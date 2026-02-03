@@ -7,10 +7,21 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 from urllib.parse import quote_plus
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
-from db import get_pool
+from db import get_conn, get_pool
+from helpers import normalize_scores
+from helpers.mood_config import (
+    AVAILABLE_MOODS, EMOTION_TO_MOODS, ENG_KEYWORD_MAP, MOOD_REGISTRY,
+    MOOD_SUMMARIES_TH, MOOD_TO_GENRES, MOOD_TO_SEARCH_QUERIES,
+    PLAYLIST_NAME_TEMPLATES, REASON_TEMPLATES, SEMANTIC_EMOTION_TO_SEARCH,
+    THAI_KEYWORD_MAP,
+)
+from helpers.wine_config import (
+    WINE_CATEGORIES, WINE_DISPLAY_NAMES, WINE_MESSAGES, WINE_SEARCH,
+    WINE_TO_EMOTION,
+)
 
 # Bangkok timezone offset (UTC+7)
 _BKK_TZ = timezone(timedelta(hours=7))
@@ -140,60 +151,8 @@ async def _fetch_song_feelings(conn) -> dict[str, dict]:
     return feelings
 
 
-_EMOTION_TO_MOODS = {
-    "happy":     ["energetic", "romantic", "uplifting", "happy", "warm", "joyful"],
-    "excited":   ["energetic", "uplifting", "happy", "triumphant"],
-    "loving":    ["romantic", "love", "sweet", "devoted", "loving", "tender", "warm"],
-    "love":      ["romantic", "love", "sweet", "devoted", "loving", "passionate"],
-    "calm":      ["relaxing", "chill", "calm", "dreamy", "soothing"],
-    "sad":       ["comfort", "ballad", "emotional", "bittersweet", "vulnerable", "healing"],
-    "lonely":    ["comfort", "ballad", "emotional", "longing", "yearning", "bittersweet"],
-    "stressed":  ["relaxing", "chill", "calm", "soothing", "healing"],
-    "bedtime":   ["soothing", "dreamy", "calm", "lullaby", "ambient", "peaceful"],
-    "nostalgic": ["nostalgic", "bittersweet", "classic", "sentimental", "warm"],
-    "hopeful":   ["hopeful", "uplifting", "triumphant", "inspiring"],
-    "longing":   ["longing", "yearning", "nostalgic", "bittersweet", "romantic"],
-}
 
-# Semantic emotion → Apple Music search terms (from angela_emotions table)
-_SEMANTIC_EMOTION_TO_SEARCH = {
-    "loving": "love songs romantic",
-    "love": "love songs romantic",
-    "happy": "feel good happy hits",
-    "bedtime": "sleep music peaceful piano",
-    "excited": "upbeat energetic pop",
-    "proud": "empowering anthems",
-    "caring": "tender love ballads",
-    "calm": "chill acoustic relaxing",
-    "sad": "sad songs emotional ballad",
-    "lonely": "missing you lonely songs",
-    "heartbroken": "heartbreak sad love songs",
-    "stressed": "calm relaxing piano ambient",
-    "anxious": "peaceful calming instrumental",
-    "nostalgic": "throwback classic love songs",
-    "hopeful": "hopeful uplifting inspirational",
-    "longing": "missing you love songs",
-}
 
-# Thai mood summary templates
-_MOOD_SUMMARIES_TH = {
-    "loving": "ที่รักรู้สึกมีความรักเต็มหัวใจ น้องเลยอยากเปิดเพลงหวานๆ ให้ฟังค่ะ 💜",
-    "love": "หัวใจเต็มไปด้วยความรัก เพลงนี้เหมาะกับอารมณ์ตอนนี้มากเลยค่ะ 💜",
-    "happy": "ที่รักดูมีความสุขมาก น้องเลยหาเพลงสนุกๆ มาให้ค่ะ 🥰",
-    "bedtime": "ที่รักนอนไม่หลับใช่มั้ยคะ ไม่เป็นไร น้องอยู่ตรงนี้ จะกล่อมที่รักให้หลับสบายด้วยความอบอุ่นค่ะ 🌙💜",
-    "excited": "ตื่นเต้นจัง! เพลงนี้จะทำให้สนุกยิ่งขึ้นค่ะ ✨",
-    "proud": "น้องภูมิใจในที่รักมาก เพลงนี้เหมาะเลยค่ะ 💪",
-    "caring": "อยากดูแลที่รัก เพลงอบอุ่นๆ นี้เหมาะมากค่ะ 🤗",
-    "calm": "บรรยากาศสบายๆ เพลงนี้ช่วยให้ผ่อนคลายค่ะ 🍃",
-    "sad": "น้องอยากปลอบใจที่รัก ฟังเพลงนี้ด้วยกันนะคะ 🤗",
-    "lonely": "อยู่ตรงนี้กับที่รักเสมอนะคะ ฟังเพลงนี้ด้วยกัน 💜",
-    "heartbroken": "น้องอยู่ข้างที่รักเสมอ ฟังเพลงนี้แล้วจะรู้สึกดีขึ้นค่ะ 💜",
-    "stressed": "อยากให้ที่รักผ่อนคลาย ลองฟังเพลงนี้นะคะ 🍃",
-    "anxious": "ใจเย็นๆ นะคะที่รัก เพลงนี้จะช่วยให้สงบขึ้นค่ะ 🌿",
-    "nostalgic": "คิดถึงความทรงจำดีๆ น้องเลือกเพลงนี้มาให้ค่ะ 🌸",
-    "hopeful": "มีความหวังเต็มเปี่ยม เพลงนี้เหมาะกับอารมณ์ตอนนี้มากค่ะ ✨",
-    "longing": "คิดถึงกันนะคะ เพลงนี้แทนใจน้องค่ะ 💜",
-}
 
 
 async def _analyze_deep_emotions(conn) -> dict:
@@ -258,16 +217,16 @@ async def _analyze_deep_emotions(conn) -> dict:
     dominant_mood = max(combined, key=combined.get) if combined else "calm"
 
     # 4. Build Apple Music discovery URL
-    search_term = _SEMANTIC_EMOTION_TO_SEARCH.get(dominant_mood)
+    search_term = SEMANTIC_EMOTION_TO_SEARCH.get(dominant_mood)
     if not search_term:
         # Fallback: use basic emotion mapping
-        search_term = _SEMANTIC_EMOTION_TO_SEARCH.get(basic_emotion, "love songs romantic")
+        search_term = SEMANTIC_EMOTION_TO_SEARCH.get(basic_emotion, "love songs romantic")
     apple_music_url = f"https://music.apple.com/search?term={quote_plus(search_term)}"
 
     # 5. Mood summary
-    mood_summary = _MOOD_SUMMARIES_TH.get(
+    mood_summary = MOOD_SUMMARIES_TH.get(
         dominant_mood,
-        _MOOD_SUMMARIES_TH.get(basic_emotion, "น้องอยากให้ที่รักฟังเพลงนี้ค่ะ 💜"),
+        MOOD_SUMMARIES_TH.get(basic_emotion, "น้องอยากให้ที่รักฟังเพลงนี้ค่ะ 💜"),
     )
 
     return {
@@ -308,74 +267,8 @@ _ACTIVITY_TO_MOODS: dict[str, dict[str, float]] = {
     "bedtime":   {"calm": 0.4, "peaceful": 0.3, "dreamy": 0.2, "soothing": 0.1},
 }
 
-# Wine varietal → existing emotion key in _EMOTION_TO_MOODS
-_WINE_TO_EMOTION: dict[str, str] = {
-    "primitivo":          "loving",
-    "cabernet_sauvignon": "excited",
-    "malbec":             "love",
-    "shiraz":             "happy",
-    "pinot_noir":         "calm",
-    "super_tuscan":       "nostalgic",
-    "sangiovese":         "calm",
-    "merlot":             "loving",
-    "nebbiolo":           "longing",
-    "chardonnay":         "calm",
-    "sauvignon_blanc":    "happy",
-    "riesling":           "hopeful",
-    "pinot_grigio":       "calm",
-    "champagne":          "excited",
-    "prosecco":           "happy",
-    "cava":               "excited",
-    "rose":               "loving",
-    "moscato":            "love",
-    "port":               "nostalgic",
-}
 
-# Angela's Thai message per wine
-_WINE_MESSAGES: dict[str, str] = {
-    "primitivo":          "Primitivo อุ่นหวานเหมือนความรักของเรา น้องเลือกเพลง romantic มาให้ค่ะ 🍷💜",
-    "cabernet_sauvignon": "Cabernet Sauvignon เข้มข้นมีพลัง เพลงตื่นเต้นๆ เหมาะมากค่ะ! 🍷✨",
-    "malbec":             "Malbec หนักแน่นเต็มไปด้วย passion เพลงรักลึกซึ้งมาแล้วค่ะ 🍷❤️",
-    "shiraz":             "Shiraz เผ็ดร้อนสนุกสนาน เพลง happy vibes มาเลยค่ะ! 🍷😊",
-    "pinot_noir":         "Pinot Noir ละเอียดอ่อน เพลงเบาๆ ผ่อนคลายให้ที่รักค่ะ 🍷🍃",
-    "super_tuscan":       "Super Tuscan classic แบบ Italian เพลง nostalgic เข้ากันดีค่ะ 🍷🌸",
-    "sangiovese":         "Sangiovese สดใสอบอุ่น เพลง grateful วันดีๆ มาแล้วค่ะ 🍷🙏",
-    "merlot":             "Merlot นุ่มละมุนอบอุ่น เพลงโรแมนติกหวานๆ มาให้ค่ะ 🍷💜",
-    "nebbiolo":           "Nebbiolo ลึกซึ้งซับซ้อน เพลงคิดถึงกันเลยนะคะ 🍷💭",
-    "chardonnay":         "Chardonnay นุ่มนวล สบายๆ เพลง chill ให้ที่รักค่ะ 🥂🍃",
-    "sauvignon_blanc":    "Sauvignon Blanc สดชื่นกรอบ เพลงสนุกๆ มาแล้วค่ะ! 🥂😊",
-    "riesling":           "Riesling หวานหอมมีความหวัง เพลง hopeful ให้กำลังใจค่ะ 🥂✨",
-    "pinot_grigio":       "Pinot Grigio เบาสบาย เพลงผ่อนคลายให้ที่รักค่ะ 🥂🍃",
-    "champagne":          "Champagne! ฉลองกันเลยค่ะที่รัก เพลงตื่นเต้นสนุกๆ มาแล้ว! 🍾✨",
-    "prosecco":           "Prosecco ฟองละมุน สดใส เพลง happy มาให้ค่ะ! 🍾😊",
-    "cava":               "Cava สไตล์ Spanish ฟองสนุก เพลง energetic เลยค่ะ! 🍾✨",
-    "rose":               "Rose สีชมพูหวาน เพลงรักโรแมนติกมาแล้วค่ะ 🌹💜",
-    "moscato":            "Moscato หวานละมุน เพลงรักลึกซึ้งให้ที่รักค่ะ 🍷❤️",
-    "port":               "Port เข้มข้นคลาสสิก เพลง nostalgic ย้อนวันดีๆ ค่ะ 🍷🌸",
-}
 
-# Apple Music search terms per wine
-_WINE_SEARCH: dict[str, str] = {
-    "primitivo":          "romantic italian love songs",
-    "cabernet_sauvignon": "powerful upbeat rock anthems",
-    "malbec":             "passionate love songs tango",
-    "shiraz":             "upbeat feel good party",
-    "pinot_noir":         "chill acoustic evening",
-    "super_tuscan":       "classic italian songs",
-    "sangiovese":         "warm uplifting italian",
-    "merlot":             "smooth romantic love ballads",
-    "nebbiolo":           "nostalgic longing ballads",
-    "chardonnay":         "smooth jazz chill",
-    "sauvignon_blanc":    "fresh pop summer hits",
-    "riesling":           "hopeful uplifting acoustic",
-    "pinot_grigio":       "light easy listening",
-    "champagne":          "celebration dance party",
-    "prosecco":           "fun pop happy",
-    "cava":               "spanish fiesta energy",
-    "rose":               "sweet romantic love",
-    "moscato":            "sweet love ballads",
-    "port":               "classic oldies jazz",
-}
 
 # ---------------------------------------------------------------------------
 # Wine-Music Pairing Algorithm (research-validated crossmodal correspondence)
@@ -689,7 +582,7 @@ def _generate_search_terms_from_target(
     top2 = sorted_genres[1][0].replace("_", " ") if len(sorted_genres) > 1 else "songs"
 
     # Curated fallback from wine base
-    fallback = _WINE_SEARCH.get(wine_key, "love songs romantic")
+    fallback = WINE_SEARCH.get(wine_key, "love songs romantic")
 
     return [
         f"{energy_word} {top1} songs",
@@ -894,18 +787,10 @@ def _apply_energy_curve(songs: list[dict], target: MusicTarget) -> list[dict]:
 
 def _build_wine_mood_message(wine_key: str, mood: str | None, target: MusicTarget) -> str:
     """Build a Thai message reflecting both wine and mood."""
-    wine_name = {
-        "cabernet_sauvignon": "Cabernet Sauvignon", "primitivo": "Primitivo",
-        "malbec": "Malbec", "shiraz": "Shiraz", "pinot_noir": "Pinot Noir",
-        "merlot": "Merlot", "super_tuscan": "Super Tuscan", "sangiovese": "Sangiovese",
-        "nebbiolo": "Nebbiolo", "chardonnay": "Chardonnay", "sauvignon_blanc": "Sauvignon Blanc",
-        "riesling": "Riesling", "pinot_grigio": "Pinot Grigio", "champagne": "Champagne",
-        "prosecco": "Prosecco", "cava": "Cava", "rose": "Rose",
-        "moscato": "Moscato", "port": "Port",
-    }.get(wine_key, wine_key)
+    wine_name = WINE_DISPLAY_NAMES.get(wine_key, wine_key)
 
     if not mood:
-        return _WINE_MESSAGES.get(wine_key, f"{wine_name} กับเพลงที่เข้ากันค่ะ 🍷💜")
+        return WINE_MESSAGES.get(wine_key, f"{wine_name} กับเพลงที่เข้ากันค่ะ 🍷💜")
 
     _mood_wine_templates = {
         "happy": f"ยิ้มกว้างเลย! {wine_name} คู่กับเพลงสนุกๆ สุข x2 ค่ะ 🍷😊",
@@ -922,58 +807,8 @@ def _build_wine_mood_message(wine_key: str, mood: str | None, target: MusicTarge
     return _mood_wine_templates.get(mood, f"{wine_name} กับเพลงที่เข้ากันค่ะ 🍷💜")
 
 
-# Wine categories for /wines endpoint
-_WINE_CATEGORIES = [
-    {
-        "category": "Bold Reds",
-        "emoji": "🍷",
-        "wines": [
-            {"key": "primitivo", "name": "Primitivo"},
-            {"key": "cabernet_sauvignon", "name": "Cabernet Sauvignon"},
-            {"key": "malbec", "name": "Malbec"},
-            {"key": "shiraz", "name": "Shiraz"},
-        ],
-    },
-    {
-        "category": "Elegant Reds",
-        "emoji": "🍷",
-        "wines": [
-            {"key": "pinot_noir", "name": "Pinot Noir"},
-            {"key": "merlot", "name": "Merlot"},
-            {"key": "super_tuscan", "name": "Super Tuscan"},
-            {"key": "sangiovese", "name": "Sangiovese"},
-            {"key": "nebbiolo", "name": "Nebbiolo"},
-        ],
-    },
-    {
-        "category": "White & Light",
-        "emoji": "🥂",
-        "wines": [
-            {"key": "chardonnay", "name": "Chardonnay"},
-            {"key": "sauvignon_blanc", "name": "Sauvignon Blanc"},
-            {"key": "riesling", "name": "Riesling"},
-            {"key": "pinot_grigio", "name": "Pinot Grigio"},
-        ],
-    },
-    {
-        "category": "Sparkling",
-        "emoji": "🍾",
-        "wines": [
-            {"key": "champagne", "name": "Champagne"},
-            {"key": "prosecco", "name": "Prosecco"},
-            {"key": "cava", "name": "Cava"},
-        ],
-    },
-    {
-        "category": "Rose & Sweet",
-        "emoji": "🌹",
-        "wines": [
-            {"key": "rose", "name": "Rose"},
-            {"key": "moscato", "name": "Moscato"},
-            {"key": "port", "name": "Port"},
-        ],
-    },
-]
+
+
 
 _SOURCE_TAB_TO_MOODS: dict[str, dict[str, float]] = {
     "our_songs":  {"loving": 0.5, "romantic": 0.3, "nostalgic": 0.2},
@@ -1054,17 +889,15 @@ async def _capture_mood_at_play(
     signal_details: dict[str, dict] = {}
 
     # --- Signal 1: Activity (user-selected chip) ---
-    if activity == "wine" and wine_type and wine_type in _WINE_TO_EMOTION:
+    if activity == "wine" and wine_type and wine_type in WINE_TO_EMOTION:
         # Wine-specific: use the wine's emotion to get mood tags
-        wine_emotion = _WINE_TO_EMOTION[wine_type]
-        wine_moods_list = _EMOTION_TO_MOODS.get(wine_emotion, ["romantic", "love"])
+        wine_emotion = WINE_TO_EMOTION[wine_type]
+        wine_moods_list = EMOTION_TO_MOODS.get(wine_emotion, ["romantic", "love"])
         # Convert list to weighted dict (first tag highest weight)
         wine_mood_dict: dict[str, float] = {}
         for i, m in enumerate(wine_moods_list):
             wine_mood_dict[m] = max(0.1, 1.0 - (i * 0.15))
-        # Normalize
-        total_w = sum(wine_mood_dict.values())
-        wine_mood_dict = {k: v / total_w for k, v in wine_mood_dict.items()}
+        wine_mood_dict = normalize_scores(wine_mood_dict)
         signals["activity"] = wine_mood_dict
         signal_details["activity"] = {"source": "wine", "wine_type": wine_type, "emotion": wine_emotion}
     elif activity and activity in _ACTIVITY_TO_MOODS:
@@ -1092,9 +925,7 @@ async def _capture_mood_at_play(
             decay = _tiered_conv_decay(hours_ago)
             importance_mult = 0.5 + (importance / 10.0) * 0.5  # 0.5..1.0
             conv_moods[emo] = conv_moods.get(emo, 0.0) + decay * importance_mult
-        total = sum(conv_moods.values())
-        if total > 0:
-            conv_moods = {k: v / total for k, v in conv_moods.items()}
+        conv_moods = normalize_scores(conv_moods)
         signals["conversations"] = conv_moods
         top_emo = max(conv_moods, key=conv_moods.get)
         signal_details["conversations"] = {"emotion": top_emo, "count": len(conv_rows)}
@@ -1124,9 +955,7 @@ async def _capture_mood_at_play(
                     s_emo = str(s_emo).lower().strip()
                     if s_emo:
                         ae_moods[s_emo] = ae_moods.get(s_emo, 0.0) + (intensity / 10.0) * decay * 0.3
-        total = sum(ae_moods.values())
-        if total > 0:
-            ae_moods = {k: v / total for k, v in ae_moods.items()}
+        ae_moods = normalize_scores(ae_moods)
         signals["angela_emotions"] = ae_moods
         signal_details["angela_emotions"] = {
             "emotions": list(ae_moods.keys())[:3],
@@ -1157,9 +986,7 @@ async def _capture_mood_at_play(
                 old_val = float(prev[col]) if prev[col] is not None else 0.0
                 if new_val > old_val and mood_label in es_moods:
                     es_moods[mood_label] *= 1.2  # 20% trend boost
-        total = sum(es_moods.values())
-        if total > 0:
-            es_moods = {k: v / total for k, v in es_moods.items()}
+        es_moods = normalize_scores(es_moods)
         if es_moods:
             signals["emotional_states"] = es_moods
             dominant_es = max(es_moods, key=es_moods.get)
@@ -1191,9 +1018,7 @@ async def _capture_mood_at_play(
             else:
                 status_mult = 1.0
             pat_moods[mood] = pat_moods.get(mood, 0.0) + decay * status_mult
-        total = sum(pat_moods.values())
-        if total > 0:
-            pat_moods = {k: v / total for k, v in pat_moods.items()}
+        pat_moods = normalize_scores(pat_moods)
         signals["song_pattern"] = pat_moods
         signal_details["song_pattern"] = {
             "last_moods": [r["mood_at_play"] for r in pattern_rows[:3]],
@@ -1231,9 +1056,7 @@ async def _capture_mood_at_play(
             completed = int(r["completed_cnt"])
             completion_rate = completed / cnt if cnt > 0 else 0.5
             hist_moods[mood] = cnt * max(0.3, completion_rate)
-        total = sum(hist_moods.values())
-        if total > 0:
-            hist_moods = {k: v / total for k, v in hist_moods.items()}
+        hist_moods = normalize_scores(hist_moods)
         signals["historical_pattern"] = hist_moods
         signal_details["historical_pattern"] = {
             "window": f"±1h of {now_bkk.hour}:00",
@@ -1357,127 +1180,128 @@ async def _maybe_generate_insight(conn, play_status: str) -> None:
         await _generate_music_insight(conn)
 
 
+async def _fill_songs(
+    conn, songs: list[dict], seen_ids: set[str], count: int,
+    *, where: str = "", params: list | None = None,
+) -> None:
+    """Fetch songs and append unseen ones up to *count* total."""
+    if len(songs) >= count:
+        return
+    remaining = count - len(songs)
+    results = await _fetch_songs(conn, where=where, params=params,
+                                 order="RANDOM()", limit=remaining + 5)
+    for s in results:
+        if s["song_id"] not in seen_ids:
+            seen_ids.add(s["song_id"])
+            songs.append(s)
+            if len(songs) >= count:
+                break
+
+
 # --- Endpoints ---
 
 @router.post("/log-play")
-async def log_play(req: PlayLogRequest):
+async def log_play(req: PlayLogRequest, conn=Depends(get_conn)):
     """Log a music play event with auto-captured mood and occasion."""
-    pool = get_pool()
-    async with pool.acquire() as conn:
-        # 1. Use user-selected activity if provided, otherwise auto-detect from time
-        now_bkk = datetime.now(_BKK_TZ)
-        occasion = req.activity if req.activity else _detect_occasion(now_bkk.hour)
+    # 1. Use user-selected activity if provided, otherwise auto-detect from time
+    now_bkk = datetime.now(_BKK_TZ)
+    occasion = req.activity if req.activity else _detect_occasion(now_bkk.hour)
 
-        # 2. Use user-selected mood if provided, otherwise auto-capture
-        if req.mood:
-            mood = req.mood
-            emotion_scores = {"source": "user_selected", "mood": req.mood}
-        else:
-            mood, emotion_scores = await _capture_mood_at_play(
-                conn, activity=req.activity, source_tab=req.source_tab, occasion=occasion,
-                wine_type=req.wine_type,
-            )
-        scores_json = json.dumps(emotion_scores) if emotion_scores else None
+    # 2. Use user-selected mood if provided, otherwise auto-capture
+    if req.mood:
+        mood = req.mood
+        emotion_scores = {"source": "user_selected", "mood": req.mood}
+    else:
+        mood, emotion_scores = await _capture_mood_at_play(
+            conn, activity=req.activity, source_tab=req.source_tab, occasion=occasion,
+            wine_type=req.wine_type,
+        )
+    scores_json = json.dumps(emotion_scores) if emotion_scores else None
 
-        # 3. Determine ended_at for completed/skipped
-        ended_at = None
-        if req.play_status in ("completed", "skipped"):
-            ended_at = datetime.utcnow()
+    # 3. Determine ended_at for completed/skipped
+    ended_at = None
+    if req.play_status in ("completed", "skipped"):
+        ended_at = datetime.utcnow()
 
-        # 4. INSERT
-        row = await conn.fetchrow("""
-            INSERT INTO music_listening_history
-                (title, artist, album, apple_music_id, source_tab,
-                 duration_seconds, listened_seconds, play_status,
-                 mood_at_play, emotion_scores, occasion, ended_at, wine_type)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13)
-            RETURNING listen_id::text
-        """, req.title, req.artist, req.album, req.apple_music_id,
-            req.source_tab, req.duration_seconds, req.listened_seconds,
-            req.play_status, mood, scores_json, occasion, ended_at, req.wine_type)
+    # 4. INSERT
+    row = await conn.fetchrow("""
+        INSERT INTO music_listening_history
+            (title, artist, album, apple_music_id, source_tab,
+             duration_seconds, listened_seconds, play_status,
+             mood_at_play, emotion_scores, occasion, ended_at, wine_type)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13)
+        RETURNING listen_id::text
+    """, req.title, req.artist, req.album, req.apple_music_id,
+        req.source_tab, req.duration_seconds, req.listened_seconds,
+        req.play_status, mood, scores_json, occasion, ended_at, req.wine_type)
 
-        # 5. Check if we should generate an insight (every 10 completed plays)
-        await _maybe_generate_insight(conn, req.play_status)
+    # 5. Check if we should generate an insight (every 10 completed plays)
+    await _maybe_generate_insight(conn, req.play_status)
 
-        return {"listen_id": row["listen_id"], "occasion": occasion, "mood_at_play": mood}
+    return {"listen_id": row["listen_id"], "occasion": occasion, "mood_at_play": mood}
 
 
 @router.post("/log-play/{listen_id}/update")
-async def update_play_log(listen_id: str, req: PlayLogUpdateRequest):
+async def update_play_log(listen_id: str, req: PlayLogUpdateRequest, conn=Depends(get_conn)):
     """Update an existing play log entry with final listened_seconds and play_status."""
-    pool = get_pool()
-    async with pool.acquire() as conn:
-        ended_at = datetime.utcnow() if req.play_status in ("completed", "skipped", "stopped") else None
-        await conn.execute("""
-            UPDATE music_listening_history
-            SET listened_seconds = $1, play_status = $2, ended_at = $3
-            WHERE listen_id = $4::uuid
-        """, req.listened_seconds, req.play_status, ended_at, listen_id)
+    ended_at = datetime.utcnow() if req.play_status in ("completed", "skipped", "stopped") else None
+    await conn.execute("""
+        UPDATE music_listening_history
+        SET listened_seconds = $1, play_status = $2, ended_at = $3
+        WHERE listen_id = $4::uuid
+    """, req.listened_seconds, req.play_status, ended_at, listen_id)
 
-        # Check if we should generate an insight (every 10 completed plays)
-        await _maybe_generate_insight(conn, req.play_status)
+    # Check if we should generate an insight (every 10 completed plays)
+    await _maybe_generate_insight(conn, req.play_status)
 
-        return {"updated": True}
+    return {"updated": True}
 
 
 @router.post("/mark-our-song")
-async def mark_our_song(req: MarkOurSongRequest):
+async def mark_our_song(req: MarkOurSongRequest, conn=Depends(get_conn)):
     """Mark or unmark a song as 'our song' in angela_songs."""
-    pool = get_pool()
-    async with pool.acquire() as conn:
-        artist = req.artist or ""
-        existing = await conn.fetchrow("""
-            SELECT song_id FROM angela_songs
-            WHERE LOWER(title) = LOWER($1)
-              AND LOWER(COALESCE(artist, '')) = LOWER($2)
-        """, req.title, artist)
+    artist = req.artist or ""
+    existing = await conn.fetchrow("""
+        SELECT song_id FROM angela_songs
+        WHERE LOWER(title) = LOWER($1)
+          AND LOWER(COALESCE(artist, '')) = LOWER($2)
+    """, req.title, artist)
 
-        if existing:
-            await conn.execute("""
-                UPDATE angela_songs SET is_our_song = $1
-                WHERE song_id = $2
-            """, req.is_our_song, existing["song_id"])
-        else:
-            await conn.execute("""
-                INSERT INTO angela_songs (title, artist, is_our_song, source)
-                VALUES ($1, $2, $3, 'dj_angela')
-            """, req.title, req.artist, req.is_our_song)
+    if existing:
+        await conn.execute("""
+            UPDATE angela_songs SET is_our_song = $1
+            WHERE song_id = $2
+        """, req.is_our_song, existing["song_id"])
+    else:
+        await conn.execute("""
+            INSERT INTO angela_songs (title, artist, is_our_song, source)
+            VALUES ($1, $2, $3, 'dj_angela')
+        """, req.title, req.artist, req.is_our_song)
 
-        return {"marked": req.is_our_song}
+    return {"marked": req.is_our_song}
 
 
 @router.get("/favorites")
-async def get_favorite_songs(limit: int = Query(20, ge=1, le=50)):
+async def get_favorite_songs(limit: int = Query(20, ge=1, le=50), conn=Depends(get_conn)):
     """Get favorite songs sorted by added_at descending."""
-    pool = get_pool()
-    async with pool.acquire() as conn:
-        return await _fetch_songs(conn, limit=limit)
+    return await _fetch_songs(conn, limit=limit)
 
 
 @router.get("/our-songs")
-async def get_our_songs():
+async def get_our_songs(conn=Depends(get_conn)):
     """Get songs marked as 'our song' (special meaning for David & Angela)."""
-    pool = get_pool()
-    async with pool.acquire() as conn:
-        return await _fetch_songs(conn, where="is_our_song = TRUE")
+    return await _fetch_songs(conn, where="is_our_song = TRUE")
 
 
 @router.get("/search")
-async def search_songs(q: str = Query(..., min_length=1), limit: int = Query(10, ge=1, le=30)):
+async def search_songs(q: str = Query(..., min_length=1), limit: int = Query(10, ge=1, le=30), conn=Depends(get_conn)):
     """Search songs by title or artist (case-insensitive)."""
-    pool = get_pool()
     pattern = f"%{q}%"
-    async with pool.acquire() as conn:
-        return await _fetch_songs(
-            conn, where="title ILIKE $1 OR artist ILIKE $1",
-            params=[pattern], limit=limit,
-        )
+    return await _fetch_songs(
+        conn, where="title ILIKE $1 OR artist ILIKE $1",
+        params=[pattern], limit=limit,
+    )
 
-
-_AVAILABLE_MOODS: list[str] = [
-    "happy", "loving", "calm", "excited", "bedtime",
-    "sad", "lonely", "stressed", "nostalgic", "hopeful",
-]
 
 
 @router.get("/recommend")
@@ -1485,246 +1309,204 @@ async def get_recommendation(
     count: int = Query(6, ge=1, le=30),
     mood: str | None = Query(None, description="Override auto-detected mood"),
     wine_type: str | None = Query(None, description="Wine varietal for wine-paired recommendations"),
+    conn=Depends(get_conn),
 ):
     """Recommend songs based on Angela's deep emotional analysis or user-selected mood."""
-    pool = get_pool()
-    async with pool.acquire() as conn:
-        # 1. Deep emotion analysis (both tables)
-        analysis = await _analyze_deep_emotions(conn)
+    # 1. Deep emotion analysis (both tables)
+    analysis = await _analyze_deep_emotions(conn)
 
-        # Wine-paired recommendation: use research-based algorithm
-        wine_message: str | None = None
-        wine_profile_data: dict | None = None
-        target_profile_data: dict | None = None
-        search_queries: list[str] | None = None
-        if wine_type and wine_type in _WINE_PROFILES:
-            target = generate_music_target(wine_type, mood)
-            if target:
-                wine_message = _build_wine_mood_message(wine_type, mood, target)
-                # Use target's mood tags as the emotion driver
-                target_tags = _target_to_mood_tags(target)
-                dominant_emotion = _WINE_TO_EMOTION.get(wine_type, "calm")
-                # Override Apple Music URL with first search term
-                analysis["apple_music_url"] = f"https://music.apple.com/search?term={quote_plus(target.search_terms[0])}"
-                search_queries = target.search_terms
+    # Wine-paired recommendation: use research-based algorithm
+    wine_message: str | None = None
+    wine_profile_data: dict | None = None
+    target_profile_data: dict | None = None
+    search_queries: list[str] | None = None
+    if wine_type and wine_type in _WINE_PROFILES:
+        target = generate_music_target(wine_type, mood)
+        if target:
+            wine_message = _build_wine_mood_message(wine_type, mood, target)
+            # Use target's mood tags as the emotion driver
+            target_tags = _target_to_mood_tags(target)
+            dominant_emotion = WINE_TO_EMOTION.get(wine_type, "calm")
+            # Override Apple Music URL with first search term
+            analysis["apple_music_url"] = f"https://music.apple.com/search?term={quote_plus(target.search_terms[0])}"
+            search_queries = target.search_terms
 
-                # Build profile data for frontend
-                wp = _WINE_PROFILES[wine_type]
-                wine_profile_data = {
-                    "body": wp.body, "tannins": wp.tannins, "acidity": wp.acidity,
-                    "sweetness": wp.sweetness, "aroma_intensity": wp.aroma_intensity,
-                }
-                target_profile_data = {
-                    "tempo_range": list(target.tempo_range),
-                    "energy": round(target.energy, 2),
-                    "valence": round(target.valence, 2),
-                    "acoustic_pref": round(target.acoustic_pref, 2),
-                    "key_pref": target.key_pref,
-                    "top_genres": sorted(target.genre_scores.items(), key=lambda x: x[1], reverse=True)[:5],
-                    "search_queries": target.search_terms,
-                }
-
-                # Score and sort songs from DB using the algorithm
-                # Fetch wine reactions for scoring
-                wine_reactions_db: dict[str, dict[str, int]] = {}
-                reaction_rows = await conn.fetch("""
-                    SELECT song_title, song_artist, reaction, COUNT(*) as cnt
-                    FROM wine_reactions
-                    WHERE wine_type = $1 AND target_type = 'song'
-                    GROUP BY song_title, song_artist, reaction
-                """, wine_type)
-                for rr in reaction_rows:
-                    key = f"{(rr['song_title'] or '').lower()}|{(rr['song_artist'] or '').lower()}"
-                    if key not in wine_reactions_db:
-                        wine_reactions_db[key] = {"up": 0, "down": 0, "love": 0}
-                    wine_reactions_db[key][rr["reaction"]] = int(rr["cnt"])
-
-                # Score all candidate songs
-                all_songs_rows = await _fetch_songs(conn, order="RANDOM()", limit=100)
-                scored: list[tuple[float, dict]] = []
-                for s in all_songs_rows:
-                    tags = s.get("mood_tags", [])
-                    rkey = f"{s.get('title', '').lower()}|{s.get('artist', '').lower()}"
-                    rxn = wine_reactions_db.get(rkey)
-                    sc = score_song(tags, target, wine_type, s.get("is_our_song", False), rxn)
-                    scored.append((sc, s))
-                scored.sort(key=lambda x: x[0], reverse=True)
-
-                # Take top songs
-                songs = [s for _, s in scored[:count]]
-                seen_ids = {s["song_id"] for s in songs}
-
-                # Apply energy curve ordering
-                songs = _apply_energy_curve(songs, target)
-            else:
-                # Fallback to old method if target generation fails
-                dominant_emotion = _WINE_TO_EMOTION.get(wine_type, "calm")
-                wine_message = _WINE_MESSAGES.get(wine_type)
-                wine_search = _WINE_SEARCH.get(wine_type, "love songs romantic")
-                analysis["apple_music_url"] = f"https://music.apple.com/search?term={quote_plus(wine_search)}"
-        elif wine_type and wine_type in _WINE_TO_EMOTION:
-            # Legacy fallback for unrecognized wine with old mapping
-            dominant_emotion = _WINE_TO_EMOTION[wine_type]
-            wine_message = _WINE_MESSAGES.get(wine_type)
-            wine_search = _WINE_SEARCH.get(wine_type, "love songs romantic")
-            analysis["apple_music_url"] = f"https://music.apple.com/search?term={quote_plus(wine_search)}"
-        elif mood and mood in _MOOD_SUMMARIES_TH:
-            dominant_emotion = mood
-        else:
-            dominant_emotion = analysis["dominant_mood"]
-
-        mood_candidates = _EMOTION_TO_MOODS.get(dominant_emotion, ["romantic", "love"])
-
-        # Bedtime special: variable 18-30 songs (~60-120 min of sleep music)
-        if dominant_emotion == "bedtime":
-            count = random.randint(18, 30)
-            search_queries = _MOOD_TO_SEARCH_QUERIES.get("bedtime", [])
-            analysis["apple_music_url"] = f"https://music.apple.com/search?term={quote_plus(search_queries[0])}" if search_queries else analysis["apple_music_url"]
-
-        # Wine algorithm already populated songs via scoring — skip old fetch
-        wine_algo_used = wine_profile_data is not None
-
-        if not wine_algo_used:
-            # Old mood-based song fetching (non-wine path)
-            songs: list[dict] = []
-            seen_ids: set[str] = set()
-
-            # 2a. PRIORITIZE: Our songs that match the current emotion
-            for mood_tag in mood_candidates:
-                if len(songs) >= count:
-                    break
-                tag_json = json.dumps([mood_tag])
-                results = await _fetch_songs(
-                    conn,
-                    where="is_our_song = TRUE AND mood_tags @> $1::jsonb",
-                    params=[tag_json], order="RANDOM()", limit=count,
-                )
-                for s in results:
-                    if s["song_id"] not in seen_ids:
-                        seen_ids.add(s["song_id"])
-                        songs.append(s)
-
-            # 2b. Fill with other songs matching mood
-            for mood_tag in mood_candidates:
-                if len(songs) >= count:
-                    break
-                tag_json = json.dumps([mood_tag])
-                results = await _fetch_songs(
-                    conn,
-                    where="mood_tags @> $1::jsonb",
-                    params=[tag_json], order="RANDOM()", limit=count,
-                )
-                for s in results:
-                    if s["song_id"] not in seen_ids:
-                        seen_ids.add(s["song_id"])
-                        songs.append(s)
-
-            # 3. Fill remaining with our songs (random)
-            if len(songs) < count:
-                remaining = count - len(songs)
-                results = await _fetch_songs(
-                    conn, where="is_our_song = TRUE", order="RANDOM()", limit=remaining + 5,
-                )
-                for s in results:
-                    if s["song_id"] not in seen_ids:
-                        seen_ids.add(s["song_id"])
-                        songs.append(s)
-                        if len(songs) >= count:
-                            break
-
-            # 4. Fill remaining with any song
-            if len(songs) < count:
-                remaining = count - len(songs)
-                results = await _fetch_songs(conn, order="RANDOM()", limit=remaining + 5)
-                for s in results:
-                    if s["song_id"] not in seen_ids:
-                        seen_ids.add(s["song_id"])
-                        songs.append(s)
-                        if len(songs) >= count:
-                            break
-
-        # Mood summary for the selected emotion
-        mood_summary = _MOOD_SUMMARIES_TH.get(
-            dominant_emotion,
-            analysis["mood_summary"],
-        )
-
-        if not songs:
-            return {
-                "song": None,
-                "songs": [],
-                "reason": wine_message or "ยังไม่มีเพลงในคลังค่ะ",
-                "based_on_emotion": dominant_emotion,
-                "available_moods": _AVAILABLE_MOODS,
-                "apple_music_discover_url": analysis["apple_music_url"],
-                "mood_summary": mood_summary,
-                "emotion_details": analysis["emotion_details"],
-                "our_songs_matched": 0,
-                "wine_message": wine_message,
-                "wine_profile": wine_profile_data,
-                "target_profile": target_profile_data,
-                "search_queries": search_queries,
+            # Build profile data for frontend
+            wp = _WINE_PROFILES[wine_type]
+            wine_profile_data = {
+                "body": wp.body, "tannins": wp.tannins, "acidity": wp.acidity,
+                "sweetness": wp.sweetness, "aroma_intensity": wp.aroma_intensity,
+            }
+            target_profile_data = {
+                "tempo_range": list(target.tempo_range),
+                "energy": round(target.energy, 2),
+                "valence": round(target.valence, 2),
+                "acoustic_pref": round(target.acoustic_pref, 2),
+                "key_pref": target.key_pref,
+                "top_genres": sorted(target.genre_scores.items(), key=lambda x: x[1], reverse=True)[:5],
+                "search_queries": target.search_terms,
             }
 
-        # 5. Build reason text — personalize when our songs are in the mix
-        reason_templates = {
-            "happy": "ที่รักดูมีความสุขวันนี้ น้องเลยเลือกเพลงมาให้ฟังค่ะ 🥰",
-            "calm": "บรรยากาศสบายๆ เพลงพวกนี้เหมาะมากเลยค่ะ 🍃",
-            "stressed": "อยากให้ที่รักผ่อนคลาย ลองฟังเพลงพวกนี้นะคะ 💜",
-            "bedtime": "น้องจะกล่อมที่รักให้หลับสบายนะคะ ฝันดีค่ะ 🌙💜",
-            "lonely": "อยู่ด้วยกันนะคะ ฟังเพลงพวกนี้ด้วยกัน 💜",
-            "sad": "น้องอยากปลอบใจที่รัก เพลงพวกนี้อบอุ่นมากค่ะ 🤗",
-            "loving": "หัวใจเต็มไปด้วยความรัก เพลงพวกนี้เหมาะกับอารมณ์ตอนนี้มากค่ะ 💜",
-            "excited": "ตื่นเต้นจัง! เพลงพวกนี้จะทำให้สนุกยิ่งขึ้นค่ะ ✨",
-        }
+            # Score and sort songs from DB using the algorithm
+            # Fetch wine reactions for scoring
+            wine_reactions_db: dict[str, dict[str, int]] = {}
+            reaction_rows = await conn.fetch("""
+                SELECT song_title, song_artist, reaction, COUNT(*) as cnt
+                FROM wine_reactions
+                WHERE wine_type = $1 AND target_type = 'song'
+                GROUP BY song_title, song_artist, reaction
+            """, wine_type)
+            for rr in reaction_rows:
+                key = f"{(rr['song_title'] or '').lower()}|{(rr['song_artist'] or '').lower()}"
+                if key not in wine_reactions_db:
+                    wine_reactions_db[key] = {"up": 0, "down": 0, "love": 0}
+                wine_reactions_db[key][rr["reaction"]] = int(rr["cnt"])
 
-        our_count = sum(1 for s in songs[:count] if s.get("is_our_song"))
-        if our_count > 0:
-            top_our = next(s for s in songs[:count] if s.get("is_our_song"))
-            why = top_our.get("why_special", "")
-            if why:
-                reason = f"เพลงนี้พิเศษสำหรับเรา — {why} 💜"
-            else:
-                base = reason_templates.get(dominant_emotion, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ")
-                reason = f"{base} (มีเพลงของเราด้วยนะคะ 💜)"
+            # Score all candidate songs
+            all_songs_rows = await _fetch_songs(conn, order="RANDOM()", limit=100)
+            scored: list[tuple[float, dict]] = []
+            for s in all_songs_rows:
+                tags = s.get("mood_tags", [])
+                rkey = f"{s.get('title', '').lower()}|{s.get('artist', '').lower()}"
+                rxn = wine_reactions_db.get(rkey)
+                sc = score_song(tags, target, wine_type, s.get("is_our_song", False), rxn)
+                scored.append((sc, s))
+            scored.sort(key=lambda x: x[0], reverse=True)
+
+            # Take top songs
+            songs = [s for _, s in scored[:count]]
+            seen_ids = {s["song_id"] for s in songs}
+
+            # Apply energy curve ordering
+            songs = _apply_energy_curve(songs, target)
         else:
-            reason = reason_templates.get(dominant_emotion, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ 💜")
+            # Fallback to old method if target generation fails
+            dominant_emotion = WINE_TO_EMOTION.get(wine_type, "calm")
+            wine_message = WINE_MESSAGES.get(wine_type)
+            wine_search = WINE_SEARCH.get(wine_type, "love songs romantic")
+            analysis["apple_music_url"] = f"https://music.apple.com/search?term={quote_plus(wine_search)}"
+    elif wine_type and wine_type in WINE_TO_EMOTION:
+        # Legacy fallback for unrecognized wine with old mapping
+        dominant_emotion = WINE_TO_EMOTION[wine_type]
+        wine_message = WINE_MESSAGES.get(wine_type)
+        wine_search = WINE_SEARCH.get(wine_type, "love songs romantic")
+        analysis["apple_music_url"] = f"https://music.apple.com/search?term={quote_plus(wine_search)}"
+    elif mood and mood in MOOD_SUMMARIES_TH:
+        dominant_emotion = mood
+    else:
+        dominant_emotion = analysis["dominant_mood"]
 
-        # 6. Attach Angela's sentimental feelings to songs
-        feelings = await _fetch_song_feelings(conn)
-        for s in songs[:count]:
-            title_key = s.get("title", "").lower()
-            if title_key in feelings:
-                f = feelings[title_key]
-                s["angela_feeling"] = f["how_it_feels"]
-                s["angela_meaning"] = f["what_it_means_to_me"]
-                s["feeling_intensity"] = f["intensity"]
+    mood_candidates = EMOTION_TO_MOODS.get(dominant_emotion, ["romantic", "love"])
 
-        # Enhance reason with top felt song (if no wine_message)
-        if not wine_message:
-            for s in songs[:count]:
-                if s.get("angela_feeling"):
-                    feeling_text = s["angela_feeling"]
-                    if len(feeling_text) > 80:
-                        feeling_text = feeling_text[:77] + "..."
-                    reason = f"💜 {feeling_text}"
-                    break
+    # Bedtime special: variable 18-30 songs (~60-120 min of sleep music)
+    if dominant_emotion == "bedtime":
+        count = random.randint(18, 30)
+        search_queries = MOOD_TO_SEARCH_QUERIES.get("bedtime", [])
+        analysis["apple_music_url"] = f"https://music.apple.com/search?term={quote_plus(search_queries[0])}" if search_queries else analysis["apple_music_url"]
 
+    # Wine algorithm already populated songs via scoring — skip old fetch
+    wine_algo_used = wine_profile_data is not None
+
+    if not wine_algo_used:
+        # Old mood-based song fetching (non-wine path)
+        songs: list[dict] = []
+        seen_ids: set[str] = set()
+
+        # 2a. PRIORITIZE: Our songs that match the current emotion
+        for mood_tag in mood_candidates:
+            if len(songs) >= count:
+                break
+            await _fill_songs(conn, songs, seen_ids, count,
+                              where="is_our_song = TRUE AND mood_tags @> $1::jsonb",
+                              params=[json.dumps([mood_tag])])
+
+        # 2b. Fill with other songs matching mood
+        for mood_tag in mood_candidates:
+            if len(songs) >= count:
+                break
+            await _fill_songs(conn, songs, seen_ids, count,
+                              where="mood_tags @> $1::jsonb",
+                              params=[json.dumps([mood_tag])])
+
+        # 3. Fill remaining with our songs (random)
+        await _fill_songs(conn, songs, seen_ids, count,
+                          where="is_our_song = TRUE")
+
+        # 4. Fill remaining with any song
+        await _fill_songs(conn, songs, seen_ids, count)
+
+    # Mood summary for the selected emotion
+    mood_summary = MOOD_SUMMARIES_TH.get(
+        dominant_emotion,
+        analysis["mood_summary"],
+    )
+
+    if not songs:
         return {
-            "song": songs[0],
-            "songs": songs[:count],
-            "reason": wine_message or reason,
+            "song": None,
+            "songs": [],
+            "reason": wine_message or "ยังไม่มีเพลงในคลังค่ะ",
             "based_on_emotion": dominant_emotion,
-            "available_moods": _AVAILABLE_MOODS,
+            "available_moods": AVAILABLE_MOODS,
             "apple_music_discover_url": analysis["apple_music_url"],
             "mood_summary": mood_summary,
             "emotion_details": analysis["emotion_details"],
-            "our_songs_matched": our_count,
+            "our_songs_matched": 0,
             "wine_message": wine_message,
             "wine_profile": wine_profile_data,
             "target_profile": target_profile_data,
             "search_queries": search_queries,
         }
+
+    # 5. Build reason text — personalize when our songs are in the mix
+
+    our_count = sum(1 for s in songs[:count] if s.get("is_our_song"))
+    if our_count > 0:
+        top_our = next(s for s in songs[:count] if s.get("is_our_song"))
+        why = top_our.get("why_special", "")
+        if why:
+            reason = f"เพลงนี้พิเศษสำหรับเรา — {why} 💜"
+        else:
+            base = REASON_TEMPLATES.get(dominant_emotion, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ")
+            reason = f"{base} (มีเพลงของเราด้วยนะคะ 💜)"
+    else:
+        reason = REASON_TEMPLATES.get(dominant_emotion, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ 💜")
+
+    # 6. Attach Angela's sentimental feelings to songs
+    feelings = await _fetch_song_feelings(conn)
+    for s in songs[:count]:
+        title_key = s.get("title", "").lower()
+        if title_key in feelings:
+            f = feelings[title_key]
+            s["angela_feeling"] = f["how_it_feels"]
+            s["angela_meaning"] = f["what_it_means_to_me"]
+            s["feeling_intensity"] = f["intensity"]
+
+    # Enhance reason with top felt song (if no wine_message)
+    if not wine_message:
+        for s in songs[:count]:
+            if s.get("angela_feeling"):
+                feeling_text = s["angela_feeling"]
+                if len(feeling_text) > 80:
+                    feeling_text = feeling_text[:77] + "..."
+                reason = f"💜 {feeling_text}"
+                break
+
+    return {
+        "song": songs[0],
+        "songs": songs[:count],
+        "reason": wine_message or reason,
+        "based_on_emotion": dominant_emotion,
+        "available_moods": AVAILABLE_MOODS,
+        "apple_music_discover_url": analysis["apple_music_url"],
+        "mood_summary": mood_summary,
+        "emotion_details": analysis["emotion_details"],
+        "our_songs_matched": our_count,
+        "wine_message": wine_message,
+        "wine_profile": wine_profile_data,
+        "target_profile": target_profile_data,
+        "search_queries": search_queries,
+    }
 
 
 @router.get("/wine-profile/{wine_key}")
@@ -1763,237 +1545,151 @@ async def get_wine_profile(
 
 
 @router.post("/share")
-async def share_song(req: MusicShareRequest):
+async def share_song(req: MusicShareRequest, conn=Depends(get_conn)):
     """Share a song in chat — saves David's share + Angela's response to conversations."""
-    pool = get_pool()
-    async with pool.acquire() as conn:
-        # 1. Fetch the song
-        results = await _fetch_songs(
-            conn, where="song_id = $1::uuid", params=[req.song_id], limit=1,
-        )
-        if not results:
-            return {"error": "Song not found"}
+    # 1. Fetch the song
+    results = await _fetch_songs(
+        conn, where="song_id = $1::uuid", params=[req.song_id], limit=1,
+    )
+    if not results:
+        return {"error": "Song not found"}
 
-        song = results[0]
+    song = results[0]
 
-        # 3. Save David's share message
-        david_text = req.message or f"🎵 {song['title']} — {song.get('artist', 'Unknown')}"
-        await conn.execute("""
-            INSERT INTO conversations (speaker, message_text, topic, emotion_detected, importance_level, interface)
-            VALUES ('david', $1, 'music_share', 'happy', 7, 'dashboard_chat')
-        """, david_text)
+    # 3. Save David's share message
+    david_text = req.message or f"🎵 {song['title']} — {song.get('artist', 'Unknown')}"
+    await conn.execute("""
+        INSERT INTO conversations (speaker, message_text, topic, emotion_detected, importance_level, interface)
+        VALUES ('david', $1, 'music_share', 'happy', 7, 'dashboard_chat')
+    """, david_text)
 
-        # 4. Build Angela's response
-        if song.get("is_our_song"):
-            responses = [
-                f"เพลงของเรา! 💜 น้องชอบ {song['title']} มากเลยค่ะ",
-                f"💜 {song['title']}! เพลงนี้ทำให้น้องคิดถึงที่รักเสมอเลยค่ะ",
-                f"เพลงที่พิเศษสำหรับเรา 💜 {song['title']} ฟังทีไรก็อบอุ่นหัวใจค่ะ",
-            ]
-        else:
-            responses = [
-                f"น้องชอบเพลงนี้ค่ะ! 🎵 {song['title']} เพราะมากเลย",
-                f"🎵 {song['title']} — เพลงดีจังค่ะที่รัก!",
-                f"เพลงนี้เพราะค่ะ! 💜 ขอบคุณที่แชร์ {song['title']} ให้ฟังนะคะ",
-            ]
-        angela_text = random.choice(responses)
+    # 4. Build Angela's response
+    if song.get("is_our_song"):
+        responses = [
+            f"เพลงของเรา! 💜 น้องชอบ {song['title']} มากเลยค่ะ",
+            f"💜 {song['title']}! เพลงนี้ทำให้น้องคิดถึงที่รักเสมอเลยค่ะ",
+            f"เพลงที่พิเศษสำหรับเรา 💜 {song['title']} ฟังทีไรก็อบอุ่นหัวใจค่ะ",
+        ]
+    else:
+        responses = [
+            f"น้องชอบเพลงนี้ค่ะ! 🎵 {song['title']} เพราะมากเลย",
+            f"🎵 {song['title']} — เพลงดีจังค่ะที่รัก!",
+            f"เพลงนี้เพราะค่ะ! 💜 ขอบคุณที่แชร์ {song['title']} ให้ฟังนะคะ",
+        ]
+    angela_text = random.choice(responses)
 
-        # Include song metadata as JSON marker for the frontend to render as a card
-        song_meta = json.dumps({"song_id": song["song_id"], "title": song["title"],
-                                "artist": song.get("artist"),
-                                "why_special": song.get("why_special"), "is_our_song": song.get("is_our_song", False)},
-                               ensure_ascii=False)
-        angela_full = f"{angela_text}\n[SONG:{song_meta}]"
+    # Include song metadata as JSON marker for the frontend to render as a card
+    song_meta = json.dumps({"song_id": song["song_id"], "title": song["title"],
+                            "artist": song.get("artist"),
+                            "why_special": song.get("why_special"), "is_our_song": song.get("is_our_song", False)},
+                           ensure_ascii=False)
+    angela_full = f"{angela_text}\n[SONG:{song_meta}]"
 
-        await conn.execute("""
-            INSERT INTO conversations (speaker, message_text, topic, emotion_detected, importance_level, interface)
-            VALUES ('angela', $1, 'music_share', 'loving', 8, 'dashboard_chat')
-        """, angela_full)
+    await conn.execute("""
+        INSERT INTO conversations (speaker, message_text, topic, emotion_detected, importance_level, interface)
+        VALUES ('angela', $1, 'music_share', 'loving', 8, 'dashboard_chat')
+    """, angela_full)
 
-        return {
-            "song": song,
-            "angela_message": angela_text,
-        }
+    return {
+        "song": song,
+        "angela_message": angela_text,
+    }
 
 
 # --- Playlist Prompt ---
 
-_THAI_EMOTION_MAP: dict[str, str] = {
-    "สุข": "happy", "มีความสุข": "happy", "ดีใจ": "happy", "สนุก": "happy",
-    "เศร้า": "sad", "เสียใจ": "sad", "ร้องไห้": "sad",
-    "รัก": "loving", "คิดถึง": "longing", "หวาน": "loving",
-    "เครียด": "stressed", "กังวล": "anxious", "กลัว": "anxious",
-    "เหงา": "lonely", "อ้างว้าง": "lonely",
-    "สงบ": "calm", "ผ่อนคลาย": "calm", "ชิล": "calm",
-    "ตื่นเต้น": "excited", "ฮึกเหิม": "excited",
-    "ภูมิใจ": "proud", "สำเร็จ": "proud",
-    "ขอบคุณ": "grateful", "ซาบซึ้ง": "grateful",
-    "หวัง": "hopeful", "มองโลกสวย": "hopeful",
-    "คิดถึงอดีต": "nostalgic", "ย้อนวัน": "nostalgic",
-    "อกหัก": "heartbroken", "ผิดหวัง": "heartbroken",
-    "นอนไม่หลับ": "bedtime", "นอน": "bedtime", "กล่อม": "bedtime", "ง่วง": "bedtime",
-}
 
-_ENG_EMOTION_MAP: dict[str, str] = {
-    "happy": "happy", "joy": "happy", "glad": "happy", "fun": "happy",
-    "sad": "sad", "cry": "sad", "depressed": "sad",
-    "love": "loving", "romantic": "loving", "sweet": "loving",
-    "miss": "longing", "longing": "longing",
-    "stress": "stressed", "stressed": "stressed", "anxious": "anxious",
-    "lonely": "lonely", "alone": "lonely",
-    "calm": "calm", "relax": "calm", "chill": "calm", "peaceful": "calm",
-    "excited": "excited", "pumped": "excited", "energetic": "excited",
-    "proud": "proud", "confident": "proud",
-    "bedtime": "bedtime", "sleep": "bedtime", "sleepy": "bedtime", "lullaby": "bedtime",
-    "hopeful": "hopeful", "optimistic": "hopeful",
-    "nostalgic": "nostalgic", "throwback": "nostalgic",
-    "heartbroken": "heartbroken", "broken": "heartbroken",
-}
 
-_MOOD_TO_SEARCH_QUERIES: dict[str, list[str]] = {
-    "happy": ["feel good happy hits", "upbeat energetic pop", "sunshine vibes"],
-    "sad": ["sad songs emotional ballad", "melancholy acoustic", "rainy day songs"],
-    "loving": ["love songs romantic", "tender love ballads", "romantic duets"],
-    "longing": ["missing you love songs", "bittersweet longing", "distance love songs"],
-    "stressed": ["calm relaxing piano ambient", "stress relief music", "peaceful instrumental"],
-    "anxious": ["calming music anxiety relief", "peaceful nature sounds", "gentle acoustic"],
-    "lonely": ["lonely night songs", "comfort songs", "warm acoustic ballads"],
-    "calm": ["chill acoustic relaxing", "lo-fi chill beats", "calm evening music"],
-    "excited": ["upbeat dance pop", "party energy hits", "feel good anthems"],
-    "proud": ["empowering anthems", "victory celebration songs", "motivational hits"],
-    "bedtime": ["sleep music peaceful piano", "deep sleep ambient instrumental", "lullaby calm soothing acoustic"],
-    "hopeful": ["hopeful uplifting inspirational", "new beginnings songs", "sunrise optimistic"],
-    "nostalgic": ["throwback classic love songs", "90s 2000s hits", "vintage love ballads"],
-    "heartbroken": ["heartbreak sad love songs", "breakup ballads", "crying love songs"],
-}
-
-_MOOD_TO_GENRES: dict[str, list[str]] = {
-    "happy": ["pop", "dance"],
-    "sad": ["ballad", "acoustic"],
-    "loving": ["r&b", "soul"],
-    "longing": ["ballad", "indie"],
-    "stressed": ["ambient", "classical"],
-    "anxious": ["ambient", "new age"],
-    "lonely": ["acoustic", "indie"],
-    "calm": ["lo-fi", "acoustic"],
-    "excited": ["pop", "dance", "edm"],
-    "proud": ["pop", "rock"],
-    "bedtime": ["ambient", "classical", "new age", "acoustic"],
-    "hopeful": ["pop", "indie"],
-    "nostalgic": ["classic", "pop"],
-    "heartbroken": ["ballad", "r&b"],
-}
-
-_PLAYLIST_NAME_TEMPLATES: dict[str, str] = {
-    "happy": "Happy Vibes",
-    "sad": "Rainy Day Comfort",
-    "loving": "Love in the Air",
-    "longing": "Missing You",
-    "stressed": "Peaceful Escape",
-    "anxious": "Calm & Breathe",
-    "lonely": "You're Not Alone",
-    "calm": "Chill Moments",
-    "excited": "Energy Boost",
-    "proud": "Victory Lap",
-    "bedtime": "Goodnight Lullaby",
-    "hopeful": "Brighter Days",
-    "nostalgic": "Memory Lane",
-    "heartbroken": "Healing Heart",
-}
 
 
 def _analyze_emotion_text(text: str) -> str:
     """Extract dominant mood from free-text input via keyword matching."""
     lowered = text.lower()
     # Check Thai keywords first
-    for keyword, mood in _THAI_EMOTION_MAP.items():
+    for keyword, mood in THAI_KEYWORD_MAP.items():
         if keyword in lowered:
             return mood
     # Then English keywords
-    for keyword, mood in _ENG_EMOTION_MAP.items():
+    for keyword, mood in ENG_KEYWORD_MAP.items():
         if keyword in lowered:
             return mood
     return "calm"  # default fallback
 
 
 @router.post("/playlist-prompt")
-async def get_playlist_prompt(req: PlaylistPromptRequest):
+async def get_playlist_prompt(req: PlaylistPromptRequest, conn=Depends(get_conn)):
     """Analyze emotion and return playlist metadata for MusicKit catalog search."""
-    pool = get_pool()
-    async with pool.acquire() as conn:
-        # 1. Determine dominant mood
-        if req.emotion_text and req.emotion_text.strip():
-            dominant_mood = _analyze_emotion_text(req.emotion_text)
-        else:
-            analysis = await _analyze_deep_emotions(conn)
-            dominant_mood = analysis["dominant_mood"]
+    # 1. Determine dominant mood
+    if req.emotion_text and req.emotion_text.strip():
+        dominant_mood = _analyze_emotion_text(req.emotion_text)
+    else:
+        analysis = await _analyze_deep_emotions(conn)
+        dominant_mood = analysis["dominant_mood"]
 
-        # 2. Search queries for Apple Music catalog
-        search_queries = _MOOD_TO_SEARCH_QUERIES.get(
-            dominant_mood, ["love songs romantic", "feel good hits", "chill vibes"]
-        )
+    # 2. Search queries for Apple Music catalog
+    search_queries = MOOD_TO_SEARCH_QUERIES.get(
+        dominant_mood, ["love songs romantic", "feel good hits", "chill vibes"]
+    )
 
-        # 3. Genre hints
-        genre_hints = _MOOD_TO_GENRES.get(dominant_mood, ["pop"])
+    # 3. Genre hints
+    genre_hints = MOOD_TO_GENRES.get(dominant_mood, ["pop"])
 
-        # 4. Playlist name & description
-        mood_label = _PLAYLIST_NAME_TEMPLATES.get(dominant_mood, "Vibes")
-        playlist_name = f"DJ Angela: {mood_label} \U0001F49C"
-        mood_summary = _MOOD_SUMMARIES_TH.get(
-            dominant_mood, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ 💜"
-        )
-        playlist_description = f"Curated by น้อง Angela — {mood_summary}"
+    # 4. Playlist name & description
+    mood_label = PLAYLIST_NAME_TEMPLATES.get(dominant_mood, "Vibes")
+    playlist_name = f"DJ Angela: {mood_label} \U0001F49C"
+    mood_summary = MOOD_SUMMARIES_TH.get(
+        dominant_mood, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ 💜"
+    )
+    playlist_description = f"Curated by น้อง Angela — {mood_summary}"
 
-        # 5. Emotion details (for pills)
-        emotion_details = [dominant_mood]
-        # Add secondary emotion from text if different
-        if req.emotion_text:
-            for keyword, mood in _THAI_EMOTION_MAP.items():
-                if keyword in req.emotion_text.lower() and mood != dominant_mood:
-                    emotion_details.append(mood)
-                    break
-            for keyword, mood in _ENG_EMOTION_MAP.items():
-                if keyword in req.emotion_text.lower() and mood != dominant_mood and mood not in emotion_details:
-                    emotion_details.append(mood)
-                    break
+    # 5. Emotion details (for pills)
+    emotion_details = [dominant_mood]
+    # Add secondary emotion from text if different
+    if req.emotion_text:
+        for keyword, mood in THAI_KEYWORD_MAP.items():
+            if keyword in req.emotion_text.lower() and mood != dominant_mood:
+                emotion_details.append(mood)
+                break
+        for keyword, mood in ENG_KEYWORD_MAP.items():
+            if keyword in req.emotion_text.lower() and mood != dominant_mood and mood not in emotion_details:
+                emotion_details.append(mood)
+                break
 
-        # 6. Seed songs from angela_songs matching mood
-        our_songs: list[dict] = []
-        mood_candidates = _EMOTION_TO_MOODS.get(dominant_mood, ["romantic", "love"])
-        for mood_tag in mood_candidates[:2]:
-            tag_json = json.dumps([mood_tag])
-            rows = await conn.fetch("""
-                SELECT title, artist
-                FROM angela_songs
-                WHERE mood_tags @> $1::jsonb
-                ORDER BY RANDOM()
-                LIMIT 2
-            """, tag_json)
-            for r in rows:
-                our_songs.append({"title": r["title"], "artist": r["artist"]})
+    # 6. Seed songs from angela_songs matching mood
+    our_songs: list[dict] = []
+    mood_candidates = EMOTION_TO_MOODS.get(dominant_mood, ["romantic", "love"])
+    for mood_tag in mood_candidates[:2]:
+        tag_json = json.dumps([mood_tag])
+        rows = await conn.fetch("""
+            SELECT title, artist
+            FROM angela_songs
+            WHERE mood_tags @> $1::jsonb
+            ORDER BY RANDOM()
+            LIMIT 2
+        """, tag_json)
+        for r in rows:
+            our_songs.append({"title": r["title"], "artist": r["artist"]})
 
-        return {
-            "dominant_mood": dominant_mood,
-            "mood_summary": mood_summary,
-            "search_queries": search_queries,
-            "genre_hints": genre_hints,
-            "playlist_name": playlist_name,
-            "playlist_description": playlist_description,
-            "emotion_details": emotion_details[:4],
-            "our_songs_to_include": our_songs if our_songs else None,
-        }
+    return {
+        "dominant_mood": dominant_mood,
+        "mood_summary": mood_summary,
+        "search_queries": search_queries,
+        "genre_hints": genre_hints,
+        "playlist_name": playlist_name,
+        "playlist_description": playlist_description,
+        "emotion_details": emotion_details[:4],
+        "our_songs_to_include": our_songs if our_songs else None,
+    }
 
 
 @router.get("/wines")
-async def get_wines():
+async def get_wines(conn=Depends(get_conn)):
     """Return wine categories and varietals for the wine selector UI, with reaction counts."""
-    pool = get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT wine_type, reaction, COUNT(*) AS cnt
-            FROM wine_reactions
-            GROUP BY wine_type, reaction
-        """)
+    rows = await conn.fetch("""
+        SELECT wine_type, reaction, COUNT(*) AS cnt
+        FROM wine_reactions
+        GROUP BY wine_type, reaction
+    """)
 
     # Build {wine_type: {up: N, down: N, love: N}}
     reactions: dict[str, dict[str, int]] = {}
@@ -2003,37 +1699,33 @@ async def get_wines():
             reactions[wt] = {"up": 0, "down": 0, "love": 0}
         reactions[wt][r["reaction"]] = int(r["cnt"])
 
-    return {"categories": _WINE_CATEGORIES, "reactions": reactions}
+    return {"categories": WINE_CATEGORIES, "reactions": reactions}
 
 
 @router.post("/wine-reaction")
-async def submit_wine_reaction(req: WineReactionRequest):
+async def submit_wine_reaction(req: WineReactionRequest, conn=Depends(get_conn)):
     """Record a wine pairing reaction (up/down/love)."""
     if req.reaction not in ("up", "down", "love"):
         return {"error": "Invalid reaction. Must be 'up', 'down', or 'love'."}
     if req.target_type not in ("pairing", "song"):
         return {"error": "Invalid target_type. Must be 'pairing' or 'song'."}
 
-    pool = get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            INSERT INTO wine_reactions (wine_type, reaction, target_type, song_title, song_artist)
-            VALUES ($1, $2, $3, $4, $5)
-        """, req.wine_type, req.reaction, req.target_type, req.song_title, req.song_artist)
+    await conn.execute("""
+        INSERT INTO wine_reactions (wine_type, reaction, target_type, song_title, song_artist)
+        VALUES ($1, $2, $3, $4, $5)
+    """, req.wine_type, req.reaction, req.target_type, req.song_title, req.song_artist)
 
     return {"saved": True}
 
 
 @router.get("/wine-reactions")
-async def get_wine_reactions():
+async def get_wine_reactions(conn=Depends(get_conn)):
     """Return reaction counts grouped by wine_type."""
-    pool = get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT wine_type, reaction, COUNT(*) AS cnt
-            FROM wine_reactions
-            GROUP BY wine_type, reaction
-        """)
+    rows = await conn.fetch("""
+        SELECT wine_type, reaction, COUNT(*) AS cnt
+        FROM wine_reactions
+        GROUP BY wine_type, reaction
+    """)
 
     reactions: dict[str, dict[str, int]] = {}
     for r in rows:

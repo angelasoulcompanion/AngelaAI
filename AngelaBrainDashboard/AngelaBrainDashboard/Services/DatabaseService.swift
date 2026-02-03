@@ -22,7 +22,7 @@ class DatabaseService: ObservableObject {
     @Published var isConnecting = true  // Start in connecting state
     @Published var errorMessage: String?
 
-    private let baseURL = "http://127.0.0.1:8765/api"
+    private let baseURL = APIConfig.apiBaseURL
     private let decoder: JSONDecoder
 
     private init() {

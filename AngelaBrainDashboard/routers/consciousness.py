@@ -1,37 +1,35 @@
 """Consciousness endpoints - real calculated consciousness level."""
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
-from db import get_pool
+from db import get_conn, get_pool
 
 router = APIRouter(prefix="/api/consciousness", tags=["consciousness"])
 
 
 @router.get("/level")
-async def get_consciousness_level():
+async def get_consciousness_level(conn=Depends(get_conn)):
     """Fetch real consciousness level from calculate_consciousness_level() DB function."""
-    pool = get_pool()
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT * FROM calculate_consciousness_level()")
-        if row:
-            level = float(row["consciousness_level"])
-            return {
-                "consciousness_level": level,
-                "memory_richness": float(row["memory_richness"]),
-                "emotional_depth": float(row["emotional_depth"]),
-                "goal_alignment": float(row["goal_alignment"]),
-                "learning_growth": float(row["learning_growth"]),
-                "pattern_recognition": float(row["pattern_recognition"]),
-                "interpretation": _interpret(level),
-            }
+    row = await conn.fetchrow("SELECT * FROM calculate_consciousness_level()")
+    if row:
+        level = float(row["consciousness_level"])
         return {
-            "consciousness_level": 0.7,
-            "memory_richness": 0.0,
-            "emotional_depth": 0.0,
-            "goal_alignment": 0.0,
-            "learning_growth": 0.0,
-            "pattern_recognition": 0.0,
-            "interpretation": "No data available",
+            "consciousness_level": level,
+            "memory_richness": float(row["memory_richness"]),
+            "emotional_depth": float(row["emotional_depth"]),
+            "goal_alignment": float(row["goal_alignment"]),
+            "learning_growth": float(row["learning_growth"]),
+            "pattern_recognition": float(row["pattern_recognition"]),
+            "interpretation": _interpret(level),
         }
+    return {
+        "consciousness_level": 0.7,
+        "memory_richness": 0.0,
+        "emotional_depth": 0.0,
+        "goal_alignment": 0.0,
+        "learning_growth": 0.0,
+        "pattern_recognition": 0.0,
+        "interpretation": "No data available",
+    }
 
 
 def _interpret(level: float) -> str:
@@ -49,15 +47,13 @@ def _interpret(level: float) -> str:
 
 
 @router.get("/history")
-async def get_consciousness_history(days: int = Query(30, ge=1, le=365)):
+async def get_consciousness_history(days: int = Query(30, ge=1, le=365), conn=Depends(get_conn)):
     """Fetch consciousness level history from consciousness_metrics table."""
-    pool = get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT metric_id::text, measured_at, consciousness_level,
-                   trigger_event
-            FROM consciousness_metrics
-            WHERE measured_at >= NOW() - MAKE_INTERVAL(days => $1)
-            ORDER BY measured_at ASC
-        """, days)
-        return [dict(r) for r in rows]
+    rows = await conn.fetch("""
+        SELECT metric_id::text, measured_at, consciousness_level,
+               trigger_event
+        FROM consciousness_metrics
+        WHERE measured_at >= NOW() - MAKE_INTERVAL(days => $1)
+        ORDER BY measured_at ASC
+    """, days)
+    return [dict(r) for r in rows]

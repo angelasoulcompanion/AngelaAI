@@ -22,7 +22,7 @@ class BackendManager: ObservableObject {
 
     private var process: Process?
     private var healthCheckTimer: Timer?
-    private let baseURL = "http://127.0.0.1:8765"
+    private let baseURL = APIConfig.baseURL
 
     private init() {}
 
