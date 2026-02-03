@@ -199,8 +199,8 @@ class MeetingNotesParser:
             if not line:
                 continue
 
-            # Match checkbox patterns: - [ ] or - [x] or - [X]
-            checkbox_match = re.match(r'^[-•]\s*\[([ xX])\]\s*(.+)', line)
+            # Match checkbox patterns: - [ ] or - [x] or - [ x ] (with optional spaces)
+            checkbox_match = re.match(r'^[-•]\s*\[\s*([ xX])\s*\]\s*(.+)', line)
             if checkbox_match:
                 is_completed = checkbox_match.group(1).lower() == 'x'
                 action_text = checkbox_match.group(2).strip()
@@ -286,6 +286,45 @@ class MeetingNotesSyncService:
         self.parser = MeetingNotesParser()
         logger.info("MeetingNotesSyncService initialized")
 
+    @staticmethod
+    def _ensure_datetime(value: Any, fallback: Optional[datetime] = None) -> Optional[datetime]:
+        """Convert string/date to datetime, handling Things3 string dates."""
+        if value is None:
+            return fallback
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, date):
+            return datetime(value.year, value.month, value.day, tzinfo=timezone.utc)
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return fallback
+            try:
+                # Handle "YYYY-MM-DD HH:MM" or "YYYY-MM-DDTHH:MM:SS"
+                return datetime.fromisoformat(value.replace(' ', 'T'))
+            except (ValueError, TypeError):
+                return fallback
+        return fallback
+
+    @staticmethod
+    def _ensure_date(value: Any, fallback: Optional[date] = None) -> Optional[date]:
+        """Convert string/datetime to date, handling Things3 string dates."""
+        if value is None:
+            return fallback
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, date):
+            return value
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return fallback
+            try:
+                return datetime.fromisoformat(value.replace(' ', 'T')).date()
+            except (ValueError, TypeError):
+                return fallback
+        return fallback
+
     async def connect(self) -> None:
         if self._owns_db:
             await self.db.connect()
@@ -329,10 +368,9 @@ class MeetingNotesSyncService:
                 # Fallback: meeting_date from Things3 start_date or deadline
                 if not parsed.get('meeting_date'):
                     fallback_date = meeting.get('start_date') or meeting.get('deadline')
-                    if fallback_date and isinstance(fallback_date, datetime):
-                        parsed['meeting_date'] = fallback_date.date()
-                    elif fallback_date and isinstance(fallback_date, date):
-                        parsed['meeting_date'] = fallback_date
+                    parsed_date = self._ensure_date(fallback_date)
+                    if parsed_date:
+                        parsed['meeting_date'] = parsed_date
 
                 # Combine project + heading for richer context
                 project = meeting.get('project_title', '')
@@ -374,7 +412,7 @@ class MeetingNotesSyncService:
         """Insert a new meeting record."""
         now = datetime.now(timezone.utc)
         # Use Things3 creation_date for created_at if available
-        created = meeting.get('creation_date') or now
+        created = self._ensure_datetime(meeting.get('creation_date'), fallback=now)
 
         meeting_id = await self.db.fetchval('''
             INSERT INTO meeting_notes (
@@ -504,7 +542,12 @@ class MeetingNotesSyncService:
             if not title or self.parser._is_junk_action_item(title):
                 continue
             is_done = ci.get('is_completed', False)
-            completed_at = ci.get('completed_date')  # datetime from Things3
+            # Detect checkbox prefix in title: [x], [ x ], [X]
+            checkbox_in_title = re.match(r'^\[\s*([xX])\s*\]\s*(.+)', title)
+            if checkbox_in_title:
+                is_done = True
+                title = checkbox_in_title.group(2).strip()
+            completed_at = self._ensure_datetime(ci.get('completed_date'))
             await self.db.execute('''
                 INSERT INTO meeting_action_items
                     (meeting_id, action_text, is_completed, completed_at, priority, created_at)

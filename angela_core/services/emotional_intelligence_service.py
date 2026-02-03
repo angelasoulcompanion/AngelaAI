@@ -25,7 +25,6 @@ import httpx
 import json
 
 # Import centralized embedding service
-# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 from angela_core.config import config
 
 
@@ -349,7 +348,7 @@ Helpful: {was_helpful if was_helpful is not None else 'unknown'}
             try:
                 embedding_vec = await embedding.generate_embedding(message_text)
                 embedding_str = '[' + ','.join(map(str, embedding_vec)) + ']' if embedding_vec else None
-            except:
+            except Exception as e:
                 embedding_str = None
 
             # Build content_json

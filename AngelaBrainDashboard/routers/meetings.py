@@ -545,20 +545,24 @@ async def update_meeting(meeting_id: str, body: MeetingUpdate):
             if not result:
                 return {"success": False, "error": "Update failed"}
 
-            # --- Sync to Things3 (complete old + create new) ---
+            # --- Sync to Things3 ---
             try:
-                old_things3_search = f"📅 {old_meeting['title']}"
-                things3_complete_todo(old_things3_search)
+                if body.things3_status == "completed":
+                    # Completing meeting — just mark done in Things3, don't recreate
+                    things3_complete_todo(f"📅 {old_meeting['title']}")
+                else:
+                    # Details changed or reopened — complete old + create new
+                    things3_complete_todo(f"📅 {old_meeting['title']}")
 
-                new_title = body.title or old_meeting['title']
-                new_location = body.location or old_meeting['location']
-                new_time = (f"{body.start_time}-{body.end_time}"
-                            if body.start_time and body.end_time
-                            else old_meeting['time_range'])
-                new_date = body.meeting_date or str(old_meeting['meeting_date'])
+                    new_title = body.title or old_meeting['title']
+                    new_location = body.location or old_meeting['location']
+                    new_time = (f"{body.start_time}-{body.end_time}"
+                                if body.start_time and body.end_time
+                                else old_meeting['time_range'])
+                    new_date = body.meeting_date or str(old_meeting['meeting_date'])
 
-                things3_title = f"📅 {new_title} @{new_location} ({new_time})"
-                things3_create_todo(things3_title, "", new_date)
+                    things3_title = f"📅 {new_title} @{new_location} ({new_time})"
+                    things3_create_todo(things3_title, "", new_date)
             except Exception as e:
                 print(f"⚠️ Things3 sync failed: {e}")
 

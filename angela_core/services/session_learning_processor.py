@@ -138,7 +138,7 @@ class SessionLearningProcessor:
                         session_id, i, david_msg[:100],
                         elapsed_ms, 'failed', str(e)[:500]
                     )
-                except Exception:
+                except Exception as e:
                     pass
 
         return {
@@ -264,7 +264,7 @@ class SessionLearningProcessor:
                         sid, idx, row['david_message'][:100],
                         elapsed_ms, 'failed', str(e)[:500]
                     )
-                except Exception:
+                except Exception as e:
                     pass
 
         return {

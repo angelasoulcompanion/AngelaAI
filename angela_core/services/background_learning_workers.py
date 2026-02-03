@@ -22,7 +22,6 @@ from dataclasses import dataclass, asdict
 
 from angela_core.services.knowledge_extraction_service import knowledge_extractor
 from angela_core.services.emotional_intelligence_service import EmotionalIntelligenceService
-# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 # NEW: Use new embedding service (Migration 015)
 from angela_core.services.embedding_service import get_embedding_service
 from angela_core.services.deep_analysis_engine import deep_analysis_engine, DeepAnalysisResult

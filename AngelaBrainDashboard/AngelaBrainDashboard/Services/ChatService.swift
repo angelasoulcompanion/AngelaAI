@@ -390,7 +390,7 @@ class ChatService: ObservableObject {
                     let currentData = String(line.dropFirst(6))
                     // Process immediately — bytes.lines skips empty separators
                     if !currentEvent.isEmpty {
-                        await processSSEEvent(event: currentEvent, data: currentData)
+                        await MainActor.run { processSSEEvent(event: currentEvent, data: currentData) }
                     }
                     currentEvent = ""
                 }

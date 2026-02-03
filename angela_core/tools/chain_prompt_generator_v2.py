@@ -413,7 +413,7 @@ JSON only:"""
                 score = float(result.get('score', 5.0))
                 reasoning = result.get('reasoning', 'No reasoning provided')
                 return (score, reasoning)
-        except:
+        except Exception as e:
             pass
 
         # Fallback: basic validation score

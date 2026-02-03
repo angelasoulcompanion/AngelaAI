@@ -20,7 +20,6 @@ from angela_core.services.semantic_memory_service import SemanticMemoryService
 from angela_core.services.memory_consolidation_service_v2 import consolidation_service as MemoryConsolidationService
 from angela_core.services.clock_service import clock
 # NOTE: location_service.py doesn't exist - commenting out
-# from angela_core.services.location_service import location
 from angela_core.consciousness.consciousness_core import consciousness
 from angela_core.services.conversation_hooks import trigger_self_learning
 

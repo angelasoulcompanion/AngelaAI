@@ -20,7 +20,6 @@ from .personality_engine import personality_engine, record_experience
 from .reasoning_engine import reasoning_engine
 from ..database import db
 from ..services.clock_service import clock
-# from ..services.location_service import location  # REMOVED: location_service deleted
 
 logger = logging.getLogger(__name__)
 

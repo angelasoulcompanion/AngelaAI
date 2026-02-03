@@ -203,7 +203,7 @@ class DataExporter:
                     count = await db.fetchval(f"SELECT COUNT(*) FROM {table}")
                     row_counts[table] = count
                     total_rows += count
-                except Exception:
+                except Exception as e:
                     row_counts[table] = -1
 
             # Get database size

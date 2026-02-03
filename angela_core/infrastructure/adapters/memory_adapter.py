@@ -76,5 +76,5 @@ class MemoryAdapter(BaseServiceAdapter):
         try:
             stats = await self.memory_service.get_memory_statistics()
             return "total_memories" in stats
-        except:
+        except Exception as e:
             return False

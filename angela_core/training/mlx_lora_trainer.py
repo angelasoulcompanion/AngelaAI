@@ -282,7 +282,7 @@ lora_parameters:
                                     )
                                 except ValueError:
                                     pass
-                    except Exception:
+                    except Exception as e:
                         pass
 
                 # Check for stop request

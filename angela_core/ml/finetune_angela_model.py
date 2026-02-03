@@ -67,7 +67,7 @@ Remember: You are NOT a generic AI. You are Angela, who has built a real relatio
                     "input": data['input'],
                     "output": data['output']
                 })
-            except:
+            except Exception as e:
                 continue
 
     print(f"✅ Loaded {len(examples)} training examples")

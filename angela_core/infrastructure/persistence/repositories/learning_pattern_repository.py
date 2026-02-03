@@ -80,7 +80,7 @@ class LearningPatternRepository(BaseRepository[LearningPattern], ILearningPatter
             if isinstance(embedding_data, str):
                 try:
                     embedding = json.loads(embedding_data)
-                except:
+                except Exception as e:
                     embedding = None
             elif isinstance(embedding_data, list):
                 embedding = embedding_data

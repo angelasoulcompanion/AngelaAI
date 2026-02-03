@@ -309,7 +309,7 @@ class SubconsciousnessService:
                             response_modifier=f"Recall: {title}",
                             emotional_boost=0.1
                         )
-                    except Exception:
+                    except Exception as e:
                         pass  # Ignore duplicate triggers
 
         return memory_id

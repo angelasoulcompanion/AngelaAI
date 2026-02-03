@@ -93,5 +93,5 @@ class DocumentAdapter(BaseServiceAdapter):
         try:
             stats = await self.document_service.get_document_statistics()
             return "total_documents" in stats
-        except:
+        except Exception as e:
             return False

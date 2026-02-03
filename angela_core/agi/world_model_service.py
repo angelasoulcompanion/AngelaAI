@@ -1589,7 +1589,7 @@ class WorldModelService:
             else:
                 return "stable"
 
-        except Exception:
+        except Exception as e:
             return "stable"
 
     # ========================================================================

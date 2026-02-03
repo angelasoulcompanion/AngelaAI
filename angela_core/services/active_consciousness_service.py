@@ -489,7 +489,7 @@ class ActiveConsciousnessService:
                         VALUES ($1, 'feedback', $2, $3)
                         ON CONFLICT DO NOTHING
                     """, context['topic'], f"feedback_{feedback_type}", self.current_state.confidence_level)
-                except Exception:
+                except Exception as e:
                     pass  # Non-critical
 
             logger.info(f"💜 Feedback processed: {feedback_type} - confidence now {self.current_state.confidence_level:.0%}")
@@ -886,7 +886,7 @@ class ActiveConsciousnessService:
             # Fallback to default
             return 0.7
 
-        except Exception:
+        except Exception as e:
             return 0.7
 
     def _calculate_energy_level(self) -> float:

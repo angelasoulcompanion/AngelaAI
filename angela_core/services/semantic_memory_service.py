@@ -25,7 +25,6 @@ warnings.warn(
 )
 
 # Import centralized embedding service
-# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 from angela_core.config import config
 
 

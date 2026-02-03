@@ -217,7 +217,7 @@ class ProjectMemoryDetector:
                     # Check for similar names (fuzzy)
                     if self._similar_names(pattern.pattern_name, name):
                         return True
-        except Exception:
+        except Exception as e:
             pass
         return False
 

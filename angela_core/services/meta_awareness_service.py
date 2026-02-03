@@ -549,7 +549,7 @@ class MetaAwarenessService:
                 ORDER BY updated_at DESC
                 LIMIT 1
             """)
-        except Exception:
+        except Exception as e:
             pass
 
         if performance and performance['task_success_rates']:
@@ -1252,7 +1252,7 @@ class MetaAwarenessService:
                 if isinstance(result, str):
                     return json.loads(result)
                 return result
-            except:
+            except Exception as e:
                 return default
         return default
 
@@ -1285,7 +1285,7 @@ class MetaAwarenessService:
                 ORDER BY created_at DESC
                 LIMIT 10
             """)
-        except Exception:
+        except Exception as e:
             # Table doesn't exist or other error - use alternative analysis
             pass
 
@@ -1313,7 +1313,7 @@ class MetaAwarenessService:
                 else:
                     content += "Stable emotional state."
 
-            except Exception:
+            except Exception as e:
                 content = "Meta-reflection: Continuing to learn and grow 💜"
 
             insight = MetaInsight(

@@ -125,7 +125,7 @@ JSON only, no explanation:"""
                     "technical_level": 5,
                     "key_message": david_msg[:100]
                 }
-        except:
+        except Exception as e:
             return {
                 "topic": "conversation",
                 "david_emotion": "neutral",

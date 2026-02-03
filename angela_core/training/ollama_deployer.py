@@ -70,7 +70,7 @@ class OllamaDeployer:
                 result = subprocess.run([loc, "--version"], capture_output=True, timeout=5)
                 if result.returncode == 0:
                     return loc
-            except Exception:
+            except Exception as e:
                 continue
         return "ollama"  # Fallback
 
@@ -97,7 +97,7 @@ class OllamaDeployer:
                 text=True
             )
             return self.config.base_model in result.stdout
-        except Exception:
+        except Exception as e:
             return False
 
     def pull_base_model(self) -> bool:

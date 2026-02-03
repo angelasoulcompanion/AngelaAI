@@ -29,7 +29,6 @@ warnings.warn(
 from angela_core.database import db
 from angela_core.config import config
 from angela_core.services.emotion_capture_service import emotion_capture
-# from angela_core.daemon.embedding_service import  # REMOVED: Migration 009 embedding
 from angela_core.utils.memory_helpers import (
     analyze_message_type,
     analyze_sentiment,
@@ -42,7 +41,6 @@ from angela_core.utils.memory_helpers import (
 )
 
 # Import shared JSON builder helpers
-# from angela_core.tools.conversation_json_builder import build_content_json, generate_embedding_text # REMOVED: Migration 010
 
 logger = logging.getLogger(__name__)
 

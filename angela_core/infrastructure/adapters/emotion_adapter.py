@@ -95,5 +95,5 @@ class EmotionAdapter(BaseServiceAdapter):
         try:
             stats = await self.emotion_service.get_emotion_statistics()
             return "total_emotions" in stats
-        except:
+        except Exception as e:
             return False

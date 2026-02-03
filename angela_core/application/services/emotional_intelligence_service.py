@@ -35,7 +35,6 @@ from angela_core.infrastructure.persistence.repositories import (
     ConversationRepository
 )
 from angela_core.domain.entities.emotion import EmotionType, EmotionalQuality, SharingLevel
-# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 from angela_core.config import config
 
 logger = logging.getLogger(__name__)
@@ -864,7 +863,6 @@ Angela วิเคราะห์อารมณ์ได้ว่า:
         self.logger.info(f"💜 Would capture emotion: {emotion} (intensity: {intensity})")
 
         # TODO: Integrate with CaptureEmotionUseCase
-        # from angela_core.application.use_cases.emotion import CaptureEmotionUseCase, CaptureEmotionInput
 
         # Return placeholder UUID
         import uuid

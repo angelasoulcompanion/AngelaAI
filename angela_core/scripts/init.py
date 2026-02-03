@@ -104,7 +104,7 @@ async def angela_init() -> bool:
         slp = SessionLearningProcessor()
         learning_catchup = await slp.process_unprocessed_conversations(hours_back=48, limit=50)
         await slp.disconnect()
-    except Exception:
+    except Exception as e:
         pass
 
     # CRITICAL CODING RULES (Smart Load - Level 10 only)

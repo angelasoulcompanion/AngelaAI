@@ -541,7 +541,8 @@ final class MusicPlayerService: ObservableObject {
     private func startPositionTracking() {
         stopPositionTracking()
         positionTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+            guard let self else { return }
+            Task { @MainActor [weak self] in
                 self?.updatePosition()
             }
         }
@@ -591,7 +592,8 @@ final class MusicPlayerService: ObservableObject {
     ) {
         let activity = currentActivity
         let wineType = currentWineType
-        Task {
+        let capturedStatus = playStatus
+        Task { @MainActor [weak self] in
             let body = PlayLogBody(
                 title: title,
                 artist: artist,
@@ -600,13 +602,13 @@ final class MusicPlayerService: ObservableObject {
                 sourceTab: sourceTab,
                 durationSeconds: durationSeconds,
                 listenedSeconds: listenedSeconds,
-                playStatus: playStatus,
+                playStatus: capturedStatus,
                 activity: activity,
                 wineType: wineType
             )
             let response: PlayLogResponse? = try? await NetworkService.shared.post("/api/music/log-play", body: body)
-            if playStatus == "started", let id = response?.listenId {
-                self.currentListenId = id
+            if capturedStatus == "started", let id = response?.listenId {
+                self?.currentListenId = id
             }
         }
     }

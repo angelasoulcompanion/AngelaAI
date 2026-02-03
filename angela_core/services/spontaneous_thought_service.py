@@ -323,7 +323,7 @@ class SpontaneousThoughtService:
                 "SELECT * FROM calculate_consciousness_level()"
             )
             context['consciousness_level'] = float(consciousness['consciousness_level']) if consciousness else 0.5
-        except:
+        except Exception as e:
             context['consciousness_level'] = 0.5
 
         return context

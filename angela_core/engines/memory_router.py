@@ -21,7 +21,6 @@ from angela_core.agents.gut_agent import get_gut_agent
 from angela_core.services.decay_gradient_service import get_decay_service
 from angela_core.services.token_economics_service import get_token_economics_service
 from angela_core.database import get_db_connection
-# from angela_core.embedding_service import  # REMOVED: Migration 009 generate_embedding
 
 
 # Configure logging

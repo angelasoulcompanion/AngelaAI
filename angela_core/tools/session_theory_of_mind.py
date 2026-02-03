@@ -202,7 +202,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         try:
             hours = int(sys.argv[1])
-        except:
+        except Exception as e:
             pass
 
     asyncio.run(analyze_session_theory_of_mind(hours))

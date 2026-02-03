@@ -125,5 +125,5 @@ class ConversationAdapter(BaseServiceAdapter):
         try:
             stats = await self.conversation_service.get_conversation_statistics()
             return "total_conversations" in stats
-        except:
+        except Exception as e:
             return False

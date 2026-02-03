@@ -215,7 +215,7 @@ class BackupOrchestrator:
             if temp_dir and temp_dir.exists():
                 try:
                     shutil.rmtree(temp_dir)
-                except Exception:
+                except Exception as e:
                     pass
 
             return BackupResult(

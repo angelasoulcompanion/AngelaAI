@@ -32,7 +32,6 @@ from typing import Optional, List, Dict, Any
 import logging
 
 from angela_core.database import db
-# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 
 logger = logging.getLogger(__name__)
 

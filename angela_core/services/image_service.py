@@ -125,7 +125,7 @@ class ImageService:
                               f"{int(time_parts[1][0]/time_parts[1][1]):02d}:" \
                               f"{int(time_parts[2][0]/time_parts[2][1]):02d}"
                     gps_timestamp = datetime.strptime(f"{date_str} {time_str}", "%Y:%m:%d %H:%M:%S")
-                except:
+                except Exception as e:
                     pass
 
             if lat is not None and lon is not None:
@@ -158,7 +158,7 @@ class ImageService:
                 if tag_name in ['DateTime', 'DateTimeOriginal', 'DateTimeDigitized']:
                     try:
                         return datetime.strptime(value, "%Y:%m:%d %H:%M:%S")
-                    except:
+                    except Exception as e:
                         pass
 
             return None

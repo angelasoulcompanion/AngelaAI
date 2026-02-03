@@ -26,7 +26,6 @@ from angela_core.domain.value_objects.self_learning import SourceType, LearningQ
 from angela_core.infrastructure.persistence.repositories.training_example_repository import TrainingExampleRepository
 from angela_core.infrastructure.persistence.repositories.conversation_repository import ConversationRepository
 from angela_core.infrastructure.persistence.repositories.learning_pattern_repository import LearningPatternRepository
-# from angela_core.daemon.embedding_service import  # REMOVED: Migration 009 embedding as embedding_service
 
 logger = logging.getLogger(__name__)
 

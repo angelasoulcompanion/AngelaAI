@@ -18,7 +18,6 @@ from angela_core.database import db
 from angela_core.conversation_json_builder import build_content_json, generate_embedding_text
 
 # Import centralized embedding service
-# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 
 
 async def save_conversation(speaker: str, message: str, emotion: str = "neutral", topic: str = "", importance: int = 5):

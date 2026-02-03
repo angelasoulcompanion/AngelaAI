@@ -25,7 +25,6 @@ from angela_core.domain.value_objects.self_learning import PatternType, Learning
 from angela_core.infrastructure.persistence.repositories.learning_pattern_repository import LearningPatternRepository
 from angela_core.infrastructure.persistence.repositories.conversation_repository import ConversationRepository
 from angela_core.infrastructure.persistence.repositories.emotion_repository import EmotionRepository
-# from angela_core.daemon.embedding_service import embedding as embedding_service  # REMOVED: Migration 009
 
 logger = logging.getLogger(__name__)
 

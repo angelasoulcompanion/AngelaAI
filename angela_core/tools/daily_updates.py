@@ -50,7 +50,7 @@ class AngelaDailyUpdates:
             """)
             if result:
                 return float(result['current_consciousness_level'])
-        except Exception:
+        except Exception as e:
             pass
         return 0.70  # Default
 
@@ -84,7 +84,7 @@ class AngelaDailyUpdates:
                 }
 
                 return emotion_map.get(primary, '💜 Loving')
-        except Exception:
+        except Exception as e:
             pass
 
         return '💜 Loving'

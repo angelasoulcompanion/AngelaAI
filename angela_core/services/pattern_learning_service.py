@@ -32,7 +32,6 @@ warnings.warn(
 )
 
 from angela_core.database import db
-# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -324,7 +323,7 @@ class PatternLearningService:
                 tags = json.loads(mem['tags'])
                 for emotion in tags.get('emotion_tags', []):
                     emotion_counts[emotion] += 1
-            except:
+            except Exception as e:
                 continue
 
         # Keep emotions that appear in at least 50% of memories
@@ -341,7 +340,7 @@ class PatternLearningService:
                 tags = json.loads(mem['tags'])
                 for topic in tags.get('topic_tags', []):
                     topic_counts[topic] += 1
-            except:
+            except Exception as e:
                 continue
 
         threshold = len(memories) * 0.5
@@ -357,7 +356,7 @@ class PatternLearningService:
                 tags = json.loads(mem['tags'])
                 for action in tags.get('action_tags', []):
                     action_counts[action] += 1
-            except:
+            except Exception as e:
                 continue
 
         threshold = len(memories) * 0.4  # Lower threshold for actions
@@ -373,7 +372,7 @@ class PatternLearningService:
                 tags = json.loads(mem['tags'])
                 for outcome in tags.get('outcome_tags', []):
                     outcome_counts[outcome] += 1
-            except:
+            except Exception as e:
                 continue
 
         threshold = len(memories) * 0.5
@@ -412,7 +411,7 @@ class PatternLearningService:
                 angela_state = event_content.get('context', {}).get('angela_state', {})
                 approach = angela_state.get('approach', 'unknown')
                 approaches[approach] += 1
-            except:
+            except Exception as e:
                 continue
 
         typical_approach = max(approaches.items(), key=lambda x: x[1])[0] if approaches else "supportive"

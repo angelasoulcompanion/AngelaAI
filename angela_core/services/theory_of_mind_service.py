@@ -1029,7 +1029,7 @@ Confidence: {confidence:.0%}
         try:
             results = await self.db.fetch(query)
             return [self._parse_jsonb(r['inference_data'], {}) for r in results]
-        except Exception:
+        except Exception as e:
             return []
 
     async def _get_recent_goals(self) -> List[Dict]:
@@ -1044,7 +1044,7 @@ Confidence: {confidence:.0%}
         try:
             results = await self.db.fetch(query)
             return [self._parse_jsonb(r['inference_data'], {}) for r in results]
-        except Exception:
+        except Exception as e:
             return []
 
     async def _get_current_emotion(self) -> Dict:
@@ -1060,7 +1060,7 @@ Confidence: {confidence:.0%}
             result = await self.db.fetchrow(query)
             if result:
                 return self._parse_jsonb(result['inference_data'], {})
-        except Exception:
+        except Exception as e:
             pass
         return {}
 

@@ -151,7 +151,7 @@ enum NavigationItem: String, CaseIterable {
     case scheduledTasks = "Scheduled Tasks"
     case skills = "Skills"
     case projects = "Projects"
-    case thingsOverview = "Things Overview"
+    case thingsOverview = "Things"
     case preferences = "Preferences"
     case davidMatrix = "David's Matrix"
     case codingGuidelines = "Coding Guidelines"

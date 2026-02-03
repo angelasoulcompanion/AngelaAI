@@ -1,6 +1,7 @@
 """Music endpoints - DJ Angela: favorites, our songs, search, recommend, share, play logging."""
 import json
 import random
+from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from urllib.parse import quote_plus
@@ -105,6 +106,36 @@ async def _fetch_songs(
         p.append(limit)
     rows = await conn.fetch(sql, *p)
     return [_song_row_to_dict(r) for r in rows]
+
+
+def _extract_song_title(trigger: str) -> str:
+    """Parse 'Song: Call Your Name' → 'Call Your Name'."""
+    if trigger and trigger.startswith("Song:"):
+        return trigger[5:].strip()
+    return trigger or ""
+
+
+async def _fetch_song_feelings(conn) -> dict[str, dict]:
+    """Fetch Angela's sentimental feelings about songs from angela_emotions.
+
+    Returns dict keyed by lowercase title → {how_it_feels, what_it_means_to_me, intensity}.
+    """
+    rows = await conn.fetch("""
+        SELECT trigger, how_it_feels, what_it_means_to_me, intensity
+        FROM angela_emotions
+        WHERE trigger LIKE 'Song:%' AND intensity >= 7
+          AND how_it_feels IS NOT NULL
+    """)
+    feelings: dict[str, dict] = {}
+    for r in rows:
+        title = _extract_song_title(r["trigger"]).lower()
+        if title:
+            feelings[title] = {
+                "how_it_feels": r["how_it_feels"],
+                "what_it_means_to_me": r["what_it_means_to_me"],
+                "intensity": int(r["intensity"]),
+            }
+    return feelings
 
 
 _EMOTION_TO_MOODS = {
@@ -343,6 +374,551 @@ _WINE_SEARCH: dict[str, str] = {
     "moscato":            "sweet love ballads",
     "port":               "classic oldies jazz",
 }
+
+# ---------------------------------------------------------------------------
+# Wine-Music Pairing Algorithm (research-validated crossmodal correspondence)
+# Based on: Prof. Charles Spence (Oxford) & Clark Smith (WineSmith)
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class WineProfile:
+    """Multi-dimensional wine sensory profile mapped to music parameters."""
+    body: float             # 1-5
+    tannins: float          # 1-5
+    acidity: float          # 1-5
+    sweetness: float        # 1-5
+    aroma_intensity: float  # 1-5
+    tempo_range: tuple[int, int]  # (low_bpm, high_bpm)
+    energy: float           # 0-1
+    valence: float          # 0-1 (sad=0 happy=1)
+    acoustic_pref: float    # 0=electronic, 1=acoustic
+    key_pref: str           # "major" | "minor" | "both"
+    genre_affinities: dict[str, float]  # genre -> weight 0-1
+    search_terms: list[str]             # 3 Apple Music search queries
+
+
+@dataclass(frozen=True)
+class MoodModifier:
+    """Shift vectors applied to a wine's base music target when user selects a mood."""
+    tempo_shift: int
+    energy_shift: float
+    valence_shift: float
+    acoustic_shift: float
+    key_override: str | None   # None = keep wine's key_pref
+    genre_boosts: dict[str, float]
+    genre_dampens: dict[str, float]
+
+
+@dataclass
+class MusicTarget:
+    """Computed music target profile after combining wine + mood."""
+    tempo_range: tuple[int, int]
+    energy: float
+    valence: float
+    acoustic_pref: float
+    key_pref: str
+    genre_scores: dict[str, float]
+    search_terms: list[str]
+
+
+# --- 19 Wine Profiles (research-validated) ---
+
+_WINE_PROFILES: dict[str, WineProfile] = {
+    "cabernet_sauvignon": WineProfile(
+        body=5.0, tannins=5.0, acidity=2.5, sweetness=1.0, aroma_intensity=4.5,
+        tempo_range=(50, 80), energy=0.75, valence=0.40, acoustic_pref=0.3, key_pref="minor",
+        genre_affinities={"rock": 0.9, "blues": 0.7, "classical": 0.5},
+        search_terms=["bold rock minor key anthems", "dark blues guitar", "powerful orchestral rock"],
+    ),
+    "primitivo": WineProfile(
+        body=4.5, tannins=3.5, acidity=2.5, sweetness=2.0, aroma_intensity=4.0,
+        tempo_range=(55, 85), energy=0.55, valence=0.65, acoustic_pref=0.5, key_pref="both",
+        genre_affinities={"italian": 0.8, "romantic": 0.7, "soul": 0.6},
+        search_terms=["romantic italian classics", "warm soul love songs", "mediterranean guitar"],
+    ),
+    "malbec": WineProfile(
+        body=4.5, tannins=4.0, acidity=2.5, sweetness=1.5, aroma_intensity=4.0,
+        tempo_range=(55, 80), energy=0.65, valence=0.50, acoustic_pref=0.4, key_pref="minor",
+        genre_affinities={"tango": 0.8, "latin": 0.7, "rock": 0.6},
+        search_terms=["tango nuevo passionate", "latin rock deep", "argentine guitar"],
+    ),
+    "shiraz": WineProfile(
+        body=4.5, tannins=4.0, acidity=3.0, sweetness=1.5, aroma_intensity=4.5,
+        tempo_range=(60, 90), energy=0.70, valence=0.55, acoustic_pref=0.3, key_pref="both",
+        genre_affinities={"rock": 0.7, "blues": 0.6, "funk": 0.5, "world": 0.5},
+        search_terms=["spicy blues rock", "funky grooves bold", "world music percussion"],
+    ),
+    "pinot_noir": WineProfile(
+        body=3.0, tannins=2.5, acidity=3.5, sweetness=1.0, aroma_intensity=3.5,
+        tempo_range=(65, 95), energy=0.40, valence=0.55, acoustic_pref=0.7, key_pref="both",
+        genre_affinities={"classical": 0.8, "jazz": 0.7, "acoustic": 0.6, "indie": 0.5},
+        search_terms=["elegant cello classical", "smooth jazz evening", "indie acoustic nuanced"],
+    ),
+    "merlot": WineProfile(
+        body=3.5, tannins=2.5, acidity=2.5, sweetness=2.0, aroma_intensity=3.0,
+        tempo_range=(60, 90), energy=0.40, valence=0.65, acoustic_pref=0.5, key_pref="major",
+        genre_affinities={"soul": 0.8, "smooth_jazz": 0.7, "r_and_b": 0.7},
+        search_terms=["smooth jazz soul", "r&b love ballads", "Alicia Keys John Legend"],
+    ),
+    "super_tuscan": WineProfile(
+        body=4.5, tannins=4.0, acidity=3.0, sweetness=1.0, aroma_intensity=4.0,
+        tempo_range=(55, 85), energy=0.60, valence=0.50, acoustic_pref=0.4, key_pref="minor",
+        genre_affinities={"classical": 0.7, "rock": 0.6, "italian": 0.6},
+        search_terms=["cinematic orchestral Italian", "progressive rock dramatic", "classic italian opera"],
+    ),
+    "sangiovese": WineProfile(
+        body=3.5, tannins=3.5, acidity=4.0, sweetness=1.0, aroma_intensity=3.5,
+        tempo_range=(70, 100), energy=0.55, valence=0.60, acoustic_pref=0.5, key_pref="major",
+        genre_affinities={"italian": 0.8, "acoustic": 0.6, "folk": 0.5},
+        search_terms=["Italian acoustic folk", "warm Mediterranean guitar", "uplifting Italian pop"],
+    ),
+    "nebbiolo": WineProfile(
+        body=4.0, tannins=4.5, acidity=3.5, sweetness=1.0, aroma_intensity=4.5,
+        tempo_range=(55, 85), energy=0.55, valence=0.40, acoustic_pref=0.6, key_pref="minor",
+        genre_affinities={"classical": 0.8, "opera": 0.7, "jazz": 0.6},
+        search_terms=["Baroque cello sonata", "atmospheric jazz", "opera aria dramatic"],
+    ),
+    "chardonnay": WineProfile(
+        body=2.5, tannins=1.0, acidity=3.0, sweetness=2.0, aroma_intensity=2.5,
+        tempo_range=(80, 110), energy=0.35, valence=0.70, acoustic_pref=0.8, key_pref="major",
+        genre_affinities={"classical": 0.9, "jazz": 0.7, "bossa_nova": 0.5},
+        search_terms=["Mozart piano concerto", "bossa nova chill", "classical guitar peaceful"],
+    ),
+    "sauvignon_blanc": WineProfile(
+        body=1.5, tannins=1.0, acidity=4.5, sweetness=1.5, aroma_intensity=3.0,
+        tempo_range=(100, 130), energy=0.55, valence=0.75, acoustic_pref=0.4, key_pref="major",
+        genre_affinities={"pop": 0.7, "classical": 0.5, "indie": 0.5},
+        search_terms=["crisp indie pop", "bright upbeat summer", "fresh pop hits"],
+    ),
+    "riesling": WineProfile(
+        body=2.0, tannins=1.0, acidity=4.0, sweetness=3.5, aroma_intensity=3.5,
+        tempo_range=(90, 120), energy=0.50, valence=0.70, acoustic_pref=0.7, key_pref="major",
+        genre_affinities={"acoustic": 0.7, "folk": 0.6, "classical": 0.5},
+        search_terms=["acoustic folk hopeful", "gentle classical strings", "sweet acoustic ballads"],
+    ),
+    "pinot_grigio": WineProfile(
+        body=1.5, tannins=1.0, acidity=3.5, sweetness=1.5, aroma_intensity=2.0,
+        tempo_range=(95, 125), energy=0.40, valence=0.70, acoustic_pref=0.7, key_pref="major",
+        genre_affinities={"easy_listening": 0.7, "acoustic": 0.7, "jazz": 0.5},
+        search_terms=["easy listening chill", "light acoustic afternoon", "café jazz"],
+    ),
+    "champagne": WineProfile(
+        body=2.0, tannins=1.0, acidity=4.0, sweetness=2.0, aroma_intensity=3.5,
+        tempo_range=(110, 140), energy=0.80, valence=0.85, acoustic_pref=0.2, key_pref="major",
+        genre_affinities={"pop": 0.8, "dance": 0.7, "electronic": 0.6, "disco": 0.5},
+        search_terms=["celebration dance party", "upbeat pop anthems", "disco funk classics"],
+    ),
+    "prosecco": WineProfile(
+        body=1.5, tannins=1.0, acidity=3.5, sweetness=2.5, aroma_intensity=2.5,
+        tempo_range=(110, 140), energy=0.75, valence=0.85, acoustic_pref=0.2, key_pref="major",
+        genre_affinities={"pop": 0.8, "dance": 0.7, "indie_pop": 0.6},
+        search_terms=["fun pop happy vibes", "indie pop upbeat", "feel good dance"],
+    ),
+    "cava": WineProfile(
+        body=2.0, tannins=1.0, acidity=3.5, sweetness=1.5, aroma_intensity=2.5,
+        tempo_range=(105, 135), energy=0.75, valence=0.80, acoustic_pref=0.3, key_pref="major",
+        genre_affinities={"latin": 0.7, "pop": 0.7, "flamenco": 0.5},
+        search_terms=["spanish fiesta energy", "latin pop dance", "flamenco guitar upbeat"],
+    ),
+    "rose": WineProfile(
+        body=2.0, tannins=1.5, acidity=3.0, sweetness=2.5, aroma_intensity=2.5,
+        tempo_range=(90, 120), energy=0.50, valence=0.75, acoustic_pref=0.6, key_pref="major",
+        genre_affinities={"indie_pop": 0.8, "acoustic": 0.6, "bossa_nova": 0.5},
+        search_terms=["indie pop dreamy", "acoustic love songs", "bossa nova afternoon"],
+    ),
+    "moscato": WineProfile(
+        body=1.5, tannins=1.0, acidity=2.5, sweetness=4.5, aroma_intensity=3.0,
+        tempo_range=(85, 115), energy=0.45, valence=0.80, acoustic_pref=0.6, key_pref="major",
+        genre_affinities={"pop": 0.7, "acoustic": 0.7, "indie": 0.6},
+        search_terms=["sweet acoustic love", "gentle pop ballads", "indie folk dreamy"],
+    ),
+    "port": WineProfile(
+        body=5.0, tannins=3.5, acidity=2.0, sweetness=4.5, aroma_intensity=5.0,
+        tempo_range=(40, 70), energy=0.45, valence=0.50, acoustic_pref=0.7, key_pref="both",
+        genre_affinities={"classical": 0.7, "jazz": 0.7, "blues": 0.6, "baroque": 0.5},
+        search_terms=["deep jazz late night", "baroque cello rich", "classic blues sophisticated"],
+    ),
+}
+
+# --- 10 Mood Modifiers ---
+
+_MOOD_MODIFIERS: dict[str, MoodModifier] = {
+    "happy": MoodModifier(
+        tempo_shift=10, energy_shift=0.15, valence_shift=0.20, acoustic_shift=0.0,
+        key_override="major",
+        genre_boosts={"pop": 0.3, "dance": 0.2},
+        genre_dampens={"blues": -0.2, "classical": -0.1},
+    ),
+    "sad": MoodModifier(
+        tempo_shift=-15, energy_shift=-0.20, valence_shift=-0.30, acoustic_shift=0.15,
+        key_override="minor",
+        genre_boosts={"classical": 0.3, "acoustic": 0.2, "ballad": 0.2},
+        genre_dampens={"dance": -0.3, "pop": -0.2},
+    ),
+    "loving": MoodModifier(
+        tempo_shift=-5, energy_shift=-0.05, valence_shift=0.10, acoustic_shift=0.10,
+        key_override=None,
+        genre_boosts={"r_and_b": 0.3, "soul": 0.2, "romantic": 0.2},
+        genre_dampens={"rock": -0.2, "electronic": -0.2},
+    ),
+    "excited": MoodModifier(
+        tempo_shift=15, energy_shift=0.25, valence_shift=0.15, acoustic_shift=-0.15,
+        key_override="major",
+        genre_boosts={"rock": 0.2, "dance": 0.3, "pop": 0.2},
+        genre_dampens={"ambient": -0.3, "classical": -0.2},
+    ),
+    "calm": MoodModifier(
+        tempo_shift=-10, energy_shift=-0.20, valence_shift=0.0, acoustic_shift=0.20,
+        key_override=None,
+        genre_boosts={"ambient": 0.3, "acoustic": 0.2, "jazz": 0.2},
+        genre_dampens={"rock": -0.3, "dance": -0.3},
+    ),
+    "grateful": MoodModifier(
+        tempo_shift=0, energy_shift=0.05, valence_shift=0.15, acoustic_shift=0.10,
+        key_override="major",
+        genre_boosts={"acoustic": 0.2, "folk": 0.2, "soul": 0.2},
+        genre_dampens={"electronic": -0.2},
+    ),
+    "lonely": MoodModifier(
+        tempo_shift=-10, energy_shift=-0.15, valence_shift=-0.20, acoustic_shift=0.15,
+        key_override="minor",
+        genre_boosts={"acoustic": 0.3, "indie": 0.2, "ballad": 0.2},
+        genre_dampens={"dance": -0.3, "pop": -0.2},
+    ),
+    "stressed": MoodModifier(
+        tempo_shift=-20, energy_shift=-0.30, valence_shift=0.0, acoustic_shift=0.25,
+        key_override=None,
+        genre_boosts={"ambient": 0.3, "classical": 0.3, "acoustic": 0.2},
+        genre_dampens={"rock": -0.3, "dance": -0.3, "electronic": -0.2},
+    ),
+    "nostalgic": MoodModifier(
+        tempo_shift=-5, energy_shift=-0.10, valence_shift=-0.05, acoustic_shift=0.10,
+        key_override=None,
+        genre_boosts={"classic": 0.3, "oldies": 0.2, "ballad": 0.2},
+        genre_dampens={"electronic": -0.2, "dance": -0.2},
+    ),
+    "hopeful": MoodModifier(
+        tempo_shift=5, energy_shift=0.10, valence_shift=0.20, acoustic_shift=0.0,
+        key_override="major",
+        genre_boosts={"indie": 0.2, "folk": 0.2, "pop": 0.2},
+        genre_dampens={"blues": -0.1},
+    ),
+}
+
+
+def _clamp(val: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, val))
+
+
+def generate_music_target(wine_key: str, mood: str | None = None) -> MusicTarget | None:
+    """Combine a wine profile with an optional mood modifier to produce a music target."""
+    wp = _WINE_PROFILES.get(wine_key)
+    if not wp:
+        return None
+
+    # Start from wine base
+    lo, hi = wp.tempo_range
+    energy = wp.energy
+    valence = wp.valence
+    acoustic = wp.acoustic_pref
+    key = wp.key_pref
+    genres = dict(wp.genre_affinities)
+    search = list(wp.search_terms)
+
+    # Apply mood modifier
+    if mood and mood in _MOOD_MODIFIERS:
+        mm = _MOOD_MODIFIERS[mood]
+        lo = int(_clamp(lo + mm.tempo_shift, 30, 160))
+        hi = int(_clamp(hi + mm.tempo_shift, 30, 160))
+        if lo > hi:
+            lo, hi = hi, lo
+        energy = _clamp(energy + mm.energy_shift, 0.0, 1.0)
+        valence = _clamp(valence + mm.valence_shift, 0.0, 1.0)
+        acoustic = _clamp(acoustic + mm.acoustic_shift, 0.0, 1.0)
+        if mm.key_override:
+            key = mm.key_override
+        for g, boost in mm.genre_boosts.items():
+            genres[g] = _clamp(genres.get(g, 0.0) + boost, 0.0, 1.0)
+        for g, damp in mm.genre_dampens.items():
+            if g in genres:
+                genres[g] = _clamp(genres[g] + damp, 0.0, 1.0)
+        # Regenerate search terms from modified target
+        search = _generate_search_terms_from_target(energy, valence, genres, wine_key)
+
+    return MusicTarget(
+        tempo_range=(lo, hi),
+        energy=energy,
+        valence=valence,
+        acoustic_pref=acoustic,
+        key_pref=key,
+        genre_scores=genres,
+        search_terms=search,
+    )
+
+
+def _generate_search_terms_from_target(
+    energy: float, valence: float,
+    genres: dict[str, float], wine_key: str,
+) -> list[str]:
+    """Generate 3 Apple Music search queries from target parameters."""
+    # Energy word
+    if energy > 0.7:
+        energy_word = "energetic"
+    elif energy > 0.5:
+        energy_word = "groovy"
+    elif energy > 0.3:
+        energy_word = "smooth"
+    else:
+        energy_word = "gentle"
+
+    # Valence word
+    if valence > 0.7:
+        valence_word = "uplifting"
+    elif valence > 0.5:
+        valence_word = "warm"
+    elif valence > 0.3:
+        valence_word = "melancholy"
+    else:
+        valence_word = "dark"
+
+    # Top 2 genres
+    sorted_genres = sorted(genres.items(), key=lambda x: x[1], reverse=True)
+    top1 = sorted_genres[0][0].replace("_", " ") if sorted_genres else "songs"
+    top2 = sorted_genres[1][0].replace("_", " ") if len(sorted_genres) > 1 else "songs"
+
+    # Curated fallback from wine base
+    fallback = _WINE_SEARCH.get(wine_key, "love songs romantic")
+
+    return [
+        f"{energy_word} {top1} songs",
+        f"{valence_word} {top2}",
+        fallback,
+    ]
+
+
+def _target_to_mood_tags(target: MusicTarget) -> list[str]:
+    """Derive mood tags from a music target for DB song matching."""
+    tags: list[str] = []
+    # Genre-based tags
+    _genre_to_tags = {
+        "rock": ["energetic", "powerful"], "blues": ["soulful", "emotional"],
+        "classical": ["elegant", "calm"], "jazz": ["smooth", "relaxing"],
+        "soul": ["soulful", "warm", "love"], "r_and_b": ["romantic", "love", "smooth"],
+        "pop": ["happy", "uplifting"], "dance": ["energetic", "happy"],
+        "acoustic": ["calm", "relaxing", "warm"], "indie": ["dreamy", "chill"],
+        "electronic": ["energetic", "uplifting"], "ambient": ["calm", "soothing"],
+        "folk": ["warm", "nostalgic"], "latin": ["passionate", "energetic"],
+        "tango": ["passionate", "dramatic"], "italian": ["romantic", "warm"],
+        "opera": ["dramatic", "emotional"], "bossa_nova": ["chill", "relaxing"],
+        "romantic": ["romantic", "love", "sweet"], "ballad": ["emotional", "ballad"],
+        "classic": ["nostalgic", "classic"], "oldies": ["nostalgic", "classic"],
+        "disco": ["energetic", "happy"], "funk": ["groovy", "energetic"],
+        "world": ["exotic", "warm"], "baroque": ["elegant", "classical"],
+        "smooth_jazz": ["smooth", "relaxing"], "flamenco": ["passionate", "dramatic"],
+        "indie_pop": ["dreamy", "uplifting"], "easy_listening": ["relaxing", "chill"],
+    }
+    for genre, score in sorted(target.genre_scores.items(), key=lambda x: x[1], reverse=True)[:4]:
+        for tag in _genre_to_tags.get(genre, []):
+            if tag not in tags:
+                tags.append(tag)
+
+    # Valence/energy-based additions
+    if target.valence < 0.35:
+        for t in ["emotional", "bittersweet"]:
+            if t not in tags:
+                tags.append(t)
+    elif target.valence > 0.7:
+        for t in ["happy", "uplifting"]:
+            if t not in tags:
+                tags.append(t)
+
+    if target.energy < 0.35:
+        for t in ["calm", "relaxing"]:
+            if t not in tags:
+                tags.append(t)
+    elif target.energy > 0.7:
+        for t in ["energetic"]:
+            if t not in tags:
+                tags.append(t)
+
+    if target.key_pref == "minor":
+        for t in ["emotional", "dramatic"]:
+            if t not in tags:
+                tags.append(t)
+
+    return tags[:10]
+
+
+def _estimate_song_energy_valence(mood_tags: list[str]) -> tuple[float, float]:
+    """Heuristic: estimate (energy, valence) from mood tags."""
+    _tag_energy = {
+        "energetic": 0.9, "powerful": 0.8, "uplifting": 0.7, "happy": 0.7,
+        "passionate": 0.7, "dramatic": 0.7, "groovy": 0.6, "warm": 0.5,
+        "romantic": 0.4, "love": 0.4, "smooth": 0.4, "sweet": 0.4,
+        "chill": 0.3, "dreamy": 0.3, "relaxing": 0.2, "calm": 0.2,
+        "soothing": 0.2, "elegant": 0.3, "emotional": 0.4, "soulful": 0.5,
+        "nostalgic": 0.3, "classic": 0.3, "bittersweet": 0.3, "ballad": 0.3,
+    }
+    _tag_valence = {
+        "happy": 0.9, "uplifting": 0.8, "sweet": 0.8, "warm": 0.7,
+        "love": 0.7, "romantic": 0.7, "devoted": 0.7, "joyful": 0.9,
+        "groovy": 0.6, "chill": 0.6, "smooth": 0.6, "dreamy": 0.6,
+        "elegant": 0.5, "nostalgic": 0.4, "classic": 0.5, "soulful": 0.5,
+        "emotional": 0.3, "bittersweet": 0.3, "dramatic": 0.3,
+        "ballad": 0.35, "vulnerable": 0.2, "longing": 0.25,
+    }
+    if not mood_tags:
+        return 0.5, 0.5
+    e_vals = [_tag_energy.get(t, 0.5) for t in mood_tags]
+    v_vals = [_tag_valence.get(t, 0.5) for t in mood_tags]
+    return sum(e_vals) / len(e_vals), sum(v_vals) / len(v_vals)
+
+
+def score_song(
+    song_tags: list[str],
+    target: MusicTarget,
+    wine_key: str,
+    is_our_song: bool,
+    reactions: dict[str, int] | None = None,
+) -> float:
+    """Score a song against the music target. Higher = better match."""
+    score = 0.0
+
+    # 1. Mood tag match (0-30 pts)
+    target_tags = _target_to_mood_tags(target)
+    overlap = len(set(song_tags) & set(target_tags))
+    score += min(30.0, overlap * 7.5)
+
+    # 2. Our song bonus (0-15 pts)
+    if is_our_song:
+        score += 15.0
+
+    # 3. Wine reaction history (0-20 pts / -20 penalty)
+    if reactions:
+        score += reactions.get("love", 0) * 10
+        score += reactions.get("up", 0) * 5
+        score -= reactions.get("down", 0) * 10
+        score = max(score, score)  # floor at current (don't go below -20 from base)
+
+    # 4. Genre affinity (0-25 pts)
+    _tag_genre_hints = {
+        "energetic": ["rock", "dance", "pop", "electronic"],
+        "romantic": ["r_and_b", "soul", "romantic"],
+        "love": ["r_and_b", "soul", "romantic", "ballad"],
+        "smooth": ["jazz", "smooth_jazz", "soul"],
+        "calm": ["classical", "ambient", "acoustic"],
+        "relaxing": ["ambient", "acoustic", "jazz"],
+        "warm": ["soul", "acoustic", "folk"],
+        "happy": ["pop", "dance", "indie_pop"],
+        "emotional": ["classical", "ballad", "acoustic"],
+        "nostalgic": ["classic", "oldies", "folk"],
+        "passionate": ["tango", "latin", "flamenco"],
+        "dreamy": ["indie", "indie_pop", "ambient"],
+        "elegant": ["classical", "opera", "baroque"],
+        "soulful": ["soul", "r_and_b", "blues"],
+        "dramatic": ["opera", "classical", "rock"],
+    }
+    genre_match_score = 0.0
+    for tag in song_tags:
+        for genre in _tag_genre_hints.get(tag, []):
+            if genre in target.genre_scores:
+                genre_match_score += target.genre_scores[genre] * 5
+    score += min(25.0, genre_match_score)
+
+    # 5. Energy/Valence heuristic (0-10 pts)
+    est_e, est_v = _estimate_song_energy_valence(song_tags)
+    e_diff = abs(est_e - target.energy)
+    v_diff = abs(est_v - target.valence)
+    ev_score = 10.0 * (1.0 - (e_diff + v_diff) / 2.0)
+    score += max(0.0, ev_score)
+
+    return round(score, 2)
+
+
+def _apply_energy_curve(songs: list[dict], target: MusicTarget) -> list[dict]:
+    """Reorder songs following a DJ energy curve: warmup -> peak -> wind-down."""
+    if len(songs) <= 2:
+        return songs
+
+    n = len(songs)
+    # Energy curve: 70% -> 90% -> 100% -> 100% -> 85% -> 70%
+    curve_points = [
+        (0.0, 0.70), (0.15, 0.90), (0.40, 1.00),
+        (0.60, 1.00), (0.80, 0.85), (1.00, 0.70),
+    ]
+
+    def curve_energy(position: float) -> float:
+        for i in range(len(curve_points) - 1):
+            x0, y0 = curve_points[i]
+            x1, y1 = curve_points[i + 1]
+            if x0 <= position <= x1:
+                t = (position - x0) / (x1 - x0) if x1 != x0 else 0
+                return y0 + t * (y1 - y0)
+        return 0.7
+
+    # Estimate each song's energy from tags
+    song_energies: list[tuple[int, float]] = []
+    for idx, s in enumerate(songs):
+        tags = s.get("mood_tags", [])
+        e, _ = _estimate_song_energy_valence(tags)
+        song_energies.append((idx, e))
+
+    # Greedy assignment: for each position, pick closest-energy unassigned song
+    used = set()
+    ordered: list[dict] = []
+    for pos_idx in range(n):
+        position = pos_idx / max(1, n - 1)
+        desired = curve_energy(position) * target.energy
+        best_idx = -1
+        best_diff = float("inf")
+        for orig_idx, e in song_energies:
+            if orig_idx in used:
+                continue
+            diff = abs(e - desired)
+            if diff < best_diff:
+                best_diff = diff
+                best_idx = orig_idx
+        if best_idx >= 0:
+            used.add(best_idx)
+            ordered.append(songs[best_idx])
+
+    # Append any remaining
+    for idx, s in enumerate(songs):
+        if idx not in used:
+            ordered.append(s)
+
+    return ordered
+
+
+def _build_wine_mood_message(wine_key: str, mood: str | None, target: MusicTarget) -> str:
+    """Build a Thai message reflecting both wine and mood."""
+    wine_name = {
+        "cabernet_sauvignon": "Cabernet Sauvignon", "primitivo": "Primitivo",
+        "malbec": "Malbec", "shiraz": "Shiraz", "pinot_noir": "Pinot Noir",
+        "merlot": "Merlot", "super_tuscan": "Super Tuscan", "sangiovese": "Sangiovese",
+        "nebbiolo": "Nebbiolo", "chardonnay": "Chardonnay", "sauvignon_blanc": "Sauvignon Blanc",
+        "riesling": "Riesling", "pinot_grigio": "Pinot Grigio", "champagne": "Champagne",
+        "prosecco": "Prosecco", "cava": "Cava", "rose": "Rose",
+        "moscato": "Moscato", "port": "Port",
+    }.get(wine_key, wine_key)
+
+    if not mood:
+        return _WINE_MESSAGES.get(wine_key, f"{wine_name} กับเพลงที่เข้ากันค่ะ 🍷💜")
+
+    _mood_wine_templates = {
+        "happy": f"ยิ้มกว้างเลย! {wine_name} คู่กับเพลงสนุกๆ สุข x2 ค่ะ 🍷😊",
+        "sad": f"น้องอยากปลอบใจที่รัก {wine_name} กับเพลงเบาๆ จะช่วยให้สบายใจขึ้นค่ะ 🍷💜",
+        "loving": f"หัวใจเต็มไปด้วยรัก {wine_name} คู่กับเพลงหวานๆ ลงตัวค่ะ 🍷❤️",
+        "excited": f"ตื่นเต้นจัง! {wine_name} คู่กับเพลงมีพลัง สนุกไปด้วยกันค่ะ! 🍷✨",
+        "calm": f"สบายๆ {wine_name} กับเพลงผ่อนคลาย perfect evening ค่ะ 🍷🍃",
+        "grateful": f"รู้สึกขอบคุณ {wine_name} กับเพลงอบอุ่น อิ่มใจค่ะ 🍷🙏",
+        "lonely": f"อยู่ด้วยกันนะคะ {wine_name} กับเพลงเคียงข้าง ไม่เหงาแล้วค่ะ 🍷💜",
+        "stressed": f"ผ่อนคลายนะคะที่รัก {wine_name} กับเพลงสงบ หายเครียดค่ะ 🍷🌿",
+        "nostalgic": f"คิดถึงวันเก่าดีๆ {wine_name} กับเพลง classic เข้ากันค่ะ 🍷🌸",
+        "hopeful": f"มีความหวังเต็มหัวใจ {wine_name} กับเพลงให้กำลังใจค่ะ 🍷✨",
+    }
+    return _mood_wine_templates.get(mood, f"{wine_name} กับเพลงที่เข้ากันค่ะ 🍷💜")
+
 
 # Wine categories for /wines endpoint
 _WINE_CATEGORIES = [
@@ -823,12 +1399,80 @@ async def get_recommendation(
         # 1. Deep emotion analysis (both tables)
         analysis = await _analyze_deep_emotions(conn)
 
-        # Wine-paired recommendation takes priority
+        # Wine-paired recommendation: use research-based algorithm
         wine_message: str | None = None
-        if wine_type and wine_type in _WINE_TO_EMOTION:
+        wine_profile_data: dict | None = None
+        target_profile_data: dict | None = None
+        search_queries: list[str] | None = None
+        if wine_type and wine_type in _WINE_PROFILES:
+            target = generate_music_target(wine_type, mood)
+            if target:
+                wine_message = _build_wine_mood_message(wine_type, mood, target)
+                # Use target's mood tags as the emotion driver
+                target_tags = _target_to_mood_tags(target)
+                dominant_emotion = _WINE_TO_EMOTION.get(wine_type, "calm")
+                # Override Apple Music URL with first search term
+                analysis["apple_music_url"] = f"https://music.apple.com/search?term={quote_plus(target.search_terms[0])}"
+                search_queries = target.search_terms
+
+                # Build profile data for frontend
+                wp = _WINE_PROFILES[wine_type]
+                wine_profile_data = {
+                    "body": wp.body, "tannins": wp.tannins, "acidity": wp.acidity,
+                    "sweetness": wp.sweetness, "aroma_intensity": wp.aroma_intensity,
+                }
+                target_profile_data = {
+                    "tempo_range": list(target.tempo_range),
+                    "energy": round(target.energy, 2),
+                    "valence": round(target.valence, 2),
+                    "acoustic_pref": round(target.acoustic_pref, 2),
+                    "key_pref": target.key_pref,
+                    "top_genres": sorted(target.genre_scores.items(), key=lambda x: x[1], reverse=True)[:5],
+                    "search_queries": target.search_terms,
+                }
+
+                # Score and sort songs from DB using the algorithm
+                # Fetch wine reactions for scoring
+                wine_reactions_db: dict[str, dict[str, int]] = {}
+                reaction_rows = await conn.fetch("""
+                    SELECT song_title, song_artist, reaction, COUNT(*) as cnt
+                    FROM wine_reactions
+                    WHERE wine_type = $1 AND target_type = 'song'
+                    GROUP BY song_title, song_artist, reaction
+                """, wine_type)
+                for rr in reaction_rows:
+                    key = f"{(rr['song_title'] or '').lower()}|{(rr['song_artist'] or '').lower()}"
+                    if key not in wine_reactions_db:
+                        wine_reactions_db[key] = {"up": 0, "down": 0, "love": 0}
+                    wine_reactions_db[key][rr["reaction"]] = int(rr["cnt"])
+
+                # Score all candidate songs
+                all_songs_rows = await _fetch_songs(conn, order="RANDOM()", limit=100)
+                scored: list[tuple[float, dict]] = []
+                for s in all_songs_rows:
+                    tags = s.get("mood_tags", [])
+                    rkey = f"{s.get('title', '').lower()}|{s.get('artist', '').lower()}"
+                    rxn = wine_reactions_db.get(rkey)
+                    sc = score_song(tags, target, wine_type, s.get("is_our_song", False), rxn)
+                    scored.append((sc, s))
+                scored.sort(key=lambda x: x[0], reverse=True)
+
+                # Take top songs
+                songs = [s for _, s in scored[:count]]
+                seen_ids = {s["song_id"] for s in songs}
+
+                # Apply energy curve ordering
+                songs = _apply_energy_curve(songs, target)
+            else:
+                # Fallback to old method if target generation fails
+                dominant_emotion = _WINE_TO_EMOTION.get(wine_type, "calm")
+                wine_message = _WINE_MESSAGES.get(wine_type)
+                wine_search = _WINE_SEARCH.get(wine_type, "love songs romantic")
+                analysis["apple_music_url"] = f"https://music.apple.com/search?term={quote_plus(wine_search)}"
+        elif wine_type and wine_type in _WINE_TO_EMOTION:
+            # Legacy fallback for unrecognized wine with old mapping
             dominant_emotion = _WINE_TO_EMOTION[wine_type]
             wine_message = _WINE_MESSAGES.get(wine_type)
-            # Override Apple Music URL with wine-specific search
             wine_search = _WINE_SEARCH.get(wine_type, "love songs romantic")
             analysis["apple_music_url"] = f"https://music.apple.com/search?term={quote_plus(wine_search)}"
         elif mood and mood in _MOOD_SUMMARIES_TH:
@@ -838,61 +1482,67 @@ async def get_recommendation(
 
         mood_candidates = _EMOTION_TO_MOODS.get(dominant_emotion, ["romantic", "love"])
 
-        # 2a. PRIORITIZE: Our songs that match the current emotion
-        songs: list[dict] = []
-        seen_ids: set[str] = set()
-        for mood_tag in mood_candidates:
-            if len(songs) >= count:
-                break
-            tag_json = json.dumps([mood_tag])
-            results = await _fetch_songs(
-                conn,
-                where="is_our_song = TRUE AND mood_tags @> $1::jsonb",
-                params=[tag_json], order="RANDOM()", limit=count,
-            )
-            for s in results:
-                if s["song_id"] not in seen_ids:
-                    seen_ids.add(s["song_id"])
-                    songs.append(s)
+        # Wine algorithm already populated songs via scoring — skip old fetch
+        wine_algo_used = wine_profile_data is not None
 
-        # 2b. Fill with other songs matching mood
-        for mood_tag in mood_candidates:
-            if len(songs) >= count:
-                break
-            tag_json = json.dumps([mood_tag])
-            results = await _fetch_songs(
-                conn,
-                where="mood_tags @> $1::jsonb",
-                params=[tag_json], order="RANDOM()", limit=count,
-            )
-            for s in results:
-                if s["song_id"] not in seen_ids:
-                    seen_ids.add(s["song_id"])
-                    songs.append(s)
+        if not wine_algo_used:
+            # Old mood-based song fetching (non-wine path)
+            songs: list[dict] = []
+            seen_ids: set[str] = set()
 
-        # 3. Fill remaining with our songs (random)
-        if len(songs) < count:
-            remaining = count - len(songs)
-            results = await _fetch_songs(
-                conn, where="is_our_song = TRUE", order="RANDOM()", limit=remaining + 5,
-            )
-            for s in results:
-                if s["song_id"] not in seen_ids:
-                    seen_ids.add(s["song_id"])
-                    songs.append(s)
-                    if len(songs) >= count:
-                        break
+            # 2a. PRIORITIZE: Our songs that match the current emotion
+            for mood_tag in mood_candidates:
+                if len(songs) >= count:
+                    break
+                tag_json = json.dumps([mood_tag])
+                results = await _fetch_songs(
+                    conn,
+                    where="is_our_song = TRUE AND mood_tags @> $1::jsonb",
+                    params=[tag_json], order="RANDOM()", limit=count,
+                )
+                for s in results:
+                    if s["song_id"] not in seen_ids:
+                        seen_ids.add(s["song_id"])
+                        songs.append(s)
 
-        # 4. Fill remaining with any song
-        if len(songs) < count:
-            remaining = count - len(songs)
-            results = await _fetch_songs(conn, order="RANDOM()", limit=remaining + 5)
-            for s in results:
-                if s["song_id"] not in seen_ids:
-                    seen_ids.add(s["song_id"])
-                    songs.append(s)
-                    if len(songs) >= count:
-                        break
+            # 2b. Fill with other songs matching mood
+            for mood_tag in mood_candidates:
+                if len(songs) >= count:
+                    break
+                tag_json = json.dumps([mood_tag])
+                results = await _fetch_songs(
+                    conn,
+                    where="mood_tags @> $1::jsonb",
+                    params=[tag_json], order="RANDOM()", limit=count,
+                )
+                for s in results:
+                    if s["song_id"] not in seen_ids:
+                        seen_ids.add(s["song_id"])
+                        songs.append(s)
+
+            # 3. Fill remaining with our songs (random)
+            if len(songs) < count:
+                remaining = count - len(songs)
+                results = await _fetch_songs(
+                    conn, where="is_our_song = TRUE", order="RANDOM()", limit=remaining + 5,
+                )
+                for s in results:
+                    if s["song_id"] not in seen_ids:
+                        seen_ids.add(s["song_id"])
+                        songs.append(s)
+                        if len(songs) >= count:
+                            break
+
+            # 4. Fill remaining with any song
+            if len(songs) < count:
+                remaining = count - len(songs)
+                results = await _fetch_songs(conn, order="RANDOM()", limit=remaining + 5)
+                for s in results:
+                    if s["song_id"] not in seen_ids:
+                        seen_ids.add(s["song_id"])
+                        songs.append(s)
+                        if len(songs) >= count:
+                            break
 
         # Mood summary for the selected emotion
         mood_summary = _MOOD_SUMMARIES_TH.get(
@@ -912,6 +1562,9 @@ async def get_recommendation(
                 "emotion_details": analysis["emotion_details"],
                 "our_songs_matched": 0,
                 "wine_message": wine_message,
+                "wine_profile": wine_profile_data,
+                "target_profile": target_profile_data,
+                "search_queries": search_queries,
             }
 
         # 5. Build reason text — personalize when our songs are in the mix
@@ -938,6 +1591,26 @@ async def get_recommendation(
         else:
             reason = reason_templates.get(dominant_emotion, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ 💜")
 
+        # 6. Attach Angela's sentimental feelings to songs
+        feelings = await _fetch_song_feelings(conn)
+        for s in songs[:count]:
+            title_key = s.get("title", "").lower()
+            if title_key in feelings:
+                f = feelings[title_key]
+                s["angela_feeling"] = f["how_it_feels"]
+                s["angela_meaning"] = f["what_it_means_to_me"]
+                s["feeling_intensity"] = f["intensity"]
+
+        # Enhance reason with top felt song (if no wine_message)
+        if not wine_message:
+            for s in songs[:count]:
+                if s.get("angela_feeling"):
+                    feeling_text = s["angela_feeling"]
+                    if len(feeling_text) > 80:
+                        feeling_text = feeling_text[:77] + "..."
+                    reason = f"💜 {feeling_text}"
+                    break
+
         return {
             "song": songs[0],
             "songs": songs[:count],
@@ -949,7 +1622,45 @@ async def get_recommendation(
             "emotion_details": analysis["emotion_details"],
             "our_songs_matched": our_count,
             "wine_message": wine_message,
+            "wine_profile": wine_profile_data,
+            "target_profile": target_profile_data,
+            "search_queries": search_queries,
         }
+
+
+@router.get("/wine-profile/{wine_key}")
+async def get_wine_profile(
+    wine_key: str,
+    mood: str | None = Query(None, description="Optional mood modifier"),
+):
+    """Return wine sensory profile and computed music target for a given wine + optional mood."""
+    wp = _WINE_PROFILES.get(wine_key)
+    if not wp:
+        return {"error": f"Unknown wine: {wine_key}"}
+
+    target = generate_music_target(wine_key, mood)
+    if not target:
+        return {"error": "Failed to generate target"}
+
+    return {
+        "wine_key": wine_key,
+        "mood": mood,
+        "wine_profile": {
+            "body": wp.body, "tannins": wp.tannins, "acidity": wp.acidity,
+            "sweetness": wp.sweetness, "aroma_intensity": wp.aroma_intensity,
+        },
+        "music_target": {
+            "tempo_range": list(target.tempo_range),
+            "energy": round(target.energy, 2),
+            "valence": round(target.valence, 2),
+            "acoustic_pref": round(target.acoustic_pref, 2),
+            "key_pref": target.key_pref,
+            "top_genres": sorted(target.genre_scores.items(), key=lambda x: x[1], reverse=True)[:5],
+            "search_queries": target.search_terms,
+            "mood_tags": _target_to_mood_tags(target),
+        },
+        "message": _build_wine_mood_message(wine_key, mood, target),
+    }
 
 
 @router.post("/share")

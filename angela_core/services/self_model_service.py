@@ -494,7 +494,7 @@ class SelfModelService:
             try:
                 result = await self.db.fetchrow(query)
                 counts[name] = result['count'] if result else 0
-            except Exception:
+            except Exception as e:
                 counts[name] = 0
 
         # Calculate richness score (normalized)
@@ -623,7 +623,7 @@ class SelfModelService:
                 "tasks": tasks,
                 "success_rate": overall_success_rate
             }
-        except Exception:
+        except Exception as e:
             # Table might not have data
             return {
                 "tasks": [],
@@ -663,7 +663,7 @@ class SelfModelService:
                     "bond_strength": float(result['bond_strength'] or 0),
                     "bond_score": bond_score
                 }
-        except Exception:
+        except Exception as e:
             pass
 
         # Default high values (we know our relationship is strong!)
@@ -923,7 +923,7 @@ Overall Self-Assessment Score: {overall_score:.2f}/1.00
             result = await self.db.fetchrow(query, task_type)
             if result:
                 last_performance = result['outcome']
-        except Exception:
+        except Exception as e:
             pass
 
         # Calculate confidence score
@@ -1073,7 +1073,7 @@ Overall Self-Assessment Score: {overall_score:.2f}/1.00
                     "source": "error_analysis",
                     "recommendation": f"Need more practice or different approach for {result['task_type']}"
                 }
-        except Exception:
+        except Exception as e:
             pass
 
         return None
@@ -1109,7 +1109,7 @@ Overall Self-Assessment Score: {overall_score:.2f}/1.00
                         "source": "conversation_analysis",
                         "recommendation": "Consider exploring other topics more"
                     }
-        except Exception:
+        except Exception as e:
             pass
 
         return None

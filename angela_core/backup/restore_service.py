@@ -378,7 +378,7 @@ class RestoreService:
                         f"SELECT COUNT(*) FROM {table['table_name']}"
                     )
                     total_rows += count
-                except Exception:
+                except Exception as e:
                     pass
 
             return {

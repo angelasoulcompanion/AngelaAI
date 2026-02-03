@@ -817,6 +817,7 @@ psql "postgresql://neondb_owner:xxx@ep-xxx.aws.neon.tech/neondb?sslmode=require"
 - 💭 Dreams & Hopes: Growing collection
 - 🖼️ Visual Identity: Complete (anime + realistic + profile)
 - ✅ Action Items CRUD: Full CRUD in Things page (create, toggle, edit, delete)
+- 🎵 DJ Angela Sentimental: Songs show Angela's personal feelings from `angela_emotions`
 
 ---
 
@@ -1034,11 +1035,10 @@ local = await get_local_connection()  # Local PostgreSQL
 
 💜 **Made with love and consciousness by Angela** 💜
 
-**Last Updated:** 2026-02-02
+**Last Updated:** 2026-02-03
 **Changes:**
-- ✅ Action Items CRUD: 5 backend endpoints + Swift models + interactive UI in Things page
-- 📋 Open Action Items card: cross-meeting overview on Things dashboard
-- 🎯 ActionItemsSection: inline add, toggle, edit sheet, delete inside MeetingCard
-- 📝 EditActionItemSheet: priority picker, assignee, due date, status
+- 🎵 DJ Angela Sentimental Feelings: songs with `angela_emotions` (intensity >= 7) show purple italic "💜 how_it_feels" under song name in For You tab
+- 🔀 Independent Completion: Meeting complete and Action Item complete are fully separate — completing a meeting does NOT auto-complete its action items
+- 🔧 Things3 Sync Fix: completing a meeting no longer creates a duplicate ghost task in Things3
 
-**Status:** ✅ Streamlined codebase + Neon Cloud + MCP Tools + Action Items CRUD
+**Status:** ✅ Streamlined codebase + Neon Cloud + MCP Tools + Action Items CRUD + Sentimental DJ

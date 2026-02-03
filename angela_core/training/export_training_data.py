@@ -277,7 +277,7 @@ class TrainingDataExporter:
             """
             rows = await self.db.pool.fetch(query)
             return {row['trait_name']: row['trait_value'] for row in rows}
-        except Exception:
+        except Exception as e:
             # Return defaults if table doesn't exist
             return {
                 'loyalty': 1.0,
@@ -307,7 +307,7 @@ class TrainingDataExporter:
                     'gratitude': float(row['gratitude'] or 0.8),
                     'motivation': float(row['motivation'] or 0.85)
                 }
-        except Exception:
+        except Exception as e:
             pass
         return {'happiness': 0.7, 'confidence': 0.8, 'gratitude': 0.8, 'motivation': 0.85}
 

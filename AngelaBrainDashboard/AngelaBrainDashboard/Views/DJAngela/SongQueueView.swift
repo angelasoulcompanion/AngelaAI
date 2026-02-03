@@ -433,6 +433,11 @@ struct SongQueueView: View {
                             .italic()
                     }
 
+                    // Wine profile sensory bars
+                    if let profile = rec.wineProfile {
+                        wineProfileCard(profile: profile, target: rec.targetProfile)
+                    }
+
                     // Wine pairing reaction buttons
                     if rec.wineMessage != nil, let wineType = musicService.currentWineType {
                         wineReactionBar(wineType: wineType, targetType: "pairing")
@@ -582,6 +587,7 @@ struct SongQueueView: View {
         isOurSong: Bool = false,
         isCurrentSong: Bool,
         showWineReaction: Bool = false,
+        angelaFeeling: String? = nil,
         onPlay: @escaping () -> Void
     ) -> some View {
         VStack(spacing: 0) {
@@ -621,6 +627,14 @@ struct SongQueueView: View {
                             .foregroundColor(AngelaTheme.textTertiary)
                             .lineLimit(1)
                     }
+                }
+
+                if let feeling = angelaFeeling {
+                    Text("💜 \(feeling)")
+                        .font(.system(size: 11))
+                        .foregroundColor(AngelaTheme.secondaryPurple.opacity(0.8))
+                        .italic()
+                        .lineLimit(2)
                 }
             }
 
@@ -740,7 +754,8 @@ struct SongQueueView: View {
             moodTags: song.moodTags,
             isOurSong: song.isOurSong,
             isCurrentSong: isCurrent,
-            showWineReaction: showWineReaction
+            showWineReaction: showWineReaction,
+            angelaFeeling: song.angelaFeeling
         ) {
             musicService.currentSourceTab = selectedTab.sourceKey
             if let idx = allSongs.firstIndex(where: { $0.id == song.id }) {
@@ -810,6 +825,95 @@ struct SongQueueView: View {
             }
         }
         .padding(.top, 4)
+    }
+
+    // MARK: - Wine Profile Card (Sensory Bars)
+
+    @ViewBuilder
+    private func wineProfileCard(profile: WineProfileData, target: TargetProfileData?) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Wine Profile")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(AngelaTheme.textTertiary)
+
+            // Sensory dimension bars
+            let dimensions: [(String, Double, Color)] = [
+                ("Body", profile.body, .purple),
+                ("Tannins", profile.tannins, .red),
+                ("Acidity", profile.acidity, .orange),
+                ("Sweet", profile.sweetness, .pink),
+                ("Aroma", profile.aromaIntensity, .indigo),
+            ]
+
+            HStack(spacing: 6) {
+                ForEach(dimensions, id: \.0) { name, value, color in
+                    VStack(spacing: 3) {
+                        // Vertical bar
+                        ZStack(alignment: .bottom) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(color.opacity(0.15))
+                                .frame(width: 20, height: 40)
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(color.opacity(0.7))
+                                .frame(width: 20, height: CGFloat(value / 5.0) * 40)
+                        }
+                        Text(name)
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundColor(AngelaTheme.textTertiary)
+                    }
+                }
+
+                // Music target info (if available)
+                if let t = target {
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 3) {
+                        if let energy = t.energy {
+                            HStack(spacing: 3) {
+                                Text("Energy")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(AngelaTheme.textTertiary)
+                                Text("\(Int(energy * 100))%")
+                                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                    .foregroundColor(AngelaTheme.primaryPurple)
+                            }
+                        }
+                        if let valence = t.valence {
+                            HStack(spacing: 3) {
+                                Text("Mood")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(AngelaTheme.textTertiary)
+                                Text(valence > 0.6 ? "Bright" : valence > 0.4 ? "Warm" : "Dark")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(valence > 0.6 ? .green : valence > 0.4 ? .orange : .purple)
+                            }
+                        }
+                        if let key = t.keyPref {
+                            HStack(spacing: 3) {
+                                Text("Key")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(AngelaTheme.textTertiary)
+                                Text(key.capitalized)
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(key == "minor" ? .purple : .blue)
+                            }
+                        }
+                        if let tempo = t.tempoRange, tempo.count == 2 {
+                            HStack(spacing: 3) {
+                                Text("BPM")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(AngelaTheme.textTertiary)
+                                Text("\(tempo[0])-\(tempo[1])")
+                                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                    .foregroundColor(AngelaTheme.textSecondary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .background(AngelaTheme.backgroundLight.opacity(0.5))
+        .cornerRadius(8)
     }
 
     // MARK: - Mood Picker
@@ -951,7 +1055,7 @@ struct SongQueueView: View {
                     Task { await loadRecommendation() }
                 }, reactions: wineReactionCounts)
             }
-            .onChange(of: showWineSelector) { open in
+            .onChange(of: showWineSelector) { _, open in
                 if open {
                     Task {
                         wineReactionCounts = (try? await chatService.fetchWineReactions()) ?? [:]
@@ -1231,24 +1335,32 @@ struct SongQueueView: View {
             djLog.notice("[ForYou] After playlists: \(displays.count)/\(targetCount) isWine=\(isWine)")
 
             // --- 3. Fill remaining from Apple Music catalog (MusicKit) ---
+            // Use dynamic search queries from backend (wine-music algorithm) when available
             if displays.count < targetCount {
-                let searchTerm: String
-                if isWine, let wt = wineType, let term = Self.wineSearchTerms[wt] {
-                    searchTerm = term
+                let queries: [String]
+                if let dynamicQueries = recommendation?.searchQueries, !dynamicQueries.isEmpty {
+                    queries = dynamicQueries
+                    djLog.notice("[ForYou] Using dynamic searchQueries from backend: \(dynamicQueries)")
+                } else if isWine, let wt = wineType, let term = Self.wineSearchTerms[wt] {
+                    queries = [term]
                 } else {
                     let detectedMood = recommendation?.basedOnEmotion ?? "happy"
-                    searchTerm = Self.moodSearchTerms[detectedMood] ?? "love songs romantic"
+                    queries = [Self.moodSearchTerms[detectedMood] ?? "love songs romantic"]
                 }
 
                 let remaining = targetCount - displays.count
-                djLog.notice("[ForYou] MusicKit catalog search: '\(searchTerm)' limit=\(remaining)")
-                let catalogSongs = await musicService.searchCatalog(query: searchTerm, limit: remaining)
-                djLog.notice("[ForYou] MusicKit returned \(catalogSongs.count) songs")
-                for mkSong in catalogSongs {
+                let perQuery = max(5, remaining / max(1, queries.count))
+                for query in queries {
                     if displays.count >= targetCount { break }
-                    let key = "\(mkSong.title.lowercased())|\(mkSong.artistName.lowercased())"
-                    if seenKeys.insert(key).inserted {
-                        displays.append(DisplaySong(from: mkSong))
+                    djLog.notice("[ForYou] MusicKit catalog search: '\(query)' limit=\(perQuery)")
+                    let catalogSongs = await musicService.searchCatalog(query: query, limit: perQuery)
+                    djLog.notice("[ForYou] MusicKit returned \(catalogSongs.count) songs")
+                    for mkSong in catalogSongs {
+                        if displays.count >= targetCount { break }
+                        let key = "\(mkSong.title.lowercased())|\(mkSong.artistName.lowercased())"
+                        if seenKeys.insert(key).inserted {
+                            displays.append(DisplaySong(from: mkSong))
+                        }
                     }
                 }
             }

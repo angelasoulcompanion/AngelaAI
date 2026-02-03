@@ -24,6 +24,9 @@ struct Song: Identifiable, Codable {
     let source: String?
     let addedAt: String?
     let lyricsSummary: String?
+    let angelaFeeling: String?
+    let angelaMeaning: String?
+    let feelingIntensity: Int?
 
     var id: String { songId }
 }
@@ -41,6 +44,57 @@ struct SongRecommendation: Codable {
     let emotionDetails: [String]?
     let ourSongsMatched: Int?
     let wineMessage: String?
+    // Wine-music pairing algorithm fields
+    let wineProfile: WineProfileData?
+    let targetProfile: TargetProfileData?
+    let searchQueries: [String]?
+}
+
+// MARK: - Wine Profile (sensory dimensions)
+
+struct WineProfileData: Codable {
+    let body: Double
+    let tannins: Double
+    let acidity: Double
+    let sweetness: Double
+    let aromaIntensity: Double
+}
+
+// MARK: - Music Target Profile (computed from wine + mood)
+
+struct TargetProfileData: Codable {
+    let tempoRange: [Int]?
+    let energy: Double?
+    let valence: Double?
+    let acousticPref: Double?
+    let keyPref: String?
+    let topGenres: [[GenreScore]]?
+    let searchQueries: [String]?
+}
+
+/// Genre score tuple decoded from [[name, score]] JSON array
+enum GenreScore: Codable {
+    case string(String)
+    case double(Double)
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let s = try? container.decode(String.self) {
+            self = .string(s)
+        } else if let d = try? container.decode(Double.self) {
+            self = .double(d)
+        } else {
+            self = .string("")
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .string(let s): try container.encode(s)
+        case .double(let d): try container.encode(d)
+        }
+    }
 }
 
 // MARK: - Music Share Request (encoded — needs CodingKeys for snake_case output)
@@ -116,6 +170,7 @@ struct DisplaySong: Identifiable {
     let angelaSong: Song?
     let isOurSong: Bool
     let moodTags: [String]
+    let angelaFeeling: String?
 
     /// Init from MusicKit.Song (Library, Playlists, Search results)
     init(from mkSong: MusicKit.Song) {
@@ -129,6 +184,7 @@ struct DisplaySong: Identifiable {
         self.angelaSong = nil
         self.isOurSong = false
         self.moodTags = []
+        self.angelaFeeling = nil
     }
 
     /// Init from Angela Song (Our Songs tab)
@@ -143,6 +199,7 @@ struct DisplaySong: Identifiable {
         self.angelaSong = angelaSong
         self.isOurSong = angelaSong.isOurSong
         self.moodTags = angelaSong.moodTags
+        self.angelaFeeling = angelaSong.angelaFeeling
     }
 
     /// Init from Angela Song enriched with MusicKit artwork
@@ -157,6 +214,7 @@ struct DisplaySong: Identifiable {
         self.angelaSong = angelaSong
         self.isOurSong = angelaSong.isOurSong
         self.moodTags = angelaSong.moodTags
+        self.angelaFeeling = angelaSong.angelaFeeling
     }
 
     /// Init from iTunes Search API result (no MusicKit, no Angela Song)
@@ -171,6 +229,7 @@ struct DisplaySong: Identifiable {
         self.angelaSong = nil
         self.isOurSong = false
         self.moodTags = []
+        self.angelaFeeling = nil
     }
 
     var durationFormatted: String? {

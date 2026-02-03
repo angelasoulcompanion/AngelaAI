@@ -20,7 +20,6 @@ import math
 from collections import Counter
 
 from angela_core.database import get_db_connection
-# from angela_core.embedding_service import  # REMOVED: Migration 009 generate_embedding
 
 
 class PatternType:

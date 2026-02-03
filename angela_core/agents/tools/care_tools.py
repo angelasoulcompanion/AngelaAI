@@ -256,7 +256,7 @@ class MilestoneReminderTool(BaseTool):
                                     "days_until": days_until,
                                     "weight": float(m.get("emotional_weight", 0.5) or 0.5)
                                 })
-                        except Exception:
+                        except Exception as e:
                             continue
 
                 await db.disconnect()

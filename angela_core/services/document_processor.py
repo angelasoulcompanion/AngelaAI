@@ -32,7 +32,6 @@ try:
 except ImportError:
     word_tokenize = None
 
-# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 
 logger = logging.getLogger(__name__)
 

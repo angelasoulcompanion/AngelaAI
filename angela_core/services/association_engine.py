@@ -32,7 +32,6 @@ warnings.warn(
 )
 
 from angela_core.database import db
-# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 
 # Setup logger
 logger = logging.getLogger(__name__)

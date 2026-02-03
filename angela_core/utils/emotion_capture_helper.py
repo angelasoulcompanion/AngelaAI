@@ -12,7 +12,6 @@ import json
 from datetime import datetime
 
 from angela_core.database import db
-# from angela_core.embedding_service import  # REMOVED: Migration 009 embedding
 from angela_core.services.emotion_capture_service import emotion_capture
 
 logger = logging.getLogger(__name__)

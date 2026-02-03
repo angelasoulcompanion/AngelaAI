@@ -508,7 +508,7 @@ class ProjectTrackingService:
             )
             if result.returncode == 0:
                 return result.stdout.strip()
-        except:
+        except Exception as e:
             pass
         return None
 
@@ -537,7 +537,7 @@ class ProjectTrackingService:
             )
             if result.returncode == 0 and result.stdout.strip():
                 return result.stdout.strip().split('\n')
-        except:
+        except Exception as e:
             pass
 
         return []
@@ -603,7 +603,7 @@ class ProjectTrackingService:
                 if date_str:
                     try:
                         committed_at = datetime.fromisoformat(date_str.replace(' ', 'T')[:19])
-                    except:
+                    except Exception as e:
                         pass
 
                 # Insert (ignore if already exists)
@@ -619,7 +619,7 @@ class ProjectTrackingService:
                     project_id, session_id, commit_hash, message,
                     author, files_changed, insertions, deletions, committed_at
                 )
-        except:
+        except Exception as e:
             pass
 
     # =========================================================================
@@ -669,7 +669,7 @@ class ProjectTrackingService:
                         tech_stack.append(('database', 'PostgreSQL', None, 'Database'))
                     if 'pytest' in content:
                         tech_stack.append(('tool', 'pytest', None, 'Testing'))
-            except:
+            except Exception as e:
                 pass
 
         # Check package.json for JS frameworks
@@ -687,7 +687,7 @@ class ProjectTrackingService:
                         tech_stack.append(('framework', 'Vue.js', None, 'Frontend'))
                     if 'typescript' in content:
                         tech_stack.append(('language', 'TypeScript', None, None))
-            except:
+            except Exception as e:
                 pass
 
         # Insert tech stack
@@ -701,7 +701,7 @@ class ProjectTrackingService:
                     """,
                     project_id, tech_type, tech_name, version, purpose
                 )
-            except:
+            except Exception as e:
                 pass
 
     # =========================================================================

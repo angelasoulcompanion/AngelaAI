@@ -43,7 +43,6 @@ if str(script_dir) not in sys.path:
 # # # from angela_core.conversation_json_builder import build_content_json, generate_embedding_text # REMOVED: Migration 010  # REMOVED: Migration 010  # REMOVED: Migration 010
 
 # Import centralized embedding service
-# from angela_core.embedding_service import embedding  # REMOVED: Migration 009
 # RESTORED: Migration 015 - Using multilingual-e5-small (384 dims)
 from angela_core.services.embedding_service import get_embedding_service
 from angela_core.config import config

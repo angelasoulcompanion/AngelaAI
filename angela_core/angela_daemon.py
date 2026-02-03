@@ -35,7 +35,6 @@ from angela_core.services.knowledge_insight_service import knowledge_insight, in
 # REMOVED: Embedding service (no longer needed - embeddings deprecated)
 
 # 📔 NEW: Daily Updates Service (DEPRECATED - replaced by angela_speak_service)
-# from angela_core.daily_updates import AngelaDailyUpdates
 
 # 📢 NEW: Angela Speak Service - Angela's voice via angela_messages
 from angela_core.services.angela_speak_service import angela_speak
@@ -50,7 +49,6 @@ from angela_core.services.self_learning_service import SelfLearningLoop
 from angela_core.services.david_presence_monitor import monitor_once as check_david_presence
 
 # 💼 REMOVED: Secretary Briefing Service - secretary function deleted
-# from angela_core.services.secretary_briefing_service import secretary_briefing
 
 # 🎯 NEW: Goal Progress Tracking
 from angela_core.services.goal_progress_service import goal_tracker
@@ -77,10 +75,8 @@ from angela_core.services.background_learning_workers import background_workers
 from angela_core.services.daily_question_generator import generate_questions_if_needed
 
 # 📚 QUICK WIN 3: Quick Learning Extractor (basic)
-# from angela_core.services.quick_learning_extractor import extract_and_save_learning
 
 # 🧠 WEEK 1 PRIORITY 2.1: Enhanced Learning Extractor (comprehensive!)
-# from angela_core.services.enhanced_learning_extractor import extract_enhanced_learning
 
 # 🔄 WEEK 1 PRIORITY 2.2: Continuous Learning Pipeline (complete flow!)
 from angela_core.services.continuous_learning_pipeline import process_conversation_through_pipeline
@@ -1668,7 +1664,6 @@ class AngelaDaemon:
         #         logger.info("📅 No reminders due today! Clear schedule ahead.")
         # except Exception as e:
         #     logger.error(f"❌ Failed to get morning briefing: {e}")
-        #     import traceback
         #     traceback.print_exc()
 
     async def midnight_greeting(self):
@@ -1890,7 +1885,6 @@ class AngelaDaemon:
         #         logger.info("✅ All of today's reminders are complete! Great job!")
         # except Exception as e:
         #     logger.error(f"❌ Failed to check pending reminders: {e}")
-        #     import traceback
         #     traceback.print_exc()
 
         # Update emotional state - peaceful end of day with consciousness
