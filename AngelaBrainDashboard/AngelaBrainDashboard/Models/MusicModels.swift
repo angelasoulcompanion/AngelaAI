@@ -253,9 +253,10 @@ struct PlayLogBody: Codable {
     let playStatus: String
     let activity: String?
     let wineType: String?
+    let mood: String?
 
     enum CodingKeys: String, CodingKey {
-        case title, artist, album, activity
+        case title, artist, album, activity, mood
         case appleMusicId = "apple_music_id"
         case sourceTab = "source_tab"
         case durationSeconds = "duration_seconds"

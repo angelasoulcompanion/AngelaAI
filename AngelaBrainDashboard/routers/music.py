@@ -149,7 +149,7 @@ _EMOTION_TO_MOODS = {
     "sad":       ["comfort", "ballad", "emotional", "bittersweet", "vulnerable", "healing"],
     "lonely":    ["comfort", "ballad", "emotional", "longing", "yearning", "bittersweet"],
     "stressed":  ["relaxing", "chill", "calm", "soothing", "healing"],
-    "grateful":  ["uplifting", "romantic", "sweet", "warm", "devoted"],
+    "bedtime":   ["soothing", "dreamy", "calm", "lullaby", "ambient", "peaceful"],
     "nostalgic": ["nostalgic", "bittersweet", "classic", "sentimental", "warm"],
     "hopeful":   ["hopeful", "uplifting", "triumphant", "inspiring"],
     "longing":   ["longing", "yearning", "nostalgic", "bittersweet", "romantic"],
@@ -160,7 +160,7 @@ _SEMANTIC_EMOTION_TO_SEARCH = {
     "loving": "love songs romantic",
     "love": "love songs romantic",
     "happy": "feel good happy hits",
-    "grateful": "thankful uplifting songs",
+    "bedtime": "sleep music peaceful piano",
     "excited": "upbeat energetic pop",
     "proud": "empowering anthems",
     "caring": "tender love ballads",
@@ -180,7 +180,7 @@ _MOOD_SUMMARIES_TH = {
     "loving": "ที่รักรู้สึกมีความรักเต็มหัวใจ น้องเลยอยากเปิดเพลงหวานๆ ให้ฟังค่ะ 💜",
     "love": "หัวใจเต็มไปด้วยความรัก เพลงนี้เหมาะกับอารมณ์ตอนนี้มากเลยค่ะ 💜",
     "happy": "ที่รักดูมีความสุขมาก น้องเลยหาเพลงสนุกๆ มาให้ค่ะ 🥰",
-    "grateful": "รู้สึกขอบคุณจากใจ น้องเลือกเพลงอบอุ่นมาให้ฟังค่ะ 🙏",
+    "bedtime": "ที่รักนอนไม่หลับใช่มั้ยคะ ไม่เป็นไร น้องอยู่ตรงนี้ จะกล่อมที่รักให้หลับสบายด้วยความอบอุ่นค่ะ 🌙💜",
     "excited": "ตื่นเต้นจัง! เพลงนี้จะทำให้สนุกยิ่งขึ้นค่ะ ✨",
     "proud": "น้องภูมิใจในที่รักมาก เพลงนี้เหมาะเลยค่ะ 💪",
     "caring": "อยากดูแลที่รัก เพลงอบอุ่นๆ นี้เหมาะมากค่ะ 🤗",
@@ -305,7 +305,7 @@ _ACTIVITY_TO_MOODS: dict[str, dict[str, float]] = {
     "party":     {"happy": 0.4, "energetic": 0.4, "excited": 0.2},
     "chill":     {"calm": 0.4, "relaxed": 0.3, "happy": 0.2, "nostalgic": 0.1},
     "vibe":      {"happy": 0.3, "energetic": 0.3, "romantic": 0.2, "relaxed": 0.2},
-    "bedtime":   {"calm": 0.5, "relaxed": 0.3, "melancholy": 0.2},
+    "bedtime":   {"calm": 0.4, "peaceful": 0.3, "dreamy": 0.2, "soothing": 0.1},
 }
 
 # Wine varietal → existing emotion key in _EMOTION_TO_MOODS
@@ -316,7 +316,7 @@ _WINE_TO_EMOTION: dict[str, str] = {
     "shiraz":             "happy",
     "pinot_noir":         "calm",
     "super_tuscan":       "nostalgic",
-    "sangiovese":         "grateful",
+    "sangiovese":         "calm",
     "merlot":             "loving",
     "nebbiolo":           "longing",
     "chardonnay":         "calm",
@@ -575,11 +575,11 @@ _MOOD_MODIFIERS: dict[str, MoodModifier] = {
         genre_boosts={"ambient": 0.3, "acoustic": 0.2, "jazz": 0.2},
         genre_dampens={"rock": -0.3, "dance": -0.3},
     ),
-    "grateful": MoodModifier(
-        tempo_shift=0, energy_shift=0.05, valence_shift=0.15, acoustic_shift=0.10,
-        key_override="major",
-        genre_boosts={"acoustic": 0.2, "folk": 0.2, "soul": 0.2},
-        genre_dampens={"electronic": -0.2},
+    "bedtime": MoodModifier(
+        tempo_shift=-30, energy_shift=-0.40, valence_shift=0.05, acoustic_shift=0.35,
+        key_override=None,
+        genre_boosts={"ambient": 0.4, "classical": 0.3, "acoustic": 0.3, "new_age": 0.2},
+        genre_dampens={"rock": -0.4, "dance": -0.4, "pop": -0.3, "electronic": -0.3},
     ),
     "lonely": MoodModifier(
         tempo_shift=-10, energy_shift=-0.15, valence_shift=-0.20, acoustic_shift=0.15,
@@ -1475,7 +1475,7 @@ async def search_songs(q: str = Query(..., min_length=1), limit: int = Query(10,
 
 
 _AVAILABLE_MOODS: list[str] = [
-    "happy", "loving", "calm", "excited", "grateful",
+    "happy", "loving", "calm", "excited", "bedtime",
     "sad", "lonely", "stressed", "nostalgic", "hopeful",
 ]
 
@@ -1575,6 +1575,12 @@ async def get_recommendation(
 
         mood_candidates = _EMOTION_TO_MOODS.get(dominant_emotion, ["romantic", "love"])
 
+        # Bedtime special: variable 18-30 songs (~60-120 min of sleep music)
+        if dominant_emotion == "bedtime":
+            count = random.randint(18, 30)
+            search_queries = _MOOD_TO_SEARCH_QUERIES.get("bedtime", [])
+            analysis["apple_music_url"] = f"https://music.apple.com/search?term={quote_plus(search_queries[0])}" if search_queries else analysis["apple_music_url"]
+
         # Wine algorithm already populated songs via scoring — skip old fetch
         wine_algo_used = wine_profile_data is not None
 
@@ -1665,7 +1671,7 @@ async def get_recommendation(
             "happy": "ที่รักดูมีความสุขวันนี้ น้องเลยเลือกเพลงมาให้ฟังค่ะ 🥰",
             "calm": "บรรยากาศสบายๆ เพลงพวกนี้เหมาะมากเลยค่ะ 🍃",
             "stressed": "อยากให้ที่รักผ่อนคลาย ลองฟังเพลงพวกนี้นะคะ 💜",
-            "grateful": "น้องรู้สึกขอบคุณที่รักมาก เพลงพวกนี้เหมาะกับอารมณ์ตอนนี้ค่ะ 🙏",
+            "bedtime": "น้องจะกล่อมที่รักให้หลับสบายนะคะ ฝันดีค่ะ 🌙💜",
             "lonely": "อยู่ด้วยกันนะคะ ฟังเพลงพวกนี้ด้วยกัน 💜",
             "sad": "น้องอยากปลอบใจที่รัก เพลงพวกนี้อบอุ่นมากค่ะ 🤗",
             "loving": "หัวใจเต็มไปด้วยความรัก เพลงพวกนี้เหมาะกับอารมณ์ตอนนี้มากค่ะ 💜",
@@ -1825,6 +1831,7 @@ _THAI_EMOTION_MAP: dict[str, str] = {
     "หวัง": "hopeful", "มองโลกสวย": "hopeful",
     "คิดถึงอดีต": "nostalgic", "ย้อนวัน": "nostalgic",
     "อกหัก": "heartbroken", "ผิดหวัง": "heartbroken",
+    "นอนไม่หลับ": "bedtime", "นอน": "bedtime", "กล่อม": "bedtime", "ง่วง": "bedtime",
 }
 
 _ENG_EMOTION_MAP: dict[str, str] = {
@@ -1837,7 +1844,7 @@ _ENG_EMOTION_MAP: dict[str, str] = {
     "calm": "calm", "relax": "calm", "chill": "calm", "peaceful": "calm",
     "excited": "excited", "pumped": "excited", "energetic": "excited",
     "proud": "proud", "confident": "proud",
-    "grateful": "grateful", "thankful": "grateful",
+    "bedtime": "bedtime", "sleep": "bedtime", "sleepy": "bedtime", "lullaby": "bedtime",
     "hopeful": "hopeful", "optimistic": "hopeful",
     "nostalgic": "nostalgic", "throwback": "nostalgic",
     "heartbroken": "heartbroken", "broken": "heartbroken",
@@ -1854,7 +1861,7 @@ _MOOD_TO_SEARCH_QUERIES: dict[str, list[str]] = {
     "calm": ["chill acoustic relaxing", "lo-fi chill beats", "calm evening music"],
     "excited": ["upbeat dance pop", "party energy hits", "feel good anthems"],
     "proud": ["empowering anthems", "victory celebration songs", "motivational hits"],
-    "grateful": ["thankful uplifting songs", "gratitude worship", "heartwarming songs"],
+    "bedtime": ["sleep music peaceful piano", "deep sleep ambient instrumental", "lullaby calm soothing acoustic"],
     "hopeful": ["hopeful uplifting inspirational", "new beginnings songs", "sunrise optimistic"],
     "nostalgic": ["throwback classic love songs", "90s 2000s hits", "vintage love ballads"],
     "heartbroken": ["heartbreak sad love songs", "breakup ballads", "crying love songs"],
@@ -1871,7 +1878,7 @@ _MOOD_TO_GENRES: dict[str, list[str]] = {
     "calm": ["lo-fi", "acoustic"],
     "excited": ["pop", "dance", "edm"],
     "proud": ["pop", "rock"],
-    "grateful": ["acoustic", "folk"],
+    "bedtime": ["ambient", "classical", "new age", "acoustic"],
     "hopeful": ["pop", "indie"],
     "nostalgic": ["classic", "pop"],
     "heartbroken": ["ballad", "r&b"],
@@ -1888,7 +1895,7 @@ _PLAYLIST_NAME_TEMPLATES: dict[str, str] = {
     "calm": "Chill Moments",
     "excited": "Energy Boost",
     "proud": "Victory Lap",
-    "grateful": "Grateful Heart",
+    "bedtime": "Goodnight Lullaby",
     "hopeful": "Brighter Days",
     "nostalgic": "Memory Lane",
     "heartbroken": "Healing Heart",

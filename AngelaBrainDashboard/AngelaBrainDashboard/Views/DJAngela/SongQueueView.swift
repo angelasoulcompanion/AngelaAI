@@ -444,7 +444,7 @@ struct SongQueueView: View {
                     }
 
                     // Tappable mood pills
-                    let moods = rec.availableMoods ?? ["happy", "loving", "calm", "excited", "grateful", "sad", "lonely", "stressed", "nostalgic", "hopeful"]
+                    let moods = rec.availableMoods ?? ["happy", "loving", "calm", "excited", "bedtime", "sad", "lonely", "stressed", "nostalgic", "hopeful"]
                     let current = selectedMood ?? rec.basedOnEmotion
 
                     moodPickerGrid(moods: moods, selected: current)
@@ -920,7 +920,7 @@ struct SongQueueView: View {
 
     private static let moodEmojis: [String: String] = [
         "happy": "😊", "loving": "💜", "calm": "🍃", "excited": "✨",
-        "grateful": "🙏", "sad": "😢", "lonely": "🌙", "stressed": "😮‍💨",
+        "bedtime": "😴", "sad": "😢", "lonely": "🌙", "stressed": "😮‍💨",
         "nostalgic": "🌸", "hopeful": "🌅",
     ]
 
@@ -942,7 +942,7 @@ struct SongQueueView: View {
         "loving": "love songs romantic ballads",
         "calm": "chill acoustic relaxing",
         "excited": "upbeat energetic pop dance",
-        "grateful": "thankful uplifting songs",
+        "bedtime": "sleep music peaceful piano ambient",
         "sad": "sad songs emotional ballad",
         "lonely": "missing you lonely songs",
         "stressed": "calm relaxing piano ambient",
@@ -981,6 +981,7 @@ struct SongQueueView: View {
                 let isSelected = mood == selected
                 Button {
                     selectedMood = mood
+                    musicService.currentMood = mood     // pass to play logging
                     musicService.currentWineType = nil  // mood overrides wine
                     Task { await loadRecommendation(mood: mood) }
                 } label: {
@@ -1050,7 +1051,8 @@ struct SongQueueView: View {
             .popover(isPresented: $showWineSelector, arrowEdge: .bottom) {
                 WineSelectorView(onSelect: { wineKey in
                     musicService.currentWineType = wineKey
-                    selectedMood = nil  // wine overrides mood
+                    selectedMood = nil              // wine overrides mood
+                    musicService.currentMood = nil  // clear mood for play logging
                     showWineSelector = false
                     Task { await loadRecommendation() }
                 }, reactions: wineReactionCounts)
@@ -1277,7 +1279,7 @@ struct SongQueueView: View {
         "loving":    ["love", "romantic", "r&b", "valentine", "letter"],
         "calm":      ["chill", "acoustic", "easy", "relax", "ambient", "lo-fi", "lofi"],
         "excited":   ["party", "dance", "house", "energy", "workout", "hype"],
-        "grateful":  ["inspir", "grateful", "hope", "worship"],
+        "bedtime":   ["sleep", "lullaby", "ambient", "piano", "calm", "meditation", "dream", "night"],
         "sad":       ["sad", "heartbreak", "cry", "miss", "blue"],
         "lonely":    ["lonely", "alone", "miss", "night", "late night"],
         "stressed":  ["chill", "calm", "relax", "meditation", "easy", "ambient"],
@@ -1299,11 +1301,12 @@ struct SongQueueView: View {
         do {
             let wineType = musicService.currentWineType
             let isWine = wineType != nil
-            let targetCount = isWine ? Self.wineRecommendTargetCount : Self.recommendTargetCount
+            let isBedtime = (mood ?? selectedMood) == "bedtime"
+            let targetCount = isWine ? Self.wineRecommendTargetCount : (isBedtime ? 30 : Self.recommendTargetCount)
             recommendation = try await chatService.getRecommendation(
                 mood: mood ?? selectedMood,
                 wineType: wineType,
-                count: isWine ? targetCount : nil
+                count: (isWine || isBedtime) ? targetCount : nil
             )
 
             // --- 1. Angela DB songs (our songs) ---

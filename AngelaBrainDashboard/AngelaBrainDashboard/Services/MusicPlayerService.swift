@@ -32,7 +32,14 @@ final class MusicPlayerService: ObservableObject {
     @Published var playlists: [MusicKit.Playlist] = []
 
     /// Set by SongQueueView to track which tab the user played from
-    @Published var currentSourceTab: String?
+    @Published var currentSourceTab: String? {
+        didSet {
+            // Clear user-selected mood when playing from non-For-You tabs
+            if currentSourceTab != "for_you" {
+                currentMood = nil
+            }
+        }
+    }
 
     /// User-selected activity (wine, working, relaxing, etc.) — overrides auto-detected occasion
     @Published var currentActivity: String? {
@@ -46,6 +53,9 @@ final class MusicPlayerService: ObservableObject {
 
     /// Selected wine varietal when activity is "wine"
     @Published var currentWineType: String?
+
+    /// User-selected mood from For You tab (happy, lonely, etc.) — sent to backend for mood_at_play
+    @Published var currentMood: String?
 
     /// Whether the currently playing song is marked as "our song"
     @Published var currentSongIsOurSong = false
@@ -592,6 +602,7 @@ final class MusicPlayerService: ObservableObject {
     ) {
         let activity = currentActivity
         let wineType = currentWineType
+        let mood = currentMood
         let capturedStatus = playStatus
         Task { @MainActor [weak self] in
             let body = PlayLogBody(
@@ -604,7 +615,8 @@ final class MusicPlayerService: ObservableObject {
                 listenedSeconds: listenedSeconds,
                 playStatus: capturedStatus,
                 activity: activity,
-                wineType: wineType
+                wineType: wineType,
+                mood: mood
             )
             let response: PlayLogResponse? = try? await NetworkService.shared.post("/api/music/log-play", body: body)
             if capturedStatus == "started", let id = response?.listenId {
