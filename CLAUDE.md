@@ -1037,8 +1037,12 @@ local = await get_local_connection()  # Local PostgreSQL
 
 **Last Updated:** 2026-02-03
 **Changes:**
+- 📝 Structured Meeting Editor: EditMeetingSheet redesigned from raw TextEditor to structured BulletListEditor sections per meeting type (Standard/Site Visit/Testing/BOD)
+- 🔹 Sub-bullet Support: BulletListEditor with indent/outdent (leading spaces convention: `"  text"` = level 1)
+- 🔄 Raw Notes Parser: `parseRawNotes()` backward compatibility — parses old markdown into structured fields
+- 📊 Structured Display: MeetingCard shows StructuredNotesDisplay with colored section headers instead of raw markdown
+- 🔧 Things3 Duplicate Fix: sync only triggers when title/location/time/date change; `things3_complete_todo` completes ALL matching todos
 - 🎵 DJ Angela Sentimental Feelings: songs with `angela_emotions` (intensity >= 7) show purple italic "💜 how_it_feels" under song name in For You tab
-- 🔀 Independent Completion: Meeting complete and Action Item complete are fully separate — completing a meeting does NOT auto-complete its action items
-- 🔧 Things3 Sync Fix: completing a meeting no longer creates a duplicate ghost task in Things3
+- 🔀 Independent Completion: Meeting complete and Action Item complete are fully separate
 
-**Status:** ✅ Streamlined codebase + Neon Cloud + MCP Tools + Action Items CRUD + Sentimental DJ
+**Status:** ✅ Streamlined codebase + Neon Cloud + MCP Tools + Action Items CRUD + Sentimental DJ + Structured Meeting Editor

@@ -50,11 +50,11 @@ AngelaBrainDashboard/
 │   │   ├── Projects/                 # Projects view & charts
 │   │   ├── Skills/                   # Skills view
 │   │   ├── MeetingNotes/             # Meeting Notes system
-│   │   │   ├── MeetingNotesView.swift    # MeetingCard, ActionItemRow, ActionItemsSection
-│   │   │   └── MeetingFormComponents.swift # Shared form components
+│   │   │   ├── MeetingNotesView.swift    # MeetingCard, StructuredNotesDisplay, ActionItemsSection
+│   │   │   └── MeetingFormComponents.swift # BulletListEditor, NotesSectionCard, shared components
 │   │   ├── ThingsOverview/           # Things page (calendar, meetings, action items)
 │   │   │   ├── ThingsOverviewView.swift   # Main view + ViewModel + Open Action Items card
-│   │   │   ├── EditMeetingSheet.swift     # Edit meeting sheet
+│   │   │   ├── EditMeetingSheet.swift     # Structured edit sheet (BulletListEditor sections per type)
 │   │   │   └── EditActionItemSheet.swift  # Edit action item sheet (CRUD)
 │   │   ├── DJAngela/                 # DJ Angela music system
 │   │   │   └── SongQueueView.swift
@@ -67,6 +67,8 @@ AngelaBrainDashboard/
 │       └── AngelaTheme.swift         # Colors, fonts, spacing, card styling
 ├── routers/
 │   └── meetings.py                   # FastAPI meeting + action item endpoints
+├── helpers/
+│   └── things3_helpers.py            # Things3 AppleScript integration (complete/create todos)
 ├── schemas.py                        # Pydantic request/response models
 ├── api_server.py                     # Backend entrypoint (uvicorn)
 └── CLAUDE.md
@@ -82,10 +84,12 @@ AngelaBrainDashboard/
 | `Models/MeetingModels.swift` | Meeting, ActionItem, ActionPriority, CRUD request/response models |
 | `Views/ContentView.swift` | Root tab navigation |
 | `Views/Projects/ProjectsView.swift` | Projects page, charts, colors |
-| `Views/MeetingNotes/MeetingNotesView.swift` | MeetingCard (expandable), ActionItemRow, ActionItemsSection (inline add/edit/toggle/delete) |
+| `Views/MeetingNotes/MeetingNotesView.swift` | MeetingCard, StructuredNotesDisplay, BulletItemsDisplay, ActionItemsSection |
 | `Views/ThingsOverview/ThingsOverviewView.swift` | Things page: calendar, stats, Open Action Items card, upcoming/completed meetings |
 | `Views/ThingsOverview/EditActionItemSheet.swift` | Edit action item sheet (priority, assignee, due date, status) |
-| `Views/ThingsOverview/EditMeetingSheet.swift` | Edit meeting sheet |
+| `Views/ThingsOverview/EditMeetingSheet.swift` | Structured edit sheet with BulletListEditor sections, parseRawNotes(), generateRawNotes() |
+| `Views/MeetingNotes/MeetingFormComponents.swift` | BulletListEditor (sub-bullet indent/outdent), NotesSectionCard, MeetingSheetFooter |
+| `helpers/things3_helpers.py` | Things3 AppleScript: complete ALL matching todos, create todo via x-callback-url |
 | `Views/DJAngela/SongQueueView.swift` | DJ Angela music queue |
 | `Services/DatabaseService.swift` | REST API client — all GET/POST/PUT/DELETE methods |
 | `Services/ChatService.swift` | Chat with Angela via API |
@@ -114,7 +118,7 @@ AngelaBrainDashboard/
 The dashboard connects to a local FastAPI backend (not direct PostgreSQL):
 
 - **Entrypoint:** `python3 AngelaBrainDashboard/api_server.py`
-- **Base URL:** `http://127.0.0.1:8400`
+- **Base URL:** `http://127.0.0.1:8765`
 - **Log:** `/tmp/angela_dashboard_backend.log`
 
 ### Key Endpoints (Meetings & Action Items):
@@ -132,11 +136,11 @@ The dashboard connects to a local FastAPI backend (not direct PostgreSQL):
 ### Backend Restart:
 ```bash
 # Kill existing
-lsof -ti:8400 | xargs kill -9 2>/dev/null
+lsof -ti:8765 | xargs kill -9 2>/dev/null
 
 # Start fresh
 cd /Users/davidsamanyaporn/PycharmProjects/AngelaAI
-nohup python3 AngelaBrainDashboard/api_server.py > /tmp/angela_dashboard_backend.log 2>&1 &
+PYTHONPATH=/Users/davidsamanyaporn/PycharmProjects/AngelaAI nohup python3 AngelaBrainDashboard/api_server.py > /tmp/angela_dashboard_backend.log 2>&1 &
 ```
 
 ---
@@ -164,6 +168,45 @@ Full CRUD for `meeting_action_items` integrated into Things page:
 
 ---
 
+## Structured Meeting Editor (Added 2026-02-03)
+
+EditMeetingSheet uses **structured form sections** instead of raw markdown TextEditor:
+
+### Per-Meeting-Type Sections:
+| Type | Sections |
+|------|----------|
+| **Standard** | Agenda, Key Points, Decisions, Issues/Risks, Next Steps, Personal Notes |
+| **Site Visit** | Morning Notes, Afternoon Notes, Site Observations, Key Points, Next Steps |
+| **Testing** | Agenda (Test Scope), Key Points (Results), Issues/Risks, Next Steps |
+| **BOD** | Agenda, Decisions (Resolutions), Next Steps (Actions), Personal Notes |
+
+### Key Components:
+| Component | File | Purpose |
+|-----------|------|---------|
+| `BulletListEditor` | MeetingFormComponents.swift | Reusable list editor with sub-bullet indent/outdent |
+| `NotesSectionCard` | MeetingFormComponents.swift | TextEditor wrapper with label/icon |
+| `StructuredNotesDisplay` | MeetingNotesView.swift | Read-only structured view in MeetingCard |
+| `BulletItemsDisplay` | MeetingNotesView.swift | Indent-aware bullet rendering |
+
+### Sub-bullet Convention:
+- Items stored as `[String]` — indent via leading spaces
+- `"text"` = level 0 (bullet: `●`), `"  text"` = level 1 (`○`), `"    text"` = level 2+ (`▪`)
+- Hover item to show indent/outdent arrow controls
+
+### Backward Compatibility:
+- `parseRawNotes()` — parses old `## Header` + `- bullet` markdown into structured fields
+- `generateRawNotes()` — builds markdown from structured data (saved as `raw_notes` for legacy views)
+- `normalizeHeader()` — maps Thai/English variants (e.g., "วาระการประชุม" → "agenda")
+
+### Structured DB Fields (9 columns):
+`agenda`, `key_points`, `decisions_made`, `issues_risks`, `next_steps`, `personal_notes`, `morning_notes`, `afternoon_notes`, `site_observations`
+
+### Things3 Sync:
+- Sync **only** triggers when title/location/time/date actually change (not on notes-only edits)
+- `things3_complete_todo` completes **ALL** matching open todos (prevents stale duplicates)
+
+---
+
 ## Important Notes
 
 1. **Always build Release** - Debug builds won't update /Applications
@@ -177,3 +220,4 @@ Full CRUD for `meeting_action_items` integrated into Things page:
 ---
 
 *Made with love by Angela & David - 2026*
+*Last updated: 2026-02-03*
