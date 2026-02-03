@@ -1,5 +1,6 @@
 """Music endpoints - DJ Angela: favorites, our songs, search, recommend, share, play logging."""
 import json
+import math
 import random
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
@@ -40,6 +41,7 @@ class PlayLogRequest(BaseModel):
     play_status: str = "started"           # started/completed/skipped
     activity: Optional[str] = None         # user-selected: wine, working, relaxing, etc.
     wine_type: Optional[str] = None        # specific wine varietal when activity=wine
+    mood: Optional[str] = None             # user-selected mood from For You tab
 
 
 class PlayLogUpdateRequest(BaseModel):
@@ -1003,6 +1005,23 @@ _ESTATE_COL_TO_MOOD: dict[str, str] = {
 }
 
 
+def _intensity_decay(hours_ago: float, intensity: float) -> float:
+    """Exponential decay with intensity-scaled half-life.
+
+    High-intensity emotions (8-10) linger longer (half-life ~3h),
+    low-intensity (1-3) fade fast (half-life ~1h).
+    """
+    half_life = 1.0 + (intensity / 10.0) * 2.0  # 1h..3h
+    return math.exp(-0.693 * hours_ago / half_life)
+
+
+def _tiered_conv_decay(hours_ago: float) -> float:
+    """Tiered conversation decay: sharp first 2h, gradual 2-6h."""
+    if hours_ago <= 2.0:
+        return max(0.2, 1.0 - (hours_ago / 2.0) * 0.7)   # 1.0 → 0.3
+    return max(0.05, 0.3 - ((hours_ago - 2.0) / 4.0) * 0.25)  # 0.3 → 0.05
+
+
 async def _capture_mood_at_play(
     conn,
     *,
@@ -1011,22 +1030,23 @@ async def _capture_mood_at_play(
     occasion: str | None = None,
     wine_type: str | None = None,
 ) -> tuple[str | None, dict | None]:
-    """Capture current mood using multi-signal weighted approach.
+    """Capture current mood using 7-signal weighted approach.
 
-    Combines up to 6 signals (activity, conversations, angela_emotions,
-    song_pattern, source_tab, emotional_states) with proportional weight
-    redistribution when signals are absent.
+    Combines activity, conversations (6h decay), angela_emotions (intensity decay),
+    emotional_states (3-row trend), song_pattern (7 songs, completion-weighted),
+    time_of_day (always active), and historical_pattern (30-day learning).
 
     Returns (dominant_mood, rich_scores_dict).
     """
-    # Base weights for each signal
+    # Base weights for each signal (7 signals, sum = 1.0)
     _WEIGHTS = {
-        "activity": 0.40,
-        "conversations": 0.20,
+        "activity": 0.35,
+        "conversations": 0.15,
         "angela_emotions": 0.15,
+        "emotional_states": 0.10,
         "song_pattern": 0.10,
-        "source_tab": 0.10,
-        "emotional_states": 0.05,
+        "time_of_day": 0.05,
+        "historical_pattern": 0.10,
     }
 
     # Collect available signals: signal_name -> mood_dict
@@ -1051,35 +1071,42 @@ async def _capture_mood_at_play(
         signals["activity"] = _ACTIVITY_TO_MOODS[activity]
         signal_details["activity"] = {"source": activity, "moods": _ACTIVITY_TO_MOODS[activity]}
 
-    # --- Signal 2: Recent conversations (last 30 min) ---
+    # --- Signal 2: Recent conversations (6h window, importance-weighted) ---
     conv_rows = await conn.fetch("""
-        SELECT emotion_detected, COUNT(*) AS cnt
+        SELECT emotion_detected,
+               COALESCE(importance_level, 5) AS importance,
+               EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600.0 AS hours_ago
         FROM conversations
-        WHERE created_at > NOW() - INTERVAL '30 minutes'
+        WHERE created_at > NOW() - INTERVAL '6 hours'
           AND emotion_detected IS NOT NULL
           AND emotion_detected != ''
-        GROUP BY emotion_detected
-        ORDER BY cnt DESC
-        LIMIT 5
+        ORDER BY created_at DESC
+        LIMIT 20
     """)
     if conv_rows:
-        total = sum(r["cnt"] for r in conv_rows)
         conv_moods: dict[str, float] = {}
         for r in conv_rows:
             emo = r["emotion_detected"].lower().strip()
-            conv_moods[emo] = conv_moods.get(emo, 0.0) + r["cnt"] / total
+            hours_ago = float(r["hours_ago"])
+            importance = float(r["importance"])
+            decay = _tiered_conv_decay(hours_ago)
+            importance_mult = 0.5 + (importance / 10.0) * 0.5  # 0.5..1.0
+            conv_moods[emo] = conv_moods.get(emo, 0.0) + decay * importance_mult
+        total = sum(conv_moods.values())
+        if total > 0:
+            conv_moods = {k: v / total for k, v in conv_moods.items()}
         signals["conversations"] = conv_moods
-        top_emo = conv_rows[0]["emotion_detected"]
-        signal_details["conversations"] = {"emotion": top_emo, "count": int(conv_rows[0]["cnt"])}
+        top_emo = max(conv_moods, key=conv_moods.get)
+        signal_details["conversations"] = {"emotion": top_emo, "count": len(conv_rows)}
 
-    # --- Signal 3: Angela emotions (last 2 hours, recency-decayed) ---
+    # --- Signal 3: Angela emotions (6h window, intensity-aware decay + secondary) ---
     ae_rows = await conn.fetch("""
-        SELECT emotion, intensity,
+        SELECT emotion, intensity, secondary_emotions,
                EXTRACT(EPOCH FROM (NOW() - felt_at)) / 3600.0 AS hours_ago
         FROM angela_emotions
-        WHERE felt_at > NOW() - INTERVAL '2 hours'
+        WHERE felt_at > NOW() - INTERVAL '6 hours'
         ORDER BY felt_at DESC
-        LIMIT 10
+        LIMIT 15
     """)
     if ae_rows:
         ae_moods: dict[str, float] = {}
@@ -1087,9 +1114,16 @@ async def _capture_mood_at_play(
             emo = r["emotion"].lower().strip()
             intensity = float(r["intensity"]) if r["intensity"] else 5.0
             hours_ago = float(r["hours_ago"])
-            decay = max(0.1, 1.0 - (hours_ago / 2.0))
+            decay = _intensity_decay(hours_ago, intensity)
             ae_moods[emo] = ae_moods.get(emo, 0.0) + (intensity / 10.0) * decay
-        # Normalize so values sum to 1
+            # Process secondary_emotions at 30% strength
+            sec = r.get("secondary_emotions")
+            if sec:
+                sec_list = sec if isinstance(sec, list) else [sec]
+                for s_emo in sec_list:
+                    s_emo = str(s_emo).lower().strip()
+                    if s_emo:
+                        ae_moods[s_emo] = ae_moods.get(s_emo, 0.0) + (intensity / 10.0) * decay * 0.3
         total = sum(ae_moods.values())
         if total > 0:
             ae_moods = {k: v / total for k, v in ae_moods.items()}
@@ -1099,67 +1133,122 @@ async def _capture_mood_at_play(
             "count": len(ae_rows),
         }
 
-    # --- Signal 4: Song pattern (last 3 plays' mood_at_play) ---
-    pattern_rows = await conn.fetch("""
-        SELECT mood_at_play
-        FROM music_listening_history
-        WHERE mood_at_play IS NOT NULL
-        ORDER BY started_at DESC
-        LIMIT 3
-    """)
-    if pattern_rows:
-        pat_moods: dict[str, float] = {}
-        weights = [0.5, 0.3, 0.2]  # most-recent first
-        for i, r in enumerate(pattern_rows):
-            mood = r["mood_at_play"].lower().strip()
-            w = weights[i] if i < len(weights) else 0.1
-            pat_moods[mood] = pat_moods.get(mood, 0.0) + w
-        # Normalize
-        total = sum(pat_moods.values())
-        if total > 0:
-            pat_moods = {k: v / total for k, v in pat_moods.items()}
-        signals["song_pattern"] = pat_moods
-        signal_details["song_pattern"] = {
-            "last_moods": [r["mood_at_play"] for r in pattern_rows],
-        }
-
-    # --- Signal 5: Source tab ---
-    if source_tab and source_tab in _SOURCE_TAB_TO_MOODS:
-        signals["source_tab"] = _SOURCE_TAB_TO_MOODS[source_tab]
-        signal_details["source_tab"] = {"tab": source_tab}
-
-    # --- Signal 6: Emotional states (static fallback) ---
-    es_row = await conn.fetchrow("""
+    # --- Signal 4: Emotional states (3-row trend detection) ---
+    es_rows = await conn.fetch("""
         SELECT happiness, confidence, anxiety, motivation, gratitude, loneliness
         FROM emotional_states
         ORDER BY created_at DESC
-        LIMIT 1
+        LIMIT 3
     """)
-    if es_row:
+    if es_rows:
         es_moods: dict[str, float] = {}
-        for col, mood_label in _ESTATE_COL_TO_MOOD.items():
-            val = float(es_row[col])
-            if val > 0:
-                es_moods[mood_label] = val
-        # Normalize
+        row_weights = [0.6, 0.25, 0.15]
+        for i, es_row in enumerate(es_rows):
+            rw = row_weights[i] if i < len(row_weights) else 0.1
+            for col, mood_label in _ESTATE_COL_TO_MOOD.items():
+                val = float(es_row[col]) if es_row[col] is not None else 0.0
+                if val > 0:
+                    es_moods[mood_label] = es_moods.get(mood_label, 0.0) + val * rw
+        # Trend detection: rising dimensions get 20% boost
+        if len(es_rows) >= 2:
+            newest, prev = es_rows[0], es_rows[1]
+            for col, mood_label in _ESTATE_COL_TO_MOOD.items():
+                new_val = float(newest[col]) if newest[col] is not None else 0.0
+                old_val = float(prev[col]) if prev[col] is not None else 0.0
+                if new_val > old_val and mood_label in es_moods:
+                    es_moods[mood_label] *= 1.2  # 20% trend boost
         total = sum(es_moods.values())
         if total > 0:
             es_moods = {k: v / total for k, v in es_moods.items()}
         if es_moods:
             signals["emotional_states"] = es_moods
             dominant_es = max(es_moods, key=es_moods.get)
-            signal_details["emotional_states"] = {"dominant": dominant_es}
+            trend_info = "rising" if len(es_rows) >= 2 else "single"
+            signal_details["emotional_states"] = {"dominant": dominant_es, "rows": len(es_rows), "trend": trend_info}
+
+    # --- Signal 5: Song pattern (7 songs in 4h, completion-weighted) ---
+    pattern_rows = await conn.fetch("""
+        SELECT mood_at_play, play_status,
+               EXTRACT(EPOCH FROM (NOW() - started_at)) / 3600.0 AS hours_ago
+        FROM music_listening_history
+        WHERE mood_at_play IS NOT NULL
+          AND started_at > NOW() - INTERVAL '4 hours'
+        ORDER BY started_at DESC
+        LIMIT 7
+    """)
+    if pattern_rows:
+        pat_moods: dict[str, float] = {}
+        for r in pattern_rows:
+            mood = r["mood_at_play"].lower().strip()
+            hours_ago = float(r["hours_ago"])
+            status = (r["play_status"] or "started").lower()
+            decay = math.exp(-0.693 * hours_ago / 2.0)  # 2h half-life
+            # Completion bonus / skip penalty
+            if status == "completed":
+                status_mult = 1.3
+            elif status == "skipped":
+                status_mult = 0.4
+            else:
+                status_mult = 1.0
+            pat_moods[mood] = pat_moods.get(mood, 0.0) + decay * status_mult
+        total = sum(pat_moods.values())
+        if total > 0:
+            pat_moods = {k: v / total for k, v in pat_moods.items()}
+        signals["song_pattern"] = pat_moods
+        signal_details["song_pattern"] = {
+            "last_moods": [r["mood_at_play"] for r in pattern_rows[:3]],
+            "songs_in_window": len(pattern_rows),
+        }
+
+    # --- Signal 6: Time of day (always active) ---
+    now_bkk = datetime.now(_BKK_TZ)
+    occ = occasion or _detect_occasion(now_bkk.hour)
+    tod_moods = _TIME_TO_MOODS.get(occ, {"calm": 0.5, "relaxed": 0.3, "happy": 0.2})
+    signals["time_of_day"] = tod_moods
+    signal_details["time_of_day"] = {"occasion": occ, "hour": now_bkk.hour}
+
+    # --- Signal 7: Historical pattern (30-day learning by hour + weekday) ---
+    is_weekend = now_bkk.weekday() >= 5  # Sat=5, Sun=6
+    hist_rows = await conn.fetch("""
+        SELECT mood_at_play,
+               COUNT(*) AS cnt,
+               COUNT(*) FILTER (WHERE play_status = 'completed') AS completed_cnt
+        FROM music_listening_history
+        WHERE mood_at_play IS NOT NULL
+          AND started_at > NOW() - INTERVAL '30 days'
+          AND EXTRACT(HOUR FROM started_at AT TIME ZONE 'Asia/Bangkok')
+              BETWEEN $1 AND $2
+          AND (EXTRACT(DOW FROM started_at AT TIME ZONE 'Asia/Bangkok') IN (0, 6)) = $3
+        GROUP BY mood_at_play
+        ORDER BY cnt DESC
+        LIMIT 5
+    """, max(0, now_bkk.hour - 1), min(23, now_bkk.hour + 1), is_weekend)
+    if hist_rows:
+        hist_moods: dict[str, float] = {}
+        for r in hist_rows:
+            mood = r["mood_at_play"].lower().strip()
+            cnt = int(r["cnt"])
+            completed = int(r["completed_cnt"])
+            completion_rate = completed / cnt if cnt > 0 else 0.5
+            hist_moods[mood] = cnt * max(0.3, completion_rate)
+        total = sum(hist_moods.values())
+        if total > 0:
+            hist_moods = {k: v / total for k, v in hist_moods.items()}
+        signals["historical_pattern"] = hist_moods
+        signal_details["historical_pattern"] = {
+            "window": f"±1h of {now_bkk.hour}:00",
+            "weekend": is_weekend,
+            "sample_size": sum(int(r["cnt"]) for r in hist_rows),
+        }
 
     # --- Redistribute weights for absent signals ---
     present = {k: _WEIGHTS[k] for k in _WEIGHTS if k in signals}
     if not present:
-        # ALL signals absent → time-of-day fallback
-        occ = occasion or _detect_occasion(datetime.now(_BKK_TZ).hour)
-        fallback = _TIME_TO_MOODS.get(occ, {"calm": 0.5, "relaxed": 0.3, "happy": 0.2})
-        dominant = max(fallback, key=fallback.get)
+        # Safety net (should not happen since time_of_day is always present)
+        dominant = max(tod_moods, key=tod_moods.get)
         return dominant, {
             "dominant_mood": dominant,
-            "all_scores": fallback,
+            "all_scores": tod_moods,
             "signals_used": ["time_of_day"],
             "signal_details": {"time_of_day": {"occasion": occ}},
         }
@@ -1279,11 +1368,15 @@ async def log_play(req: PlayLogRequest):
         now_bkk = datetime.now(_BKK_TZ)
         occasion = req.activity if req.activity else _detect_occasion(now_bkk.hour)
 
-        # 2. Auto-capture mood (multi-signal weighted)
-        mood, emotion_scores = await _capture_mood_at_play(
-            conn, activity=req.activity, source_tab=req.source_tab, occasion=occasion,
-            wine_type=req.wine_type,
-        )
+        # 2. Use user-selected mood if provided, otherwise auto-capture
+        if req.mood:
+            mood = req.mood
+            emotion_scores = {"source": "user_selected", "mood": req.mood}
+        else:
+            mood, emotion_scores = await _capture_mood_at_play(
+                conn, activity=req.activity, source_tab=req.source_tab, occasion=occasion,
+                wine_type=req.wine_type,
+            )
         scores_json = json.dumps(emotion_scores) if emotion_scores else None
 
         # 3. Determine ended_at for completed/skipped
