@@ -57,8 +57,17 @@ final class MusicPlayerService: ObservableObject {
     /// User-selected mood from For You tab (happy, lonely, etc.) — sent to backend for mood_at_play
     @Published var currentMood: String?
 
+    /// Mood request from control buttons — triggers SongQueueView to switch to For You tab and fetch recommendations
+    @Published var requestedMood: String?
+
     /// Whether the currently playing song is marked as "our song"
     @Published var currentSongIsOurSong = false
+
+    /// Angela's commentary about the current song
+    @Published var currentSongCommentary: DJCommentary?
+
+    /// Play history for the current song
+    @Published var currentSongMemory: SongMemory?
 
     // MARK: - Private
 
@@ -297,6 +306,14 @@ final class MusicPlayerService: ObservableObject {
             )
 
             currentSongIsOurSong = angelaSong?.isOurSong ?? false
+
+            // Set Angela's commentary if we have an Angela song with feelings
+            if let angela = angelaSong {
+                currentSongCommentary = DJCommentary(from: angela)
+            } else {
+                currentSongCommentary = nil
+            }
+            currentSongMemory = nil  // Will be loaded by view if needed
 
             startPositionTracking()
 

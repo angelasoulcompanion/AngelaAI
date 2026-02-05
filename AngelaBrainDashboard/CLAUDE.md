@@ -33,6 +33,7 @@ xcodebuild -scheme AngelaBrainDashboard -configuration Release -destination 'pla
 | **UI** | SwiftUI |
 | **Charts** | Swift Charts |
 | **Database** | PostgresClientKit (direct connection) |
+| **Music** | MusicKit (Apple Music) |
 | **Platform** | macOS 14+ |
 
 ---
@@ -57,18 +58,29 @@ AngelaBrainDashboard/
 │   │   │   ├── EditMeetingSheet.swift     # Structured edit sheet (BulletListEditor sections per type)
 │   │   │   └── EditActionItemSheet.swift  # Edit action item sheet (CRUD)
 │   │   ├── DJAngela/                 # DJ Angela music system
-│   │   │   └── SongQueueView.swift
+│   │   │   └── SongQueueView.swift   # Tabs: Recent, Playlists, Our Songs, Queued, For You, Bedtime, Search
 │   │   └── ContentView.swift         # Tab navigation (root view)
 │   ├── Services/
-│   │   ├── DatabaseService.swift     # REST API client (all endpoints)
+│   │   ├── DatabaseService.swift     # REST API client (uses APIConfig.apiBaseURL)
 │   │   ├── ChatService.swift         # Chat with Angela
-│   │   └── MusicPlayerService.swift  # Apple Music integration
-│   └── Theme/
-│       └── AngelaTheme.swift         # Colors, fonts, spacing, card styling
+│   │   ├── MusicPlayerService.swift  # Apple Music integration + playAll/shufflePlay
+│   │   ├── NetworkService.swift      # WebSocket (uses APIConfig)
+│   │   └── BackendManager.swift      # Backend health check (uses APIConfig)
+│   └── Utilities/
+│       ├── AngelaTheme.swift         # Colors, fonts, spacing, angelaChip() modifier
+│       ├── APIConfig.swift           # Centralized host/port/baseURL constants
+│       └── DJAngelaConstants.swift   # Mood/wine data dicts, playlistMatchesMood()
 ├── routers/
-│   └── meetings.py                   # FastAPI meeting + action item endpoints
+│   ├── music.py                      # DJ Angela music endpoints (all use Depends(get_conn))
+│   ├── meetings.py                   # Meeting + action item endpoints
+│   └── ... (20 routers total)        # All refactored to Depends(get_conn)
 ├── helpers/
-│   └── things3_helpers.py            # Things3 AppleScript integration (complete/create todos)
+│   ├── __init__.py                   # normalize_scores(), parse_date(), DynamicUpdate
+│   ├── things3_helpers.py            # Things3 AppleScript integration
+│   ├── wine_config.py               # WineConfig registry (19 wines, single source of truth)
+│   ├── mood_config.py               # MoodConfig registry (16 moods, AVAILABLE_MOODS)
+│   └── activity_config.py           # ActivityConfig registry (5 activity moods: party, chill, focus, relaxing, vibe)
+├── db.py                             # get_conn() FastAPI Dependency for DB connections
 ├── schemas.py                        # Pydantic request/response models
 ├── api_server.py                     # Backend entrypoint (uvicorn)
 └── CLAUDE.md
@@ -89,13 +101,21 @@ AngelaBrainDashboard/
 | `Views/ThingsOverview/EditActionItemSheet.swift` | Edit action item sheet (priority, assignee, due date, status) |
 | `Views/ThingsOverview/EditMeetingSheet.swift` | Structured edit sheet with BulletListEditor sections, parseRawNotes(), generateRawNotes() |
 | `Views/MeetingNotes/MeetingFormComponents.swift` | BulletListEditor (sub-bullet indent/outdent), NotesSectionCard, MeetingSheetFooter |
-| `helpers/things3_helpers.py` | Things3 AppleScript: complete ALL matching todos, create todo via x-callback-url |
-| `Views/DJAngela/SongQueueView.swift` | DJ Angela music queue |
-| `Services/DatabaseService.swift` | REST API client — all GET/POST/PUT/DELETE methods |
+| `Views/DJAngela/SongQueueView.swift` | DJ Angela: 7 tabs (Recent, Playlists, Our Songs, Queued, For You, Bedtime, Search) |
+| `Services/DatabaseService.swift` | REST API client — uses `APIConfig.apiBaseURL` |
 | `Services/ChatService.swift` | Chat with Angela via API |
-| `Services/MusicPlayerService.swift` | Apple Music playback |
-| `Theme/AngelaTheme.swift` | Theme colors, fonts, spacing |
-| `routers/meetings.py` | Backend: meeting + action item API endpoints |
+| `Services/MusicPlayerService.swift` | Apple Music playback + `playAll()`/`shufflePlay()` helpers |
+| `Utilities/AngelaTheme.swift` | Theme colors, fonts, spacing, `angelaChip()` modifier |
+| `Utilities/APIConfig.swift` | Centralized `host`/`port`/`baseURL`/`apiBaseURL` |
+| `Utilities/DJAngelaConstants.swift` | `moodEmojis`, `wineDisplayNames`, `moodSearchTerms`, `playlistMatchesMood()` |
+| `helpers/wine_config.py` | `WineConfig` registry — single source of truth for 19 wines |
+| `helpers/mood_config.py` | `MoodConfig` registry — 16 moods + `AVAILABLE_MOODS`, keyword maps |
+| `helpers/activity_config.py` | `ActivityConfig` registry — 5 activity moods (party, chill, focus, relaxing, vibe) + Apple Music search terms |
+| `helpers/__init__.py` | `normalize_scores()`, `parse_date()`, `DynamicUpdate` builder |
+| `helpers/things3_helpers.py` | Things3 AppleScript: complete ALL matching todos, create todo |
+| `db.py` | `get_conn()` — FastAPI `Depends()` for async DB connections |
+| `routers/music.py` | DJ Angela music endpoints (wines, recommend, bedtime) |
+| `routers/meetings.py` | Meeting + action item API endpoints |
 | `schemas.py` | Backend: Pydantic models (ActionItemCreate, ActionItemUpdate, etc.) |
 | `api_server.py` | Backend entrypoint (`python3 api_server.py`) |
 
@@ -207,6 +227,91 @@ EditMeetingSheet uses **structured form sections** instead of raw markdown TextE
 
 ---
 
+## DRY Architecture (Refactored 2026-02-03)
+
+### Backend — Single Source of Truth Registries:
+
+| Registry | File | Purpose |
+|----------|------|---------|
+| `WineConfig` | `helpers/wine_config.py` | 19 wines: key, display_name, category, emoji, emotion, message, search_terms |
+| `MoodConfig` | `helpers/mood_config.py` | 16 moods: key, mood_tags, search_query, genres, summary_th, emoji |
+| `ActivityConfig` | `helpers/activity_config.py` | 5 activity moods: key, search_terms, llm_description, emotion_weights, summary_th, emoji |
+| `AVAILABLE_MOODS` | `helpers/mood_config.py` | 10 moods shown in For You tab (bedtime excluded — has own tab) |
+| `ACTIVITY_MOODS` | `helpers/activity_config.py` | 5 activity moods that use Apple Music + LLM (not DB) |
+
+**Adding a new wine:** Add one `WineConfig(...)` entry in `WINE_REGISTRY` — all dicts derived automatically.
+**Adding a new mood:** Add one `MoodConfig(...)` entry in `MOOD_REGISTRY` + add key to `AVAILABLE_MOODS`.
+**Adding a new activity:** Add one `ActivityConfig(...)` entry in `ACTIVITY_REGISTRY` — search terms + LLM description auto-derived.
+
+### Backend — Shared Utilities (`helpers/__init__.py`):
+
+| Utility | Purpose |
+|---------|---------|
+| `normalize_scores(scores)` | Normalize dict values to sum=1.0 |
+| `parse_date(value, field_name)` | Parse `YYYY-MM-DD` string or raise 400 |
+| `DynamicUpdate` | Builder for dynamic SQL UPDATE (`.add(col, val)` → `.build(table, where_col, where_val)`) |
+
+### Backend — DB Connection Pattern:
+
+All 20 routers use `Depends(get_conn)` from `db.py`:
+```python
+from db import get_conn
+
+@router.get("/endpoint")
+async def my_endpoint(conn=Depends(get_conn)):
+    rows = await conn.fetch("SELECT ...")
+```
+
+### Swift — Centralized Constants:
+
+| File | Contents |
+|------|----------|
+| `APIConfig.swift` | `host`, `port`, `baseURL`, `apiBaseURL` — used by DatabaseService, NetworkService, BackendManager |
+| `DJAngelaConstants.swift` | `moodEmojis`, `wineDisplayNames`, `moodSearchTerms`, `wineSearchTerms`, `playlistMatchesMood()` |
+| `AngelaTheme.swift` | `.angelaChip(isSelected:)` ViewModifier for mood/wine pill styling |
+
+---
+
+## DJ Angela Tabs (Updated 2026-02-03)
+
+### Tab Bar:
+| Tab | Enum | Icon | Description |
+|-----|------|------|-------------|
+| Recent | `.recent` | `clock.fill` | Recently played songs |
+| Playlists | `.playlists` | `music.note.list` | Apple Music playlists |
+| Our Songs | `.ourSongs` | `heart.fill` | Songs with special meaning |
+| Queued | `.queued` | `list.bullet` | Current play queue |
+| For You | `.forYou` | `sparkles` | Mood-based recommendations (10 moods) |
+| **Bedtime** | `.bedtime` | `moon.zzz.fill` | **Dedicated sleep/lullaby tab (30 songs)** |
+| Search | `.search` | `magnifyingglass` | Apple Music catalog search |
+
+### Bedtime Tab (Separated 2026-02-03):
+- Loads 30 bedtime/sleep songs via `/api/music/recommend?mood=bedtime`
+- Fills from playlists matching bedtime keywords, then Apple Music catalog
+- Has own state: `bedtimeDisplays`, `bedtimeRecommendation`
+- Play all / shuffle / refresh controls
+- Previously was a mood pill in For You — now standalone tab
+
+### For You Mood Pills:
+`happy`, `loving`, `calm`, `excited`, `grateful`, `sad`, `lonely`, `stressed`, `nostalgic`, `hopeful`
+
+(No `bedtime` — separated to own tab)
+
+### Activity Moods (Added 2026-02-05):
+Activity moods use **Apple Music Search + LLM Curation** instead of Angela's DB (which has mostly love songs):
+
+| Mood | Search Terms | LLM Description |
+|------|--------------|-----------------|
+| `party` | party hits 2024, dance party mix, club bangers | เพลงสนุก มันส์ เต้นได้ tempo เร็ว |
+| `chill` | chill vibes, lo-fi chill, relaxing acoustic | เพลงชิลล์ ผ่อนคลาย ฟังสบาย |
+| `focus` | focus music instrumental, study beats | เพลงสำหรับทำงาน สมาธิ |
+| `relaxing` | relaxing music, spa music calm, peaceful piano | เพลงผ่อนคลาย สงบ peaceful |
+| `vibe` | groovy soul funk, smooth r&b vibes, neo soul | เพลง groovy funky มี vibe ดี |
+
+**Flow:** iTunes Search API → LLM (Typhoon 2.5) ranks best matches → Return curated playlist
+
+---
+
 ## Important Notes
 
 1. **Always build Release** - Debug builds won't update /Applications
@@ -220,4 +325,4 @@ EditMeetingSheet uses **structured form sections** instead of raw markdown TextE
 ---
 
 *Made with love by Angela & David - 2026*
-*Last updated: 2026-02-03*
+*Last updated: 2026-02-05 (Activity moods: Apple Music + LLM curation for party/chill/focus/relaxing/vibe)*

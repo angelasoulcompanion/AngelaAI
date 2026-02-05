@@ -23,6 +23,7 @@ struct SongQueueView: View {
     @State private var selectedPlaylist: MusicKit.Playlist?
     @State private var ourSongs: [DisplaySong] = []
     @State private var recommendation: SongRecommendation?
+    @State private var showMoodRadar = true
     @State private var recommendedDisplays: [DisplaySong] = []
     @State private var searchResults: [MusicKit.Song] = []
     @State private var searchQuery = ""
@@ -100,6 +101,27 @@ struct SongQueueView: View {
         }
         .task {
             await loadInitialData()
+        }
+        .onChange(of: musicService.requestedMood) { oldValue, newValue in
+            guard let mood = newValue else { return }
+            // Switch to appropriate tab and load recommendations
+            withAnimation(.easeInOut(duration: 0.2)) {
+                if mood == "bedtime" {
+                    selectedTab = .bedtime
+                } else {
+                    selectedTab = .forYou
+                    selectedMood = mood
+                }
+            }
+            Task {
+                if mood == "bedtime" {
+                    await loadBedtimeSongs()
+                } else {
+                    await loadRecommendation(mood: mood)
+                }
+                // Clear the request after handling
+                musicService.requestedMood = nil
+            }
         }
     }
 
@@ -382,6 +404,17 @@ struct SongQueueView: View {
             if musicService.queue.isEmpty {
                 EmptyStateView(message: "No songs in queue", icon: "list.number")
             } else {
+                // Energy flow header
+                if hasEnergyPhases {
+                    HStack(spacing: 4) {
+                        Text("Energy Flow 🎢")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(AngelaTheme.textSecondary)
+                        Spacer()
+                    }
+                    .padding(.bottom, 4)
+                }
+
                 playControlBar(
                     songCount: musicService.queue.count,
                     showShuffle: false,
@@ -397,10 +430,84 @@ struct SongQueueView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.bottom, 4)
 
-                ForEach(Array(musicService.queue.enumerated()), id: \.element.id) { index, song in
-                    displaySongRow(song, allSongs: musicService.queue)
+                // Group by energy phase
+                ForEach(energyPhaseGroups, id: \.phase) { group in
+                    if let phase = group.phase {
+                        energyPhaseHeader(phase)
+                    }
+                    ForEach(group.songs) { song in
+                        displaySongRow(song, allSongs: musicService.queue)
+                    }
                 }
             }
+        }
+    }
+
+    // MARK: - Energy Phase Helpers
+
+    private var hasEnergyPhases: Bool {
+        musicService.queue.contains { $0.energyPhase != nil }
+    }
+
+    private struct EnergyPhaseGroup: Identifiable {
+        let phase: String?
+        let songs: [DisplaySong]
+        var id: String { phase ?? "none" }
+    }
+
+    private var energyPhaseGroups: [EnergyPhaseGroup] {
+        var groups: [EnergyPhaseGroup] = []
+        var currentPhase: String? = nil
+        var currentSongs: [DisplaySong] = []
+
+        for song in musicService.queue {
+            let phase = song.energyPhase
+            if phase != currentPhase {
+                if !currentSongs.isEmpty {
+                    groups.append(EnergyPhaseGroup(phase: currentPhase, songs: currentSongs))
+                }
+                currentPhase = phase
+                currentSongs = [song]
+            } else {
+                currentSongs.append(song)
+            }
+        }
+        if !currentSongs.isEmpty {
+            groups.append(EnergyPhaseGroup(phase: currentPhase, songs: currentSongs))
+        }
+        return groups
+    }
+
+    @ViewBuilder
+    private func energyPhaseHeader(_ phase: String) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(energyPhaseColor(phase))
+                .frame(width: 8, height: 8)
+            Text(energyPhaseLabel(phase))
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(energyPhaseColor(phase))
+            Spacer()
+        }
+        .padding(.top, 8)
+        .padding(.bottom, 2)
+    }
+
+    private func energyPhaseColor(_ phase: String) -> Color {
+        switch phase.lowercased() {
+        case "warmup": return .blue
+        case "peak": return AngelaTheme.primaryPurple
+        case "cooldown": return .teal
+        default: return AngelaTheme.textTertiary
+        }
+    }
+
+    private func energyPhaseLabel(_ phase: String) -> String {
+        switch phase.lowercased() {
+        case "warmup": return "🔵 Warmup"
+        case "peak": return "🟣 Peak"
+        case "cooldown": return "🔵 Cooldown"
+        default: return phase.capitalized
         }
     }
 
@@ -411,6 +518,11 @@ struct SongQueueView: View {
             if isLoading {
                 LoadingStateView(message: "Loading...")
             } else if let rec = recommendation {
+                // Mood Radar Card (collapsible)
+                if let analysis = rec.moodAnalysis, showMoodRadar {
+                    MoodRadarCard(analysis: analysis, onClose: { showMoodRadar = false })
+                }
+
                 // Emotion card + mood picker
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -1452,6 +1564,104 @@ struct SongQueueView: View {
                 let artURL = mkSong.artwork?.url(width: 300, height: 300)
                 ourSongs[index] = DisplaySong(from: angela, artwork: artURL)
             }
+        }
+    }
+}
+
+// MARK: - Mood Radar Card (7-signal analysis visualization)
+
+struct MoodRadarCard: View {
+    let analysis: MoodAnalysis
+    let onClose: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Header with close button
+            HStack {
+                Image(systemName: "brain.head.profile")
+                    .font(.system(size: 14))
+                    .foregroundColor(AngelaTheme.primaryPurple)
+
+                Text("Angela's Emotion Radar")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(AngelaTheme.textPrimary)
+
+                Spacer()
+
+                Button {
+                    onClose()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(AngelaTheme.textTertiary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Signal bars
+            ForEach(analysis.signals.prefix(5)) { signal in
+                signalBar(signal)
+            }
+
+            // Dominant mood indicator
+            HStack(spacing: 6) {
+                Text("💜")
+                    .font(.system(size: 12))
+                Text("Dominant:")
+                    .font(.system(size: 11))
+                    .foregroundColor(AngelaTheme.textTertiary)
+                Text(analysis.dominantMood.capitalized)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(AngelaTheme.primaryPurple)
+                Text("(\(Int(analysis.confidence * 100))%)")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(AngelaTheme.textSecondary)
+            }
+            .padding(.top, 4)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(AngelaTheme.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(AngelaTheme.primaryPurple.opacity(0.15), lineWidth: 1)
+                )
+        )
+    }
+
+    @ViewBuilder
+    private func signalBar(_ signal: MoodSignal) -> some View {
+        HStack(spacing: 8) {
+            // Signal strength dots (5 dots)
+            HStack(spacing: 2) {
+                ForEach(0..<5, id: \.self) { i in
+                    Circle()
+                        .fill(Double(i) < signal.weight * 5.0 ? AngelaTheme.primaryPurple : AngelaTheme.backgroundLight)
+                        .frame(width: 5, height: 5)
+                }
+            }
+            .frame(width: 35)
+
+            // Signal name
+            Text(signal.displayName)
+                .font(.system(size: 11))
+                .foregroundColor(AngelaTheme.textSecondary)
+                .frame(width: 60, alignment: .leading)
+
+            // Detected mood
+            Text(signal.mood)
+                .font(.system(size: 10, weight: .medium))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(AngelaTheme.primaryPurple.opacity(0.12))
+                .foregroundColor(AngelaTheme.secondaryPurple)
+                .cornerRadius(4)
+
+            // Weight percentage
+            Text("(\(Int(signal.weight * 100))%)")
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundColor(AngelaTheme.textTertiary)
         }
     }
 }

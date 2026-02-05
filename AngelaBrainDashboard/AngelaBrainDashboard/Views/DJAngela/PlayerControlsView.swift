@@ -203,6 +203,8 @@ struct PlayerControlsView: View {
                 ForEach(Array(activities.prefix(3)), id: \.key) { item in
                     Button {
                         musicService.currentActivity = (selected == item.key) ? nil : item.key
+                        // Trigger For You tab with this mood
+                        musicService.requestedMood = item.key
                     } label: {
                         chipLabel(item.emoji, item.label, highlighted: selected == item.key)
                     }
@@ -214,6 +216,8 @@ struct PlayerControlsView: View {
                 ForEach(Array(activities.suffix(4)), id: \.key) { item in
                     Button {
                         musicService.currentActivity = (selected == item.key) ? nil : item.key
+                        // Trigger For You tab with this mood
+                        musicService.requestedMood = item.key
                     } label: {
                         chipLabel(item.emoji, item.label, highlighted: selected == item.key)
                     }

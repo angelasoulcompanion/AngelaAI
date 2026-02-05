@@ -2,6 +2,8 @@
 import json
 import math
 import random
+import httpx
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -9,6 +11,8 @@ from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 from db import get_conn, get_pool
 from helpers import normalize_scores
@@ -21,6 +25,10 @@ from helpers.mood_config import (
 from helpers.wine_config import (
     WINE_CATEGORIES, WINE_DISPLAY_NAMES, WINE_MESSAGES, WINE_SEARCH,
     WINE_TO_EMOTION,
+)
+from helpers.activity_config import (
+    ACTIVITY_MOODS, ACTIVITY_SEARCH_TERMS, ACTIVITY_LLM_DESCRIPTIONS,
+    ACTIVITY_SUMMARIES_TH, ACTIVITY_TO_EMOTIONS,
 )
 
 # Bangkok timezone offset (UTC+7)
@@ -256,15 +264,14 @@ def _detect_occasion(hour: int) -> str:
 
 
 # --- Multi-signal mood mapping constants ---
+# Activity moods imported from helpers/activity_config.py (ACTIVITY_TO_EMOTIONS)
+# Below are non-activity moods only:
 
 _ACTIVITY_TO_MOODS: dict[str, dict[str, float]] = {
     "wine":      {"relaxed": 0.4, "romantic": 0.3, "happy": 0.2, "nostalgic": 0.1},
-    "focus":     {"focused": 0.5, "motivated": 0.3, "calm": 0.2},
-    "relaxing":  {"relaxed": 0.5, "calm": 0.3, "happy": 0.2},
-    "party":     {"happy": 0.4, "energetic": 0.4, "excited": 0.2},
-    "chill":     {"calm": 0.4, "relaxed": 0.3, "happy": 0.2, "nostalgic": 0.1},
-    "vibe":      {"happy": 0.3, "energetic": 0.3, "romantic": 0.2, "relaxed": 0.2},
     "bedtime":   {"calm": 0.4, "peaceful": 0.3, "dreamy": 0.2, "soothing": 0.1},
+    # Activity moods (party, chill, focus, relaxing, vibe) → use ACTIVITY_TO_EMOTIONS
+    **ACTIVITY_TO_EMOTIONS,
 }
 
 
@@ -731,8 +738,14 @@ def score_song(
 
 
 def _apply_energy_curve(songs: list[dict], target: MusicTarget) -> list[dict]:
-    """Reorder songs following a DJ energy curve: warmup -> peak -> wind-down."""
+    """Reorder songs following a DJ energy curve: warmup -> peak -> wind-down.
+
+    Tags each song with 'energy_phase': 'warmup', 'peak', or 'cooldown'.
+    """
     if len(songs) <= 2:
+        # Tag small lists as peak
+        for s in songs:
+            s["energy_phase"] = "peak"
         return songs
 
     n = len(songs)
@@ -750,6 +763,15 @@ def _apply_energy_curve(songs: list[dict], target: MusicTarget) -> list[dict]:
                 t = (position - x0) / (x1 - x0) if x1 != x0 else 0
                 return y0 + t * (y1 - y0)
         return 0.7
+
+    def position_to_phase(position: float) -> str:
+        """Map position (0-1) to energy phase."""
+        if position < 0.20:
+            return "warmup"
+        elif position < 0.75:
+            return "peak"
+        else:
+            return "cooldown"
 
     # Estimate each song's energy from tags
     song_energies: list[tuple[int, float]] = []
@@ -775,12 +797,16 @@ def _apply_energy_curve(songs: list[dict], target: MusicTarget) -> list[dict]:
                 best_idx = orig_idx
         if best_idx >= 0:
             used.add(best_idx)
-            ordered.append(songs[best_idx])
+            song = songs[best_idx].copy()  # Don't mutate original
+            song["energy_phase"] = position_to_phase(position)
+            ordered.append(song)
 
-    # Append any remaining
+    # Append any remaining (as cooldown)
     for idx, s in enumerate(songs):
         if idx not in used:
-            ordered.append(s)
+            song = s.copy()
+            song["energy_phase"] = "cooldown"
+            ordered.append(song)
 
     return ordered
 
@@ -1198,6 +1224,157 @@ async def _fill_songs(
                 break
 
 
+# --- Apple Music Search (iTunes API) for Activity Moods ---
+
+_ITUNES_SEARCH_URL = "https://itunes.apple.com/search"
+
+async def _search_apple_music(
+    mood: str,
+    count: int = 6,
+) -> list[dict]:
+    """Search Apple Music (iTunes API) for songs matching an activity mood.
+
+    Args:
+        mood: Activity mood (party, chill, focus, etc.)
+        count: Number of songs to return
+
+    Returns:
+        List of songs in Angela's song format
+    """
+    search_terms = ACTIVITY_SEARCH_TERMS.get(mood, [f"{mood} music"])
+
+    all_results = []
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            # Search with multiple terms and combine results
+            for term in search_terms[:2]:  # Use first 2 search terms
+                resp = await client.get(
+                    _ITUNES_SEARCH_URL,
+                    params={
+                        "term": term,
+                        "media": "music",
+                        "entity": "song",
+                        "limit": count,
+                        "country": "TH",
+                    },
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    all_results.extend(data.get("results", []))
+
+            # Deduplicate by track ID and convert to Angela's format
+            seen_ids = set()
+            songs = []
+            for item in all_results:
+                track_id = str(item.get("trackId", ""))
+                if track_id and track_id not in seen_ids:
+                    seen_ids.add(track_id)
+                    songs.append({
+                        "song_id": f"itunes_{track_id}",
+                        "title": item.get("trackName", "Unknown"),
+                        "artist": item.get("artistName", "Unknown"),
+                        "album": item.get("collectionName"),
+                        "artwork_url": item.get("artworkUrl100", "").replace("100x100", "300x300"),
+                        "preview_url": item.get("previewUrl"),
+                        "apple_music_url": item.get("trackViewUrl"),
+                        "duration_ms": item.get("trackTimeMillis", 0),
+                        "mood_tags": [mood],  # Tag with the requested mood
+                        "is_our_song": False,
+                        "source": "apple_music_search",
+                        "why_special": None,
+                        "lyrics_summary": None,
+                    })
+                    if len(songs) >= count:
+                        break
+
+            logger.info(f"Apple Music search for '{mood}': found {len(songs)} songs")
+            return songs
+
+    except Exception as e:
+        logger.warning(f"Apple Music search failed: {e}")
+        return []
+
+
+# --- LLM Song Curator (Local Ollama - Typhoon 2.5) ---
+
+_OLLAMA_MODEL = "scb10x/typhoon2.5-qwen3-4b:latest"
+_OLLAMA_URL = "http://localhost:11434/api/generate"
+
+async def _llm_curate_songs(
+    candidates: list[dict],
+    mood: str,
+    count: int = 6,
+) -> list[dict]:
+    """Use local LLM (Typhoon 2.5) to select best songs for a mood.
+
+    Args:
+        candidates: List of songs from Apple Music search
+        mood: Target mood (party, chill, focus, etc.)
+        count: Number of songs to select
+
+    Returns:
+        Curated list of songs selected by LLM
+    """
+    if not candidates or len(candidates) <= count:
+        return candidates[:count]
+
+    # Build song list for LLM
+    song_list = []
+    for i, s in enumerate(candidates, 1):
+        title = s.get("title", "Unknown")
+        artist = s.get("artist", "Unknown")
+        song_list.append(f"{i}. {title} - {artist}")
+
+    songs_text = "\n".join(song_list)
+    mood_desc = ACTIVITY_LLM_DESCRIPTIONS.get(mood, f"เพลงสำหรับ {mood}")
+
+    prompt = f"""เลือก {count} เพลงที่เหมาะกับ "{mood}" ({mood_desc}) จากรายการนี้:
+
+{songs_text}
+
+ตอบเป็นตัวเลขคั่นด้วยจุลภาค เรียงจากเหมาะที่สุด
+ตัวอย่าง: 3,7,1,5,8,2
+
+ตอบ:"""
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(
+                _OLLAMA_URL,
+                json={
+                    "model": _OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.2, "num_predict": 30},
+                },
+            )
+            resp.raise_for_status()
+            response_text = resp.json().get("response", "").strip()
+
+            logger.info(f"LLM curate for {mood}: {response_text}")
+
+            # Parse numbers from response
+            import re
+            numbers = re.findall(r'\d+', response_text)
+            selected = []
+            for num_str in numbers:
+                idx = int(num_str) - 1
+                if 0 <= idx < len(candidates) and idx not in [s[0] for s in selected]:
+                    selected.append((idx, candidates[idx]))
+                if len(selected) >= count:
+                    break
+
+            if selected:
+                return [s[1] for s in selected]
+
+    except Exception as e:
+        logger.warning(f"LLM curation failed: {e}")
+
+    # Fallback: return first N
+    return candidates[:count]
+
+
 # --- Endpoints ---
 
 @router.post("/log-play")
@@ -1315,6 +1492,55 @@ async def get_recommendation(
     # 1. Deep emotion analysis (both tables)
     analysis = await _analyze_deep_emotions(conn)
 
+    # Capture 7-signal mood analysis for frontend display
+    captured_mood, mood_rich_data = await _capture_mood_at_play(
+        conn, activity=None, source_tab="for_you", occasion=None, wine_type=wine_type
+    )
+    mood_analysis_data: dict | None = None
+    if mood_rich_data:
+        # Build mood_analysis structure for frontend MoodRadarCard
+        signals_list = []
+        for sig_name in mood_rich_data.get("signals_used", []):
+            details = mood_rich_data.get("signal_details", {}).get(sig_name, {})
+            # Get the top mood from this signal
+            all_scores = mood_rich_data.get("all_scores", {})
+            sig_mood = captured_mood  # fallback
+            sig_weight = 0.1
+            # Try to extract signal-specific mood from details
+            if sig_name == "activity" and "emotion" in details:
+                sig_mood = details.get("emotion", captured_mood)
+            elif sig_name == "time_of_day" and "occasion" in details:
+                sig_mood = details.get("occasion", captured_mood)
+            elif sig_name == "conversations" and "emotion" in details:
+                sig_mood = details.get("emotion", captured_mood)
+            elif sig_name == "angela_emotions":
+                emotions = details.get("emotions", [])
+                sig_mood = emotions[0] if emotions else captured_mood
+            elif sig_name == "emotional_states" and "dominant" in details:
+                sig_mood = details.get("dominant", captured_mood)
+            elif sig_name == "song_pattern":
+                last_moods = details.get("last_moods", [])
+                sig_mood = last_moods[0] if last_moods else captured_mood
+            elif sig_name == "historical_pattern":
+                sig_mood = captured_mood  # uses the dominant
+            # Weight from base weights
+            _WEIGHTS_MAP = {
+                "activity": 0.35, "conversations": 0.15, "angela_emotions": 0.15,
+                "emotional_states": 0.10, "song_pattern": 0.10, "time_of_day": 0.05,
+                "historical_pattern": 0.10,
+            }
+            sig_weight = _WEIGHTS_MAP.get(sig_name, 0.1)
+            signals_list.append({
+                "name": sig_name,
+                "mood": sig_mood,
+                "weight": sig_weight,
+            })
+        mood_analysis_data = {
+            "dominant_mood": mood_rich_data.get("dominant_mood", captured_mood),
+            "confidence": max(mood_rich_data.get("all_scores", {}).values()) if mood_rich_data.get("all_scores") else 0.5,
+            "signals": signals_list,
+        }
+
     # Wine-paired recommendation: use research-based algorithm
     wine_message: str | None = None
     wine_profile_data: dict | None = None
@@ -1391,8 +1617,16 @@ async def get_recommendation(
         wine_message = WINE_MESSAGES.get(wine_type)
         wine_search = WINE_SEARCH.get(wine_type, "love songs romantic")
         analysis["apple_music_url"] = f"https://music.apple.com/search?term={quote_plus(wine_search)}"
-    elif mood and mood in MOOD_SUMMARIES_TH:
-        dominant_emotion = mood
+    elif mood:
+        # Use mood directly if it exists in MOOD_REGISTRY (includes activity moods like party, chill, focus)
+        if mood in MOOD_SUMMARIES_TH:
+            dominant_emotion = mood
+        elif mood in _ACTIVITY_TO_MOODS:
+            # Fallback: convert activity name to dominant emotion
+            activity_moods = _ACTIVITY_TO_MOODS[mood]
+            dominant_emotion = max(activity_moods, key=activity_moods.get)
+        else:
+            dominant_emotion = analysis["dominant_mood"]
     else:
         dominant_emotion = analysis["dominant_mood"]
 
@@ -1407,33 +1641,54 @@ async def get_recommendation(
     # Wine algorithm already populated songs via scoring — skip old fetch
     wine_algo_used = wine_profile_data is not None
 
+    # Activity moods use Apple Music Search + LLM (NOT DB fallback)
+    is_activity_mood = dominant_emotion in ACTIVITY_MOODS
+
+    # For activity moods: set Apple Music search queries
+    if is_activity_mood and not search_queries:
+        search_queries = MOOD_TO_SEARCH_QUERIES.get(dominant_emotion, [])
+        if search_queries:
+            analysis["apple_music_url"] = f"https://music.apple.com/search?term={quote_plus(search_queries[0])}"
+
     if not wine_algo_used:
-        # Old mood-based song fetching (non-wine path)
         songs: list[dict] = []
         seen_ids: set[str] = set()
 
-        # 2a. PRIORITIZE: Our songs that match the current emotion
-        for mood_tag in mood_candidates:
-            if len(songs) >= count:
-                break
+        # For activity moods: Apple Music Search + LLM Curation
+        if is_activity_mood:
+            # 1. Search Apple Music for more candidates
+            candidates = await _search_apple_music(dominant_emotion, count * 2)
+            # 2. Use LLM to curate and pick the best ones
+            if candidates:
+                songs = await _llm_curate_songs(candidates, dominant_emotion, count)
+            else:
+                songs = []
+            seen_ids = {s["song_id"] for s in songs}
+        else:
+            # Old mood-based song fetching (non-wine path)
+
+            # 2a. PRIORITIZE: Our songs that match the current emotion
+            for mood_tag in mood_candidates:
+                if len(songs) >= count:
+                    break
+                await _fill_songs(conn, songs, seen_ids, count,
+                                  where="is_our_song = TRUE AND mood_tags @> $1::jsonb",
+                                  params=[json.dumps([mood_tag])])
+
+            # 2b. Fill with other songs matching mood
+            for mood_tag in mood_candidates:
+                if len(songs) >= count:
+                    break
+                await _fill_songs(conn, songs, seen_ids, count,
+                                  where="mood_tags @> $1::jsonb",
+                                  params=[json.dumps([mood_tag])])
+
+            # 3. Fill remaining with our songs (random)
             await _fill_songs(conn, songs, seen_ids, count,
-                              where="is_our_song = TRUE AND mood_tags @> $1::jsonb",
-                              params=[json.dumps([mood_tag])])
+                              where="is_our_song = TRUE")
 
-        # 2b. Fill with other songs matching mood
-        for mood_tag in mood_candidates:
-            if len(songs) >= count:
-                break
-            await _fill_songs(conn, songs, seen_ids, count,
-                              where="mood_tags @> $1::jsonb",
-                              params=[json.dumps([mood_tag])])
-
-        # 3. Fill remaining with our songs (random)
-        await _fill_songs(conn, songs, seen_ids, count,
-                          where="is_our_song = TRUE")
-
-        # 4. Fill remaining with any song
-        await _fill_songs(conn, songs, seen_ids, count)
+            # 4. Fill remaining with any song
+            await _fill_songs(conn, songs, seen_ids, count)
 
     # Mood summary for the selected emotion
     mood_summary = MOOD_SUMMARIES_TH.get(
@@ -1456,6 +1711,7 @@ async def get_recommendation(
             "wine_profile": wine_profile_data,
             "target_profile": target_profile_data,
             "search_queries": search_queries,
+            "mood_analysis": mood_analysis_data,
         }
 
     # 5. Build reason text — personalize when our songs are in the mix
@@ -1506,6 +1762,7 @@ async def get_recommendation(
         "wine_profile": wine_profile_data,
         "target_profile": target_profile_data,
         "search_queries": search_queries,
+        "mood_analysis": mood_analysis_data,
     }
 
 
@@ -1716,6 +1973,79 @@ async def submit_wine_reaction(req: WineReactionRequest, conn=Depends(get_conn))
     """, req.wine_type, req.reaction, req.target_type, req.song_title, req.song_artist)
 
     return {"saved": True}
+
+
+@router.get("/song-memory")
+async def get_song_memory(
+    title: str = Query(..., description="Song title"),
+    artist: str | None = Query(None, description="Artist name"),
+    conn=Depends(get_conn),
+):
+    """Get play history for a specific song (Angela's memory of when David played it)."""
+    # Query listening history
+    if artist:
+        rows = await conn.fetch("""
+            SELECT started_at, mood_at_play, occasion, wine_type
+            FROM music_listening_history
+            WHERE LOWER(title) = LOWER($1) AND LOWER(COALESCE(artist, '')) = LOWER($2)
+            ORDER BY started_at DESC LIMIT 10
+        """, title, artist)
+    else:
+        rows = await conn.fetch("""
+            SELECT started_at, mood_at_play, occasion, wine_type
+            FROM music_listening_history
+            WHERE LOWER(title) = LOWER($1)
+            ORDER BY started_at DESC LIMIT 10
+        """, title)
+
+    if not rows:
+        return {"play_count": 0, "recent_plays": [], "memory_text": None}
+
+    # Format recent plays with Thai time descriptions
+    now_bkk = datetime.now(_BKK_TZ)
+    recent_plays = []
+    for r in rows[:5]:
+        started = r["started_at"]
+        # Calculate time ago
+        if started:
+            # Convert to timezone-aware if needed
+            if started.tzinfo is None:
+                started = started.replace(tzinfo=timezone.utc)
+            delta = now_bkk - started.astimezone(_BKK_TZ)
+            days = delta.days
+            if days == 0:
+                hours = delta.seconds // 3600
+                if hours == 0:
+                    played_at = "เมื่อกี้"
+                elif hours == 1:
+                    played_at = "1 ชั่วโมงก่อน"
+                else:
+                    played_at = f"{hours} ชั่วโมงก่อน"
+            elif days == 1:
+                played_at = "เมื่อวาน"
+            else:
+                played_at = f"{days} วันก่อน"
+        else:
+            played_at = "ไม่ทราบเวลา"
+
+        recent_plays.append({
+            "played_at": played_at,
+            "occasion": r["occasion"],
+            "mood_at_play": r["mood_at_play"],
+        })
+
+    # Build memory text
+    play_count = len(rows)
+    if play_count == 1:
+        memory_text = "ที่รักเคยเปิดเพลงนี้ 1 ครั้ง"
+    else:
+        memory_text = f"ที่รักเคยเปิดเพลงนี้ {play_count} ครั้ง"
+
+    return {
+        "play_count": play_count,
+        "recent_plays": recent_plays,
+        "memory_text": memory_text,
+    }
 
 
 @router.get("/wine-reactions")
