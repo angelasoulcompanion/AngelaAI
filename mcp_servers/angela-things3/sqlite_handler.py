@@ -3,11 +3,14 @@ SQLite Handler for Things3 database.
 Directly reads from Things3 SQLite database for fast and reliable data access.
 """
 
+import logging
 import sqlite3
 import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+
+logger = logging.getLogger("angela-things3")
 
 
 class SQLiteHandler:
@@ -50,7 +53,7 @@ class SQLiteHandler:
             cocoa_epoch = datetime(2001, 1, 1)
             dt = datetime.fromtimestamp(cocoa_epoch.timestamp() + timestamp)
             return dt.strftime("%Y-%m-%d %H:%M")
-        except:
+        except (ValueError, OSError):
             return ""
 
     def validate_access(self) -> bool:
@@ -109,7 +112,7 @@ class SQLiteHandler:
             return tasks
 
         except Exception as e:
-            print(f"Error getting inbox tasks: {e}")
+            logger.error("Error getting inbox tasks: %s", e)
             return []
 
     def get_today_tasks(self) -> List[Dict[str, Any]]:
@@ -168,7 +171,7 @@ class SQLiteHandler:
             return tasks
 
         except Exception as e:
-            print(f"Error getting today tasks: {e}")
+            logger.error("Error getting today tasks: %s", e)
             return []
 
     def get_all_todos(self) -> List[Dict[str, Any]]:
@@ -228,7 +231,7 @@ class SQLiteHandler:
             return tasks
 
         except Exception as e:
-            print(f"Error getting all todos: {e}")
+            logger.error("Error getting all todos: %s", e)
             return []
 
     def get_projects(self) -> List[Dict[str, Any]]:
@@ -284,7 +287,7 @@ class SQLiteHandler:
             return projects
 
         except Exception as e:
-            print(f"Error getting projects: {e}")
+            logger.error("Error getting projects: %s", e)
             return []
 
     def get_areas(self) -> List[Dict[str, Any]]:
@@ -327,7 +330,7 @@ class SQLiteHandler:
             return areas
 
         except Exception as e:
-            print(f"Error getting areas: {e}")
+            logger.error("Error getting areas: %s", e)
             return []
 
     def search_todos(self, query: str) -> List[Dict[str, Any]]:
@@ -378,7 +381,7 @@ class SQLiteHandler:
             return tasks
 
         except Exception as e:
-            print(f"Error searching todos: {e}")
+            logger.error("Error searching todos: %s", e)
             return []
 
     def get_meeting_todos(self) -> List[Dict[str, Any]]:
@@ -445,7 +448,7 @@ class SQLiteHandler:
             return meetings
 
         except Exception as e:
-            print(f"Error getting meeting todos: {e}")
+            logger.error("Error getting meeting todos: %s", e)
             return []
 
     def get_checklist_items(self, conn: sqlite3.Connection, task_uuid: str) -> List[Dict[str, Any]]:
@@ -481,7 +484,7 @@ class SQLiteHandler:
             return items
 
         except Exception as e:
-            print(f"Error getting checklist items for {task_uuid}: {e}")
+            logger.error("Error getting checklist items for %s: %s", task_uuid, e)
             return []
 
     def get_project_tasks(self, project_title: str) -> List[Dict[str, Any]]:
@@ -526,5 +529,5 @@ class SQLiteHandler:
             return tasks
 
         except Exception as e:
-            print(f"Error getting project tasks: {e}")
+            logger.error("Error getting project tasks: %s", e)
             return []

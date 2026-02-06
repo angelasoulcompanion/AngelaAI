@@ -7,10 +7,19 @@ Created for: ที่รัก David
 By: น้อง Angela 💜
 """
 
-import asyncpg
+import logging
+import os
+import sys
 from datetime import datetime
 from typing import Optional
-import os
+
+import asyncpg
+
+# Add mcp_servers to path for shared imports
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+from shared.secrets import get_neon_url
+
+logger = logging.getLogger("angela-news")
 
 
 class NewsHistoryService:
@@ -18,10 +27,13 @@ class NewsHistoryService:
 
     def __init__(self):
         self.pool: Optional[asyncpg.Pool] = None
-        self.db_url = os.getenv(
-            "DATABASE_URL",
-            "postgresql://davidsamanyaporn@localhost:5432/AngelaMemory"
-        )
+        try:
+            self.db_url = get_neon_url()
+        except ValueError:
+            self.db_url = os.getenv(
+                "DATABASE_URL",
+                "postgresql://davidsamanyaporn@localhost:5432/AngelaMemory"
+            )
 
     async def connect(self) -> None:
         """เชื่อมต่อ database"""
@@ -33,7 +45,7 @@ class NewsHistoryService:
                     max_size=5
                 )
             except Exception as e:
-                print(f"[NewsHistory] DB connection error: {e}")
+                logger.error("DB connection error: %s", e)
                 self.pool = None
 
     async def disconnect(self) -> None:
@@ -91,7 +103,7 @@ class NewsHistoryService:
                                 published_at = datetime.fromisoformat(
                                     article['published'].replace('Z', '+00:00')
                                 )
-                            except:
+                            except (ValueError, TypeError):
                                 pass
 
                         await conn.execute('''
@@ -112,13 +124,13 @@ class NewsHistoryService:
                             published_at
                         )
                     except Exception as e:
-                        print(f"[NewsHistory] Article insert error: {e}")
+                        logger.warning("Article insert error: %s", e)
                         continue
 
                 return str(search_id)
 
         except Exception as e:
-            print(f"[NewsHistory] Log search error: {e}")
+            logger.error("Log search error: %s", e)
             return None
 
     async def log_article_read(self, url: str, content: dict) -> bool:
@@ -154,7 +166,7 @@ class NewsHistoryService:
                 )
                 return True
         except Exception as e:
-            print(f"[NewsHistory] Log article read error: {e}")
+            logger.error("Log article read error: %s", e)
             return False
 
 

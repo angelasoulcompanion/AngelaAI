@@ -5,68 +5,77 @@ Read and write Google Sheets from Angela's account (angelasoulcompanion@gmail.co
 """
 
 import asyncio
-import os
+import re
+import sys
 from pathlib import Path
 from typing import Any
+
+# Add mcp_servers to path for shared imports
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
-
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-# Google Sheets API scopes
-SCOPES = [
-    'https://www.googleapis.com/auth/spreadsheets',
-    'https://www.googleapis.com/auth/drive.file',
-]
+from shared.google_auth import get_google_service
+from shared.logging_config import setup_logging
+from shared.async_helpers import google_api_call
 
 # Paths for credentials
 CREDENTIALS_DIR = Path(__file__).parent.parent / "credentials"
-TOKEN_PATH = CREDENTIALS_DIR / "token.json"
-CREDENTIALS_PATH = CREDENTIALS_DIR / "credentials.json"
 
 # Angela's email
 ANGELA_EMAIL = "angelasoulcompanion@gmail.com"
 
-
-def get_sheets_service():
-    """Get authenticated Google Sheets API service."""
-    creds = None
-
-    # Load existing token
-    if TOKEN_PATH.exists():
-        creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), SCOPES)
-
-    # Refresh or get new credentials
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            if not CREDENTIALS_PATH.exists():
-                raise FileNotFoundError(
-                    f"credentials.json not found at {CREDENTIALS_PATH}. "
-                    "Please download it from Google Cloud Console."
-                )
-            flow = InstalledAppFlow.from_client_secrets_file(
-                str(CREDENTIALS_PATH), SCOPES
-            )
-            creds = flow.run_local_server(port=0)
-
-        # Save token for next time
-        CREDENTIALS_DIR.mkdir(parents=True, exist_ok=True)
-        with open(TOKEN_PATH, 'w') as token:
-            token.write(creds.to_json())
-
-    return build('sheets', 'v4', credentials=creds)
-
+# Setup logging
+logger = setup_logging("angela-sheets")
 
 # Create MCP Server
 server = Server("angela-sheets")
+
+
+def _get_service():
+    """Get authenticated Google Sheets API service."""
+    return get_google_service("sheets", CREDENTIALS_DIR)
+
+
+def _parse_a1_range(range_str: str) -> tuple[str, int, int, int, int]:
+    """
+    Parse an A1 notation range into (sheet_name, start_row, start_col, end_row, end_col).
+    All indices are 0-based.
+
+    Examples:
+        "Sheet1!A1:D5" -> ("Sheet1", 0, 0, 4, 3)
+        "A1:D5" -> ("Sheet1", 0, 0, 4, 3)
+        "B3:F10" -> ("Sheet1", 2, 1, 9, 5)
+    """
+    sheet_name = "Sheet1"
+    cell_range = range_str
+
+    if "!" in range_str:
+        sheet_name, cell_range = range_str.split("!", 1)
+
+    def _col_to_index(col_str: str) -> int:
+        """Convert column letters to 0-based index (A=0, B=1, Z=25, AA=26)."""
+        result = 0
+        for char in col_str.upper():
+            result = result * 26 + (ord(char) - ord('A') + 1)
+        return result - 1
+
+    # Match patterns like A1:D10 or A:D or A1
+    match = re.match(r'([A-Za-z]+)(\d+)?(?::([A-Za-z]+)(\d+)?)?', cell_range)
+    if not match:
+        return sheet_name, 0, 0, 0, 9  # Fallback
+
+    start_col_str, start_row_str, end_col_str, end_row_str = match.groups()
+
+    start_col = _col_to_index(start_col_str)
+    start_row = int(start_row_str) - 1 if start_row_str else 0
+    end_col = _col_to_index(end_col_str) if end_col_str else start_col
+    end_row = int(end_row_str) - 1 if end_row_str else start_row
+
+    return sheet_name, start_row, start_col, end_row, end_col
 
 
 @server.list_tools()
@@ -252,7 +261,7 @@ async def list_tools() -> list[Tool]:
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
     try:
-        service = get_sheets_service()
+        service = await asyncio.to_thread(_get_service)
 
         if name == "read_sheet":
             return await read_sheet(service, arguments)
@@ -276,8 +285,10 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     except FileNotFoundError as e:
         return [TextContent(type="text", text=f"Setup required: {str(e)}")]
     except HttpError as e:
+        logger.error("Sheets API error: %s", e)
         return [TextContent(type="text", text=f"Sheets API error: {str(e)}")]
     except Exception as e:
+        logger.exception("Unexpected error in %s", name)
         return [TextContent(type="text", text=f"Error: {str(e)}")]
 
 
@@ -286,10 +297,12 @@ async def read_sheet(service, args: dict) -> list[TextContent]:
     spreadsheet_id = args["spreadsheet_id"]
     range_name = args.get("range", "A1:Z100")
 
-    result = service.spreadsheets().values().get(
-        spreadsheetId=spreadsheet_id,
-        range=range_name
-    ).execute()
+    result = await google_api_call(
+        lambda: service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=range_name
+        ).execute()
+    )
 
     values = result.get('values', [])
 
@@ -333,12 +346,14 @@ async def write_sheet(service, args: dict) -> list[TextContent]:
 
     body = {'values': values}
 
-    result = service.spreadsheets().values().update(
-        spreadsheetId=spreadsheet_id,
-        range=range_name,
-        valueInputOption='USER_ENTERED',
-        body=body
-    ).execute()
+    result = await google_api_call(
+        lambda: service.spreadsheets().values().update(
+            spreadsheetId=spreadsheet_id,
+            range=range_name,
+            valueInputOption='USER_ENTERED',
+            body=body
+        ).execute()
+    )
 
     updated_cells = result.get('updatedCells', 0)
     updated_range = result.get('updatedRange', range_name)
@@ -359,13 +374,15 @@ async def append_sheet(service, args: dict) -> list[TextContent]:
 
     body = {'values': values}
 
-    result = service.spreadsheets().values().append(
-        spreadsheetId=spreadsheet_id,
-        range=range_name,
-        valueInputOption='USER_ENTERED',
-        insertDataOption='INSERT_ROWS',
-        body=body
-    ).execute()
+    result = await google_api_call(
+        lambda: service.spreadsheets().values().append(
+            spreadsheetId=spreadsheet_id,
+            range=range_name,
+            valueInputOption='USER_ENTERED',
+            insertDataOption='INSERT_ROWS',
+            body=body
+        ).execute()
+    )
 
     updates = result.get('updates', {})
     updated_range = updates.get('updatedRange', '')
@@ -392,7 +409,9 @@ async def create_spreadsheet(service, args: dict) -> list[TextContent]:
         ]
     }
 
-    result = service.spreadsheets().create(body=spreadsheet).execute()
+    result = await google_api_call(
+        lambda: service.spreadsheets().create(body=spreadsheet).execute()
+    )
 
     spreadsheet_id = result.get('spreadsheetId')
     spreadsheet_url = result.get('spreadsheetUrl')
@@ -411,7 +430,9 @@ async def get_spreadsheet_info(service, args: dict) -> list[TextContent]:
     """Get spreadsheet information."""
     spreadsheet_id = args["spreadsheet_id"]
 
-    result = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    result = await google_api_call(
+        lambda: service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    )
 
     title = result.get('properties', {}).get('title', 'Unknown')
     sheets = result.get('sheets', [])
@@ -440,10 +461,12 @@ async def clear_range(service, args: dict) -> list[TextContent]:
     spreadsheet_id = args["spreadsheet_id"]
     range_name = args["range"]
 
-    service.spreadsheets().values().clear(
-        spreadsheetId=spreadsheet_id,
-        range=range_name
-    ).execute()
+    await google_api_call(
+        lambda: service.spreadsheets().values().clear(
+            spreadsheetId=spreadsheet_id,
+            range=range_name
+        ).execute()
+    )
 
     return [TextContent(
         type="text",
@@ -464,10 +487,12 @@ async def add_sheet(service, args: dict) -> list[TextContent]:
         }]
     }
 
-    result = service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet_id,
-        body=request
-    ).execute()
+    result = await google_api_call(
+        lambda: service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body=request
+        ).execute()
+    )
 
     new_sheet = result.get('replies', [{}])[0].get('addSheet', {})
     sheet_id = new_sheet.get('properties', {}).get('sheetId', '')
@@ -498,14 +523,15 @@ async def format_cells(service, args: dict) -> list[TextContent]:
     bg_color = args.get("background_color")
     text_color = args.get("text_color")
 
-    # Parse range to get sheet and cell coordinates
-    # This is a simplified version - full implementation would parse A1 notation
-
     # Get sheet ID from range
-    result = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    result = await google_api_call(
+        lambda: service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    )
     sheets = result.get('sheets', [])
 
-    sheet_name = range_name.split('!')[0] if '!' in range_name else 'Sheet1'
+    # Parse range to get sheet name and cell coordinates
+    sheet_name, start_row, start_col, end_row, end_col = _parse_a1_range(range_name)
+
     sheet_id = 0
     for sheet in sheets:
         if sheet.get('properties', {}).get('title') == sheet_name:
@@ -529,17 +555,15 @@ async def format_cells(service, args: dict) -> list[TextContent]:
     if not cell_format:
         return [TextContent(type="text", text="No formatting options specified.")]
 
-    # For simplicity, apply to first row/column
-    # Full implementation would parse A1 notation properly
     request = {
         'requests': [{
             'repeatCell': {
                 'range': {
                     'sheetId': sheet_id,
-                    'startRowIndex': 0,
-                    'endRowIndex': 1,
-                    'startColumnIndex': 0,
-                    'endColumnIndex': 10,
+                    'startRowIndex': start_row,
+                    'endRowIndex': end_row + 1,
+                    'startColumnIndex': start_col,
+                    'endColumnIndex': end_col + 1,
                 },
                 'cell': {'userEnteredFormat': cell_format},
                 'fields': 'userEnteredFormat'
@@ -547,10 +571,12 @@ async def format_cells(service, args: dict) -> list[TextContent]:
         }]
     }
 
-    service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet_id,
-        body=request
-    ).execute()
+    await google_api_call(
+        lambda: service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body=request
+        ).execute()
+    )
 
     formats_applied = []
     if bold:

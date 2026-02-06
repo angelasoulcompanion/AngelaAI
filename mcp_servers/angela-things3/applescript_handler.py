@@ -1,7 +1,11 @@
+import logging
 import subprocess
 from typing import List, Dict, Any, Optional
 import json
 import re
+
+logger = logging.getLogger("angela-things3")
+
 
 class AppleScriptHandler:
     """Handles AppleScript execution for Things3 data retrieval."""
@@ -37,7 +41,9 @@ class AppleScriptHandler:
         # Replace newlines with \\n
         text = text.replace("\n", "\\n")
         text = text.replace("\r", "\\r")
-        
+        # Replace tab characters
+        text = text.replace("\t", "\\t")
+
         return text
 
     @staticmethod
@@ -170,7 +176,7 @@ class AppleScriptHandler:
             
         except Exception as e:
             # Log the error but return empty list rather than crashing
-            print(f"Error retrieving inbox tasks: {e}")
+            logger.error("Error retrieving inbox tasks: %s", e)
             return []
 
     @staticmethod
@@ -266,7 +272,7 @@ class AppleScriptHandler:
             return tasks
             
         except Exception as e:
-            print(f"Error retrieving today's tasks: {e}")
+            logger.error("Error retrieving today's tasks: %s", e)
             return []
 
     @staticmethod
@@ -326,7 +332,7 @@ class AppleScriptHandler:
             return projects
             
         except Exception as e:
-            print(f"Error retrieving projects: {e}")
+            logger.error("Error retrieving projects: %s", e)
             return []
 
     @staticmethod
@@ -492,5 +498,5 @@ class AppleScriptHandler:
             return todos
             
         except Exception as e:
-            print(f"Error searching todos: {e}")
+            logger.error("Error searching todos: %s", e)
             return []

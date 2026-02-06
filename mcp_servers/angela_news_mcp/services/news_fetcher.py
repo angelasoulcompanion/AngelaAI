@@ -4,6 +4,7 @@ News Fetcher Service
 Service for fetching news from various sources (RSS, APIs, Web scraping)
 """
 
+import logging
 import aiohttp
 import feedparser
 from bs4 import BeautifulSoup
@@ -11,6 +12,8 @@ from datetime import datetime
 from dateutil import parser as date_parser
 from typing import Optional
 import urllib.parse
+
+logger = logging.getLogger("angela-news")
 
 
 class NewsFetcher:
@@ -91,7 +94,7 @@ class NewsFetcher:
                 return articles
 
         except Exception as e:
-            print(f"Error searching news: {e}")
+            logger.error("Error searching news: %s", e)
             return []
 
     async def get_trending(self, category: str = "general", country: str = "th", limit: int = 10) -> list:
@@ -142,7 +145,7 @@ class NewsFetcher:
                 return articles
 
         except Exception as e:
-            print(f"Error fetching trending: {e}")
+            logger.error("Error fetching trending: %s", e)
             return []
 
     async def get_thai_news(self, source: str = "all", limit: int = 10) -> list:
@@ -179,7 +182,7 @@ class NewsFetcher:
                         articles.append(self._parse_rss_entry(entry, name.capitalize()))
 
             except Exception as e:
-                print(f"Error fetching from {name}: {e}")
+                logger.warning("Error fetching from %s: %s", name, e)
                 continue
 
         return articles[:limit]
@@ -212,7 +215,7 @@ class NewsFetcher:
                         articles.append(self._parse_rss_entry(entry, name.capitalize()))
 
             except Exception as e:
-                print(f"Error fetching from {name}: {e}")
+                logger.warning("Error fetching from %s: %s", name, e)
                 continue
 
         return articles[:limit]
@@ -283,7 +286,7 @@ class NewsFetcher:
         if hasattr(entry, "published"):
             try:
                 published = date_parser.parse(entry.published).isoformat()
-            except:
+            except (ValueError, TypeError, OverflowError):
                 published = entry.published
 
         # Get summary/description
@@ -353,11 +356,11 @@ class NewsFetcher:
                         url_match = re.search(r'https?://[^\s<>"]+', decoded)
                         if url_match:
                             return url_match.group(0)
-                    except:
+                    except (ValueError, Exception):
                         pass
 
         except Exception as e:
-            print(f"Warning: Could not extract direct URL: {e}")
+            logger.warning("Could not extract direct URL: %s", e)
 
         # Method 3: Check if there's a link in the summary/description
         if hasattr(entry, "summary"):

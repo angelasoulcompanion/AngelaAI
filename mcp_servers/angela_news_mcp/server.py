@@ -24,13 +24,15 @@ from mcp.server.stdio import stdio_server
 
 # Add parent directory to path for proper imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add mcp_servers to path for shared imports
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 from services.news_fetcher import NewsFetcher
 from services.news_history_service import get_news_history_service
+from shared.logging_config import setup_logging
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("angela-news")
+logger = setup_logging("angela-news")
 
 # Create MCP server
 app = Server("angela-news")

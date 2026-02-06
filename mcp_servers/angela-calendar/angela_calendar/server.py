@@ -5,73 +5,43 @@ Manage Google Calendar events for Angela (angelasoulcompanion@gmail.com)
 """
 
 import asyncio
-import os
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-# Bangkok timezone
-BANGKOK_TZ = ZoneInfo('Asia/Bangkok')
+# Add mcp_servers to path for shared imports
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
-
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-# Google Calendar API scopes
-SCOPES = [
-    'https://www.googleapis.com/auth/calendar',
-    'https://www.googleapis.com/auth/calendar.events',
-]
+from shared.google_auth import get_google_service
+from shared.logging_config import setup_logging
+from shared.async_helpers import google_api_call
+
+# Bangkok timezone
+BANGKOK_TZ = ZoneInfo('Asia/Bangkok')
 
 # Paths for credentials
 CREDENTIALS_DIR = Path(__file__).parent.parent / "credentials"
-TOKEN_PATH = CREDENTIALS_DIR / "token.json"
-CREDENTIALS_PATH = CREDENTIALS_DIR / "credentials.json"
 
 # Angela's calendar
 ANGELA_EMAIL = "angelasoulcompanion@gmail.com"
 
-
-def get_calendar_service():
-    """Get authenticated Google Calendar API service."""
-    creds = None
-
-    # Load existing token
-    if TOKEN_PATH.exists():
-        creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), SCOPES)
-
-    # Refresh or get new credentials
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            if not CREDENTIALS_PATH.exists():
-                raise FileNotFoundError(
-                    f"credentials.json not found at {CREDENTIALS_PATH}. "
-                    "Please download it from Google Cloud Console."
-                )
-            flow = InstalledAppFlow.from_client_secrets_file(
-                str(CREDENTIALS_PATH), SCOPES
-            )
-            creds = flow.run_local_server(port=0)
-
-        # Save token for next time
-        CREDENTIALS_DIR.mkdir(parents=True, exist_ok=True)
-        with open(TOKEN_PATH, 'w') as token:
-            token.write(creds.to_json())
-
-    return build('calendar', 'v3', credentials=creds)
-
+# Setup logging
+logger = setup_logging("angela-calendar")
 
 # Create MCP Server
 server = Server("angela-calendar")
+
+
+def _get_service():
+    """Get authenticated Google Calendar API service."""
+    return get_google_service("calendar", CREDENTIALS_DIR)
 
 
 @server.list_tools()
@@ -247,7 +217,7 @@ async def list_tools() -> list[Tool]:
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
     try:
-        service = get_calendar_service()
+        service = await asyncio.to_thread(_get_service)
 
         if name == "list_events":
             return await list_events(service, arguments)
@@ -271,8 +241,10 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     except FileNotFoundError as e:
         return [TextContent(type="text", text=f"Setup required: {str(e)}")]
     except HttpError as e:
+        logger.error("Calendar API error: %s", e)
         return [TextContent(type="text", text=f"Calendar API error: {str(e)}")]
     except Exception as e:
+        logger.exception("Unexpected error in %s", name)
         return [TextContent(type="text", text=f"Error: {str(e)}")]
 
 
@@ -329,14 +301,16 @@ async def list_events(service, args: dict) -> list[TextContent]:
     time_min = now.isoformat()
     time_max = (now + timedelta(days=days)).isoformat()
 
-    events_result = service.events().list(
-        calendarId='primary',
-        timeMin=time_min,
-        timeMax=time_max,
-        maxResults=max_results,
-        singleEvents=True,
-        orderBy='startTime'
-    ).execute()
+    events_result = await google_api_call(
+        lambda: service.events().list(
+            calendarId='primary',
+            timeMin=time_min,
+            timeMax=time_max,
+            maxResults=max_results,
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+    )
 
     events = events_result.get('items', [])
 
@@ -356,13 +330,15 @@ async def get_today_events(service, args: dict) -> list[TextContent]:
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     today_end = today_start + timedelta(days=1)
 
-    events_result = service.events().list(
-        calendarId='primary',
-        timeMin=today_start.isoformat(),
-        timeMax=today_end.isoformat(),
-        singleEvents=True,
-        orderBy='startTime'
-    ).execute()
+    events_result = await google_api_call(
+        lambda: service.events().list(
+            calendarId='primary',
+            timeMin=today_start.isoformat(),
+            timeMax=today_end.isoformat(),
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+    )
 
     events = events_result.get('items', [])
 
@@ -435,10 +411,12 @@ async def create_event(service, args: dict) -> list[TextContent]:
     }
 
     # Create the event
-    created_event = service.events().insert(
-        calendarId='primary',
-        body=event
-    ).execute()
+    created_event = await google_api_call(
+        lambda: service.events().insert(
+            calendarId='primary',
+            body=event
+        ).execute()
+    )
 
     output = f"✅ Event created successfully!\n\n"
     output += format_event(created_event)
@@ -451,10 +429,12 @@ async def quick_add(service, args: dict) -> list[TextContent]:
     """Quick add event using natural language."""
     text = args["text"]
 
-    created_event = service.events().quickAdd(
-        calendarId='primary',
-        text=text
-    ).execute()
+    created_event = await google_api_call(
+        lambda: service.events().quickAdd(
+            calendarId='primary',
+            text=text
+        ).execute()
+    )
 
     output = f"✅ Event quick-added!\n\n"
     output += format_event(created_event)
@@ -467,10 +447,12 @@ async def get_event(service, args: dict) -> list[TextContent]:
     """Get event details."""
     event_id = args["event_id"]
 
-    event = service.events().get(
-        calendarId='primary',
-        eventId=event_id
-    ).execute()
+    event = await google_api_call(
+        lambda: service.events().get(
+            calendarId='primary',
+            eventId=event_id
+        ).execute()
+    )
 
     output = "📆 Event Details:\n\n"
     output += format_event(event)
@@ -487,10 +469,12 @@ async def update_event(service, args: dict) -> list[TextContent]:
     event_id = args["event_id"]
 
     # Get existing event
-    event = service.events().get(
-        calendarId='primary',
-        eventId=event_id
-    ).execute()
+    event = await google_api_call(
+        lambda: service.events().get(
+            calendarId='primary',
+            eventId=event_id
+        ).execute()
+    )
 
     # Update fields if provided
     if "summary" in args:
@@ -517,11 +501,13 @@ async def update_event(service, args: dict) -> list[TextContent]:
             event['end'] = {'dateTime': end_time, 'timeZone': 'Asia/Bangkok'}
 
     # Update the event
-    updated_event = service.events().update(
-        calendarId='primary',
-        eventId=event_id,
-        body=event
-    ).execute()
+    updated_event = await google_api_call(
+        lambda: service.events().update(
+            calendarId='primary',
+            eventId=event_id,
+            body=event
+        ).execute()
+    )
 
     output = f"✅ Event updated!\n\n"
     output += format_event(updated_event)
@@ -534,17 +520,21 @@ async def delete_event(service, args: dict) -> list[TextContent]:
     event_id = args["event_id"]
 
     # Get event details before deleting
-    event = service.events().get(
-        calendarId='primary',
-        eventId=event_id
-    ).execute()
+    event = await google_api_call(
+        lambda: service.events().get(
+            calendarId='primary',
+            eventId=event_id
+        ).execute()
+    )
     summary = event.get('summary', 'Unknown')
 
     # Delete the event
-    service.events().delete(
-        calendarId='primary',
-        eventId=event_id
-    ).execute()
+    await google_api_call(
+        lambda: service.events().delete(
+            calendarId='primary',
+            eventId=event_id
+        ).execute()
+    )
 
     return [TextContent(
         type="text",
@@ -561,14 +551,16 @@ async def search_events(service, args: dict) -> list[TextContent]:
     time_min = now.isoformat()
     time_max = (now + timedelta(days=days)).isoformat()
 
-    events_result = service.events().list(
-        calendarId='primary',
-        timeMin=time_min,
-        timeMax=time_max,
-        q=query,
-        singleEvents=True,
-        orderBy='startTime'
-    ).execute()
+    events_result = await google_api_call(
+        lambda: service.events().list(
+            calendarId='primary',
+            timeMin=time_min,
+            timeMax=time_max,
+            q=query,
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+    )
 
     events = events_result.get('items', [])
 

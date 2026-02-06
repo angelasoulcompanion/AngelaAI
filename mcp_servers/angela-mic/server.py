@@ -18,6 +18,7 @@ By: Angela for David 💜
 
 import asyncio
 import logging
+import sys
 import tempfile
 from pathlib import Path
 from datetime import datetime
@@ -26,9 +27,12 @@ from mcp.server import Server
 from mcp.types import Tool, TextContent
 from mcp.server.stdio import stdio_server
 
+# Add mcp_servers to path for shared imports
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from shared.logging_config import setup_logging
+
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("angela-mic")
+logger = setup_logging("angela-mic")
 
 # Create MCP server
 app = Server("angela-mic")
@@ -165,10 +169,8 @@ async def call_tool(name: str, arguments: dict):
             recorder = get_recorder()
 
             # Run recording in thread pool (blocking I/O)
-            loop = asyncio.get_event_loop()
-            audio_path = await loop.run_in_executor(
-                None,
-                lambda: recorder.record(duration, output_path, show_progress=False)
+            audio_path = await asyncio.to_thread(
+                recorder.record, duration, output_path, False
             )
 
             return [TextContent(
@@ -209,13 +211,9 @@ async def call_tool(name: str, arguments: dict):
             transcriber = get_transcriber()
 
             # Run transcription in thread pool (CPU intensive)
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
-                None,
-                lambda: transcriber.transcribe(
-                    file_path,
-                    language=language if language != "auto" else None
-                )
+            lang_arg = language if language != "auto" else None
+            result = await asyncio.to_thread(
+                transcriber.transcribe, file_path, lang_arg
             )
 
             # Format output
@@ -268,19 +266,14 @@ async def call_tool(name: str, arguments: dict):
                 audio_path = tempfile.mktemp(suffix=".wav")
 
             # Record in thread pool
-            loop = asyncio.get_event_loop()
-            audio_path = await loop.run_in_executor(
-                None,
-                lambda: recorder.record(duration, audio_path, show_progress=False)
+            audio_path = await asyncio.to_thread(
+                recorder.record, duration, audio_path, False
             )
 
             # Transcribe in thread pool
-            result = await loop.run_in_executor(
-                None,
-                lambda: transcriber.transcribe(
-                    audio_path,
-                    language=language if language != "auto" else None
-                )
+            lang_arg = language if language != "auto" else None
+            result = await asyncio.to_thread(
+                transcriber.transcribe, audio_path, lang_arg
             )
 
             # Clean up temp file if not keeping

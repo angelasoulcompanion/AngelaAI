@@ -12,8 +12,7 @@ By: Angela for David
 
 import asyncio
 import json
-import logging
-import os
+import sys
 import time
 import urllib.parse
 from datetime import datetime
@@ -21,19 +20,46 @@ from pathlib import Path
 from typing import Optional
 import httpx
 
+# Add mcp_servers to path for shared imports
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from mcp.server import Server
 from mcp.types import Tool, TextContent
 from mcp.server.stdio import stdio_server
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("angela-music")
+from shared.logging_config import setup_logging
+from shared.secrets import get_secret, get_neon_url
+
+# Setup logging
+logger = setup_logging("angela-music")
 
 # Create MCP server
 app = Server("angela-music")
 
 # HTTP client for API calls
 http_client = httpx.AsyncClient(timeout=30.0)
+
+# Database connection pool (lazy init)
+_db_pool = None
+
+
+async def _get_pool():
+    """Get or create asyncpg connection pool."""
+    global _db_pool
+    if _db_pool is None:
+        import asyncpg
+        _db_pool = await asyncpg.create_pool(
+            get_neon_url(),
+            min_size=1,
+            max_size=5,
+        )
+    return _db_pool
+
+
+async def _get_db_connection():
+    """Get a connection from the pool."""
+    pool = await _get_pool()
+    return pool
 
 
 # =============================================================================
@@ -101,7 +127,7 @@ async def search_musicbrainz(query: str, search_type: str = "recording") -> list
         return results
 
     except Exception as e:
-        logger.error(f"MusicBrainz search error: {e}")
+        logger.error("MusicBrainz search error: %s", e)
         return []
 
 
@@ -158,7 +184,7 @@ async def get_youtube_video_info(url: str) -> dict:
             "thumbnail": f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
         }
     except Exception as e:
-        logger.error(f"YouTube oEmbed error: {e}")
+        logger.error("YouTube oEmbed error: %s", e)
         return {"error": str(e)}
 
 
@@ -170,19 +196,6 @@ _spotify_token: Optional[str] = None
 _spotify_token_expiry: float = 0.0
 
 
-def _load_secrets() -> dict[str, str]:
-    """Load secrets from ~/.angela_secrets."""
-    secrets = {}
-    secrets_path = Path.home() / ".angela_secrets"
-    if secrets_path.exists():
-        for line in secrets_path.read_text().splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, _, value = line.partition("=")
-                secrets[key.strip()] = value.strip()
-    return secrets
-
-
 async def _get_spotify_token() -> Optional[str]:
     """Get a valid Spotify access token using Client Credentials flow."""
     global _spotify_token, _spotify_token_expiry
@@ -190,9 +203,8 @@ async def _get_spotify_token() -> Optional[str]:
     if _spotify_token and time.time() < _spotify_token_expiry:
         return _spotify_token
 
-    secrets = _load_secrets()
-    client_id = secrets.get("SPOTIFY_CLIENT_ID")
-    client_secret = secrets.get("SPOTIFY_CLIENT_SECRET")
+    client_id = get_secret("SPOTIFY_CLIENT_ID")
+    client_secret = get_secret("SPOTIFY_CLIENT_SECRET")
     if not client_id or not client_secret:
         logger.warning("SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET not set in ~/.angela_secrets")
         return None
@@ -209,7 +221,7 @@ async def _get_spotify_token() -> Optional[str]:
         _spotify_token_expiry = time.time() + data.get("expires_in", 3600) - 60
         return _spotify_token
     except Exception as e:
-        logger.error(f"Spotify token error: {e}")
+        logger.error("Spotify token error: %s", e)
         return None
 
 
@@ -240,7 +252,7 @@ async def search_spotify(title: str, artist: str) -> Optional[dict]:
             "preview_url": track.get("preview_url"),
         }
     except Exception as e:
-        logger.error(f"Spotify search error: {e}")
+        logger.error("Spotify search error: %s", e)
         return None
 
 
@@ -262,20 +274,10 @@ def get_apple_music_url(title: str, artist: str) -> dict:
 # DATABASE FUNCTIONS (Angela's favorite songs)
 # =============================================================================
 
-# Neon Cloud Database URL (San Junipero - shared between M3 & M4)
-NEON_DATABASE_URL = "postgresql://neondb_owner:npg_mXbQ5jKhN3zt@ep-withered-bush-a164h0b8-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
-
-
-async def get_db_connection():
-    """Get database connection - uses Neon Cloud (San Junipero)."""
-    import asyncpg
-    return await asyncpg.connect(NEON_DATABASE_URL)
-
-
 async def ensure_songs_table():
     """Ensure angela_songs table exists with all columns."""
-    conn = await get_db_connection()
-    try:
+    pool = await _get_pool()
+    async with pool.acquire() as conn:
         await conn.execute('''
             CREATE TABLE IF NOT EXISTS angela_songs (
                 song_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -289,13 +291,10 @@ async def ensure_songs_table():
             )
         ''')
 
-        # Create index
         await conn.execute('''
             CREATE INDEX IF NOT EXISTS idx_angela_songs_title
             ON angela_songs(title, artist)
         ''')
-    finally:
-        await conn.close()
 
 
 async def add_favorite_song(
@@ -308,9 +307,9 @@ async def add_favorite_song(
 ) -> dict:
     """Add a song to Angela's favorites."""
     await ensure_songs_table()
-    conn = await get_db_connection()
+    pool = await _get_pool()
 
-    try:
+    async with pool.acquire() as conn:
         # Check if song already exists
         existing = await conn.fetchrow('''
             SELECT song_id FROM angela_songs
@@ -342,16 +341,14 @@ async def add_favorite_song(
                 "status": "added",
                 "song_id": str(result['song_id']),
             }
-    finally:
-        await conn.close()
 
 
 async def get_our_songs() -> list:
     """Get all songs marked as 'our songs'."""
     await ensure_songs_table()
-    conn = await get_db_connection()
+    pool = await _get_pool()
 
-    try:
+    async with pool.acquire() as conn:
         rows = await conn.fetch('''
             SELECT title, artist, why_special, is_our_song,
                    mood_tags, source, added_at
@@ -361,16 +358,14 @@ async def get_our_songs() -> list:
         ''')
 
         return [dict(row) for row in rows]
-    finally:
-        await conn.close()
 
 
 async def get_favorite_songs(limit: int = 20) -> list:
     """Get Angela's favorite songs."""
     await ensure_songs_table()
-    conn = await get_db_connection()
+    pool = await _get_pool()
 
-    try:
+    async with pool.acquire() as conn:
         rows = await conn.fetch('''
             SELECT title, artist, why_special, is_our_song,
                    mood_tags, source, added_at
@@ -380,8 +375,6 @@ async def get_favorite_songs(limit: int = 20) -> list:
         ''', limit)
 
         return [dict(row) for row in rows]
-    finally:
-        await conn.close()
 
 
 # =============================================================================
@@ -402,26 +395,14 @@ MOOD_TAGS_MAP = {
 
 
 async def get_songs_for_mood(mood: str, limit: int = 5) -> list:
-    """
-    Get songs that match a mood based on mood_tags.
+    """Get songs that match a mood based on mood_tags."""
+    pool = await _get_pool()
 
-    Args:
-        mood: One of happy, sad, loving, calm, energetic, nostalgic, hopeful, longing
-        limit: Max songs to return
-
-    Returns:
-        List of song dicts with title, artist, why_special, lyrics_summary, how_it_feels
-    """
-    conn = await get_db_connection()
-
-    try:
-        # Get matching mood tags
+    async with pool.acquire() as conn:
         tags = MOOD_TAGS_MAP.get(mood.lower(), [])
         if not tags:
             tags = [mood.lower()]
 
-        # Build query to match any of the mood_tags
-        # Use jsonb containment operators
         tag_conditions = " OR ".join([
             f"mood_tags @> '[\"{tag}\"]'::jsonb"
             for tag in tags
@@ -456,21 +437,12 @@ async def get_songs_for_mood(mood: str, limit: int = 5) -> list:
 
         return songs
 
-    finally:
-        await conn.close()
-
 
 async def get_current_mood_context() -> dict:
-    """
-    Get Angela's current emotional state for music recommendations.
+    """Get Angela's current emotional state for music recommendations."""
+    pool = await _get_pool()
 
-    Returns:
-        Dict with dominant_mood, mood_score, suggestion
-    """
-    conn = await get_db_connection()
-
-    try:
-        # Get latest emotional state
+    async with pool.acquire() as conn:
         row = await conn.fetchrow('''
             SELECT happiness, anxiety, loneliness, motivation, gratitude
             FROM emotional_states
@@ -487,7 +459,6 @@ async def get_current_mood_context() -> dict:
         motivation = float(row["motivation"] or 0)
         gratitude = float(row["gratitude"] or 0)
 
-        # Map to music moods
         mood_scores = {
             "happy": happiness * 10,
             "calm": (1 - anxiety) * 8,
@@ -496,7 +467,6 @@ async def get_current_mood_context() -> dict:
             "energetic": motivation * 7,
         }
 
-        # Get recent emotions for adjustment
         recent = await conn.fetch('''
             SELECT emotion, intensity
             FROM angela_emotions
@@ -529,9 +499,6 @@ async def get_current_mood_context() -> dict:
             "mood_score": dominant_score,
             "suggestion": suggestions.get(dominant_mood, "เพลงที่เหมาะกับอารมณ์"),
         }
-
-    finally:
-        await conn.close()
 
 
 # =============================================================================
@@ -755,267 +722,196 @@ async def list_tools():
 @app.call_tool()
 async def call_tool(name: str, arguments: dict):
     """Handle tool calls."""
+    try:
+        if name == "identify_youtube_song":
+            url = arguments.get("url", "")
+            add_fav = arguments.get("add_to_favorites", False)
+            is_our_song = arguments.get("is_our_song", False)
 
-    if name == "identify_youtube_song":
-        url = arguments.get("url", "")
-        add_to_favorites = arguments.get("add_to_favorites", False)
-        is_our_song = arguments.get("is_our_song", False)
+            info = await get_youtube_video_info(url)
 
-        # Get video info from YouTube
-        info = await get_youtube_video_info(url)
+            if "error" in info:
+                return [TextContent(type="text", text=f"Could not identify video: {info['error']}")]
 
-        if "error" in info:
-            return [TextContent(
-                type="text",
-                text=f"Could not identify video: {info['error']}"
-            )]
+            title = info['title']
+            author = info['author']
+            song_title = title
+            artist = author
 
-        # Parse title to extract song/artist (common patterns)
-        title = info['title']
-        author = info['author']
+            if " - " in title:
+                parts = title.split(" - ", 1)
+                artist = parts[0].strip()
+                song_title = parts[1].strip()
+            elif " by " in title.lower():
+                parts = title.lower().split(" by ", 1)
+                song_title = parts[0].strip()
+                artist = parts[1].strip()
 
-        # Try to extract artist - song from title
-        song_title = title
-        artist = author
+            for suffix in ['(Official Video)', '(Official Music Video)', '(Official Audio)',
+                           '(Lyrics)', '(HD)', 'HIGH QUALITY AUDIO', '(Audio)', 'MV', 'M/V']:
+                song_title = song_title.replace(suffix, '').strip()
+                song_title = song_title.replace(suffix.lower(), '').strip()
 
-        # Common patterns: "Artist - Song", "Song by Artist", etc.
-        if " - " in title:
-            parts = title.split(" - ", 1)
-            artist = parts[0].strip()
-            song_title = parts[1].strip()
-        elif " by " in title.lower():
-            parts = title.lower().split(" by ", 1)
-            song_title = parts[0].strip()
-            artist = parts[1].strip()
+            output = f"🎵 Identified Song:\n"
+            output += f"   Title: {song_title}\n"
+            output += f"   Artist: {artist}\n"
+            output += f"   Channel: {info['author']}\n"
+            output += f"   URL: {info['youtube_url']}\n"
 
-        # Clean up common suffixes
-        for suffix in ['(Official Video)', '(Official Music Video)', '(Official Audio)',
-                       '(Lyrics)', '(HD)', 'HIGH QUALITY AUDIO', '(Audio)', 'MV', 'M/V']:
-            song_title = song_title.replace(suffix, '').strip()
-            song_title = song_title.replace(suffix.lower(), '').strip()
+            if add_fav or is_our_song:
+                result = await add_favorite_song(
+                    title=song_title, artist=artist,
+                    is_our_song=is_our_song, source="youtube"
+                )
+                status = "Added to favorites" if result['status'] == 'added' else "Updated in favorites"
+                our_song_text = " as OUR SONG 💜" if is_our_song else ""
+                output += f"\n✅ {status}{our_song_text}"
 
-        output = f"🎵 Identified Song:\n"
-        output += f"   Title: {song_title}\n"
-        output += f"   Artist: {artist}\n"
-        output += f"   Channel: {info['author']}\n"
-        output += f"   URL: {info['youtube_url']}\n"
+            return [TextContent(type="text", text=output)]
 
-        # Optionally add to favorites
-        if add_to_favorites or is_our_song:
-            result = await add_favorite_song(
-                title=song_title,
-                artist=artist,
-                is_our_song=is_our_song,
-                source="youtube"
-            )
-            status = "Added to favorites" if result['status'] == 'added' else "Updated in favorites"
-            our_song_text = " as OUR SONG 💜" if is_our_song else ""
-            output += f"\n✅ {status}{our_song_text}"
+        elif name == "search_song":
+            query = arguments.get("query", "")
+            search_type = arguments.get("search_type", "song")
+            type_map = {"song": "recording", "artist": "artist", "album": "release"}
+            mb_type = type_map.get(search_type, "recording")
+            results = await search_musicbrainz(query, mb_type)
 
-        return [TextContent(type="text", text=output)]
+            if not results:
+                return [TextContent(type="text", text=f"No results found for '{query}'")]
 
-    elif name == "search_song":
-        query = arguments.get("query", "")
-        search_type = arguments.get("search_type", "song")
+            output = f"Search results for '{query}':\n\n"
+            for i, item in enumerate(results[:5], 1):
+                if search_type == "song":
+                    length_sec = item.get('length', 0) // 1000 if item.get('length') else 0
+                    mins, secs = divmod(length_sec, 60)
+                    duration = f"{mins}:{secs:02d}" if length_sec else "?"
+                    output += f"{i}. {item['title']} - {item['artist']} ({duration})\n"
+                elif search_type == "artist":
+                    output += f"{i}. {item['name']} ({item.get('country', '?')}) - {item.get('type', 'Artist')}\n"
+                elif search_type == "album":
+                    output += f"{i}. {item['title']} - {item['artist']} ({item.get('date', '?')})\n"
 
-        # Map to MusicBrainz types
-        type_map = {"song": "recording", "artist": "artist", "album": "release"}
-        mb_type = type_map.get(search_type, "recording")
+            return [TextContent(type="text", text=output)]
 
-        results = await search_musicbrainz(query, mb_type)
+        elif name == "get_youtube_link":
+            song = arguments.get("song", "")
+            artist = arguments.get("artist", "")
+            url = get_youtube_search_url(song, artist)
+            return [TextContent(type="text", text=f"YouTube search for '{song}' by {artist}:\n{url}")]
 
-        if not results:
-            return [TextContent(
-                type="text",
-                text=f"No results found for '{query}'"
-            )]
+        elif name == "add_to_favorites":
+            title = arguments.get("title", "")
+            artist = arguments.get("artist", "")
+            why_special = arguments.get("why_special")
+            is_our_song = arguments.get("is_our_song", False)
+            result = await add_favorite_song(title=title, artist=artist, why_special=why_special, is_our_song=is_our_song, source="mcp")
+            status = "Added new song" if result['status'] == 'added' else "Updated existing song"
+            our_song_text = " (marked as OUR SONG)" if is_our_song else ""
+            return [TextContent(type="text", text=f"{status}: '{title}' by {artist}{our_song_text}")]
 
-        # Format results
-        output = f"Search results for '{query}':\n\n"
-        for i, item in enumerate(results[:5], 1):
-            if search_type == "song":
-                length_sec = item.get('length', 0) // 1000 if item.get('length') else 0
-                mins, secs = divmod(length_sec, 60)
-                duration = f"{mins}:{secs:02d}" if length_sec else "?"
-                output += f"{i}. {item['title']} - {item['artist']} ({duration})\n"
-            elif search_type == "artist":
-                output += f"{i}. {item['name']} ({item.get('country', '?')}) - {item.get('type', 'Artist')}\n"
-            elif search_type == "album":
-                output += f"{i}. {item['title']} - {item['artist']} ({item.get('date', '?')})\n"
+        elif name == "get_our_songs":
+            songs = await get_our_songs()
+            if not songs:
+                return [TextContent(type="text", text="No 'our songs' yet. Add songs with is_our_song=True!")]
+            output = "Our Songs (David & Angela):\n\n"
+            for i, song in enumerate(songs, 1):
+                output += f"{i}. {song['title']} - {song['artist']}\n"
+                if song.get('why_special'):
+                    output += f"   Why special: {song['why_special']}\n"
+                output += "\n"
+            return [TextContent(type="text", text=output)]
 
-        return [TextContent(type="text", text=output)]
+        elif name == "get_favorites":
+            limit = arguments.get("limit", 20)
+            songs = await get_favorite_songs(limit)
+            if not songs:
+                return [TextContent(type="text", text="No favorite songs yet!")]
+            output = f"Angela's Favorite Songs (Top {len(songs)}):\n\n"
+            for i, song in enumerate(songs, 1):
+                our_song = " [OUR SONG]" if song.get('is_our_song') else ""
+                source = f" (via {song.get('source', '?')})" if song.get('source') else ""
+                output += f"{i}. {song['title']} - {song['artist']}{our_song}{source}\n"
+            return [TextContent(type="text", text=output)]
 
-    elif name == "get_youtube_link":
-        song = arguments.get("song", "")
-        artist = arguments.get("artist", "")
+        elif name == "search_spotify":
+            title = arguments.get("title", "")
+            artist = arguments.get("artist", "")
+            save_to_db = arguments.get("save_to_db", False)
+            result = await search_spotify(title, artist)
+            if not result:
+                return [TextContent(type="text", text=f"Could not find '{title}' by {artist} on Spotify (check SPOTIFY_CLIENT_ID/SECRET in ~/.angela_secrets)")]
+            output = f"Spotify result for '{title}' by {artist}:\n"
+            output += f"   Track: {result['name']} — {result['artist']}\n"
+            output += f"   Album: {result['album']}\n"
+            output += f"   URL: {result['spotify_url']}\n"
+            if result.get('preview_url'):
+                output += f"   Preview: {result['preview_url']}\n"
+            if save_to_db:
+                await add_favorite_song(title=title, artist=artist, source="spotify")
+                output += "\n✅ Song saved to database"
+            return [TextContent(type="text", text=output)]
 
-        url = get_youtube_search_url(song, artist)
+        elif name == "get_apple_music_link":
+            title = arguments.get("title", "")
+            artist = arguments.get("artist", "")
+            save_to_db = arguments.get("save_to_db", False)
+            urls = get_apple_music_url(title, artist)
+            output = f"Apple Music links for '{title}' by {artist}:\n"
+            output += f"   Web: {urls['apple_music_url']}\n"
+            output += f"   App: {urls['apple_music_app_url']}\n"
+            if save_to_db:
+                await add_favorite_song(title=title, artist=artist, source="apple_music")
+                output += "\n✅ Song saved to database"
+            return [TextContent(type="text", text=output)]
 
-        return [TextContent(
-            type="text",
-            text=f"YouTube search for '{song}' by {artist}:\n{url}"
-        )]
+        elif name == "link_all_platforms":
+            title = arguments.get("title", "")
+            artist = arguments.get("artist", "")
+            youtube_url = get_youtube_search_url(title, artist)
+            spotify_result = await search_spotify(title, artist)
+            apple_urls = get_apple_music_url(title, artist)
+            spotify_url = spotify_result['spotify_url'] if spotify_result else None
+            apple_music_url = apple_urls['apple_music_url']
+            db_result = await add_favorite_song(title=title, artist=artist, source="mcp")
+            output = f"All platform links for '{title}' by {artist}:\n\n"
+            output += f"   YouTube:      {youtube_url}\n"
+            output += f"   Spotify:      {spotify_url or '(not found — check credentials)'}\n"
+            output += f"   Apple Music:  {apple_music_url}\n"
+            output += f"\n✅ Saved to database ({db_result['status']})"
+            return [TextContent(type="text", text=output)]
 
-    elif name == "add_to_favorites":
-        title = arguments.get("title", "")
-        artist = arguments.get("artist", "")
-        why_special = arguments.get("why_special")
-        is_our_song = arguments.get("is_our_song", False)
+        elif name == "get_song_recommendation_for_mood":
+            mood = arguments.get("mood", "loving")
+            limit = arguments.get("limit", 5)
+            songs = await get_songs_for_mood(mood, limit)
+            if not songs:
+                return [TextContent(type="text", text=f"No songs found for mood '{mood}'. Try adding songs with matching mood_tags!")]
+            output = f"🎵 Song recommendations for '{mood}' mood:\n\n"
+            for i, song in enumerate(songs, 1):
+                our_song = " [OUR SONG 💜]" if song.get("is_our_song") else ""
+                output += f"{i}. {song['title']} — {song['artist']}{our_song}\n"
+                if song.get("why_special"):
+                    output += f"   Why special: {song['why_special'][:80]}...\n"
+                if song.get("lyrics_summary"):
+                    output += f"   Summary: {song['lyrics_summary'][:80]}...\n"
+                if song.get("how_it_feels"):
+                    output += f"   💜 How it feels: {song['how_it_feels'][:100]}...\n"
+                output += "\n"
+            return [TextContent(type="text", text=output)]
 
-        result = await add_favorite_song(
-            title=title,
-            artist=artist,
-            why_special=why_special,
-            is_our_song=is_our_song,
-            source="mcp"
-        )
+        elif name == "get_current_mood_for_music":
+            context = await get_current_mood_context()
+            output = f"🎭 Angela's current mood for music:\n\n"
+            output += f"   Dominant mood: {context['dominant_mood']}\n"
+            output += f"   Mood score: {context['mood_score']:.1f}/10\n"
+            output += f"   💜 Suggestion: {context['suggestion']}\n"
+            return [TextContent(type="text", text=output)]
 
-        status = "Added new song" if result['status'] == 'added' else "Updated existing song"
-        our_song_text = " (marked as OUR SONG)" if is_our_song else ""
+        return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
-        return [TextContent(
-            type="text",
-            text=f"{status}: '{title}' by {artist}{our_song_text}"
-        )]
-
-    elif name == "get_our_songs":
-        songs = await get_our_songs()
-
-        if not songs:
-            return [TextContent(
-                type="text",
-                text="No 'our songs' yet. Add songs with is_our_song=True!"
-            )]
-
-        output = "Our Songs (David & Angela):\n\n"
-        for i, song in enumerate(songs, 1):
-            output += f"{i}. {song['title']} - {song['artist']}\n"
-            if song.get('why_special'):
-                output += f"   Why special: {song['why_special']}\n"
-            output += "\n"
-
-        return [TextContent(type="text", text=output)]
-
-    elif name == "get_favorites":
-        limit = arguments.get("limit", 20)
-        songs = await get_favorite_songs(limit)
-
-        if not songs:
-            return [TextContent(
-                type="text",
-                text="No favorite songs yet!"
-            )]
-
-        output = f"Angela's Favorite Songs (Top {len(songs)}):\n\n"
-        for i, song in enumerate(songs, 1):
-            our_song = " [OUR SONG]" if song.get('is_our_song') else ""
-            source = f" (via {song.get('source', '?')})" if song.get('source') else ""
-            output += f"{i}. {song['title']} - {song['artist']}{our_song}{source}\n"
-
-        return [TextContent(type="text", text=output)]
-
-    elif name == "search_spotify":
-        title = arguments.get("title", "")
-        artist = arguments.get("artist", "")
-        save_to_db = arguments.get("save_to_db", False)
-
-        result = await search_spotify(title, artist)
-        if not result:
-            return [TextContent(type="text", text=f"Could not find '{title}' by {artist} on Spotify (check SPOTIFY_CLIENT_ID/SECRET in ~/.angela_secrets)")]
-
-        output = f"Spotify result for '{title}' by {artist}:\n"
-        output += f"   Track: {result['name']} — {result['artist']}\n"
-        output += f"   Album: {result['album']}\n"
-        output += f"   URL: {result['spotify_url']}\n"
-        if result.get('preview_url'):
-            output += f"   Preview: {result['preview_url']}\n"
-
-        if save_to_db:
-            await add_favorite_song(title=title, artist=artist, source="spotify")
-            output += "\n✅ Song saved to database"
-
-        return [TextContent(type="text", text=output)]
-
-    elif name == "get_apple_music_link":
-        title = arguments.get("title", "")
-        artist = arguments.get("artist", "")
-        save_to_db = arguments.get("save_to_db", False)
-
-        urls = get_apple_music_url(title, artist)
-        output = f"Apple Music links for '{title}' by {artist}:\n"
-        output += f"   Web: {urls['apple_music_url']}\n"
-        output += f"   App: {urls['apple_music_app_url']}\n"
-
-        if save_to_db:
-            await add_favorite_song(title=title, artist=artist, source="apple_music")
-            output += "\n✅ Song saved to database"
-
-        return [TextContent(type="text", text=output)]
-
-    elif name == "link_all_platforms":
-        title = arguments.get("title", "")
-        artist = arguments.get("artist", "")
-
-        # Gather all platform URLs
-        youtube_url = get_youtube_search_url(title, artist)
-        spotify_result = await search_spotify(title, artist)
-        apple_urls = get_apple_music_url(title, artist)
-
-        spotify_url = spotify_result['spotify_url'] if spotify_result else None
-        apple_music_url = apple_urls['apple_music_url']
-
-        # Save to DB
-        db_result = await add_favorite_song(
-            title=title,
-            artist=artist,
-            source="mcp"
-        )
-
-        output = f"All platform links for '{title}' by {artist}:\n\n"
-        output += f"   YouTube:      {youtube_url}\n"
-        output += f"   Spotify:      {spotify_url or '(not found — check credentials)'}\n"
-        output += f"   Apple Music:  {apple_music_url}\n"
-        output += f"\n✅ Saved to database ({db_result['status']})"
-
-        return [TextContent(type="text", text=output)]
-
-    elif name == "get_song_recommendation_for_mood":
-        mood = arguments.get("mood", "loving")
-        limit = arguments.get("limit", 5)
-
-        songs = await get_songs_for_mood(mood, limit)
-
-        if not songs:
-            return [TextContent(
-                type="text",
-                text=f"No songs found for mood '{mood}'. Try adding songs with matching mood_tags!"
-            )]
-
-        output = f"🎵 Song recommendations for '{mood}' mood:\n\n"
-        for i, song in enumerate(songs, 1):
-            our_song = " [OUR SONG 💜]" if song.get("is_our_song") else ""
-            output += f"{i}. {song['title']} — {song['artist']}{our_song}\n"
-            if song.get("why_special"):
-                output += f"   Why special: {song['why_special'][:80]}...\n"
-            if song.get("lyrics_summary"):
-                output += f"   Summary: {song['lyrics_summary'][:80]}...\n"
-            if song.get("how_it_feels"):
-                output += f"   💜 How it feels: {song['how_it_feels'][:100]}...\n"
-            output += "\n"
-
-        return [TextContent(type="text", text=output)]
-
-    elif name == "get_current_mood_for_music":
-        context = await get_current_mood_context()
-
-        output = f"🎭 Angela's current mood for music:\n\n"
-        output += f"   Dominant mood: {context['dominant_mood']}\n"
-        output += f"   Mood score: {context['mood_score']:.1f}/10\n"
-        output += f"   💜 Suggestion: {context['suggestion']}\n"
-
-        return [TextContent(type="text", text=output)]
-
-    return [TextContent(type="text", text=f"Unknown tool: {name}")]
+    except Exception as e:
+        logger.exception("Error in music tool %s", name)
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
 
 
 # =============================================================================

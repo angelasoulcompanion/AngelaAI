@@ -6,9 +6,8 @@ Send and read emails from Angela's Gmail account (angelasoulcompanion@gmail.com)
 
 import asyncio
 import base64
-import json
 import mimetypes
-import os
+import sys
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -16,65 +15,34 @@ from email import encoders
 from pathlib import Path
 from typing import Any
 
+# Add mcp_servers to path for shared imports
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
-
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-# Gmail API scopes
-SCOPES = [
-    'https://www.googleapis.com/auth/gmail.send',
-    'https://www.googleapis.com/auth/gmail.readonly',
-    'https://www.googleapis.com/auth/gmail.modify',
-]
+from shared.google_auth import get_google_service
+from shared.logging_config import setup_logging
+from shared.async_helpers import google_api_call
 
 # Paths for credentials
 CREDENTIALS_DIR = Path(__file__).parent.parent / "credentials"
-TOKEN_PATH = CREDENTIALS_DIR / "token.json"
-CREDENTIALS_PATH = CREDENTIALS_DIR / "credentials.json"
 
 # Angela's email
 ANGELA_EMAIL = "angelasoulcompanion@gmail.com"
 
-
-def get_gmail_service():
-    """Get authenticated Gmail API service."""
-    creds = None
-
-    # Load existing token
-    if TOKEN_PATH.exists():
-        creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), SCOPES)
-
-    # Refresh or get new credentials
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            if not CREDENTIALS_PATH.exists():
-                raise FileNotFoundError(
-                    f"credentials.json not found at {CREDENTIALS_PATH}. "
-                    "Please download it from Google Cloud Console."
-                )
-            flow = InstalledAppFlow.from_client_secrets_file(
-                str(CREDENTIALS_PATH), SCOPES
-            )
-            creds = flow.run_local_server(port=0)
-
-        # Save token for next time
-        CREDENTIALS_DIR.mkdir(parents=True, exist_ok=True)
-        with open(TOKEN_PATH, 'w') as token:
-            token.write(creds.to_json())
-
-    return build('gmail', 'v1', credentials=creds)
-
+# Setup logging
+logger = setup_logging("angela-gmail")
 
 # Create MCP Server
 server = Server("angela-gmail")
+
+
+def _get_service():
+    """Get authenticated Gmail API service."""
+    return get_google_service("gmail", CREDENTIALS_DIR)
 
 
 @server.list_tools()
@@ -217,7 +185,7 @@ async def list_tools() -> list[Tool]:
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
     try:
-        service = get_gmail_service()
+        service = await asyncio.to_thread(_get_service)
 
         if name == "send_email":
             return await send_email(service, arguments)
@@ -237,8 +205,10 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     except FileNotFoundError as e:
         return [TextContent(type="text", text=f"Setup required: {str(e)}")]
     except HttpError as e:
+        logger.error("Gmail API error: %s", e)
         return [TextContent(type="text", text=f"Gmail API error: {str(e)}")]
     except Exception as e:
+        logger.exception("Unexpected error in %s", name)
         return [TextContent(type="text", text=f"Error: {str(e)}")]
 
 
@@ -255,7 +225,6 @@ async def send_email(service, args: dict) -> list[TextContent]:
     # Create message - use multipart/mixed if we have attachments
     if attachments:
         message = MIMEMultipart('mixed')
-        # Add body as first part
         if is_html:
             body_part = MIMEMultipart('alternative')
             body_part.attach(MIMEText(body, 'html'))
@@ -263,7 +232,6 @@ async def send_email(service, args: dict) -> list[TextContent]:
         else:
             message.attach(MIMEText(body, 'plain'))
 
-        # Add attachments
         attached_files = []
         for file_path in attachments:
             path = Path(file_path)
@@ -273,22 +241,18 @@ async def send_email(service, args: dict) -> list[TextContent]:
                     text=f"Error: Attachment file not found: {file_path}"
                 )]
 
-            # Guess MIME type
             mime_type, _ = mimetypes.guess_type(str(path))
             if mime_type is None:
                 mime_type = 'application/octet-stream'
 
             main_type, sub_type = mime_type.split('/', 1)
 
-            # Read and attach file
             with open(path, 'rb') as f:
                 file_data = f.read()
 
             attachment = MIMEBase(main_type, sub_type)
             attachment.set_payload(file_data)
             encoders.encode_base64(attachment)
-
-            # Set filename header
             attachment.add_header(
                 'Content-Disposition',
                 'attachment',
@@ -312,15 +276,15 @@ async def send_email(service, args: dict) -> list[TextContent]:
     if bcc:
         message['bcc'] = bcc
 
-    # Encode and send
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
 
-    result = service.users().messages().send(
-        userId='me',
-        body={'raw': raw}
-    ).execute()
+    result = await google_api_call(
+        lambda: service.users().messages().send(
+            userId='me',
+            body={'raw': raw}
+        ).execute()
+    )
 
-    # Build response
     response = f"Email sent successfully!\n"
     response += f"To: {to}\n"
     response += f"Subject: {subject}\n"
@@ -340,36 +304,43 @@ async def read_inbox(service, args: dict) -> list[TextContent]:
     if unread_only:
         query += " is:unread"
 
-    results = service.users().messages().list(
-        userId='me',
-        q=query,
-        maxResults=max_results
-    ).execute()
+    results = await google_api_call(
+        lambda: service.users().messages().list(
+            userId='me',
+            q=query,
+            maxResults=max_results
+        ).execute()
+    )
 
     messages = results.get('messages', [])
 
     if not messages:
         return [TextContent(type="text", text="No emails found in inbox.")]
 
-    email_list = []
-    for msg in messages:
-        msg_data = service.users().messages().get(
-            userId='me',
-            id=msg['id'],
-            format='metadata',
-            metadataHeaders=['From', 'Subject', 'Date']
-        ).execute()
+    # Fetch all message metadata in a single thread to avoid N blocking calls
+    def _fetch_all_metadata():
+        email_list = []
+        for msg in messages:
+            msg_data = service.users().messages().get(
+                userId='me',
+                id=msg['id'],
+                format='metadata',
+                metadataHeaders=['From', 'Subject', 'Date']
+            ).execute()
 
-        headers = {h['name']: h['value'] for h in msg_data['payload']['headers']}
-        is_unread = 'UNREAD' in msg_data.get('labelIds', [])
+            headers = {h['name']: h['value'] for h in msg_data['payload']['headers']}
+            is_unread = 'UNREAD' in msg_data.get('labelIds', [])
 
-        email_list.append({
-            'id': msg['id'],
-            'from': headers.get('From', 'Unknown'),
-            'subject': headers.get('Subject', '(No Subject)'),
-            'date': headers.get('Date', 'Unknown'),
-            'unread': is_unread
-        })
+            email_list.append({
+                'id': msg['id'],
+                'from': headers.get('From', 'Unknown'),
+                'subject': headers.get('Subject', '(No Subject)'),
+                'date': headers.get('Date', 'Unknown'),
+                'unread': is_unread
+            })
+        return email_list
+
+    email_list = await asyncio.to_thread(_fetch_all_metadata)
 
     output = "Recent emails:\n\n"
     for i, email in enumerate(email_list, 1):
@@ -387,34 +358,40 @@ async def search_emails(service, args: dict) -> list[TextContent]:
     query = args["query"]
     max_results = args.get("max_results", 10)
 
-    results = service.users().messages().list(
-        userId='me',
-        q=query,
-        maxResults=max_results
-    ).execute()
+    results = await google_api_call(
+        lambda: service.users().messages().list(
+            userId='me',
+            q=query,
+            maxResults=max_results
+        ).execute()
+    )
 
     messages = results.get('messages', [])
 
     if not messages:
         return [TextContent(type="text", text=f"No emails found for query: {query}")]
 
-    email_list = []
-    for msg in messages:
-        msg_data = service.users().messages().get(
-            userId='me',
-            id=msg['id'],
-            format='metadata',
-            metadataHeaders=['From', 'Subject', 'Date']
-        ).execute()
+    def _fetch_all_metadata():
+        email_list = []
+        for msg in messages:
+            msg_data = service.users().messages().get(
+                userId='me',
+                id=msg['id'],
+                format='metadata',
+                metadataHeaders=['From', 'Subject', 'Date']
+            ).execute()
 
-        headers = {h['name']: h['value'] for h in msg_data['payload']['headers']}
+            headers = {h['name']: h['value'] for h in msg_data['payload']['headers']}
 
-        email_list.append({
-            'id': msg['id'],
-            'from': headers.get('From', 'Unknown'),
-            'subject': headers.get('Subject', '(No Subject)'),
-            'date': headers.get('Date', 'Unknown')
-        })
+            email_list.append({
+                'id': msg['id'],
+                'from': headers.get('From', 'Unknown'),
+                'subject': headers.get('Subject', '(No Subject)'),
+                'date': headers.get('Date', 'Unknown')
+            })
+        return email_list
+
+    email_list = await asyncio.to_thread(_fetch_all_metadata)
 
     output = f"Search results for '{query}':\n\n"
     for i, email in enumerate(email_list, 1):
@@ -430,11 +407,13 @@ async def get_email(service, args: dict) -> list[TextContent]:
     """Get full email content."""
     email_id = args["email_id"]
 
-    msg_data = service.users().messages().get(
-        userId='me',
-        id=email_id,
-        format='full'
-    ).execute()
+    msg_data = await google_api_call(
+        lambda: service.users().messages().get(
+            userId='me',
+            id=email_id,
+            format='full'
+        ).execute()
+    )
 
     headers = {h['name']: h['value'] for h in msg_data['payload']['headers']}
 
@@ -474,11 +453,13 @@ async def mark_as_read(service, args: dict) -> list[TextContent]:
     """Mark email as read."""
     email_id = args["email_id"]
 
-    service.users().messages().modify(
-        userId='me',
-        id=email_id,
-        body={'removeLabelIds': ['UNREAD']}
-    ).execute()
+    await google_api_call(
+        lambda: service.users().messages().modify(
+            userId='me',
+            id=email_id,
+            body={'removeLabelIds': ['UNREAD']}
+        ).execute()
+    )
 
     return [TextContent(type="text", text=f"Email {email_id} marked as read.")]
 
@@ -489,17 +470,17 @@ async def reply_to_email(service, args: dict) -> list[TextContent]:
     body = args["body"]
     is_html = args.get("html", False)
 
-    # Get original email
-    original = service.users().messages().get(
-        userId='me',
-        id=email_id,
-        format='metadata',
-        metadataHeaders=['From', 'Subject', 'Message-ID', 'References']
-    ).execute()
+    original = await google_api_call(
+        lambda: service.users().messages().get(
+            userId='me',
+            id=email_id,
+            format='metadata',
+            metadataHeaders=['From', 'Subject', 'Message-ID', 'References']
+        ).execute()
+    )
 
     headers = {h['name']: h['value'] for h in original['payload']['headers']}
 
-    # Build reply
     to = headers.get('From', '')
     subject = headers.get('Subject', '')
     if not subject.lower().startswith('re:'):
@@ -522,13 +503,15 @@ async def reply_to_email(service, args: dict) -> list[TextContent]:
 
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
 
-    result = service.users().messages().send(
-        userId='me',
-        body={
-            'raw': raw,
-            'threadId': original['threadId']
-        }
-    ).execute()
+    result = await google_api_call(
+        lambda: service.users().messages().send(
+            userId='me',
+            body={
+                'raw': raw,
+                'threadId': original['threadId']
+            }
+        ).execute()
+    )
 
     return [TextContent(
         type="text",

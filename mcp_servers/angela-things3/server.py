@@ -2,12 +2,16 @@ import asyncio
 import logging
 import subprocess
 import sys
+from pathlib import Path
 from urllib.parse import quote
 
 import mcp.types as types
 from mcp.server import Server, NotificationOptions
 from mcp.server.models import InitializationOptions
 import mcp.server.stdio
+
+# Add mcp_servers to path for shared imports
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 # Handle both relative and absolute imports
 try:
@@ -17,12 +21,13 @@ except ImportError:
     from sqlite_handler import SQLiteHandler
     from applescript_handler import AppleScriptHandler
 
+from shared.logging_config import setup_logging
+
 # Initialize SQLite handler for fast database access
 sqlite_handler = SQLiteHandler()
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Setup logging
+logger = setup_logging("angela-things3")
 
 # Initialize the server
 server = Server("mcp-server-things3")
@@ -186,11 +191,11 @@ async def handle_call_tool(
     try:
         if name == "view-inbox":
             # Validate Things3 is accessible
-            if not sqlite_handler.validate_access():
+            if not await asyncio.to_thread(sqlite_handler.validate_access):
                 return [types.TextContent(type="text", text="Things3 database not found. Please ensure Things3 is installed.")]
 
             try:
-                todos = sqlite_handler.get_inbox_tasks() or []
+                todos = await asyncio.to_thread(sqlite_handler.get_inbox_tasks) or []
                 if not todos:
                     return [types.TextContent(type="text", text="No todos found in Things3 inbox.")]
 
@@ -208,11 +213,11 @@ async def handle_call_tool(
 
         if name == "view-projects":
             # Validate Things3 is accessible
-            if not sqlite_handler.validate_access():
+            if not await asyncio.to_thread(sqlite_handler.validate_access):
                 return [types.TextContent(type="text", text="Things3 database not found. Please ensure Things3 is installed.")]
 
             try:
-                projects = sqlite_handler.get_projects() or []
+                projects = await asyncio.to_thread(sqlite_handler.get_projects) or []
                 if not projects:
                     return [types.TextContent(type="text", text="No projects found in Things3.")]
 
@@ -231,11 +236,11 @@ async def handle_call_tool(
 
         if name == "view-todos":
             # Validate Things3 is accessible
-            if not sqlite_handler.validate_access():
+            if not await asyncio.to_thread(sqlite_handler.validate_access):
                 return [types.TextContent(type="text", text="Things3 database not found. Please ensure Things3 is installed.")]
 
             try:
-                todos = sqlite_handler.get_today_tasks() or []
+                todos = await asyncio.to_thread(sqlite_handler.get_today_tasks) or []
                 if not todos:
                     return [types.TextContent(type="text", text="No todos found in Things3.")]
 
@@ -268,7 +273,7 @@ async def handle_call_tool(
                 raise ValueError("Missing arguments")
 
             # Validate Things3 is available
-            if not XCallbackURLHandler.validate_things3_available():
+            if not await asyncio.to_thread(XCallbackURLHandler.validate_things3_available):
                 return [
                     types.TextContent(
                         type="text",
@@ -298,7 +303,7 @@ async def handle_call_tool(
             logger.info(f"Creating project with URL: {url}")
             
             try:
-                XCallbackURLHandler.call_url(url)
+                await asyncio.to_thread(XCallbackURLHandler.call_url, url)
                 return [
                     types.TextContent(
                         type="text",
@@ -319,7 +324,7 @@ async def handle_call_tool(
                 raise ValueError("Missing arguments")
 
             # Validate Things3 is available
-            if not XCallbackURLHandler.validate_things3_available():
+            if not await asyncio.to_thread(XCallbackURLHandler.validate_things3_available):
                 return [
                     types.TextContent(
                         type="text",
@@ -353,7 +358,7 @@ async def handle_call_tool(
             logger.info(f"Creating todo with URL: {url}")
             
             try:
-                XCallbackURLHandler.call_url(url)
+                await asyncio.to_thread(XCallbackURLHandler.call_url, url)
                 return [
                     types.TextContent(
                         type="text",
@@ -374,7 +379,7 @@ async def handle_call_tool(
                 raise ValueError("Missing arguments")
 
             # Validate Things3 is available
-            if not AppleScriptHandler.validate_things3_access():
+            if not await asyncio.to_thread(AppleScriptHandler.validate_things3_access):
                 return [
                     types.TextContent(
                         type="text",
@@ -383,7 +388,7 @@ async def handle_call_tool(
                 ]
 
             try:
-                success = AppleScriptHandler.complete_todo_by_title(arguments["title"])
+                success = await asyncio.to_thread(AppleScriptHandler.complete_todo_by_title, arguments["title"])
                 if success:
                     return [
                         types.TextContent(
@@ -412,7 +417,7 @@ async def handle_call_tool(
                 raise ValueError("Missing arguments")
 
             # Validate Things3 is available
-            if not sqlite_handler.validate_access():
+            if not await asyncio.to_thread(sqlite_handler.validate_access):
                 return [
                     types.TextContent(
                         type="text",
@@ -421,7 +426,7 @@ async def handle_call_tool(
                 ]
 
             try:
-                todos = sqlite_handler.search_todos(arguments["query"])
+                todos = await asyncio.to_thread(sqlite_handler.search_todos, arguments["query"])
                 if not todos:
                     return [
                         types.TextContent(
