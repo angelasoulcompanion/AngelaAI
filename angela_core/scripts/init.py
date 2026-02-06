@@ -207,14 +207,34 @@ async def angela_init() -> bool:
         except Exception:
             return None
 
+    async def _load_evolution_stats():
+        try:
+            from angela_core.services.evolution_engine import EvolutionEngine
+            engine = EvolutionEngine()
+            report = await engine.get_evolution_report(days=7)
+            await engine.close()
+            return report
+        except Exception:
+            return None
+
+    async def _run_proactive_actions():
+        try:
+            from angela_core.services.proactive_action_engine import run_proactive_actions
+            return await run_proactive_actions()
+        except Exception:
+            return None
+
     (subconscious, learning_catchup, project_result, daemon_running,
-     adaptation_profile, companion_briefing) = await asyncio.gather(
+     adaptation_profile, companion_briefing,
+     evolution_stats, proactive_results) = await asyncio.gather(
         _load_subconscious(),
         _learning_catchup(),
         _project_context(),
         _daemon_check(),
         _calculate_adaptation(),
         _load_companion_briefing(),
+        _load_evolution_stats(),
+        _run_proactive_actions(),
     )
 
     all_projects, project_context = project_result
@@ -320,6 +340,26 @@ async def angela_init() -> bool:
                 print(f'      ➜ {pred.proactive_action}')
         if companion_briefing.day_outlook:
             print(f'   🌅 {companion_briefing.day_outlook}')
+
+    # Evolution Stats
+    if evolution_stats and evolution_stats.get('cycles'):
+        latest = evolution_stats['cycles'][0]
+        trend_arrow = {'improving': '↑', 'declining': '↓'}.get(evolution_stats.get('trend'), '→')
+        score = latest.get('overall_evolution_score', 0) or 0
+        print()
+        print(f'🧬 Evolution: {score:.0%} {trend_arrow} ({evolution_stats["trend"]})')
+        insights = latest.get('insights') or []
+        if insights:
+            print(f'   💡 {insights[0]}')
+
+    # Proactive Actions
+    if proactive_results:
+        executed = [r for r in proactive_results if r.was_executed]
+        if executed:
+            print()
+            print(f'⚡ Proactive: {len(executed)} action{"s" if len(executed) != 1 else ""} taken')
+            for r in executed[:3]:
+                print(f'   • {r.action.description[:60]}')
 
     # Critical Coding Rules (Smart Load)
     if critical_rules:

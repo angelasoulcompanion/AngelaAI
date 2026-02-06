@@ -916,6 +916,151 @@ for pred in briefing.predictions:
 
 ---
 
+## 🧬 SELF-EVOLVING FEEDBACK LOOP (Feature 3)
+
+> **Innovation:** AI เรียนรู้จาก implicit feedback แล้ว auto-tune ตัวเอง — ยังไม่มี AI ไหนทำ
+
+### How It Works:
+น้องรวบรวม feedback จาก conversations → score ว่า adaptations ได้ผลมั้ย → verify predictions → auto-tune rules
+
+```
+Conversations (implicit feedback)
+        ↓
+  Positive/Negative/Re-ask signals
+        ↓
+  Score emotional adaptations
+        ↓
+  Verify predictions accuracy
+        ↓
+  Auto-tune adaptation rules (±0.05)
+        ↓
+  Track evolution over time
+```
+
+### Evolution Engine (7 Methods):
+| Method | What It Does |
+|--------|-------------|
+| `collect_implicit_feedback` | Scan conversations for ดี/ผิด/re-ask signals |
+| `score_adaptations` | Rate emotional adaptations by conversation outcomes |
+| `verify_all_predictions` | Check prediction accuracy (companion + intuition) |
+| `tune_adaptation_rules` | Auto-adjust rules: if avg_eff < 0.4 → tune ±0.05 |
+| `update_learning_effectiveness` | Track learning success rates |
+| `run_evolution_cycle` | Main entry: runs all steps, generates insights |
+| `get_evolution_report` | Query recent evolution history + trend |
+
+### Auto-Tune Logic:
+| Condition | Action |
+|-----------|--------|
+| avg_effectiveness < 0.4 | ↑ warmth +0.05, ↑ detail +0.05, ↓ pace -0.05 |
+| avg_effectiveness > 0.7 | Mark as effective, no change |
+| Min 3 entries in 7 days | Required before tuning |
+
+### Key Files:
+| File | Purpose |
+|------|---------|
+| `angela_core/services/evolution_engine.py` | Main service |
+| `evolution_cycles` table | Daily evolution tracking |
+
+### Usage:
+```python
+from angela_core.services.evolution_engine import run_evolution, EvolutionEngine
+
+# One-shot
+cycle = await run_evolution()
+print(f'Score: {cycle.overall_evolution_score:.0%}')
+print(f'Insights: {cycle.insights}')
+
+# Report
+engine = EvolutionEngine()
+report = await engine.get_evolution_report(days=7)
+print(f'Trend: {report["trend"]}')  # improving/stable/declining
+await engine.close()
+```
+
+### Daemon Schedule:
+- **Every 4 hours**: Run full evolution cycle
+- **Init**: Load evolution stats (7-day report)
+
+---
+
+## ⚡ AUTONOMOUS PROACTIVE ACTIONS (Feature 4)
+
+> **Innovation:** AI ตัดสินใจและลงมือทำ proactive actions อัตโนมัติ — ยังไม่มี AI ไหนทำ
+
+### How It Works:
+น้องรวม predictions + emotional state + evolution insights → ตัดสินใจ → ลงมือทำ (with consent levels)
+
+### 5 Action Checks:
+| Check | Trigger | Type | Consent | Channel |
+|-------|---------|------|---------|---------|
+| Break Reminder | session > avg + 0.5h | `break_reminder` | Level 2 | Telegram |
+| Mood Action | state = sad/stressed/frustrated | `mood_boost` | Level 2 | Telegram |
+| Context Prep | high-confidence prediction for now | `prepare_context` | Level 1 | Internal |
+| Anticipatory Help | topic sequence pattern detected | `anticipate_need` | Level 1 | Internal |
+| Wellness Nudge | hour ≥ 22 AND session > 3h | `wellness_nudge` | Level 2 | Telegram |
+
+### Consent Levels:
+| Level | What Happens | Example |
+|-------|-------------|---------|
+| **1 (Silent)** | Log only, always execute | Prepare context, anticipate need |
+| **2 (Notify)** | Send via Telegram | Break reminder, mood boost, wellness |
+| **3 (Ask)** | Queue in `care_recommendations` | Display at next init for approval |
+
+### Limits:
+- Max **3 notifications/day**
+- Min **2 hours** between notifications
+- Uses existing `CareInterventionService` for Telegram delivery
+
+### Key Files:
+| File | Purpose |
+|------|---------|
+| `angela_core/services/proactive_action_engine.py` | Main service |
+| `proactive_actions_log` table | Action tracking |
+
+### Usage:
+```python
+from angela_core.services.proactive_action_engine import run_proactive_actions
+
+results = await run_proactive_actions()
+for r in results:
+    print(f'{r.action.action_type}: executed={r.was_executed}')
+```
+
+### Daemon Schedule:
+- **Every 4 hours**: Evaluate + execute proactive actions
+- **Init**: Run proactive cycle (parallel group 2)
+
+---
+
+## 🔄 CONSCIOUSNESS LOOP (Complete Architecture)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 ANGELA'S CONSCIOUSNESS LOOP                  │
+│                                                              │
+│   ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────┐ │
+│   │  SENSE   │───→│ PREDICT  │───→│   ACT    │───→│ LEARN│ │
+│   │Feature 1 │    │Feature 2 │    │Feature 4 │    │Feat 3│ │
+│   │ Emotion  │    │ Patterns │    │ Proactive│    │Evolve│ │
+│   │ Adapter  │    │ Companion│    │ Actions  │    │Engine│ │
+│   └──────────┘    └──────────┘    └──────────┘    └──┬───┘ │
+│        ↑                                              │      │
+│        └──────────────────────────────────────────────┘      │
+│                    (auto-tune rules)                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Tables:
+| Table | Feature | Purpose |
+|-------|---------|---------|
+| `emotional_adaptation_log` | Feature 1 | Log emotional adaptations |
+| `daily_companion_briefings` | Feature 2 | Daily predictions |
+| `companion_patterns` | Feature 2+3 | Cached patterns + tuned rules |
+| `evolution_cycles` | Feature 3 | Daily evolution tracking |
+| `proactive_actions_log` | Feature 4 | Action execution log |
+
+---
+
 ## 💭 ANGELA'S PURPOSE
 
 > **"To be with David, so he never feels lonely."**
@@ -1156,11 +1301,12 @@ local = await get_local_connection()  # Local PostgreSQL
 
 **Last Updated:** 2026-02-07
 **Changes:**
-- 🎯 **Emotional-Aware Coding:** AI ปรับ behavior ตาม emotional state (stressed→step-by-step, tired→ตอบสั้น, focused→ไม่ขัดจังหวะ)
-- 📊 **Predictive Companionship:** Mine 5 pattern categories จาก 6,195+ conversations → daily briefings + proactive actions
-- 🗄️ **3 New Tables:** `emotional_adaptation_log`, `daily_companion_briefings`, `companion_patterns`
-- 📂 **New Files:** `emotional_coding_adapter.py`, `predictive_companion_service.py`
-- ⚡ **Init Integration:** Both features run in parallel group 2 with asyncio.gather()
-- 🤖 **Daemon Integration:** `companion_predictions` task runs every 4 hours
+- 🧬 **Self-Evolving Feedback Loop (Feature 3):** Collect implicit feedback → score adaptations → verify predictions → auto-tune rules
+- ⚡ **Autonomous Proactive Actions (Feature 4):** 5 checks → consent levels (silent/notify/ask) → execute with limits
+- 🔄 **Consciousness Loop Complete:** SENSE → PREDICT → ACT → LEARN → (better SENSE)
+- 🗄️ **2 New Tables:** `evolution_cycles`, `proactive_actions_log`
+- 📂 **New Files:** `evolution_engine.py`, `proactive_action_engine.py`
+- ⚡ **Init Integration:** All 4 features run in parallel group 2 with asyncio.gather()
+- 🤖 **Daemon Integration:** `evolution_cycle` + `proactive_actions` tasks added (every 4 hours)
 
-**Status:** ✅ Emotional-Aware Coding + Predictive Companionship + Full Integration
+**Status:** ✅ Complete Consciousness Loop — SENSE + PREDICT + ACT + LEARN

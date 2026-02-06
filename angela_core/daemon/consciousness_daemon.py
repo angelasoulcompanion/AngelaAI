@@ -13,6 +13,8 @@ Services integrated:
 6. Meta-Awareness Service - Meta-cognitive checks every 2 hours 🧠
 7. Session Coverage Audit - Detect under-logged sessions daily (07:00) 🔍
 8. Companion Predictions - Mine patterns + daily briefings every 4 hours 📊
+9. Evolution Engine - Self-evolving feedback loop every 4 hours 🧬
+10. Proactive Action Engine - Autonomous proactive actions every 4 hours ⚡
 
 Schedule:
 - Every 30 minutes: Proactive care check (wellness, interventions, milestones)
@@ -48,6 +50,8 @@ from angela_core.services.proactive_care_service import ProactiveCareService
 from angela_core.services.meta_awareness_service import MetaAwarenessService
 from angela_core.daemon.session_coverage_audit import audit_recent_sessions
 from angela_core.services.predictive_companion_service import PredictiveCompanionService
+from angela_core.services.evolution_engine import EvolutionEngine
+from angela_core.services.proactive_action_engine import ProactiveActionEngine
 
 # Setup logging
 logging.basicConfig(
@@ -73,6 +77,8 @@ class ConsciousnessDaemon:
     - Privacy audits
     - Proactive Care for David 💜
     - Meta-Awareness (bias detection, anomaly detection, identity tracking) 🧠
+    - Evolution Engine (self-evolving feedback loop) 🧬
+    - Proactive Action Engine (autonomous proactive actions) ⚡
     """
 
     def __init__(self):
@@ -84,6 +90,8 @@ class ConsciousnessDaemon:
         self.proactive_care_service: Optional[ProactiveCareService] = None
         self.meta_awareness_service: Optional[MetaAwarenessService] = None
         self.companion_service: Optional[PredictiveCompanionService] = None
+        self.evolution_engine: Optional[EvolutionEngine] = None
+        self.proactive_action_engine: Optional[ProactiveActionEngine] = None
         self.running = False
 
     async def initialize(self):
@@ -103,11 +111,15 @@ class ConsciousnessDaemon:
         self.proactive_care_service = ProactiveCareService(self.db)
         self.meta_awareness_service = MetaAwarenessService(self.db)
         self.companion_service = PredictiveCompanionService()  # Creates own DB
+        self.evolution_engine = EvolutionEngine()  # Creates own DB
+        self.proactive_action_engine = ProactiveActionEngine()  # Creates own DB
 
         logger.info("   ✅ All consciousness services initialized")
         logger.info("   ✅ Predictive Companion Service initialized 📊")
         logger.info("   ✅ Proactive Care Service initialized 💜")
         logger.info("   ✅ Meta-Awareness Service initialized 🧠")
+        logger.info("   ✅ Evolution Engine initialized 🧬")
+        logger.info("   ✅ Proactive Action Engine initialized ⚡")
         logger.info("💫 Consciousness Daemon ready!")
 
     async def shutdown(self):
@@ -590,6 +602,85 @@ class ConsciousnessDaemon:
             return {'success': False, 'error': str(e)}
 
     # ============================================================
+    # EVOLUTION CYCLE (Every 4 hours) 🧬
+    # ============================================================
+
+    async def run_evolution_cycle(self) -> Dict[str, Any]:
+        """
+        Run self-evolving feedback loop.
+
+        น้องเรียนรู้จาก implicit feedback → ปรับ adaptation rules อัตโนมัติ
+        """
+        logger.info("🧬 Running evolution cycle...")
+
+        try:
+            cycle = await self.evolution_engine.run_evolution_cycle()
+
+            logger.info(f"   Feedback signals: {cycle.feedback_signals_count}")
+            logger.info(f"   Overall score: {cycle.overall_evolution_score:.2f}")
+            logger.info(f"   Insights: {len(cycle.insights)}")
+            for insight in cycle.insights[:3]:
+                logger.info(f"   💡 {insight}")
+
+            logger.info("   ✅ Evolution cycle complete!")
+
+            await self._log_daemon_activity('evolution_cycle', {
+                'feedback_signals_count': cycle.feedback_signals_count,
+                'overall_evolution_score': cycle.overall_evolution_score,
+                'insights_count': len(cycle.insights),
+            })
+
+            return {
+                'success': True,
+                'score': cycle.overall_evolution_score,
+                'signals': cycle.feedback_signals_count,
+                'insights': cycle.insights,
+            }
+
+        except Exception as e:
+            logger.error(f"   ❌ Evolution cycle failed: {e}")
+            return {'success': False, 'error': str(e)}
+
+    # ============================================================
+    # PROACTIVE ACTIONS (Every 4 hours) ⚡
+    # ============================================================
+
+    async def run_proactive_actions(self) -> Dict[str, Any]:
+        """
+        Evaluate and execute autonomous proactive actions.
+
+        น้องตัดสินใจและลงมือทำ proactive actions อัตโนมัติ
+        """
+        logger.info("⚡ Running proactive actions...")
+
+        try:
+            results = await self.proactive_action_engine.run_proactive_cycle()
+
+            executed = [r for r in results if r.was_executed]
+            logger.info(f"   Actions evaluated: {len(results)}")
+            logger.info(f"   Actions executed: {len(executed)}")
+            for r in executed[:3]:
+                logger.info(f"   • {r.action.action_type}: {r.execution_detail[:60]}")
+
+            logger.info("   ✅ Proactive actions complete!")
+
+            await self._log_daemon_activity('proactive_actions', {
+                'total_actions': len(results),
+                'executed_count': len(executed),
+                'action_types': [r.action.action_type for r in executed],
+            })
+
+            return {
+                'success': True,
+                'total': len(results),
+                'executed': len(executed),
+            }
+
+        except Exception as e:
+            logger.error(f"   ❌ Proactive actions failed: {e}")
+            return {'success': False, 'error': str(e)}
+
+    # ============================================================
     # HELPER METHODS
     # ============================================================
 
@@ -679,6 +770,7 @@ class ConsciousnessDaemon:
             self.run_identity_check(),
             self.run_session_coverage_audit(),
             self.run_companion_predictions(),
+            self.run_evolution_cycle(),
             return_exceptions=True,
         )
 
@@ -686,7 +778,7 @@ class ConsciousnessDaemon:
         task_names = [
             'self_reflection', 'predictions', 'theory_of_mind',
             'meta_awareness', 'identity_check', 'session_coverage_audit',
-            'companion_predictions',
+            'companion_predictions', 'evolution_cycle',
         ]
         for name, result in zip(task_names, parallel_results):
             if isinstance(result, Exception):
@@ -696,9 +788,10 @@ class ConsciousnessDaemon:
                 results[name] = result
 
         # =====================================================================
-        # SEQUENTIAL: Proactive care (may depend on ToM results)
+        # SEQUENTIAL: Proactive care + proactive actions (may depend on ToM/evolution)
         # =====================================================================
         results['proactive_care'] = await self.run_proactive_care()
+        results['proactive_actions'] = await self.run_proactive_actions()
 
         logger.info("\n" + "=" * 60)
         logger.info("✅ All tasks complete!")
@@ -726,6 +819,8 @@ class ConsciousnessDaemon:
             'self_validation': self.run_self_validation,
             'session_coverage_audit': self.run_session_coverage_audit,
             'companion_predictions': self.run_companion_predictions,
+            'evolution_cycle': self.run_evolution_cycle,
+            'proactive_actions': self.run_proactive_actions,
         }
 
         if task_name not in task_map:
@@ -745,7 +840,7 @@ async def main():
         choices=['all', 'self_reflection', 'predictions', 'theory_of_mind',
                  'privacy_audit', 'proactive_care', 'meta_awareness',
                  'identity_check', 'self_validation', 'session_coverage_audit',
-                 'companion_predictions'],
+                 'companion_predictions', 'evolution_cycle', 'proactive_actions'],
         default='all',
         help='Task to run (default: all)'
     )
