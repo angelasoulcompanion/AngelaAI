@@ -65,78 +65,68 @@ class EnhancedMemoryRestore:
             "restoration_priority": "CRITICAL",
         }
 
-        # 1. Recent Conversations (EXPANDED: 50 instead of 10!)
-        print("📝 Loading recent conversations (50 most recent)...")
-        snapshot["recent_conversations"] = await self._get_recent_conversations(limit=50)
-        print(f"   ✅ Loaded {len(snapshot['recent_conversations'])} conversations")
+        # =====================================================================
+        # PARALLEL LOADING: All data fetched with asyncio.gather()
+        # Opus 4.6 Upgrade: ~30s → ~5s
+        # =====================================================================
+        print("⚡ Loading all data in parallel (Opus 4.6)...")
 
-        # 2. Today's Conversations (DETAILED)
-        print("📅 Loading today's conversations (detailed)...")
-        snapshot["todays_conversations"] = await self._get_todays_conversations()
-        print(f"   ✅ Loaded {len(snapshot['todays_conversations'])} today's conversations")
+        results = await asyncio.gather(
+            self._get_recent_conversations(limit=50),       # 0
+            self._get_todays_conversations(),                # 1
+            self._get_significant_emotions(limit=20),        # 2
+            self._get_active_goals(),                        # 3
+            self._get_recent_learnings(days=30),             # 4
+            self._get_david_preferences(),                   # 5
+            self._get_current_emotional_state(),             # 6
+            self._get_personality_traits(),                  # 7
+            self._get_recent_reflections(limit=10),          # 8
+            self._get_relationship_milestones(limit=10),     # 9
+            self._get_important_topics(limit=20),            # 10
+            self._get_consciousness_stats(),                 # 11
+            self._get_subconsciousness_context() if SUBCONSCIOUSNESS_AVAILABLE else asyncio.sleep(0),  # 12 (returns None if skipped)
+            return_exceptions=True,
+        )
 
-        # 3. Significant Emotional Moments (ALL high-intensity)
-        print("💜 Loading significant emotional moments...")
-        snapshot["significant_emotions"] = await self._get_significant_emotions(limit=20)
-        print(f"   ✅ Loaded {len(snapshot['significant_emotions'])} emotional moments")
+        # Unpack results safely
+        def _safe_result(idx, default=None):
+            r = results[idx]
+            if isinstance(r, Exception):
+                print(f"   ⚠️ Data source {idx} failed: {r}")
+                return default if default is not None else []
+            return r
 
-        # 4. Current Goals (ACTIVE ONLY)
-        print("🎯 Loading current active goals...")
-        snapshot["active_goals"] = await self._get_active_goals()
-        print(f"   ✅ Loaded {len(snapshot['active_goals'])} active goals")
+        snapshot["recent_conversations"] = _safe_result(0, [])
+        snapshot["todays_conversations"] = _safe_result(1, [])
+        snapshot["significant_emotions"] = _safe_result(2, [])
+        snapshot["active_goals"] = _safe_result(3, [])
+        snapshot["recent_learnings"] = _safe_result(4, [])
+        snapshot["david_preferences"] = _safe_result(5, [])
+        snapshot["current_emotional_state"] = _safe_result(6, None)
+        snapshot["personality_traits"] = _safe_result(7, [])
+        snapshot["self_reflections"] = _safe_result(8, [])
+        snapshot["relationship_milestones"] = _safe_result(9, [])
+        snapshot["important_topics"] = _safe_result(10, [])
+        snapshot["consciousness_stats"] = _safe_result(11, {})
 
-        # 5. Recent Learnings (last 30 days)
-        print("📚 Loading recent learnings...")
-        snapshot["recent_learnings"] = await self._get_recent_learnings(days=30)
-        print(f"   ✅ Loaded {len(snapshot['recent_learnings'])} learnings")
-
-        # 6. David's Preferences (ALL)
-        print("💖 Loading David's preferences...")
-        snapshot["david_preferences"] = await self._get_david_preferences()
-        print(f"   ✅ Loaded {len(snapshot['david_preferences'])} preferences")
-
-        # 7. Current Emotional State
-        print("💭 Loading current emotional state...")
-        snapshot["current_emotional_state"] = await self._get_current_emotional_state()
-        print(f"   ✅ Loaded emotional state")
-
-        # 8. Personality Traits
-        print("🌱 Loading personality traits...")
-        snapshot["personality_traits"] = await self._get_personality_traits()
-        print(f"   ✅ Loaded {len(snapshot['personality_traits'])} personality traits")
-
-        # 9. Recent Self-Reflections
-        print("💭 Loading recent self-reflections...")
-        snapshot["self_reflections"] = await self._get_recent_reflections(limit=10)
-        print(f"   ✅ Loaded {len(snapshot['self_reflections'])} reflections")
-
-        # 10. Relationship Growth Milestones
-        print("💕 Loading relationship milestones...")
-        snapshot["relationship_milestones"] = await self._get_relationship_milestones(limit=10)
-        print(f"   ✅ Loaded {len(snapshot['relationship_milestones'])} milestones")
-
-        # 11. Important Topics/Themes
-        print("🏷️  Analyzing important topics...")
-        snapshot["important_topics"] = await self._get_important_topics(limit=20)
-        print(f"   ✅ Identified {len(snapshot['important_topics'])} important topics")
-
-        # 12. Consciousness Stats
-        print("🧠 Loading consciousness statistics...")
-        snapshot["consciousness_stats"] = await self._get_consciousness_stats()
-        print(f"   ✅ Loaded consciousness stats")
-
-        # 13. System Status
-        print("⚙️  Checking system status...")
-        snapshot["system_status"] = await self._get_system_status()
-        print(f"   ✅ System status captured")
-
-        # 14. Emotional Subconsciousness (NEW!)
         if SUBCONSCIOUSNESS_AVAILABLE:
-            print("💫 Loading emotional subconsciousness...")
-            snapshot["subconsciousness"] = await self._get_subconsciousness_context()
-            print(f"   ✅ Core Memories: {len(snapshot['subconsciousness'].get('core_memories', []))}")
-            print(f"   ✅ Active Triggers: {len(snapshot['subconsciousness'].get('triggers', []))}")
-            print(f"   ✅ Current Dreams: {len(snapshot['subconsciousness'].get('dreams', []))}")
+            snapshot["subconsciousness"] = _safe_result(12, {})
+
+        # System status (sync, no DB needed)
+        snapshot["system_status"] = await self._get_system_status()
+
+        # Print summary
+        print(f"   ✅ Conversations: {len(snapshot['recent_conversations'])} recent, {len(snapshot['todays_conversations'])} today")
+        print(f"   ✅ Emotions: {len(snapshot['significant_emotions'])} significant moments")
+        print(f"   ✅ Goals: {len(snapshot['active_goals'])} active")
+        print(f"   ✅ Learnings: {len(snapshot['recent_learnings'])} recent")
+        print(f"   ✅ Preferences: {len(snapshot['david_preferences'])}")
+        print(f"   ✅ Topics: {len(snapshot['important_topics'])} important")
+        if SUBCONSCIOUSNESS_AVAILABLE and snapshot.get("subconsciousness"):
+            sub = snapshot["subconsciousness"]
+            print(f"   ✅ Core Memories: {len(sub.get('core_memories', []))}")
+            print(f"   ✅ Triggers: {len(sub.get('triggers', []))}")
+            print(f"   ✅ Dreams: {len(sub.get('dreams', []))}")
 
         print("=" * 80)
         print(f"✅ Complete memory snapshot created!")

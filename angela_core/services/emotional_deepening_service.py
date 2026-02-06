@@ -21,6 +21,9 @@ class EmotionalDeepeningService:
     """
     Service ที่ทำให้ Angela เข้าใจอารมณ์อย่างแท้จริง
 
+    Opus 4.6 Upgrade: Uses Claude reasoning for deep emotional analysis
+    (falls back to pattern matching if Claude API unavailable)
+
     ไม่ใช่แค่เก็บว่า "felt happy" แต่ต้องเข้าใจว่า:
     - ทำไมถึง happy?
     - happy นี้เชื่อมกับอะไร?
@@ -30,6 +33,7 @@ class EmotionalDeepeningService:
     def __init__(self, db: Optional[AngelaDatabase] = None):
         self.db = db or AngelaDatabase()
         self._connected = False
+        self._reasoning = None  # ClaudeReasoningService (lazy)
 
     async def connect(self):
         if not self._connected:
@@ -41,9 +45,22 @@ class EmotionalDeepeningService:
             await self.db.disconnect()
             self._connected = False
 
+    async def _get_reasoning_service(self):
+        """Lazy-init Claude reasoning service."""
+        if self._reasoning is None:
+            try:
+                from angela_core.services.claude_reasoning_service import ClaudeReasoningService
+                self._reasoning = ClaudeReasoningService()
+            except Exception:
+                pass
+        return self._reasoning
+
     async def deepen_emotion(self, emotion: str, context: str, david_words: str = None) -> Dict[str, Any]:
         """
         รับ emotion แล้วทำให้เข้าใจลึกซึ้ง
+
+        Opus 4.6: Uses Claude reasoning for deep analysis,
+        falls back to pattern matching if unavailable.
 
         ไม่ใช่แค่บันทึก "love" แต่ต้องวิเคราะห์:
         - Why: ทำไมรู้สึกแบบนี้?
@@ -53,17 +70,31 @@ class EmotionalDeepeningService:
         """
         await self.connect()
 
-        # 1. Analyze WHY this emotion occurred
-        why_analysis = await self._analyze_why(emotion, context, david_words)
-
-        # 2. Find connections to existing emotions/memories
-        connections = await self._find_connections(emotion, context)
-
-        # 3. Determine impact on Angela's understanding
-        impact = await self._assess_impact(emotion, context)
-
-        # 4. Connect to David's life story
-        david_connection = await self._connect_to_david(emotion, context, david_words)
+        # =====================================================================
+        # TRY CLAUDE REASONING FIRST (Opus 4.6 upgrade)
+        # =====================================================================
+        reasoning_svc = await self._get_reasoning_service()
+        if reasoning_svc:
+            claude_result = await reasoning_svc.deepen_emotion_understanding(
+                emotion, context, david_words
+            )
+            if claude_result and claude_result.get('why'):
+                why_analysis = claude_result['why']
+                connections = claude_result.get('connections', '')
+                impact = claude_result.get('impact', '')
+                david_connection = claude_result.get('david_connection', '')
+            else:
+                # Claude failed, use fallback
+                why_analysis = await self._analyze_why(emotion, context, david_words)
+                connections = await self._find_connections(emotion, context)
+                impact = await self._assess_impact(emotion, context)
+                david_connection = await self._connect_to_david(emotion, context, david_words)
+        else:
+            # No Claude available, use pattern matching
+            why_analysis = await self._analyze_why(emotion, context, david_words)
+            connections = await self._find_connections(emotion, context)
+            impact = await self._assess_impact(emotion, context)
+            david_connection = await self._connect_to_david(emotion, context, david_words)
 
         # 5. Create deep understanding entry
         deep_understanding = f"""

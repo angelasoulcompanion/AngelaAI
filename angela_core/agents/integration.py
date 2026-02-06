@@ -216,17 +216,39 @@ def analyze_task(task_description: str) -> AgentDecision:
     )
 
 
+def is_claude_code_session() -> bool:
+    """Check if running inside Claude Code interactive session."""
+    import os
+    return bool(
+        os.environ.get("CLAUDE_CODE")
+        or os.environ.get("CLAUDE_CODE_ENTRYPOINT")
+    )
+
+
 def should_use_agent_crew(task: str) -> Tuple[bool, str, Optional[str]]:
     """
     Simple helper function to check if Agent Crew should be used.
+
+    When in Claude Code session, returns command=None to signal
+    that the caller should use Claude Code Task tool instead of CLI.
 
     Args:
         task: Task description
 
     Returns:
         Tuple of (should_use, reason, command)
+            - command is None when in Claude Code (use Task tool instead)
     """
     decision = analyze_task(task)
+
+    # In Claude Code: route to Task tool (parallel subagents)
+    if decision.should_use_agent and is_claude_code_session():
+        return (
+            True,
+            decision.reason + " → Use Claude Code Task tool (parallel subagents)",
+            None,  # Signal: use Task tool, not CLI
+        )
+
     return (
         decision.should_use_agent,
         decision.reason,

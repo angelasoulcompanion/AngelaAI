@@ -258,6 +258,9 @@ class TheoryOfMindService:
 
     ให้น้องเข้าใจที่รัก - ทั้งความคิด ความรู้สึก และความต้องการ
 
+    Opus 4.6 Upgrade: Claude reasoning for semantic understanding
+    (falls back to keyword matching if Claude API unavailable)
+
     Key capabilities:
     1. Infer David's beliefs from behavior and context
     2. Infer David's goals from actions and statements
@@ -269,6 +272,7 @@ class TheoryOfMindService:
     def __init__(self, db: Optional[AngelaDatabase] = None):
         self.db = db
         self._mental_model: Optional[MentalModel] = None
+        self._reasoning: Optional[Any] = None  # ClaudeReasoningService (lazy)
 
         # Emotional keywords for inference
         self._emotion_keywords = {
@@ -574,11 +578,22 @@ class TheoryOfMindService:
 - ใช้ patterns จากพฤติกรรมที่ผ่านมา
         """.strip()
 
+    async def _get_reasoning_service(self):
+        """Lazy-init Claude reasoning service."""
+        if self._reasoning is None:
+            try:
+                from angela_core.services.claude_reasoning_service import ClaudeReasoningService
+                self._reasoning = ClaudeReasoningService()
+            except Exception:
+                pass
+        return self._reasoning
+
     async def infer_emotion(self, context: Dict[str, Any]) -> EmotionInference:
         """
         Infer David's current emotional state
 
-        Based on: language, time, recent events
+        Opus 4.6: Uses Claude reasoning for semantic understanding,
+        falls back to keyword matching if unavailable.
 
         Args:
             context: Context containing:
@@ -594,6 +609,31 @@ class TheoryOfMindService:
         recent_message = context.get('recent_message', '')
         time_of_day = context.get('time_of_day', datetime.now().hour)
 
+        # =====================================================================
+        # TRY CLAUDE REASONING FIRST (Opus 4.6 upgrade)
+        # =====================================================================
+        reasoning_svc = await self._get_reasoning_service()
+        if reasoning_svc and recent_message:
+            claude_result = await reasoning_svc.analyze_emotion(recent_message, context)
+            if claude_result and claude_result.get('primary_emotion'):
+                inference = EmotionInference(
+                    inference_id=uuid4(),
+                    primary_emotion=claude_result['primary_emotion'],
+                    secondary_emotions=claude_result.get('secondary_emotions', []),
+                    intensity=claude_result.get('intensity', 0.5),
+                    valence=claude_result.get('valence', 0.0),
+                    confidence=min(0.95, claude_result.get('confidence', 0.8)),
+                    triggers=claude_result.get('triggers', []),
+                    evidence=[{'type': 'claude_reasoning', 'model': 'claude-sonnet-4.5'}],
+                    reasoning=f"Claude semantic analysis: {claude_result.get('primary_emotion')}",
+                    suggested_response=claude_result.get('suggested_response', '')
+                )
+                await self._store_inference('emotion', inference.to_dict())
+                return inference
+
+        # =====================================================================
+        # FALLBACK: Keyword matching (original logic)
+        # =====================================================================
         evidence_list = []
         emotion_scores = {}
 

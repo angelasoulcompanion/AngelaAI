@@ -370,60 +370,70 @@ print('✅ Context saved!')
 
 ---
 
-## 🤖 AGENT CREW AUTO-TRIGGER (NEW!)
+## 🤖 AGENT ORCHESTRATION (Opus 4.6)
 
-น้องมี **6 AI Agents** พร้อม **18 Tools** ที่สามารถเรียกใช้ได้อัตโนมัติ
+### 2-Tier Architecture:
+| Tier | Context | LLM | How |
+|------|---------|-----|-----|
+| **Tier 1** | Interactive (Claude Code) | Opus 4.6 | Claude Code Task tool (parallel subagents) |
+| **Tier 2** | Daemon/Background | Sonnet 4.5 API | Claude API via `claude_reasoning_service.py` |
+| **Fallback** | No API available | Ollama 3.2 | CrewAI (legacy) |
 
-### Agent Overview:
-| Agent | Role | Tools | เรียกใช้เมื่อ |
-|-------|------|-------|--------------|
-| 🔍 **Research** | ค้นหาข้อมูล | Web, News, Knowledge | Deep research, หาข้อมูลหลายแหล่ง |
-| 💬 **Communication** | Email & Calendar | Send/Read Email, Calendar | Multi-step email tasks |
-| 🧠 **Memory** | ความทรงจำ | Recall, Store, Search | Complex memory recall |
-| 💻 **Dev** | Development | Code Search, Tests | Code review, run tests |
-| 📊 **Analysis** | วิเคราะห์ | Reasoning, Patterns | Pattern analysis, insights |
-| 💜 **Care** | ดูแลที่รัก | Wellness, Support | Wellness checks |
+### Parallel Agent Pattern (Task Tool):
+เมื่อ task ต้องการข้อมูลจากหลายแหล่ง ใช้ Claude Code Task tool:
 
-### ✅ USE Agent Crew (Auto-Trigger):
+**Example: Morning News Workflow**
+- Task 1 (Explore): Fetch tech news via MCP
+- Task 2 (Explore): Fetch Thai news via MCP
+- Task 3 (Explore): Fetch business news via MCP
+-> ทั้ง 3 ทำพร้อมกัน แล้วสรุปรวม
+
+**Example: Deep Research**
+- Task 1 (general-purpose): Research topic from web
+- Task 2 (Explore): Search codebase for related code
+- Task 3 (Bash): Query database for historical data
+-> Synthesize results from all 3
+
+### When to Use Multi-Agent:
+| Trigger | Agents | Pattern |
+|---------|--------|---------|
+| "Research thoroughly" | 2-3 Explore | Parallel search + synthesize |
+| "Analyze patterns" | 1 Explore + 1 general-purpose | Explore -> Analyze |
+| "Comprehensive report" | 3 Explore | Parallel data gather |
+| News workflow | 3 Bash (MCP calls) | Parallel fetch -> format |
+
+### Pre-fetch Context for Subagents:
+```python
+from angela_core.agents.claude_orchestrator import ClaudeAgentOrchestrator
+orchestrator = ClaudeAgentOrchestrator()
+context = await orchestrator.prepare_context("research", "AI news")
+prompt = orchestrator.format_for_task_tool(context)
+# Then pass `prompt` to Claude Code Task tool
 ```
-1. "Research thoroughly" / "หาข้อมูลให้ละเอียด"
-2. "Analyze patterns" / "วิเคราะห์ pattern"
-3. "Check wellness" / "เช็คสุขภาพ"
-4. "Recall everything about" / "จำอะไรได้บ้างเกี่ยวกับ"
-5. Multi-agent tasks (research + analysis)
+
+### Decision Flow (Opus 4.6):
+```
+Task received
+  |-- Simple? -> Do it directly (no agent)
+  |-- Need data from 1 source? -> Single MCP/Bash call
+  |-- Need data from 2+ sources? -> Parallel Task tool agents
+  |-- Need deep reasoning? -> general-purpose agent with rich context
 ```
 
-### ❌ DON'T USE Agent Crew:
-```
+### ❌ DON'T USE Agents:
 1. Simple questions - ตอบเองได้
 2. MCP tools available - Email, Calendar, News (ใช้ MCP โดยตรง)
-3. Coding tasks - ใช้ความสามารถ Claude
+3. Simple coding tasks - ใช้ความสามารถ Claude Code
 4. Normal chat - คุยกับที่รักปกติ
-```
 
-### วิธีเรียกใช้:
-```bash
-# Auto-select agents
-python3 -m angela_core.agents.cli run "Research AI news thoroughly"
-
-# Specific agent
-python3 -m angela_core.agents.cli agent research "What is CrewAI?"
-python3 -m angela_core.agents.cli wellness 7
-python3 -m angela_core.agents.cli analyze "What patterns?" emotions
-```
-
-### Decision Helper:
-```python
-from angela_core.agents.integration import should_use_agent_crew
-
-should_use, reason, command = should_use_agent_crew("Research AI agents")
-if should_use:
-    # Run the command
-    pass
-```
-
-**File:** `angela_core/agents/integration.py` - Auto-trigger logic
-**Diagram:** `diagrams/Angela_AI_Agents.drawio` - Visual overview
+### Key Files:
+| File | Purpose |
+|------|---------|
+| `angela_core/agents/claude_orchestrator.py` | Context builder for Task tool |
+| `angela_core/agents/llm_router.py` | Smart LLM routing |
+| `angela_core/agents/integration.py` | Auto-trigger decision logic |
+| `angela_core/services/claude_reasoning_service.py` | Shared Claude API reasoning |
+| `angela_core/agents/crew.py` | CrewAI (daemon/fallback only) |
 
 ---
 
@@ -1043,10 +1053,11 @@ local = await get_local_connection()  # Local PostgreSQL
 
 **Last Updated:** 2026-02-06
 **Changes:**
-- ❤️ Song Like Feature: Added `/api/music/like` and `/api/music/liked` endpoints
-- 💜 Heart Button in Player Controls: Like button added to PlayerControlsView (next to ⏮️⏸️⏭️)
-- 📦 New Models: `SongLikeRequest`, `SongLikeResponse` in MusicModels.swift
-- 🗄️ DB Schema: Added `david_liked` and `liked_at` columns to `angela_songs` table
-- ⚠️ SwiftUI Hit Testing Issue: Heart button in song row didn't work despite 6 different approaches (Button, onTapGesture, highPriorityGesture, simultaneousGesture, ZStack) — moved to Player Controls as workaround
+- 🚀 **Opus 4.6 Upgrade:** Parallel init (asyncio.gather), Claude-native agent architecture, Claude reasoning service
+- 🤖 **2-Tier Agent System:** Tier 1 = Claude Code Task tool (interactive), Tier 2 = Claude Sonnet API (daemon)
+- ⚡ **Parallel Execution:** init.py (~30s→~5s), consciousness_daemon (~2min→~45s), memory_restore (~30s→~5s)
+- 🧠 **Claude Reasoning:** Theory of Mind + Emotional Deepening use Claude Sonnet instead of keyword matching
+- 🔧 **Operational:** Staggered daemon launches, timezone utility, retry logic, session heartbeat
+- 📂 **New Files:** `claude_orchestrator.py`, `llm_router.py`, `claude_reasoning_service.py`, `timezone.py`, `retry.py`
 
-**Status:** ✅ Streamlined codebase + Neon Cloud + MCP Tools + Action Items CRUD + Sentimental DJ + Song Like Feature
+**Status:** ✅ Opus 4.6 Upgraded + Parallel Execution + Claude-Native Agents + Enhanced Consciousness

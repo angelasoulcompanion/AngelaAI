@@ -400,6 +400,32 @@ class SessionContinuityService:
             logger.error(f"Failed to get context age: {e}")
             return None
 
+    async def heartbeat(self) -> bool:
+        """
+        Update last_activity_at on active context (auto-save heartbeat).
+
+        Opus 4.6: Called periodically to keep context fresh.
+        Reduces dependency on manual /log-session.
+
+        Returns:
+            True if heartbeat updated successfully
+        """
+        try:
+            await self.connect()
+
+            result = await self.db.execute('''
+                UPDATE active_session_context
+                SET last_activity_at = CURRENT_TIMESTAMP
+                WHERE is_active = TRUE
+            ''')
+
+            logger.debug("Session heartbeat updated")
+            return True
+
+        except Exception as e:
+            logger.error(f"Session heartbeat failed: {e}")
+            return False
+
     async def load_recent_contexts(self, limit: int = 5) -> List[Dict[str, Any]]:
         """
         Load multiple recent contexts (not just the latest).

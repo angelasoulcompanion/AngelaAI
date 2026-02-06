@@ -86,23 +86,44 @@ class AngelaCrew:
         logger.info("💜 Angela Crew initialized with %d agents", len(self._agents))
 
     def _setup_llm(self, config: Optional[Dict[str, Any]] = None) -> LLM:
-        """Setup the LLM for agents using CrewAI's native Ollama support"""
-        llm_config = config or {}
+        """
+        Setup the LLM for agents.
 
-        # Default to Ollama
-        model = llm_config.get("model", DEFAULT_LLM_CONFIG.model)
-        base_url = llm_config.get("base_url", DEFAULT_LLM_CONFIG.base_url)
+        Priority:
+        1. Claude API (if ANTHROPIC_API_KEY available) — best quality
+        2. Ollama local (fallback)
+        """
+        llm_config = config or {}
         temperature = llm_config.get("temperature", DEFAULT_LLM_CONFIG.temperature)
 
-        # Use CrewAI's native LLM class with Ollama provider
-        # Format: "ollama/model_name"
+        # Try Claude API first (Opus 4.6 upgrade: Claude as primary)
+        if DEFAULT_LLM_CONFIG.provider.value == "claude":
+            try:
+                from angela_core.database import get_secret_sync
+                api_key = get_secret_sync('ANTHROPIC_API_KEY')
+                if api_key:
+                    model = llm_config.get("model", DEFAULT_LLM_CONFIG.model)
+                    llm = LLM(
+                        model=f"anthropic/{model}",
+                        api_key=api_key,
+                        temperature=temperature,
+                    )
+                    logger.info("LLM configured: Claude %s (primary)", model)
+                    return llm
+            except Exception as e:
+                logger.warning("Claude API setup failed, falling back to Ollama: %s", e)
+
+        # Fallback to Ollama
+        model = llm_config.get("model", DEFAULT_LLM_CONFIG.fallback_model)
+        base_url = llm_config.get("base_url", DEFAULT_LLM_CONFIG.base_url)
+
         llm = LLM(
             model=f"ollama/{model}",
             base_url=base_url,
             temperature=temperature,
         )
 
-        logger.info("LLM configured: ollama/%s @ %s", model, base_url)
+        logger.info("LLM configured: ollama/%s @ %s (fallback)", model, base_url)
         return llm
 
     def _initialize_agents(self):

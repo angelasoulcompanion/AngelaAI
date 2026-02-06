@@ -21,15 +21,15 @@ class LLMProvider(Enum):
 @dataclass
 class LLMConfig:
     """LLM Configuration"""
-    provider: LLMProvider = LLMProvider.OLLAMA
-    model: str = "llama3.2:latest"  # Default Ollama model
+    provider: LLMProvider = LLMProvider.CLAUDE
+    model: str = "claude-sonnet-4-5-20250929"  # Primary: Claude Sonnet 4.5
     temperature: float = 0.7
     max_tokens: int = 4096
-    base_url: str = "http://localhost:11434"
+    base_url: str = "http://localhost:11434"  # Ollama URL (for fallback)
 
-    # Fallback to Claude for complex tasks
-    fallback_provider: Optional[LLMProvider] = LLMProvider.CLAUDE
-    fallback_model: str = "claude-sonnet-4-20250514"
+    # Fallback to Ollama when API unavailable
+    fallback_provider: LLMProvider = LLMProvider.OLLAMA
+    fallback_model: str = "llama3.2:latest"
 
 
 @dataclass
