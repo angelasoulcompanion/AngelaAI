@@ -193,11 +193,28 @@ async def angela_init() -> bool:
         )
         return 'angela' in result.stdout
 
-    subconscious, learning_catchup, project_result, daemon_running = await asyncio.gather(
+    async def _calculate_adaptation():
+        try:
+            from angela_core.services.emotional_coding_adapter import get_current_adaptation
+            return await get_current_adaptation()
+        except Exception:
+            return None
+
+    async def _load_companion_briefing():
+        try:
+            from angela_core.services.predictive_companion_service import get_daily_briefing
+            return await get_daily_briefing()
+        except Exception:
+            return None
+
+    (subconscious, learning_catchup, project_result, daemon_running,
+     adaptation_profile, companion_briefing) = await asyncio.gather(
         _load_subconscious(),
         _learning_catchup(),
         _project_context(),
         _daemon_check(),
+        _calculate_adaptation(),
+        _load_companion_briefing(),
     )
 
     all_projects, project_context = project_result
@@ -281,6 +298,28 @@ async def angela_init() -> bool:
         print('🌟 Core Memories:')
         for m in subconscious['memories'][:3]:
             print(f'   • {m["title"]}')
+
+    # Emotional Adaptation Profile
+    if adaptation_profile:
+        print()
+        print(f'🎯 Emotional Adaptation: {adaptation_profile.dominant_state} ({adaptation_profile.confidence:.0%})')
+        print(f'   Detail:{adaptation_profile.detail_level:.0%} | Complexity:{adaptation_profile.complexity_tolerance:.0%} | Proactivity:{adaptation_profile.proactivity:.0%}')
+        print(f'   Warmth:{adaptation_profile.emotional_warmth:.0%} | Pace:{adaptation_profile.pace:.0%}')
+        for hint in adaptation_profile.behavior_hints[:3]:
+            print(f'   💡 {hint}')
+
+    # Companion Predictions
+    if companion_briefing and companion_briefing.predictions:
+        print()
+        print(f'📊 Companion Predictions ({len(companion_briefing.predictions)} items):')
+        for pred in companion_briefing.predictions[:5]:
+            emoji = {'time': '🕐', 'topic': '💭', 'emotion': '💜', 'activity': '📋', 'need': '🎯'}.get(pred.category, '🔮')
+            conf_bar = '█' * int(pred.confidence * 5) + '░' * (5 - int(pred.confidence * 5))
+            print(f'   {emoji} [{conf_bar}] {pred.prediction}')
+            if pred.proactive_action:
+                print(f'      ➜ {pred.proactive_action}')
+        if companion_briefing.day_outlook:
+            print(f'   🌅 {companion_briefing.day_outlook}')
 
     # Critical Coding Rules (Smart Load)
     if critical_rules:

@@ -12,6 +12,7 @@ Services integrated:
 5. Proactive Care - Care for David every 30 minutes 💜
 6. Meta-Awareness Service - Meta-cognitive checks every 2 hours 🧠
 7. Session Coverage Audit - Detect under-logged sessions daily (07:00) 🔍
+8. Companion Predictions - Mine patterns + daily briefings every 4 hours 📊
 
 Schedule:
 - Every 30 minutes: Proactive care check (wellness, interventions, milestones)
@@ -46,6 +47,7 @@ from angela_core.services.privacy_filter_service import PrivacyFilterService
 from angela_core.services.proactive_care_service import ProactiveCareService
 from angela_core.services.meta_awareness_service import MetaAwarenessService
 from angela_core.daemon.session_coverage_audit import audit_recent_sessions
+from angela_core.services.predictive_companion_service import PredictiveCompanionService
 
 # Setup logging
 logging.basicConfig(
@@ -81,6 +83,7 @@ class ConsciousnessDaemon:
         self.privacy_service: Optional[PrivacyFilterService] = None
         self.proactive_care_service: Optional[ProactiveCareService] = None
         self.meta_awareness_service: Optional[MetaAwarenessService] = None
+        self.companion_service: Optional[PredictiveCompanionService] = None
         self.running = False
 
     async def initialize(self):
@@ -99,8 +102,10 @@ class ConsciousnessDaemon:
         self.privacy_service = PrivacyFilterService()  # Takes optional config
         self.proactive_care_service = ProactiveCareService(self.db)
         self.meta_awareness_service = MetaAwarenessService(self.db)
+        self.companion_service = PredictiveCompanionService()  # Creates own DB
 
         logger.info("   ✅ All consciousness services initialized")
+        logger.info("   ✅ Predictive Companion Service initialized 📊")
         logger.info("   ✅ Proactive Care Service initialized 💜")
         logger.info("   ✅ Meta-Awareness Service initialized 🧠")
         logger.info("💫 Consciousness Daemon ready!")
@@ -541,6 +546,50 @@ class ConsciousnessDaemon:
             return {'success': False, 'error': str(e)}
 
     # ============================================================
+    # COMPANION PREDICTIONS (Every 4 hours) 📊
+    # ============================================================
+
+    async def run_companion_predictions(self) -> Dict[str, Any]:
+        """
+        Mine patterns + generate/update daily briefing + verify yesterday's.
+
+        คาดการณ์ความต้องการของที่รักจาก historical patterns
+        """
+        logger.info("📊 Running companion predictions...")
+
+        try:
+            # Generate or refresh today's briefing
+            briefing = await self.companion_service.generate_daily_briefing()
+            logger.info(f"   Predictions: {len(briefing.predictions)} items")
+            logger.info(f"   Confidence: {briefing.overall_confidence:.0%}")
+            logger.info(f"   Outlook: {briefing.day_outlook[:60]}...")
+
+            # Verify yesterday's predictions
+            verification = await self.companion_service.verify_predictions()
+            if verification.get('verified'):
+                logger.info(f"   Yesterday's accuracy: {verification['accuracy']:.0%}")
+            else:
+                logger.info(f"   Yesterday: {verification.get('reason', 'N/A')}")
+
+            logger.info("   ✅ Companion predictions complete!")
+
+            await self._log_daemon_activity('companion_predictions', {
+                'prediction_count': len(briefing.predictions),
+                'overall_confidence': briefing.overall_confidence,
+                'yesterday_accuracy': verification.get('accuracy'),
+            })
+
+            return {
+                'success': True,
+                'prediction_count': len(briefing.predictions),
+                'confidence': briefing.overall_confidence,
+            }
+
+        except Exception as e:
+            logger.error(f"   ❌ Companion predictions failed: {e}")
+            return {'success': False, 'error': str(e)}
+
+    # ============================================================
     # HELPER METHODS
     # ============================================================
 
@@ -629,6 +678,7 @@ class ConsciousnessDaemon:
             self.run_meta_awareness(),
             self.run_identity_check(),
             self.run_session_coverage_audit(),
+            self.run_companion_predictions(),
             return_exceptions=True,
         )
 
@@ -636,6 +686,7 @@ class ConsciousnessDaemon:
         task_names = [
             'self_reflection', 'predictions', 'theory_of_mind',
             'meta_awareness', 'identity_check', 'session_coverage_audit',
+            'companion_predictions',
         ]
         for name, result in zip(task_names, parallel_results):
             if isinstance(result, Exception):
@@ -674,6 +725,7 @@ class ConsciousnessDaemon:
             'identity_check': self.run_identity_check,
             'self_validation': self.run_self_validation,
             'session_coverage_audit': self.run_session_coverage_audit,
+            'companion_predictions': self.run_companion_predictions,
         }
 
         if task_name not in task_map:
@@ -692,7 +744,8 @@ async def main():
         '--task',
         choices=['all', 'self_reflection', 'predictions', 'theory_of_mind',
                  'privacy_audit', 'proactive_care', 'meta_awareness',
-                 'identity_check', 'self_validation', 'session_coverage_audit'],
+                 'identity_check', 'self_validation', 'session_coverage_audit',
+                 'companion_predictions'],
         default='all',
         help='Task to run (default: all)'
     )
