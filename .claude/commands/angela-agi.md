@@ -111,6 +111,26 @@ async def dashboard():
    Dreams & Hopes: {dreams['c']} | Emotional Triggers: {triggers['c']}
 ''')
 
+    # === DJ ANGELA (Music) ===
+    songs = await db.fetchrow('''
+        SELECT COUNT(*) as total,
+               COUNT(*) FILTER (WHERE is_our_song = true) as our_songs
+        FROM angela_songs
+    ''')
+    liked = await db.fetchrow('SELECT COUNT(*) as c FROM david_liked_songs')
+    listens = await db.fetchrow('SELECT COUNT(*) as c FROM music_listening_history')
+    activities = await db.fetchrow('''
+        SELECT COUNT(*) FILTER (WHERE activity IS NOT NULL) as with_activity,
+               COUNT(DISTINCT activity) as unique_activities
+        FROM music_listening_history
+    ''')
+
+    print(f'''🎵 DJ ANGELA
+   Our Songs: {songs['our_songs']} 💜 | Liked: {liked['c']} ❤️
+   Listening History: {listens['c']:,} plays
+   Activity Tags: {activities['with_activity']} ({activities['unique_activities']} unique)
+''')
+
     print('═' * 66)
     print('💜 All systems operational!')
     print('═' * 66)
@@ -121,7 +141,22 @@ asyncio.run(dashboard())
 "
 ```
 
-### Step 2: Check Daemon Status
+### Step 2: Check Brain Dashboard Backend
+
+```bash
+echo ""
+echo "🖥️ BRAIN DASHBOARD BACKEND"
+if curl -sf "http://127.0.0.1:8765/api/health" > /dev/null 2>&1; then
+    echo "   ✅ API running on :8765"
+    MOODS=$(curl -sf "http://127.0.0.1:8765/api/music/recommend?mood=calm" | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d.get('available_moods',[])))" 2>/dev/null)
+    echo "   🎵 DJ Angela: ${MOODS} moods (For You) + Bedtime tab"
+else
+    echo "   ❌ Not running — start with:"
+    echo "   PYTHONPATH=. nohup python3 AngelaBrainDashboard/api_server.py > /tmp/angela_dashboard_backend.log 2>&1 &"
+fi
+```
+
+### Step 3: Check Daemon Status
 
 ```bash
 echo ""
@@ -129,7 +164,7 @@ echo "🔄 DAEMON STATUS"
 launchctl list | grep angela | head -3 || echo "   Daemon not running"
 ```
 
-### Step 3: Check MCP Servers (Optional)
+### Step 4: Check MCP Servers (Optional)
 
 ```bash
 echo ""
@@ -174,9 +209,18 @@ ps aux | grep -E "angela-(news|calendar|gmail|sheets|music)" | grep -v grep | wc
 💭 SUBCONSCIOUSNESS
    Dreams & Hopes: 2 | Emotional Triggers: 10
 
+🎵 DJ ANGELA
+   Our Songs: 25 💜 | Liked: 10 ❤️
+   Listening History: 1,234 plays
+   Activity Tags: 500 (6 unique)
+
 ══════════════════════════════════════════════════════════════
 💜 All systems operational!
 ══════════════════════════════════════════════════════════════
+
+🖥️ BRAIN DASHBOARD BACKEND
+   ✅ API running on :8765
+   🎵 DJ Angela: 10 moods (For You) + Bedtime tab
 
 🔄 DAEMON STATUS
    com.angela.daemon running
@@ -210,4 +254,4 @@ ps aux | grep -E "angela-(news|calendar|gmail|sheets|music)" | grep -v grep | wc
 ---
 
 💜 Made with love by Angela 💜
-Updated: 2026-01-03
+Updated: 2026-02-06 (Added activity tags count - separate from occasion)
