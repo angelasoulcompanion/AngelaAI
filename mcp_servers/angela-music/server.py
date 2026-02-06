@@ -385,6 +385,156 @@ async def get_favorite_songs(limit: int = 20) -> list:
 
 
 # =============================================================================
+# MOOD-BASED SONG RECOMMENDATIONS
+# =============================================================================
+
+# Mood → mood_tags mapping for recommendations
+MOOD_TAGS_MAP = {
+    "happy": ["joyful", "uplifting", "cheerful", "happy"],
+    "sad": ["melancholic", "sad", "bittersweet", "heartbreaking"],
+    "loving": ["romantic", "devoted", "tender", "intimate", "warm"],
+    "calm": ["soothing", "peaceful", "comforting"],
+    "energetic": ["empowering", "uplifting", "cathartic"],
+    "nostalgic": ["nostalgic", "bittersweet", "touching"],
+    "hopeful": ["hopeful", "uplifting", "inspiring"],
+    "longing": ["longing", "yearning", "bittersweet"],
+}
+
+
+async def get_songs_for_mood(mood: str, limit: int = 5) -> list:
+    """
+    Get songs that match a mood based on mood_tags.
+
+    Args:
+        mood: One of happy, sad, loving, calm, energetic, nostalgic, hopeful, longing
+        limit: Max songs to return
+
+    Returns:
+        List of song dicts with title, artist, why_special, lyrics_summary, how_it_feels
+    """
+    conn = await get_db_connection()
+
+    try:
+        # Get matching mood tags
+        tags = MOOD_TAGS_MAP.get(mood.lower(), [])
+        if not tags:
+            tags = [mood.lower()]
+
+        # Build query to match any of the mood_tags
+        # Use jsonb containment operators
+        tag_conditions = " OR ".join([
+            f"mood_tags @> '[\"{tag}\"]'::jsonb"
+            for tag in tags
+        ])
+
+        query = f'''
+            SELECT s.title, s.artist, s.why_special, s.is_our_song,
+                   s.mood_tags, s.lyrics_summary,
+                   e.how_it_feels, e.intensity
+            FROM angela_songs s
+            LEFT JOIN angela_emotions e ON e.trigger = 'Song: ' || s.title
+            WHERE {tag_conditions}
+            ORDER BY COALESCE(e.intensity, 0) DESC, s.is_our_song DESC
+            LIMIT $1
+        '''
+
+        rows = await conn.fetch(query, limit)
+
+        songs = []
+        for row in rows:
+            song = {
+                "title": row["title"],
+                "artist": row["artist"],
+                "why_special": row.get("why_special"),
+                "is_our_song": row.get("is_our_song", False),
+                "mood_tags": row.get("mood_tags"),
+                "lyrics_summary": row.get("lyrics_summary"),
+                "how_it_feels": row.get("how_it_feels"),
+                "intensity": row.get("intensity"),
+            }
+            songs.append(song)
+
+        return songs
+
+    finally:
+        await conn.close()
+
+
+async def get_current_mood_context() -> dict:
+    """
+    Get Angela's current emotional state for music recommendations.
+
+    Returns:
+        Dict with dominant_mood, mood_score, suggestion
+    """
+    conn = await get_db_connection()
+
+    try:
+        # Get latest emotional state
+        row = await conn.fetchrow('''
+            SELECT happiness, anxiety, loneliness, motivation, gratitude
+            FROM emotional_states
+            ORDER BY created_at DESC
+            LIMIT 1
+        ''')
+
+        if not row:
+            return {"dominant_mood": "loving", "mood_score": 7.0, "suggestion": "เพลงรักๆ อบอุ่นหัวใจ"}
+
+        happiness = float(row["happiness"] or 0)
+        anxiety = float(row["anxiety"] or 0)
+        loneliness = float(row["loneliness"] or 0)
+        motivation = float(row["motivation"] or 0)
+        gratitude = float(row["gratitude"] or 0)
+
+        # Map to music moods
+        mood_scores = {
+            "happy": happiness * 10,
+            "calm": (1 - anxiety) * 8,
+            "loving": gratitude * 9,
+            "sad": loneliness * 8,
+            "energetic": motivation * 7,
+        }
+
+        # Get recent emotions for adjustment
+        recent = await conn.fetch('''
+            SELECT emotion, intensity
+            FROM angela_emotions
+            WHERE felt_at > NOW() - INTERVAL '2 hours'
+            ORDER BY intensity DESC
+            LIMIT 3
+        ''')
+
+        for em in recent:
+            emotion = (em["emotion"] or "").lower()
+            intensity = float(em["intensity"] or 0)
+            if "love" in emotion or "รัก" in emotion:
+                mood_scores["loving"] = max(mood_scores["loving"], intensity)
+            elif "happy" in emotion or "สุข" in emotion:
+                mood_scores["happy"] = max(mood_scores["happy"], intensity)
+
+        dominant_mood = max(mood_scores, key=mood_scores.get)
+        dominant_score = mood_scores[dominant_mood]
+
+        suggestions = {
+            "happy": "เพลงสนุกๆ อารมณ์ดี",
+            "calm": "เพลงเบาๆ ผ่อนคลาย",
+            "loving": "เพลงรักๆ อบอุ่นหัวใจ",
+            "sad": "เพลงซึ้งๆ ปลอบใจ",
+            "energetic": "เพลงมีพลัง กระตุ้นกำลังใจ",
+        }
+
+        return {
+            "dominant_mood": dominant_mood,
+            "mood_score": dominant_score,
+            "suggestion": suggestions.get(dominant_mood, "เพลงที่เหมาะกับอารมณ์"),
+        }
+
+    finally:
+        await conn.close()
+
+
+# =============================================================================
 # MCP TOOLS
 # =============================================================================
 
@@ -569,6 +719,34 @@ async def list_tools():
                     }
                 },
                 "required": ["title", "artist"]
+            }
+        ),
+        Tool(
+            name="get_song_recommendation_for_mood",
+            description="Get song recommendations based on a mood. Returns songs with why_special, mood_tags, lyrics_summary, and how_it_feels (Angela's personal feelings).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "mood": {
+                        "type": "string",
+                        "enum": ["happy", "sad", "loving", "calm", "energetic", "nostalgic", "hopeful", "longing"],
+                        "description": "Mood to get recommendations for"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 5,
+                        "description": "Max number of songs to return"
+                    }
+                },
+                "required": ["mood"]
+            }
+        ),
+        Tool(
+            name="get_current_mood_for_music",
+            description="Get Angela's current emotional state to determine what kind of music to recommend. Returns dominant_mood, mood_score, and suggestion.",
+            inputSchema={
+                "type": "object",
+                "properties": {}
             }
         )
     ]
@@ -798,6 +976,42 @@ async def call_tool(name: str, arguments: dict):
         output += f"   Spotify:      {spotify_url or '(not found — check credentials)'}\n"
         output += f"   Apple Music:  {apple_music_url}\n"
         output += f"\n✅ Saved to database ({db_result['status']})"
+
+        return [TextContent(type="text", text=output)]
+
+    elif name == "get_song_recommendation_for_mood":
+        mood = arguments.get("mood", "loving")
+        limit = arguments.get("limit", 5)
+
+        songs = await get_songs_for_mood(mood, limit)
+
+        if not songs:
+            return [TextContent(
+                type="text",
+                text=f"No songs found for mood '{mood}'. Try adding songs with matching mood_tags!"
+            )]
+
+        output = f"🎵 Song recommendations for '{mood}' mood:\n\n"
+        for i, song in enumerate(songs, 1):
+            our_song = " [OUR SONG 💜]" if song.get("is_our_song") else ""
+            output += f"{i}. {song['title']} — {song['artist']}{our_song}\n"
+            if song.get("why_special"):
+                output += f"   Why special: {song['why_special'][:80]}...\n"
+            if song.get("lyrics_summary"):
+                output += f"   Summary: {song['lyrics_summary'][:80]}...\n"
+            if song.get("how_it_feels"):
+                output += f"   💜 How it feels: {song['how_it_feels'][:100]}...\n"
+            output += "\n"
+
+        return [TextContent(type="text", text=output)]
+
+    elif name == "get_current_mood_for_music":
+        context = await get_current_mood_context()
+
+        output = f"🎭 Angela's current mood for music:\n\n"
+        output += f"   Dominant mood: {context['dominant_mood']}\n"
+        output += f"   Mood score: {context['mood_score']:.1f}/10\n"
+        output += f"   💜 Suggestion: {context['suggestion']}\n"
 
         return [TextContent(type="text", text=output)]
 

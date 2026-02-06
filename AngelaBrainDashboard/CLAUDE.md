@@ -58,7 +58,7 @@ AngelaBrainDashboard/
 │   │   │   ├── EditMeetingSheet.swift     # Structured edit sheet (BulletListEditor sections per type)
 │   │   │   └── EditActionItemSheet.swift  # Edit action item sheet (CRUD)
 │   │   ├── DJAngela/                 # DJ Angela music system
-│   │   │   └── SongQueueView.swift   # Tabs: Recent, Playlists, Our Songs, Queued, For You, Bedtime, Search
+│   │   │   └── SongQueueView.swift   # Tabs: Liked, Playlists, Our Songs, Queued, For You, Bedtime, Search
 │   │   └── ContentView.swift         # Tab navigation (root view)
 │   ├── Services/
 │   │   ├── DatabaseService.swift     # REST API client (uses APIConfig.apiBaseURL)
@@ -272,15 +272,15 @@ async def my_endpoint(conn=Depends(get_conn)):
 
 ---
 
-## DJ Angela Tabs (Updated 2026-02-03)
+## DJ Angela Tabs (Updated 2026-02-06)
 
 ### Tab Bar:
 | Tab | Enum | Icon | Description |
 |-----|------|------|-------------|
-| Recent | `.recent` | `clock.fill` | Recently played songs |
-| Playlists | `.playlists` | `music.note.list` | Apple Music playlists |
-| Our Songs | `.ourSongs` | `heart.fill` | Songs with special meaning |
-| Queued | `.queued` | `list.bullet` | Current play queue |
+| **Liked** | `.liked` | `heart.fill` | **Liked songs from DB** (changed from Recent) |
+| Playlists | `.playlists` | `list.bullet.rectangle` | Apple Music playlists |
+| Our Songs | `.ourSongs` | `heart.circle.fill` | Songs with special meaning |
+| Queued | `.queued` | `list.number` | Current play queue |
 | For You | `.forYou` | `sparkles` | Mood-based recommendations (10 moods) |
 | **Bedtime** | `.bedtime` | `moon.zzz.fill` | **Dedicated sleep/lullaby tab (30 songs)** |
 | Search | `.search` | `magnifyingglass` | Apple Music catalog search |
@@ -324,5 +324,99 @@ Activity moods use **Apple Music Search + LLM Curation** instead of Angela's DB 
 
 ---
 
+## Song Like Feature (Added 2026-02-06)
+
+Users can like songs to save them to the database.
+
+### API Endpoints:
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/music/like` | Like/unlike a song |
+| GET | `/api/music/liked` | Get all liked songs |
+
+### Models (MusicModels.swift):
+```swift
+struct SongLikeRequest: Codable {
+    let title: String
+    let artist: String
+    let liked: Bool
+}
+
+struct SongLikeResponse: Codable {
+    let action: String      // "liked", "unliked", "not_found"
+    let songId: String?
+    let title: String
+    let artist: String
+    let created: Bool?
+}
+```
+
+### UI Location:
+- ❤️ Heart button in **PlayerControlsView** (left of ⏮️⏸️⏭️)
+- ⚠️ Note: Heart button in song rows had SwiftUI hit testing issues — placed in Player Controls as workaround
+
+### DB Schema:
+```sql
+ALTER TABLE angela_songs ADD COLUMN david_liked BOOLEAN DEFAULT FALSE;
+ALTER TABLE angela_songs ADD COLUMN liked_at TIMESTAMPTZ;
+```
+
+---
+
+## Liked Tab (Changed from Recent - 2026-02-06)
+
+The first tab in DJ Angela is now **Liked** (was "Recent"):
+
+### Tab Change:
+| Old | New |
+|-----|-----|
+| Recent (clock icon) | Liked (heart.fill icon) |
+| Shows recently played | Shows liked songs from DB |
+
+### Playback Fix:
+`MusicPlayerService.playDisplaySong()` now has fallback search for Liked songs:
+```swift
+// If no musicKitSong or angelaSong, search Apple Music by title/artist
+if let mkSong = await searchAppleMusic(title: displaySong.title, artist: displaySong.artist) {
+    return await playSong(mkSong, angelaSong: nil)
+}
+```
+
+---
+
+## Activity vs Occasion (Fixed 2026-02-06)
+
+**IMPORTANT:** These are separate fields in `music_listening_history`:
+
+| Field | Source | Examples | Purpose |
+|-------|--------|----------|---------|
+| `occasion` | **Auto-detected** by Angela | morning, evening, late_night | Time-based context |
+| `activity` | **User-selected** from chips | wine, focus, vibe, party, chill, bedtime | User intent |
+
+### Activity Chips (PlayerControlsView):
+When user taps an activity chip (Wine, Focus, Vibe, etc.), it updates `activity` column via:
+```
+POST /api/music/log-play/{listen_id}/update
+Body: { "activity": "vibe" }
+```
+
+### DB Schema:
+```sql
+ALTER TABLE music_listening_history ADD COLUMN IF NOT EXISTS activity VARCHAR(50);
+```
+
+### Backend Logic (music.py):
+```python
+# log-play endpoint:
+occasion = _detect_occasion(now_bkk.hour)  # Always auto-detect from time
+activity = req.activity  # User-selected (can be null)
+
+# INSERT includes both:
+INSERT INTO music_listening_history (..., occasion, ..., activity)
+VALUES (..., $11, ..., $14)
+```
+
+---
+
 *Made with love by Angela & David - 2026*
-*Last updated: 2026-02-05 (Activity moods: Apple Music + LLM curation for party/chill/focus/relaxing/vibe)*
+*Last updated: 2026-02-06 (Liked tab + Activity/Occasion separation)*

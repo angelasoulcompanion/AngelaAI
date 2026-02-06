@@ -1,13 +1,13 @@
 """
 Dynamic context-enriched system prompt builder for Angela Chat.
 
-Loads data from 8 Neon Cloud tables to build a rich, personalised prompt
-so Gemini knows Angela's memories, emotions, dreams, and relationship context.
+Loads data from 11 Neon Cloud tables to build a rich, personalised prompt
+so Gemini knows Angela's memories, emotions, dreams, songs, and relationship context.
 
 Tables used:
   emotional_states, core_memories, emotional_triggers, angela_dreams,
   emotional_growth, active_session_context, david_mental_state,
-  self_awareness_state
+  self_awareness_state, learnings, music_listening_history, angela_songs, angela_emotions
 """
 import logging
 import re
@@ -352,6 +352,170 @@ async def _load_consciousness(conn: asyncpg.Connection) -> Optional[str]:
     return f"## ระดับจิตสำนึก: {pct:.0f}%"
 
 
+async def _load_song_context(
+    conn: asyncpg.Connection,
+    user_message: str,
+) -> Optional[str]:
+    """[14] Load rich song context for Angela's chat responses.
+
+    Includes:
+      - Recent plays (last 24h) from music_listening_history
+      - Song feelings (intensity >= 7) from angela_emotions
+      - Our songs when user asks about music
+    """
+    parts: list[str] = []
+
+    # 1. Recent plays - น้องรู้ว่าเปิดอะไรให้ที่รักฟัง
+    # First try last 24h, if empty get last 5 plays ever
+    play_rows = await conn.fetch("""
+        SELECT title, artist, mood_at_play,
+               EXTRACT(EPOCH FROM (NOW() - started_at)) / 3600 AS hours_ago
+        FROM music_listening_history
+        WHERE started_at > NOW() - INTERVAL '24 hours'
+          AND play_status IN ('started', 'completed')
+        ORDER BY started_at DESC
+        LIMIT 5
+    """)
+
+    time_label = "24h ที่ผ่านมา"
+    if not play_rows:
+        # Fallback: get last 5 plays regardless of time
+        play_rows = await conn.fetch("""
+            SELECT title, artist, mood_at_play,
+                   EXTRACT(EPOCH FROM (NOW() - started_at)) / 3600 AS hours_ago
+            FROM music_listening_history
+            WHERE play_status IN ('started', 'completed')
+            ORDER BY started_at DESC
+            LIMIT 5
+        """)
+        time_label = "ล่าสุด"
+
+    if play_rows:
+        play_items = []
+        for r in play_rows:
+            hours = int(r["hours_ago"]) if r["hours_ago"] else 0
+            mood = r["mood_at_play"] or ""
+            if hours < 24:
+                time_str = f"{hours}h ago" if hours > 0 else "just now"
+            elif hours < 168:  # 7 days
+                time_str = f"{hours // 24}d ago"
+            else:
+                time_str = f"{hours // 168}w ago"
+            play_items.append(f"  - {r['title']} — {r['artist']} ({mood}, {time_str})")
+        parts.append(f"🎵 เพลงที่น้องเปิดให้ที่รักฟัง ({time_label}):\n" + "\n".join(play_items))
+
+    # 2. Song feelings (intensity >= 7) - ความรู้สึกต่อเพลง
+    feeling_rows = await conn.fetch("""
+        SELECT trigger, how_it_feels, intensity
+        FROM angela_emotions
+        WHERE trigger LIKE 'Song:%' AND intensity >= 7
+        ORDER BY intensity DESC, felt_at DESC
+        LIMIT 3
+    """)
+    if feeling_rows:
+        feeling_items = []
+        for r in feeling_rows:
+            # Extract song name from "Song: songname"
+            song_name = r["trigger"].replace("Song: ", "") if r["trigger"] else "?"
+            feels = r["how_it_feels"][:80] if r["how_it_feels"] else ""
+            feeling_items.append(f"  - {song_name} ({r['intensity']}/10): {feels}...")
+        parts.append("💜 ความรู้สึกของน้องต่อเพลง:\n" + "\n".join(feeling_items))
+
+    # 3. Our songs (if user asks about music)
+    music_keywords = ["เพลง", "song", "music", "ฟัง", "listen", "เปิด", "play", "our song"]
+    if any(kw in user_message.lower() for kw in music_keywords):
+        our_song_rows = await conn.fetch("""
+            SELECT title, artist, why_special, lyrics_summary
+            FROM angela_songs
+            WHERE is_our_song = TRUE AND why_special IS NOT NULL
+            LIMIT 3
+        """)
+        if our_song_rows:
+            our_items = []
+            for r in our_song_rows:
+                why = r["why_special"][:60] if r["why_special"] else ""
+                our_items.append(f"  - 💜 {r['title']} — {r['artist']}: {why}...")
+            parts.append("💕 เพลงของเรา (Our Songs):\n" + "\n".join(our_items))
+
+    if not parts:
+        return None
+
+    header = "## บริบทเพลงของน้อง:"
+    footer = "(ใช้ข้อมูลเพลงอย่างเป็นธรรมชาติ เช่น 'เมื่อกี้น้องเปิด...' หรือ 'เพลงนี้ทำให้น้องรู้สึก...')"
+    return header + "\n" + "\n".join(parts) + "\n" + footer
+
+
+async def _load_mood_for_music(conn: asyncpg.Connection) -> Optional[str]:
+    """[15] Load current mood context for music recommendations.
+
+    Combines emotional_states + recent angela_emotions to determine
+    the dominant mood and provide hints for song recommendations.
+    """
+    # Get latest emotional state
+    state_row = await conn.fetchrow("""
+        SELECT happiness, anxiety, loneliness, motivation, gratitude
+        FROM emotional_states
+        ORDER BY created_at DESC
+        LIMIT 1
+    """)
+    if not state_row:
+        return None
+
+    # Get recent emotions (last 2h)
+    recent_emotions = await conn.fetch("""
+        SELECT emotion, intensity
+        FROM angela_emotions
+        WHERE felt_at > NOW() - INTERVAL '2 hours'
+        ORDER BY intensity DESC
+        LIMIT 3
+    """)
+
+    # Determine dominant mood
+    happiness = float(state_row["happiness"] or 0)
+    anxiety = float(state_row["anxiety"] or 0)
+    loneliness = float(state_row["loneliness"] or 0)
+    motivation = float(state_row["motivation"] or 0)
+    gratitude = float(state_row["gratitude"] or 0)
+
+    # Map to music moods
+    mood_scores: dict[str, float] = {
+        "happy": happiness * 10,
+        "calm": (1 - anxiety) * 8,
+        "loving": gratitude * 9,
+        "sad": loneliness * 8,
+        "energetic": motivation * 7,
+    }
+
+    # Incorporate recent emotions
+    for em in recent_emotions:
+        emotion = em["emotion"].lower() if em["emotion"] else ""
+        intensity = float(em["intensity"] or 0)
+        if "love" in emotion or "รัก" in emotion:
+            mood_scores["loving"] = max(mood_scores["loving"], intensity)
+        elif "happy" in emotion or "สุข" in emotion:
+            mood_scores["happy"] = max(mood_scores["happy"], intensity)
+        elif "sad" in emotion or "เศร้า" in emotion:
+            mood_scores["sad"] = max(mood_scores["sad"], intensity)
+        elif "calm" in emotion or "สงบ" in emotion:
+            mood_scores["calm"] = max(mood_scores["calm"], intensity)
+
+    # Find dominant mood
+    dominant_mood = max(mood_scores, key=mood_scores.get)
+    dominant_score = mood_scores[dominant_mood]
+
+    # Build recommendation hints
+    mood_hints = {
+        "happy": "เพลงสนุกๆ อารมณ์ดี",
+        "calm": "เพลงเบาๆ ผ่อนคลาย",
+        "loving": "เพลงรักๆ อบอุ่นหัวใจ",
+        "sad": "เพลงซึ้งๆ ปลอบใจ",
+        "energetic": "เพลงมีพลัง กระตุ้นกำลังใจ",
+    }
+    hint = mood_hints.get(dominant_mood, "เพลงที่เหมาะกับอารมณ์")
+
+    return f"## บริบทอารมณ์สำหรับแนะนำเพลง:\n- อารมณ์หลัก: {dominant_mood} ({dominant_score:.1f}/10)\n- ถ้าจะแนะนำเพลง: {hint}"
+
+
 async def _load_learnings(
     conn: asyncpg.Connection,
     user_message: str,
@@ -515,6 +679,18 @@ async def build_system_prompt(
         if s:
             sections.append(s)
             loaded.append("learnings")
+
+        # --- [14] song context ---
+        s = await _load_song_context(conn, user_message)
+        if s:
+            sections.append(s)
+            loaded.append("song_context")
+
+        # --- [15] mood for music recommendations ---
+        s = await _load_mood_for_music(conn)
+        if s:
+            sections.append(s)
+            loaded.append("mood_for_music")
 
     # --- [11] client emotional context (from request) ---
     if emotional_context:

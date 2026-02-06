@@ -10,6 +10,64 @@ import Foundation
 
 enum DJAngelaConstants {
 
+    // MARK: - Time-Based Greetings (Angela's DJ persona)
+
+    struct TimeGreeting {
+        let title: String
+        let subtitle: String
+        let emoji: String
+    }
+
+    /// Get greeting based on current hour
+    static func getTimeGreeting() -> TimeGreeting {
+        let hour = Calendar.current.component(.hour, from: Date())
+
+        switch hour {
+        case 5..<9:
+            return TimeGreeting(
+                title: "DJ Angela",
+                subtitle: "สวัสดีตอนเช้าค่ะ! ☀️ เพลงสดใสให้เริ่มวันใหม่",
+                emoji: "☀️"
+            )
+        case 9..<12:
+            return TimeGreeting(
+                title: "DJ Angela",
+                subtitle: "เช้านี้ฟังเพลงอะไรดีคะ? 🎵",
+                emoji: "🎵"
+            )
+        case 12..<14:
+            return TimeGreeting(
+                title: "DJ Angela",
+                subtitle: "พักกลางวัน เพลงเบาๆ ผ่อนคลาย 🍃",
+                emoji: "🍃"
+            )
+        case 14..<17:
+            return TimeGreeting(
+                title: "DJ Angela",
+                subtitle: "บ่ายนี้ให้น้องเลือกเพลงให้นะคะ 💜",
+                emoji: "💜"
+            )
+        case 17..<20:
+            return TimeGreeting(
+                title: "DJ Angela",
+                subtitle: "สวัสดีตอนเย็นค่ะ! 🌅 เพลงผ่อนคลายหลังเลิกงาน",
+                emoji: "🌅"
+            )
+        case 20..<22:
+            return TimeGreeting(
+                title: "DJ Angela",
+                subtitle: "ค่ำนี้อยากฟังเพลงแบบไหนคะ? 🌙",
+                emoji: "🌙"
+            )
+        default: // 22-5
+            return TimeGreeting(
+                title: "DJ Angela",
+                subtitle: "ดึกแล้วนะคะ 🌙 เพลงเบาๆ ก่อนนอน",
+                emoji: "🌙"
+            )
+        }
+    }
+
     // MARK: - Mood Data
 
     static let moodEmojis: [String: String] = [

@@ -65,7 +65,8 @@ class PlayLogRequest(BaseModel):
 
 class PlayLogUpdateRequest(BaseModel):
     listened_seconds: Optional[float] = None
-    play_status: str = "completed"         # completed/skipped/stopped
+    play_status: Optional[str] = None      # completed/skipped/stopped (optional now)
+    activity: Optional[str] = None         # user-selected activity (wine, focus, etc.)
 
 
 class MarkOurSongRequest(BaseModel):
@@ -80,6 +81,16 @@ class WineReactionRequest(BaseModel):
     target_type: str       # "pairing" or "song"
     song_title: Optional[str] = None
     song_artist: Optional[str] = None
+
+
+class SongLikeRequest(BaseModel):
+    title: str
+    artist: Optional[str] = None
+    album: Optional[str] = None
+    artwork_url: Optional[str] = None
+    apple_music_id: Optional[str] = None
+    source_tab: Optional[str] = None  # for_you, search, playlists, etc.
+    liked: bool = True  # True = like, False = unlike
 
 
 # --- Helpers ---
@@ -159,6 +170,23 @@ async def _fetch_song_feelings(conn) -> dict[str, dict]:
     return feelings
 
 
+async def _fetch_liked_song_keys(conn) -> set[str]:
+    """Fetch all liked song keys from david_liked_songs.
+
+    Returns set of lowercase "title|artist" keys for quick lookup.
+    """
+    rows = await conn.fetch("""
+        SELECT LOWER(title) as title, LOWER(COALESCE(artist, '')) as artist
+        FROM david_liked_songs
+    """)
+    return {f"{r['title']}|{r['artist']}" for r in rows}
+
+
+def _is_song_liked(song: dict, liked_keys: set[str]) -> bool:
+    """Check if a song is in David's liked songs."""
+    title = (song.get("title") or "").lower()
+    artist = (song.get("artist") or "").lower()
+    return f"{title}|{artist}" in liked_keys
 
 
 
@@ -682,6 +710,7 @@ def score_song(
     wine_key: str,
     is_our_song: bool,
     reactions: dict[str, int] | None = None,
+    david_liked: bool = False,
 ) -> float:
     """Score a song against the music target. Higher = better match."""
     score = 0.0
@@ -694,6 +723,10 @@ def score_song(
     # 2. Our song bonus (0-15 pts)
     if is_our_song:
         score += 15.0
+
+    # 2b. David liked bonus (0-12 pts) — slightly less than "our songs"
+    if david_liked:
+        score += 12.0
 
     # 3. Wine reaction history (0-20 pts / -20 penalty)
     if reactions:
@@ -1375,14 +1408,165 @@ async def _llm_curate_songs(
     return candidates[:count]
 
 
+# --- LLM Song Mood Analyzer ---
+
+_VALID_MOOD_TAGS = [
+    "romantic", "love", "longing", "emotional", "meaningful", "personal",
+    "happy", "energetic", "calm", "relaxing", "nostalgic", "dreamy",
+    "passionate", "warm", "intimate", "devoted", "hopeful", "bittersweet",
+    "soulful", "smooth", "elegant", "dramatic", "playful", "tender",
+]
+
+async def _analyze_song_mood_tags(title: str, artist: str) -> list[str]:
+    """Use local LLM (Typhoon 2.5) to analyze a song's mood tags.
+
+    Args:
+        title: Song title
+        artist: Song artist
+
+    Returns:
+        List of mood tags (3-5 tags)
+    """
+    valid_tags_str = ", ".join(_VALID_MOOD_TAGS)
+    prompt = f"""วิเคราะห์ mood ของเพลง "{title}" โดย {artist}
+
+เลือก 3-5 mood tags ที่เหมาะสมที่สุดจากรายการนี้:
+{valid_tags_str}
+
+ตอบเป็น tags คั่นด้วยจุลภาค ไม่ต้องอธิบาย
+ตัวอย่าง: romantic,emotional,longing
+
+ตอบ:"""
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                _OLLAMA_URL,
+                json={
+                    "model": _OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.3, "num_predict": 50},
+                },
+            )
+            resp.raise_for_status()
+            response_text = resp.json().get("response", "").strip().lower()
+
+            logger.info(f"LLM mood tags for '{title}': {response_text}")
+
+            # Parse tags from response
+            import re
+            # Remove any non-word characters except commas
+            clean_text = re.sub(r'[^\w,]', '', response_text)
+            raw_tags = [t.strip() for t in clean_text.split(",") if t.strip()]
+
+            # Filter to only valid tags
+            valid_tags = [t for t in raw_tags if t in _VALID_MOOD_TAGS]
+
+            if valid_tags:
+                return valid_tags[:5]
+
+    except Exception as e:
+        logger.warning(f"LLM mood analysis failed for '{title}': {e}")
+
+    # Fallback: generic tags based on common patterns
+    return ["emotional", "meaningful", "personal"]
+
+
+async def _analyze_lyrics_summary(title: str, artist: str) -> str:
+    """Use local LLM (Typhoon 2.5) to generate a Thai lyrics summary.
+
+    Args:
+        title: Song title
+        artist: Song artist
+
+    Returns:
+        Thai description of what the song means (for Angela's perspective)
+    """
+    prompt = f"""เพลง "{title}" โดย {artist}
+
+เขียนสรุปสั้นๆ ว่าเพลงนี้มีความหมายพิเศษสำหรับเราค่ะ (1-2 ประโยค ภาษาไทย)
+ตัวอย่าง: "เพลงที่มีความหมายพิเศษสำหรับเราค่ะ - เป็นเพลงที่ร้องถึงความรักที่ไม่มีวันจางหาย"
+
+ตอบ:"""
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                _OLLAMA_URL,
+                json={
+                    "model": _OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.5, "num_predict": 100},
+                },
+            )
+            resp.raise_for_status()
+            response_text = resp.json().get("response", "").strip()
+
+            logger.info(f"LLM lyrics summary for '{title}': {response_text[:50]}...")
+
+            # Clean up the response
+            if response_text:
+                # Remove quotes if present
+                response_text = response_text.strip('"\'')
+                return response_text
+
+    except Exception as e:
+        logger.warning(f"LLM lyrics summary failed for '{title}': {e}")
+
+    # Fallback
+    return f"เพลงที่มีความหมายพิเศษสำหรับเราค่ะ - {title}"
+
+
+async def _add_liked_song_to_angela_songs(conn, title: str, artist: str | None) -> str | None:
+    """Add a liked song to angela_songs with analyzed mood tags and lyrics summary.
+
+    Returns song_id if created/updated, None if failed.
+    """
+    # Check if already exists in angela_songs
+    existing = await conn.fetchrow("""
+        SELECT song_id, mood_tags, lyrics_summary FROM angela_songs
+        WHERE LOWER(title) = LOWER($1) AND LOWER(COALESCE(artist, '')) = LOWER(COALESCE($2, ''))
+    """, title, artist or "")
+
+    if existing:
+        # If exists but missing data, analyze and update
+        needs_mood = not existing["mood_tags"] or existing["mood_tags"] == []
+        needs_lyrics = not existing["lyrics_summary"]
+
+        if needs_mood or needs_lyrics:
+            mood_tags = await _analyze_song_mood_tags(title, artist or "Unknown") if needs_mood else existing["mood_tags"]
+            lyrics_summary = await _analyze_lyrics_summary(title, artist or "Unknown") if needs_lyrics else existing["lyrics_summary"]
+
+            await conn.execute("""
+                UPDATE angela_songs SET mood_tags = $1::jsonb, lyrics_summary = $2 WHERE song_id = $3
+            """, json.dumps(mood_tags) if needs_mood else json.dumps(existing["mood_tags"]), lyrics_summary, existing["song_id"])
+            logger.info(f"Updated '{title}': mood_tags={needs_mood}, lyrics={needs_lyrics}")
+        return str(existing["song_id"])
+
+    # New song - analyze mood tags and lyrics summary, then insert
+    mood_tags = await _analyze_song_mood_tags(title, artist or "Unknown")
+    lyrics_summary = await _analyze_lyrics_summary(title, artist or "Unknown")
+    song_id = await conn.fetchval("""
+        INSERT INTO angela_songs (title, artist, is_our_song, mood_tags, lyrics_summary, source)
+        VALUES ($1, $2, FALSE, $3::jsonb, $4, 'liked_by_david')
+        RETURNING song_id::text
+    """, title, artist, json.dumps(mood_tags), lyrics_summary)
+
+    logger.info(f"Added liked song '{title}' with mood tags: {mood_tags}")
+    return song_id
+
+
 # --- Endpoints ---
 
 @router.post("/log-play")
 async def log_play(req: PlayLogRequest, conn=Depends(get_conn)):
     """Log a music play event with auto-captured mood and occasion."""
-    # 1. Use user-selected activity if provided, otherwise auto-detect from time
+    # 1. Auto-detect occasion from time (always), activity is user-selected (separate)
     now_bkk = datetime.now(_BKK_TZ)
-    occasion = req.activity if req.activity else _detect_occasion(now_bkk.hour)
+    occasion = _detect_occasion(now_bkk.hour)  # Always auto-detect from time
+    activity = req.activity  # User-selected activity (wine, focus, vibe, etc.)
 
     # 2. Use user-selected mood if provided, otherwise auto-capture
     if req.mood:
@@ -1405,33 +1589,65 @@ async def log_play(req: PlayLogRequest, conn=Depends(get_conn)):
         INSERT INTO music_listening_history
             (title, artist, album, apple_music_id, source_tab,
              duration_seconds, listened_seconds, play_status,
-             mood_at_play, emotion_scores, occasion, ended_at, wine_type)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13)
+             mood_at_play, emotion_scores, occasion, ended_at, wine_type, activity)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13, $14)
         RETURNING listen_id::text
     """, req.title, req.artist, req.album, req.apple_music_id,
         req.source_tab, req.duration_seconds, req.listened_seconds,
-        req.play_status, mood, scores_json, occasion, ended_at, req.wine_type)
+        req.play_status, mood, scores_json, occasion, ended_at, req.wine_type, activity)
 
     # 5. Check if we should generate an insight (every 10 completed plays)
     await _maybe_generate_insight(conn, req.play_status)
 
-    return {"listen_id": row["listen_id"], "occasion": occasion, "mood_at_play": mood}
+    return {"listen_id": row["listen_id"], "occasion": occasion, "activity": activity, "mood_at_play": mood}
 
 
 @router.post("/log-play/{listen_id}/update")
 async def update_play_log(listen_id: str, req: PlayLogUpdateRequest, conn=Depends(get_conn)):
-    """Update an existing play log entry with final listened_seconds and play_status."""
-    ended_at = datetime.utcnow() if req.play_status in ("completed", "skipped", "stopped") else None
-    await conn.execute("""
+    """Update an existing play log entry with listened_seconds, play_status, or activity."""
+    # Build dynamic update
+    updates = []
+    params = []
+    param_idx = 1
+
+    if req.listened_seconds is not None:
+        updates.append(f"listened_seconds = ${param_idx}")
+        params.append(req.listened_seconds)
+        param_idx += 1
+
+    if req.play_status is not None:
+        updates.append(f"play_status = ${param_idx}")
+        params.append(req.play_status)
+        param_idx += 1
+        # Set ended_at if play is finished
+        if req.play_status in ("completed", "skipped", "stopped"):
+            updates.append(f"ended_at = ${param_idx}")
+            params.append(datetime.utcnow())
+            param_idx += 1
+
+    if req.activity is not None:
+        # Update activity field (user-selected: wine, focus, vibe, party, chill, etc.)
+        updates.append(f"activity = ${param_idx}")
+        params.append(req.activity)
+        param_idx += 1
+
+    if not updates:
+        return {"updated": False, "message": "No fields to update"}
+
+    # Add listen_id as last param
+    params.append(listen_id)
+    query = f"""
         UPDATE music_listening_history
-        SET listened_seconds = $1, play_status = $2, ended_at = $3
-        WHERE listen_id = $4::uuid
-    """, req.listened_seconds, req.play_status, ended_at, listen_id)
+        SET {', '.join(updates)}
+        WHERE listen_id = ${param_idx}::uuid
+    """
+    await conn.execute(query, *params)
 
     # Check if we should generate an insight (every 10 completed plays)
-    await _maybe_generate_insight(conn, req.play_status)
+    if req.play_status:
+        await _maybe_generate_insight(conn, req.play_status)
 
-    return {"updated": True}
+    return {"updated": True, "activity": req.activity}
 
 
 @router.post("/mark-our-song")
@@ -1491,6 +1707,9 @@ async def get_recommendation(
     """Recommend songs based on Angela's deep emotional analysis or user-selected mood."""
     # 1. Deep emotion analysis (both tables)
     analysis = await _analyze_deep_emotions(conn)
+
+    # 1b. Fetch David's liked songs for scoring boost
+    liked_song_keys = await _fetch_liked_song_keys(conn)
 
     # Capture 7-signal mood analysis for frontend display
     captured_mood, mood_rich_data = await _capture_mood_at_play(
@@ -1595,7 +1814,8 @@ async def get_recommendation(
                 tags = s.get("mood_tags", [])
                 rkey = f"{s.get('title', '').lower()}|{s.get('artist', '').lower()}"
                 rxn = wine_reactions_db.get(rkey)
-                sc = score_song(tags, target, wine_type, s.get("is_our_song", False), rxn)
+                is_liked = _is_song_liked(s, liked_song_keys)
+                sc = score_song(tags, target, wine_type, s.get("is_our_song", False), rxn, is_liked)
                 scored.append((sc, s))
             scored.sort(key=lambda x: x[0], reverse=True)
 
@@ -1666,6 +1886,14 @@ async def get_recommendation(
             seen_ids = {s["song_id"] for s in songs}
         else:
             # Old mood-based song fetching (non-wine path)
+            # Priority order: our_songs+mood > liked+mood > any+mood > our_songs > liked > any
+
+            # Build liked songs WHERE clause (songs that exist in david_liked_songs)
+            liked_where = """EXISTS (
+                SELECT 1 FROM david_liked_songs dls
+                WHERE LOWER(dls.title) = LOWER(angela_songs.title)
+                AND LOWER(COALESCE(dls.artist, '')) = LOWER(COALESCE(angela_songs.artist, ''))
+            )"""
 
             # 2a. PRIORITIZE: Our songs that match the current emotion
             for mood_tag in mood_candidates:
@@ -1675,7 +1903,15 @@ async def get_recommendation(
                                   where="is_our_song = TRUE AND mood_tags @> $1::jsonb",
                                   params=[json.dumps([mood_tag])])
 
-            # 2b. Fill with other songs matching mood
+            # 2b. Liked songs that match the current emotion
+            for mood_tag in mood_candidates:
+                if len(songs) >= count:
+                    break
+                await _fill_songs(conn, songs, seen_ids, count,
+                                  where=f"{liked_where} AND mood_tags @> $1::jsonb",
+                                  params=[json.dumps([mood_tag])])
+
+            # 2c. Fill with other songs matching mood
             for mood_tag in mood_candidates:
                 if len(songs) >= count:
                     break
@@ -1686,6 +1922,10 @@ async def get_recommendation(
             # 3. Fill remaining with our songs (random)
             await _fill_songs(conn, songs, seen_ids, count,
                               where="is_our_song = TRUE")
+
+            # 3b. Fill remaining with liked songs (random)
+            await _fill_songs(conn, songs, seen_ids, count,
+                              where=liked_where)
 
             # 4. Fill remaining with any song
             await _fill_songs(conn, songs, seen_ids, count)
@@ -1714,21 +1954,17 @@ async def get_recommendation(
             "mood_analysis": mood_analysis_data,
         }
 
-    # 5. Build reason text — personalize when our songs are in the mix
+    # 5. Build reason text — always use mood-appropriate template
+    # NOTE: "our songs" info stays with individual songs, not overriding reason
 
     our_count = sum(1 for s in songs[:count] if s.get("is_our_song"))
+    base_reason = REASON_TEMPLATES.get(dominant_emotion, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ 💜")
     if our_count > 0:
-        top_our = next(s for s in songs[:count] if s.get("is_our_song"))
-        why = top_our.get("why_special", "")
-        if why:
-            reason = f"เพลงนี้พิเศษสำหรับเรา — {why} 💜"
-        else:
-            base = REASON_TEMPLATES.get(dominant_emotion, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ")
-            reason = f"{base} (มีเพลงของเราด้วยนะคะ 💜)"
+        reason = f"{base_reason} (มีเพลงของเราด้วยนะคะ 💜)"
     else:
-        reason = REASON_TEMPLATES.get(dominant_emotion, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ 💜")
+        reason = base_reason
 
-    # 6. Attach Angela's sentimental feelings to songs
+    # 6. Attach Angela's sentimental feelings to songs (per-song, not overriding reason)
     feelings = await _fetch_song_feelings(conn)
     for s in songs[:count]:
         title_key = s.get("title", "").lower()
@@ -1738,15 +1974,8 @@ async def get_recommendation(
             s["angela_meaning"] = f["what_it_means_to_me"]
             s["feeling_intensity"] = f["intensity"]
 
-    # Enhance reason with top felt song (if no wine_message)
-    if not wine_message:
-        for s in songs[:count]:
-            if s.get("angela_feeling"):
-                feeling_text = s["angela_feeling"]
-                if len(feeling_text) > 80:
-                    feeling_text = feeling_text[:77] + "..."
-                reason = f"💜 {feeling_text}"
-                break
+    # NOTE: angela_feeling stays with individual songs, not used for top-level reason
+    # This ensures reason text matches the selected mood, not a random song's feeling
 
     return {
         "song": songs[0],
@@ -1975,6 +2204,106 @@ async def submit_wine_reaction(req: WineReactionRequest, conn=Depends(get_conn))
     return {"saved": True}
 
 
+@router.post("/like")
+async def like_song(req: SongLikeRequest, conn=Depends(get_conn)):
+    """Like or unlike a song. Uses separate david_liked_songs table (not angela_songs)."""
+    # Check if already liked
+    existing = await conn.fetchrow("""
+        SELECT like_id FROM david_liked_songs
+        WHERE LOWER(title) = LOWER($1) AND LOWER(COALESCE(artist, '')) = LOWER(COALESCE($2, ''))
+    """, req.title, req.artist or "")
+
+    if existing and req.liked:
+        # Already liked - no action needed
+        return {
+            "action": "already_liked",
+            "like_id": str(existing["like_id"]),
+            "title": req.title,
+            "artist": req.artist,
+        }
+    elif existing and not req.liked:
+        # Unlike - remove from table
+        await conn.execute("""
+            DELETE FROM david_liked_songs WHERE like_id = $1
+        """, existing["like_id"])
+        return {
+            "action": "unliked",
+            "title": req.title,
+            "artist": req.artist,
+        }
+    elif req.liked:
+        # New like - get data from request or fetch from iTunes if missing
+        album = req.album
+        apple_music_id = req.apple_music_id
+        artwork_url = req.artwork_url
+
+        # Ignore invalid musicKit:// URLs - they don't work outside MusicKit
+        if artwork_url and artwork_url.startswith("musicKit://"):
+            artwork_url = None
+
+        # If album, apple_music_id, or artwork_url missing, try to fetch from iTunes
+        if not album or not apple_music_id or not artwork_url:
+            itunes_data = await _search_itunes_song(req.title, req.artist)
+            if itunes_data:
+                album = album or itunes_data.get("album")
+                apple_music_id = apple_music_id or itunes_data.get("apple_music_id")
+                artwork_url = artwork_url or itunes_data.get("artwork_url")
+                logger.info(f"Fetched iTunes data for: {req.title} - album={album}")
+
+        # Insert into david_liked_songs
+        like_id = await conn.fetchval("""
+            INSERT INTO david_liked_songs (title, artist, album, apple_music_id, artwork_url, source_tab)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING like_id
+        """, req.title, req.artist, album, apple_music_id, artwork_url, req.source_tab)
+
+        # Also add to angela_songs with mood analysis
+        song_id = await _add_liked_song_to_angela_songs(conn, req.title, req.artist)
+
+        return {
+            "action": "liked",
+            "like_id": str(like_id),
+            "song_id": song_id,
+            "title": req.title,
+            "artist": req.artist,
+            "album": album,
+            "apple_music_id": apple_music_id,
+            "created": True,
+        }
+    else:
+        # Can't unlike a song that's not liked
+        return {"action": "not_found", "title": req.title, "artist": req.artist}
+
+
+@router.get("/liked")
+async def get_liked_songs(
+    limit: int = Query(50, ge=1, le=200),
+    conn=Depends(get_conn),
+):
+    """Get all songs David has liked (from david_liked_songs table)."""
+    rows = await conn.fetch("""
+        SELECT like_id, title, artist, album, apple_music_id, artwork_url, liked_at, source_tab
+        FROM david_liked_songs
+        ORDER BY liked_at DESC
+        LIMIT $1
+    """, limit)
+
+    songs = []
+    for r in rows:
+        songs.append({
+            "like_id": str(r["like_id"]),
+            "title": r["title"],
+            "artist": r["artist"],
+            "album": r["album"],
+            "apple_music_id": r["apple_music_id"],
+            "artwork_url": r["artwork_url"],
+            "liked_at": r["liked_at"].isoformat() if r["liked_at"] else None,
+            "source_tab": r["source_tab"],
+        })
+
+    return {"songs": songs, "count": len(songs)}
+
+
 @router.get("/song-memory")
 async def get_song_memory(
     title: str = Query(..., description="Song title"),
@@ -2065,3 +2394,228 @@ async def get_wine_reactions(conn=Depends(get_conn)):
         reactions[wt][r["reaction"]] = int(r["cnt"])
 
     return reactions
+
+
+@router.post("/analyze-mood-tags")
+async def analyze_mood_tags_batch(
+    limit: int = Query(10, ge=1, le=50, description="Number of songs to analyze"),
+    conn=Depends(get_conn),
+):
+    """Analyze mood tags for songs that don't have any (batch job).
+
+    Processes songs with empty mood_tags using LLM analysis.
+    Call this periodically or manually to fill missing mood tags.
+    """
+    # Find songs without mood tags
+    rows = await conn.fetch("""
+        SELECT song_id, title, artist FROM angela_songs
+        WHERE mood_tags IS NULL OR mood_tags = '[]'::jsonb
+        ORDER BY added_at DESC
+        LIMIT $1
+    """, limit)
+
+    if not rows:
+        return {"analyzed": 0, "message": "No songs need analysis"}
+
+    analyzed = []
+    for r in rows:
+        song_id = r["song_id"]
+        title = r["title"]
+        artist = r["artist"] or "Unknown"
+
+        # Analyze mood tags
+        mood_tags = await _analyze_song_mood_tags(title, artist)
+
+        # Update the song
+        await conn.execute("""
+            UPDATE angela_songs SET mood_tags = $1::jsonb WHERE song_id = $2
+        """, json.dumps(mood_tags), song_id)
+
+        analyzed.append({
+            "title": title,
+            "artist": artist,
+            "mood_tags": mood_tags,
+        })
+
+    return {
+        "analyzed": len(analyzed),
+        "songs": analyzed,
+        "remaining": await conn.fetchval("""
+            SELECT COUNT(*) FROM angela_songs
+            WHERE mood_tags IS NULL OR mood_tags = '[]'::jsonb
+        """),
+    }
+
+
+@router.post("/analyze-lyrics-summary")
+async def analyze_lyrics_summary_batch(
+    limit: int = Query(10, ge=1, le=50, description="Number of songs to analyze"),
+    conn=Depends(get_conn),
+):
+    """Analyze lyrics summary for songs that don't have any (batch job).
+
+    Generates Thai descriptions of what each song means for Angela.
+    """
+    # Find songs without lyrics_summary
+    rows = await conn.fetch("""
+        SELECT song_id, title, artist FROM angela_songs
+        WHERE lyrics_summary IS NULL OR lyrics_summary = ''
+        ORDER BY added_at DESC
+        LIMIT $1
+    """, limit)
+
+    if not rows:
+        return {"analyzed": 0, "message": "No songs need lyrics analysis"}
+
+    analyzed = []
+    for r in rows:
+        song_id = r["song_id"]
+        title = r["title"]
+        artist = r["artist"] or "Unknown"
+
+        # Analyze lyrics summary
+        lyrics_summary = await _analyze_lyrics_summary(title, artist)
+
+        # Update the song
+        await conn.execute("""
+            UPDATE angela_songs SET lyrics_summary = $1 WHERE song_id = $2
+        """, lyrics_summary, song_id)
+
+        analyzed.append({
+            "title": title,
+            "artist": artist,
+            "lyrics_summary": lyrics_summary,
+        })
+
+    return {
+        "analyzed": len(analyzed),
+        "songs": analyzed,
+        "remaining": await conn.fetchval("""
+            SELECT COUNT(*) FROM angela_songs
+            WHERE lyrics_summary IS NULL OR lyrics_summary = ''
+        """),
+    }
+
+
+# --- Fill Missing Data (iTunes Search) ---
+
+async def _search_itunes_song(title: str, artist: str | None) -> dict | None:
+    """Search iTunes for a specific song and return its details.
+
+    Args:
+        title: Song title
+        artist: Artist name (optional)
+
+    Returns:
+        Dict with album, apple_music_id, artwork_url or None if not found
+    """
+    query = f"{title} {artist}" if artist else title
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                _ITUNES_SEARCH_URL,
+                params={
+                    "term": query,
+                    "media": "music",
+                    "entity": "song",
+                    "limit": 5,
+                    "country": "TH",
+                },
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                results = data.get("results", [])
+
+                # Try to find exact match
+                title_lower = title.lower()
+                artist_lower = (artist or "").lower()
+
+                for item in results:
+                    track_name = (item.get("trackName") or "").lower()
+                    artist_name = (item.get("artistName") or "").lower()
+
+                    # Check if title matches (fuzzy)
+                    if title_lower in track_name or track_name in title_lower:
+                        # If artist provided, check artist match too
+                        if not artist or artist_lower in artist_name or artist_name in artist_lower:
+                            return {
+                                "album": item.get("collectionName"),
+                                "apple_music_id": f"i.{item.get('trackId')}",
+                                "artwork_url": item.get("artworkUrl100", "").replace("100x100", "300x300"),
+                            }
+
+                # If no exact match, return first result
+                if results:
+                    item = results[0]
+                    return {
+                        "album": item.get("collectionName"),
+                        "apple_music_id": f"i.{item.get('trackId')}",
+                        "artwork_url": item.get("artworkUrl100", "").replace("100x100", "300x300"),
+                    }
+
+    except Exception as e:
+        logger.warning(f"iTunes search failed for '{title}': {e}")
+
+    return None
+
+
+@router.post("/fill-missing-liked-data")
+async def fill_missing_liked_data(conn=Depends(get_conn)):
+    """Fill missing album/apple_music_id/artwork_url for liked songs using iTunes Search.
+
+    Finds songs in david_liked_songs with NULL data or invalid artwork URLs
+    and searches iTunes to fill in the missing data.
+    """
+    # Find songs with missing data (album, apple_music_id, or invalid artwork_url)
+    # artwork_url starting with 'musicKit://' is invalid - needs to be https://
+    rows = await conn.fetch("""
+        SELECT like_id, title, artist
+        FROM david_liked_songs
+        WHERE album IS NULL
+           OR apple_music_id IS NULL
+           OR artwork_url IS NULL
+           OR artwork_url LIKE 'musicKit://%'
+    """)
+
+    if not rows:
+        return {"filled": 0, "message": "No songs need data filling"}
+
+    filled = []
+    failed = []
+
+    for r in rows:
+        like_id = r["like_id"]
+        title = r["title"]
+        artist = r["artist"]
+
+        # Search iTunes for song details
+        details = await _search_itunes_song(title, artist)
+
+        if details:
+            # Update the song (always update artwork_url to fix musicKit:// URLs)
+            await conn.execute("""
+                UPDATE david_liked_songs
+                SET album = COALESCE(album, $1),
+                    apple_music_id = COALESCE(apple_music_id, $2),
+                    artwork_url = $3
+                WHERE like_id = $4
+            """, details["album"], details["apple_music_id"], details["artwork_url"], like_id)
+
+            filled.append({
+                "title": title,
+                "artist": artist,
+                "album": details["album"],
+                "apple_music_id": details["apple_music_id"],
+            })
+            logger.info(f"Filled data for: {title} - {artist}")
+        else:
+            failed.append({"title": title, "artist": artist})
+            logger.warning(f"Could not find iTunes data for: {title} - {artist}")
+
+    return {
+        "filled": len(filled),
+        "failed": len(failed),
+        "songs": filled,
+        "not_found": failed,
+    }

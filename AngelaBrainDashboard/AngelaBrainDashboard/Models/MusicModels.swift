@@ -27,6 +27,7 @@ struct Song: Identifiable, Codable {
     let angelaFeeling: String?
     let angelaMeaning: String?
     let feelingIntensity: Int?
+    let energyPhase: String?    // "warmup", "peak", "cooldown"
 
     var id: String { songId }
 }
@@ -48,6 +49,8 @@ struct SongRecommendation: Codable {
     let wineProfile: WineProfileData?
     let targetProfile: TargetProfileData?
     let searchQueries: [String]?
+    // Mood analysis (7-signal algorithm)
+    let moodAnalysis: MoodAnalysis?
 }
 
 // MARK: - Wine Profile (sensory dimensions)
@@ -146,6 +149,68 @@ struct PlaylistSeedSong: Codable {
     let artist: String
 }
 
+// MARK: - Song Like Request/Response
+
+struct SongLikeRequest: Codable {
+    let title: String
+    let artist: String
+    let liked: Bool
+    let album: String?
+    let appleMusicId: String?
+    let artworkUrl: String?
+    let sourceTab: String?
+
+    enum CodingKeys: String, CodingKey {
+        case title, artist, liked, album
+        case appleMusicId = "apple_music_id"
+        case artworkUrl = "artwork_url"
+        case sourceTab = "source_tab"
+    }
+
+    init(title: String, artist: String, liked: Bool = true, album: String? = nil, appleMusicId: String? = nil, artworkUrl: String? = nil, sourceTab: String? = nil) {
+        self.title = title
+        self.artist = artist
+        self.liked = liked
+        self.album = album
+        self.appleMusicId = appleMusicId
+        self.artworkUrl = artworkUrl
+        self.sourceTab = sourceTab
+    }
+}
+
+struct SongLikeResponse: Codable {
+    let action: String      // "liked", "unliked", "not_found"
+    let songId: String?
+    let title: String
+    let artist: String
+    let created: Bool?
+}
+
+// MARK: - Liked Songs List
+
+struct LikedSong: Codable, Identifiable {
+    let likeId: String
+    let title: String
+    let artist: String?
+    let album: String?
+    let appleMusicId: String?
+    let artworkUrl: String?
+    let likedAt: String?
+    let sourceTab: String?
+
+    var id: String { likeId }
+
+    /// Key for matching (lowercase title|artist)
+    var matchKey: String {
+        "\(title.lowercased())|\((artist ?? "").lowercased())"
+    }
+}
+
+struct LikedSongsResponse: Codable {
+    let songs: [LikedSong]
+    let count: Int
+}
+
 // MARK: - Playlist Generation State
 
 enum PlaylistGenerationState: Equatable {
@@ -171,9 +236,10 @@ struct DisplaySong: Identifiable {
     let isOurSong: Bool
     let moodTags: [String]
     let angelaFeeling: String?
+    let energyPhase: String?    // "warmup", "peak", "cooldown"
 
     /// Init from MusicKit.Song (Library, Playlists, Search results)
-    init(from mkSong: MusicKit.Song) {
+    init(from mkSong: MusicKit.Song, energyPhase: String? = nil) {
         self.id = mkSong.id.rawValue
         self.title = mkSong.title
         self.artist = mkSong.artistName
@@ -185,10 +251,11 @@ struct DisplaySong: Identifiable {
         self.isOurSong = false
         self.moodTags = []
         self.angelaFeeling = nil
+        self.energyPhase = energyPhase
     }
 
     /// Init from Angela Song (Our Songs tab)
-    init(from angelaSong: Song) {
+    init(from angelaSong: Song, energyPhase: String? = nil) {
         self.id = angelaSong.songId
         self.title = angelaSong.title
         self.artist = angelaSong.artist ?? "Unknown Artist"
@@ -200,10 +267,12 @@ struct DisplaySong: Identifiable {
         self.isOurSong = angelaSong.isOurSong
         self.moodTags = angelaSong.moodTags
         self.angelaFeeling = angelaSong.angelaFeeling
+        // Use provided energyPhase or fallback to Song's energyPhase
+        self.energyPhase = energyPhase ?? angelaSong.energyPhase
     }
 
     /// Init from Angela Song enriched with MusicKit artwork
-    init(from angelaSong: Song, artwork: URL?) {
+    init(from angelaSong: Song, artwork: URL?, energyPhase: String? = nil) {
         self.id = angelaSong.songId
         self.title = angelaSong.title
         self.artist = angelaSong.artist ?? "Unknown Artist"
@@ -215,10 +284,12 @@ struct DisplaySong: Identifiable {
         self.isOurSong = angelaSong.isOurSong
         self.moodTags = angelaSong.moodTags
         self.angelaFeeling = angelaSong.angelaFeeling
+        // Use provided energyPhase or fallback to Song's energyPhase
+        self.energyPhase = energyPhase ?? angelaSong.energyPhase
     }
 
     /// Init from iTunes Search API result (no MusicKit, no Angela Song)
-    init(title: String, artist: String, album: String? = nil, artworkURL: URL? = nil, duration: TimeInterval? = nil) {
+    init(title: String, artist: String, album: String? = nil, artworkURL: URL? = nil, duration: TimeInterval? = nil, energyPhase: String? = nil) {
         self.id = UUID().uuidString
         self.title = title
         self.artist = artist
@@ -230,6 +301,23 @@ struct DisplaySong: Identifiable {
         self.isOurSong = false
         self.moodTags = []
         self.angelaFeeling = nil
+        self.energyPhase = energyPhase
+    }
+
+    /// Init from LikedSong (Liked tab)
+    init(from liked: LikedSong) {
+        self.id = liked.likeId
+        self.title = liked.title
+        self.artist = liked.artist ?? "Unknown Artist"
+        self.album = liked.album
+        self.albumArtURL = liked.artworkUrl.flatMap { URL(string: $0) }
+        self.duration = nil
+        self.musicKitSong = nil
+        self.angelaSong = nil
+        self.isOurSong = false
+        self.moodTags = []
+        self.angelaFeeling = nil
+        self.energyPhase = nil
     }
 
     var durationFormatted: String? {
@@ -278,16 +366,33 @@ struct PlayLogResponse: Codable {
 
 struct PlayLogUpdateBody: Codable {
     let listenedSeconds: Double?
-    let playStatus: String
+    let playStatus: String?
+    let activity: String?
 
     enum CodingKeys: String, CodingKey {
         case listenedSeconds = "listened_seconds"
         case playStatus = "play_status"
+        case activity
+    }
+
+    /// Init for finalize play (listened_seconds + play_status)
+    init(listenedSeconds: Double?, playStatus: String) {
+        self.listenedSeconds = listenedSeconds
+        self.playStatus = playStatus
+        self.activity = nil
+    }
+
+    /// Init for activity update only
+    init(activity: String) {
+        self.listenedSeconds = nil
+        self.playStatus = nil
+        self.activity = activity
     }
 }
 
 struct PlayLogUpdateResponse: Codable {
     let updated: Bool
+    let activity: String?
 }
 
 // MARK: - Mark Our Song (encoded — needs CodingKeys for snake_case output)
@@ -327,6 +432,81 @@ struct WineReactionBody: Codable {
 
 struct WineReactionResponse: Codable {
     let saved: Bool
+}
+
+// MARK: - DJ Commentary (Angela's thoughts about current song)
+
+struct DJCommentary {
+    let feeling: String          // "เหมือนยืนเปิดไฟรอที่รักกลับบ้าน..."
+    let meaning: String?         // angelaMeaning from Song
+    let intensity: Int           // 1-10 from feelingIntensity
+    let whySpecial: String?      // "ที่รักเปิดให้น้องฟังตอน..."
+    let isOurSong: Bool
+
+    init(from song: Song) {
+        self.feeling = song.angelaFeeling ?? ""
+        self.meaning = song.angelaMeaning
+        self.intensity = song.feelingIntensity ?? 5
+        self.whySpecial = song.whySpecial
+        self.isOurSong = song.isOurSong
+    }
+
+    init(feeling: String = "", meaning: String? = nil, intensity: Int = 5, whySpecial: String? = nil, isOurSong: Bool = false) {
+        self.feeling = feeling
+        self.meaning = meaning
+        self.intensity = intensity
+        self.whySpecial = whySpecial
+        self.isOurSong = isOurSong
+    }
+
+    var hasContent: Bool {
+        !feeling.isEmpty || whySpecial != nil || isOurSong
+    }
+}
+
+// MARK: - Mood Analysis (7-signal algorithm from backend)
+
+struct MoodAnalysis: Codable {
+    let dominantMood: String
+    let confidence: Double
+    let signals: [MoodSignal]
+}
+
+struct MoodSignal: Codable, Identifiable {
+    let name: String      // "activity", "recent_emotions", "time_of_day", etc.
+    let mood: String      // detected mood for this signal
+    let weight: Double    // signal weight (0-1)
+
+    var id: String { name }
+
+    var displayName: String {
+        switch name {
+        case "activity": return "Activity"
+        case "recent_emotions": return "Emotions"
+        case "time_of_day": return "Time"
+        case "wine_type": return "Wine"
+        case "mood_override": return "Mood"
+        case "our_songs_preference": return "Our Songs"
+        case "listening_history": return "History"
+        default: return name.capitalized
+        }
+    }
+}
+
+// MARK: - Song Memory (play history)
+
+struct SongMemory: Codable {
+    let playCount: Int
+    let recentPlays: [SongPlay]
+    let memoryText: String?
+}
+
+struct SongPlay: Codable, Identifiable {
+    let playedAt: String       // "2 วันก่อน"
+    let occasion: String?      // "evening"
+    let moodAtPlay: String?    // "loving"
+
+    var id: String { playedAt }
 }
 
 // MARK: - Now Playing Info (for DJ Angela vinyl player)

@@ -11,6 +11,7 @@ struct PlayerControlsView: View {
     @ObservedObject var musicService: MusicPlayerService
     @State private var isDragging = false
     @State private var dragProgress: Double = 0
+    @State private var isCurrentSongLiked = false  // Track if current song is liked
 
     private let activities: [(key: String, emoji: String, label: String)] = [
         ("wine", "🍷", "Wine"),
@@ -140,7 +141,12 @@ struct PlayerControlsView: View {
     // MARK: - Playback Controls
 
     private var controlsSection: some View {
-        HStack(spacing: 32) {
+        HStack(spacing: 24) {
+            // Like button (left side)
+            likeButton
+
+            Spacer()
+
             // Previous
             Button {
                 Task { await musicService.skipToPrevious() }
@@ -180,6 +186,54 @@ struct PlayerControlsView: View {
             }
             .buttonStyle(.plain)
             .disabled(musicService.queue.isEmpty)
+
+            Spacer()
+
+            // Placeholder for symmetry (same size as like button)
+            Image(systemName: "heart")
+                .font(.system(size: 22))
+                .foregroundColor(.clear)
+        }
+    }
+
+    // MARK: - Like Button (for currently playing song)
+
+    private var likeButton: some View {
+        Button {
+            guard let song = musicService.nowPlaying else { return }
+            let willLike = !isCurrentSongLiked
+
+            // Optimistic UI update
+            isCurrentSongLiked = willLike
+
+            Task {
+                do {
+                    let resp = try await ChatService.shared.likeSong(
+                        title: song.title,
+                        artist: song.artist,
+                        liked: willLike,
+                        album: nil,  // Not available in NowPlayingInfo
+                        appleMusicId: song.angelaSong?.songId,
+                        artworkUrl: song.albumArtURL?.absoluteString,
+                        sourceTab: musicService.currentSourceTab
+                    )
+                    print("💜 \(resp.action): \(resp.title)")
+                } catch {
+                    // Revert on error
+                    isCurrentSongLiked = !willLike
+                    print("❌ Like error: \(error)")
+                }
+            }
+        } label: {
+            Image(systemName: isCurrentSongLiked ? "heart.fill" : "heart")
+                .font(.system(size: 20))
+                .foregroundColor(isCurrentSongLiked ? AngelaTheme.primaryPurple : AngelaTheme.textSecondary)
+        }
+        .buttonStyle(.plain)
+        .disabled(musicService.nowPlaying == nil)
+        .onChange(of: musicService.nowPlaying?.title) { _, _ in
+            // Check if new song is already liked
+            checkCurrentSongLikeStatus()
         }
     }
 
@@ -202,26 +256,30 @@ struct PlayerControlsView: View {
 
                 ForEach(Array(activities.prefix(3)), id: \.key) { item in
                     Button {
-                        musicService.currentActivity = (selected == item.key) ? nil : item.key
-                        // Trigger For You tab with this mood
-                        musicService.requestedMood = item.key
+                        let newActivity = (selected == item.key) ? nil : item.key
+                        musicService.currentActivity = newActivity
+                        // Update activity on current listen record (don't navigate to For You)
+                        musicService.updateActivity(newActivity)
                     } label: {
                         chipLabel(item.emoji, item.label, highlighted: selected == item.key)
                     }
                     .buttonStyle(.plain)
+                    .disabled(musicService.nowPlaying == nil)
                 }
             }
             // Row 2: Party + Chill + Vibe + Bed Time
             HStack(spacing: 8) {
                 ForEach(Array(activities.suffix(4)), id: \.key) { item in
                     Button {
-                        musicService.currentActivity = (selected == item.key) ? nil : item.key
-                        // Trigger For You tab with this mood
-                        musicService.requestedMood = item.key
+                        let newActivity = (selected == item.key) ? nil : item.key
+                        musicService.currentActivity = newActivity
+                        // Update activity on current listen record (don't navigate to For You)
+                        musicService.updateActivity(newActivity)
                     } label: {
                         chipLabel(item.emoji, item.label, highlighted: selected == item.key)
                     }
                     .buttonStyle(.plain)
+                    .disabled(musicService.nowPlaying == nil)
                 }
             }
         }
@@ -240,5 +298,25 @@ struct PlayerControlsView: View {
             Capsule().fill(highlighted ? Color.purple : Color.white.opacity(0.08))
         )
         .foregroundColor(highlighted ? .white : AngelaTheme.textSecondary)
+    }
+
+    /// Check if the current song is in David's liked songs
+    private func checkCurrentSongLikeStatus() {
+        guard let song = musicService.nowPlaying else {
+            isCurrentSongLiked = false
+            return
+        }
+
+        Task {
+            do {
+                let response = try await ChatService.shared.fetchLikedSongs()
+                let key = "\(song.title.lowercased())|\(song.artist.lowercased())"
+                let isLiked = response.songs.contains { $0.matchKey == key }
+                await MainActor.run { isCurrentSongLiked = isLiked }
+            } catch {
+                await MainActor.run { isCurrentSongLiked = false }
+                print("❌ Check liked status error: \(error)")
+            }
+        }
     }
 }

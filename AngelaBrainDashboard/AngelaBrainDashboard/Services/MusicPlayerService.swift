@@ -408,10 +408,15 @@ final class MusicPlayerService: ObservableObject {
         if let mkSong = displaySong.musicKitSong {
             return await playSong(mkSong, angelaSong: displaySong.angelaSong)
         }
-        // Otherwise, it's an Angela song — search Apple Music first
+        // If it's an Angela song, search Apple Music first
         if let angela = displaySong.angelaSong {
             return await playFromAngelaSong(angela)
         }
+        // Fallback: search Apple Music by title/artist (for liked songs, etc.)
+        if let mkSong = await searchAppleMusic(title: displaySong.title, artist: displaySong.artist) {
+            return await playSong(mkSong, angelaSong: nil)
+        }
+        print("⚠️ Could not find song to play: \(displaySong.title)")
         return false
     }
 
@@ -685,6 +690,25 @@ final class MusicPlayerService: ObservableObject {
             let _: MarkOurSongResponse? = try? await NetworkService.shared.post(
                 "/api/music/mark-our-song", body: body
             )
+        }
+    }
+
+    // MARK: - Activity Update (mark activity on current listen)
+
+    /// Update activity for the current playing song's listen record
+    func updateActivity(_ activity: String?) {
+        guard let listenId = currentListenId else {
+            print("⚠️ No active listen to update activity")
+            return
+        }
+        guard let activity = activity else { return }
+
+        Task {
+            let body = PlayLogUpdateBody(activity: activity)
+            let _: PlayLogUpdateResponse? = try? await NetworkService.shared.post(
+                "/api/music/log-play/\(listenId)/update", body: body
+            )
+            print("🎯 Updated activity to: \(activity)")
         }
     }
 

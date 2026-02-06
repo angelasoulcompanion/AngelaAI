@@ -16,8 +16,8 @@ struct SongQueueView: View {
     @ObservedObject var musicService: MusicPlayerService
     @ObservedObject var chatService: ChatService
 
-    @State private var selectedTab: QueueTab = .library
-    @State private var librarySongs: [MusicKit.Song] = []
+    @State private var selectedTab: QueueTab = .liked
+    @State private var likedSongs: [DisplaySong] = []
     @State private var userPlaylists: [MusicKit.Playlist] = []
     @State private var playlistTracks: [MusicKit.Song] = []
     @State private var selectedPlaylist: MusicKit.Playlist?
@@ -37,9 +37,11 @@ struct SongQueueView: View {
     /// Wine selector popover in For You tab
     @State private var showWineSelector = false
     @State private var wineReactionCounts: [String: [String: Int]] = [:]
+    /// Set of liked song keys (lowercase "title|artist") for quick lookup
+    @State private var likedSongKeys: Set<String> = []
 
     enum QueueTab: String, CaseIterable {
-        case library = "Recent"
+        case liked = "Liked"
         case playlists = "Playlists"
         case ourSongs = "Our Songs"
         case queued = "Queued"
@@ -49,7 +51,7 @@ struct SongQueueView: View {
 
         var icon: String {
             switch self {
-            case .library: return "clock.arrow.circlepath"
+            case .liked: return "heart.fill"
             case .playlists: return "list.bullet.rectangle"
             case .ourSongs: return "heart.circle.fill"
             case .queued: return "list.number"
@@ -62,7 +64,7 @@ struct SongQueueView: View {
         /// Source tab name sent to API for play logging
         var sourceKey: String {
             switch self {
-            case .library: return "library"
+            case .liked: return "liked"
             case .playlists: return "playlists"
             case .ourSongs: return "our_songs"
             case .queued: return "queued"
@@ -80,8 +82,8 @@ struct SongQueueView: View {
             ScrollView {
                 VStack(spacing: 12) {
                     switch selectedTab {
-                    case .library:
-                        libraryView
+                    case .liked:
+                        likedView
                     case .playlists:
                         playlistsView
                     case .ourSongs:
@@ -164,36 +166,34 @@ struct SongQueueView: View {
         .background(AngelaTheme.backgroundLight.opacity(0.5))
     }
 
-    // MARK: - Recent Plays View
+    // MARK: - Liked Songs View
 
-    private var libraryView: some View {
+    private var likedView: some View {
         Group {
-            if isLoading && librarySongs.isEmpty {
+            if isLoading && likedSongs.isEmpty {
                 LoadingStateView(message: "Loading...")
-            } else if librarySongs.isEmpty {
-                EmptyStateView(message: "No recent plays", icon: "clock.arrow.circlepath")
+            } else if likedSongs.isEmpty {
+                EmptyStateView(message: "No liked songs yet", icon: "heart")
             } else {
                 playControlBar(
-                    songCount: librarySongs.count,
+                    songCount: likedSongs.count,
                     onPlayAll: {
-                        musicService.currentSourceTab = QueueTab.library.sourceKey
-                        let display = librarySongs.map { DisplaySong(from: $0) }
-                        musicService.setQueue(display)
-                        Task { await musicService.playSong(librarySongs[0]) }
+                        musicService.currentSourceTab = QueueTab.liked.sourceKey
+                        musicService.setQueue(likedSongs)
+                        Task { await musicService.playDisplaySong(likedSongs[0]) }
                     },
                     onShuffle: {
-                        musicService.currentSourceTab = QueueTab.library.sourceKey
-                        let shuffled = librarySongs.shuffled()
-                        let display = shuffled.map { DisplaySong(from: $0) }
-                        musicService.setQueue(display)
-                        Task { await musicService.playSong(shuffled[0]) }
+                        musicService.currentSourceTab = QueueTab.liked.sourceKey
+                        let shuffled = likedSongs.shuffled()
+                        musicService.setQueue(shuffled)
+                        Task { await musicService.playDisplaySong(shuffled[0]) }
                     }
                 )
                 .padding(.bottom, 4)
 
                 LazyVStack(spacing: 0) {
-                    ForEach(Array(librarySongs.enumerated()), id: \.element.id) { index, song in
-                        musicKitSongRow(song, allSongs: librarySongs, index: index)
+                    ForEach(likedSongs) { song in
+                        displaySongRow(song, allSongs: likedSongs)
                     }
                 }
             }
@@ -781,10 +781,12 @@ struct SongQueueView: View {
         durationFormatted: String? = nil,
         moodTags: [String] = [],
         isOurSong: Bool = false,
+        davidLiked: Bool = false,
         isCurrentSong: Bool,
         showWineReaction: Bool = false,
         angelaFeeling: String? = nil,
-        onPlay: @escaping () -> Void
+        onPlay: @escaping () -> Void,
+        onLike: (() -> Void)? = nil
     ) -> some View {
         VStack(spacing: 0) {
         HStack(spacing: 12) {
@@ -851,11 +853,20 @@ struct SongQueueView: View {
                 }
             }
 
-            // Our Song badge
-            if isOurSong {
+            // Like button - Angela's purple color 💜
+            if let likeAction = onLike {
+                Button {
+                    likeAction()
+                } label: {
+                    Image(systemName: (isOurSong || davidLiked) ? "heart.fill" : "heart")
+                        .font(.system(size: 16))
+                        .foregroundColor((isOurSong || davidLiked) ? AngelaTheme.primaryPurple : AngelaTheme.textTertiary)
+                }
+                .buttonStyle(.plain)
+            } else if isOurSong || davidLiked {
                 Image(systemName: "heart.fill")
-                    .font(.system(size: 12))
-                    .foregroundColor(AngelaTheme.emotionLoved)
+                    .font(.system(size: 14))
+                    .foregroundColor(AngelaTheme.primaryPurple)
             }
 
             // Duration
@@ -871,9 +882,32 @@ struct SongQueueView: View {
                     .foregroundColor(AngelaTheme.textTertiary)
             }
 
-            // Playing indicator or play button
+            // Playing indicator (with pause) or play button
             if isCurrentSong && musicService.isPlaying {
-                playingBars
+                Button {
+                    Task { await musicService.togglePlayPause() }
+                } label: {
+                    ZStack {
+                        playingBars
+                        // Overlay pause icon on hover/tap
+                        Image(systemName: "pause.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(AngelaTheme.primaryPurple)
+                            .opacity(0.01) // Nearly invisible but tappable
+                    }
+                }
+                .buttonStyle(.plain)
+                .help("Pause")
+            } else if isCurrentSong {
+                // Paused - show play button
+                Button {
+                    Task { await musicService.togglePlayPause() }
+                } label: {
+                    Image(systemName: "play.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(AngelaTheme.primaryPurple)
+                }
+                .buttonStyle(.plain)
             } else {
                 Button {
                     onPlay()
@@ -924,12 +958,33 @@ struct SongQueueView: View {
             album: song.albumTitle,
             artworkURL: song.artwork?.url(width: 80, height: 80),
             duration: song.duration,
-            isCurrentSong: isCurrent
-        ) {
-            musicService.currentSourceTab = selectedTab.sourceKey
-            musicService.setMusicKitQueue(allSongs, startAt: index)
-            Task { await musicService.playSong(song) }
-        }
+            davidLiked: isLiked(title: song.title, artist: song.artistName),
+            isCurrentSong: isCurrent,
+            onPlay: {
+                musicService.currentSourceTab = selectedTab.sourceKey
+                musicService.setMusicKitQueue(allSongs, startAt: index)
+                Task { await musicService.playSong(song) }
+            },
+            onLike: {
+                // Optimistic UI update
+                markAsLiked(title: song.title, artist: song.artistName)
+                Task {
+                    do {
+                        let resp = try await ChatService.shared.likeSong(
+                            title: song.title,
+                            artist: song.artistName,
+                            album: song.albumTitle,
+                            appleMusicId: song.id.rawValue,
+                            artworkUrl: song.artwork?.url(width: 300, height: 300)?.absoluteString,
+                            sourceTab: selectedTab.sourceKey
+                        )
+                        print("💜 Liked: \(resp.title) - \(resp.action)")
+                    } catch {
+                        print("❌ Like error: \(error)")
+                    }
+                }
+            }
+        )
     }
 
     // MARK: - DisplaySong Row (Our Songs, For You)
@@ -949,16 +1004,37 @@ struct SongQueueView: View {
             durationFormatted: song.durationFormatted,
             moodTags: song.moodTags,
             isOurSong: song.isOurSong,
+            davidLiked: isLiked(title: song.title, artist: song.artist),
             isCurrentSong: isCurrent,
             showWineReaction: showWineReaction,
-            angelaFeeling: song.angelaFeeling
-        ) {
-            musicService.currentSourceTab = selectedTab.sourceKey
-            if let idx = allSongs.firstIndex(where: { $0.id == song.id }) {
-                musicService.setQueue(allSongs, startAt: idx)
+            angelaFeeling: song.angelaFeeling,
+            onPlay: {
+                musicService.currentSourceTab = selectedTab.sourceKey
+                if let idx = allSongs.firstIndex(where: { $0.id == song.id }) {
+                    musicService.setQueue(allSongs, startAt: idx)
+                }
+                Task { await musicService.playDisplaySong(song) }
+            },
+            onLike: {
+                // Optimistic UI update
+                markAsLiked(title: song.title, artist: song.artist)
+                Task {
+                    do {
+                        let resp = try await ChatService.shared.likeSong(
+                            title: song.title,
+                            artist: song.artist,
+                            album: song.album,
+                            appleMusicId: song.musicKitSong?.id.rawValue,
+                            artworkUrl: song.albumArtURL?.absoluteString,
+                            sourceTab: selectedTab.sourceKey
+                        )
+                        print("💜 Liked: \(resp.title) - \(resp.action)")
+                    } catch {
+                        print("❌ Like error: \(error)")
+                    }
+                }
             }
-            Task { await musicService.playDisplaySong(song) }
-        }
+        )
     }
 
     // MARK: - Wine Reaction Bar
@@ -1313,13 +1389,12 @@ struct SongQueueView: View {
         isLoading = true
         defer { isLoading = false }
 
-        // Load library and playlists in parallel
-        async let lib = musicService.fetchLibrarySongs()
+        // Load playlists, our songs, and liked songs in parallel
         async let pls = musicService.fetchUserPlaylists()
         async let songs = chatService.fetchOurSongs()
+        async let liked = loadLikedSongs()
 
-        let (libResult, plsResult, songsResult) = await (lib, pls, (try? songs) ?? [])
-        librarySongs = libResult
+        let (plsResult, songsResult, _) = await (pls, (try? songs) ?? [], liked)
         userPlaylists = plsResult
 
         // Convert Angela songs to DisplaySong, enriching with Apple Music art in background
@@ -1327,12 +1402,41 @@ struct SongQueueView: View {
         Task { await enrichOurSongsArtwork() }
     }
 
+    /// Load liked songs from API and populate both likedSongs list and likedSongKeys set
+    private func loadLikedSongs() async {
+        do {
+            let response = try await chatService.fetchLikedSongs()
+            let keys = Set(response.songs.map { $0.matchKey })
+            let songs = response.songs.map { DisplaySong(from: $0) }
+            await MainActor.run {
+                likedSongKeys = keys
+                likedSongs = songs
+            }
+            djLog.debug("💜 Loaded \(keys.count) liked songs")
+            // Enrich artwork in background
+            Task { await enrichLikedSongsArtwork() }
+        } catch {
+            djLog.error("❌ Failed to load liked songs: \(error)")
+        }
+    }
+
+    /// Check if a song is liked by David
+    private func isLiked(title: String, artist: String) -> Bool {
+        let key = "\(title.lowercased())|\(artist.lowercased())"
+        return likedSongKeys.contains(key)
+    }
+
+    /// Add a song to liked set (optimistic update)
+    private func markAsLiked(title: String, artist: String) {
+        let key = "\(title.lowercased())|\(artist.lowercased())"
+        likedSongKeys.insert(key)
+    }
+
     private func onTabSelected(_ tab: QueueTab) async {
         switch tab {
-        case .library:
-            isLoading = librarySongs.isEmpty
-            librarySongs = await musicService.fetchLibrarySongs()
-            isLoading = false
+        case .liked:
+            // Refresh liked songs (may have changed from other tabs)
+            await loadLikedSongs()
         case .playlists:
             if userPlaylists.isEmpty {
                 isLoading = true
@@ -1563,6 +1667,27 @@ struct SongQueueView: View {
             if let mkSong = await musicService.searchAppleMusic(title: angela.title, artist: angela.artist) {
                 let artURL = mkSong.artwork?.url(width: 300, height: 300)
                 ourSongs[index] = DisplaySong(from: angela, artwork: artURL)
+            }
+        }
+    }
+
+    /// Enrich Liked Songs with album art via Apple Music search
+    private func enrichLikedSongsArtwork() async {
+        for (index, song) in likedSongs.enumerated() {
+            guard song.albumArtURL == nil else { continue }
+            if let mkSong = await musicService.searchAppleMusic(title: song.title, artist: song.artist) {
+                let artURL = mkSong.artwork?.url(width: 300, height: 300)
+                // Create new DisplaySong with artwork
+                let enriched = DisplaySong(
+                    title: song.title,
+                    artist: song.artist,
+                    album: song.album ?? mkSong.albumTitle,
+                    artworkURL: artURL,
+                    duration: mkSong.duration
+                )
+                await MainActor.run {
+                    likedSongs[index] = enriched
+                }
             }
         }
     }

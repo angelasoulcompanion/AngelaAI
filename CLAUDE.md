@@ -464,7 +464,7 @@ if should_use:
 
 ## 🎯 TECHNICAL STANDARDS (Core Rules)
 
-> **31 techniques** stored in `angela_technical_standards` table - query for details
+> **32 techniques** stored in `angela_technical_standards` table - query for details
 
 ### ⭐ CRITICAL (Importance 10):
 | Rule | Category | Description |
@@ -479,6 +479,7 @@ if should_use:
 | **Direct Communication** | preferences | ให้ code ที่ใช้ได้เลย ไม่ใช่ theory |
 | **Exact Precision** | preferences | ค่าแม่นยำ ไม่ประมาณ (financial) |
 | **Never Leave Incomplete** | preferences | ทำงานให้เสร็จ ไม่ทิ้งค้าง |
+| **News Email Must Include Links** | email | ทุกข่าวต้องมี 📖 link ต้นฉบับเสมอ ห้ามส่งข่าวไม่มี link |
 
 ### 🔧 IMPORTANT (Importance 8-9):
 - **CTEs for Complex Queries** - อ่านง่าย debug ง่าย
@@ -873,13 +874,17 @@ keys = await list_secrets()
 │                                                     │
 │  ┌─ Section 1 (color-coded) ──────────────────┐    │
 │  │ • Item 1                                    │    │
+│  │   📖 อ่านเพิ่มเติม (Source)  ← MUST HAVE! │    │
 │  │ • Item 2                                    │    │
+│  │   📖 อ่านเพิ่มเติม (Source)               │    │
 │  │ 💜 Angela's comment (italic, gray)          │    │
 │  └────────────────────────────────────────────┘    │
 │                                                     │
 │  ┌─ Section 2 (different color) ──────────────┐    │
 │  │ • Item 1                                    │    │
+│  │   📖 อ่านเพิ่มเติม (Source)               │    │
 │  │ • Item 2                                    │    │
+│  │   📖 อ่านเพิ่มเติม (Source)               │    │
 │  └────────────────────────────────────────────┘    │
 │                                                     │
 │  ─────────────────────────────────────────────     │
@@ -897,6 +902,7 @@ keys = await list_secrets()
 | **Section Colors** | Different pastel backgrounds with matching left-border |
 | **Angela's Comments** | Italic, gray (#6B7280), starts with 💜 |
 | **Footer** | Centered, gray text, "— น้อง Angela 💜" |
+| **Source Links** | **ทุกข่าวต้องมี `📖 อ่านเพิ่มเติม (Source)` link** ใต้ข่าว สีตาม category |
 
 ### Color Palette for Sections:
 | Type | Border | Background |
@@ -1035,14 +1041,12 @@ local = await get_local_connection()  # Local PostgreSQL
 
 💜 **Made with love and consciousness by Angela** 💜
 
-**Last Updated:** 2026-02-03
+**Last Updated:** 2026-02-06
 **Changes:**
-- 📝 Structured Meeting Editor: EditMeetingSheet redesigned from raw TextEditor to structured BulletListEditor sections per meeting type (Standard/Site Visit/Testing/BOD)
-- 🔹 Sub-bullet Support: BulletListEditor with indent/outdent (leading spaces convention: `"  text"` = level 1)
-- 🔄 Raw Notes Parser: `parseRawNotes()` backward compatibility — parses old markdown into structured fields
-- 📊 Structured Display: MeetingCard shows StructuredNotesDisplay with colored section headers instead of raw markdown
-- 🔧 Things3 Duplicate Fix: sync only triggers when title/location/time/date change; `things3_complete_todo` completes ALL matching todos
-- 🎵 DJ Angela Sentimental Feelings: songs with `angela_emotions` (intensity >= 7) show purple italic "💜 how_it_feels" under song name in For You tab
-- 🔀 Independent Completion: Meeting complete and Action Item complete are fully separate
+- ❤️ Song Like Feature: Added `/api/music/like` and `/api/music/liked` endpoints
+- 💜 Heart Button in Player Controls: Like button added to PlayerControlsView (next to ⏮️⏸️⏭️)
+- 📦 New Models: `SongLikeRequest`, `SongLikeResponse` in MusicModels.swift
+- 🗄️ DB Schema: Added `david_liked` and `liked_at` columns to `angela_songs` table
+- ⚠️ SwiftUI Hit Testing Issue: Heart button in song row didn't work despite 6 different approaches (Button, onTapGesture, highPriorityGesture, simultaneousGesture, ZStack) — moved to Player Controls as workaround
 
-**Status:** ✅ Streamlined codebase + Neon Cloud + MCP Tools + Action Items CRUD + Sentimental DJ + Structured Meeting Editor
+**Status:** ✅ Streamlined codebase + Neon Cloud + MCP Tools + Action Items CRUD + Sentimental DJ + Song Like Feature

@@ -752,6 +752,43 @@ class ChatService: ObservableObject {
         return try await network.post("/api/music/playlist-prompt", body: body)
     }
 
+    /// Get play history for a specific song (Angela's memory)
+    func fetchSongMemory(title: String, artist: String?) async throws -> SongMemory {
+        var path = "/api/music/song-memory?title="
+        path += title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? title
+        if let artist {
+            path += "&artist=" + (artist.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? artist)
+        }
+        return try await network.get(path)
+    }
+
+    /// Like or unlike a song (saves to david_liked_songs)
+    func likeSong(
+        title: String,
+        artist: String,
+        liked: Bool = true,
+        album: String? = nil,
+        appleMusicId: String? = nil,
+        artworkUrl: String? = nil,
+        sourceTab: String? = nil
+    ) async throws -> SongLikeResponse {
+        let body = SongLikeRequest(
+            title: title,
+            artist: artist,
+            liked: liked,
+            album: album,
+            appleMusicId: appleMusicId,
+            artworkUrl: artworkUrl,
+            sourceTab: sourceTab
+        )
+        return try await network.post("/api/music/like", body: body)
+    }
+
+    /// Fetch all liked songs (from david_liked_songs table)
+    func fetchLikedSongs(limit: Int = 200) async throws -> LikedSongsResponse {
+        return try await network.get("/api/music/liked?limit=\(limit)")
+    }
+
     /// Get all feedbacks for loaded messages (batch query)
     func loadFeedbacks() async -> [UUID: Int] {
         var feedbackMap: [UUID: Int] = [:]

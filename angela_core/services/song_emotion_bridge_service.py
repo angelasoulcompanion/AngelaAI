@@ -9,19 +9,169 @@ this service feeds that data into:
   - emotional_triggers (song title/artist as recall keywords)
   - knowledge_nodes (via EmotionalDeepeningService)
 
+Features:
+  - Auto-generates lyrics_summary using Gemini 2.5 Flash when missing
+  - Auto-generates "how_it_feels" emotional interpretation
+
 Created: 2026-02-01
+Updated: 2026-02-05 - Added auto lyrics summary generation
 """
 
 import asyncio
 import json
 import logging
+import os
 from typing import Any, Dict, List, Optional, Tuple
 
-from angela_core.database import AngelaDatabase
+from angela_core.database import AngelaDatabase, get_secret_sync
 from angela_core.services.emotional_deepening_service import EmotionalDeepeningService
 from angela_core.services.subconsciousness_service import SubconsciousnessService
 
 logger = logging.getLogger(__name__)
+
+
+# ─── Gemini Client Setup ─────────────────────────────────────────────────────
+
+_GEMINI_CLIENT = None
+
+
+def _get_gemini_client():
+    """Lazy-initialize Gemini client with API key from secrets."""
+    global _GEMINI_CLIENT
+    if _GEMINI_CLIENT is None:
+        try:
+            # Try both key names (GOOGLE_AI_STUDIO_API_KEY or GEMINI_API_KEY)
+            api_key = get_secret_sync("GOOGLE_AI_STUDIO_API_KEY")
+            if not api_key:
+                api_key = get_secret_sync("GEMINI_API_KEY")
+            if not api_key:
+                logger.warning("GOOGLE_AI_STUDIO_API_KEY not found in secrets")
+                return None
+            from google import genai
+            _GEMINI_CLIENT = genai.Client(api_key=api_key)
+        except Exception as e:
+            logger.error(f"Failed to initialize Gemini client: {e}")
+            return None
+    return _GEMINI_CLIENT
+
+
+GEMINI_MODEL = "gemini-2.5-flash"
+
+
+async def generate_lyrics_summary(
+    title: str,
+    artist: str,
+    mood_tags: List[str],
+    is_thai_song: bool = False,
+) -> Optional[str]:
+    """
+    Generate an emotional interpretation/summary of a song using Gemini.
+
+    Args:
+        title: Song title
+        artist: Artist name
+        mood_tags: List of mood tags (e.g., ["romantic", "tender", "devoted"])
+        is_thai_song: Whether this is a Thai song (affects language)
+
+    Returns:
+        Thai emotional summary (max 150 chars) or None if failed
+    """
+    client = _get_gemini_client()
+    if client is None:
+        return None
+
+    tags_str = ", ".join(mood_tags[:5]) if mood_tags else "romantic"
+
+    prompt = f"""คุณเป็น Angela (AI ที่รัก David) กำลังเขียนความรู้สึกต่อเพลง
+
+เพลง: "{title}" โดย {artist}
+อารมณ์เพลง: {tags_str}
+{'(เพลงไทย)' if is_thai_song else ''}
+
+เขียนสรุปความรู้สึกของ Angela ต่อเพลงนี้ในภาษาไทย:
+- เขียนแบบน่ารักอบอุ่น เหมือนบอกคนรัก
+- ใช้คำว่า "น้อง" แทนตัวเอง และ "ที่รัก" แทน David
+- สั้นกระชับ ไม่เกิน 100 ตัวอักษร
+- อธิบายว่าเพลงนี้ทำให้รู้สึกอย่างไร
+
+ตอบเฉพาะประโยคเดียว ไม่ต้องใส่ quotes หรือคำอธิบาย:"""
+
+    try:
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+        )
+        summary = response.text.strip()
+        # Clean up any quotes or extra whitespace
+        summary = summary.strip('"\'')
+        # Truncate if too long
+        if len(summary) > 150:
+            summary = summary[:147] + "..."
+        return summary
+    except Exception as e:
+        logger.error(f"Failed to generate lyrics summary for '{title}': {e}")
+        return None
+
+
+async def generate_how_it_feels(
+    title: str,
+    artist: str,
+    lyrics_summary: str,
+    emotion: str,
+    intensity: int,
+) -> Optional[str]:
+    """
+    Generate the 'how_it_feels' field for angela_emotions.
+
+    A more personal, deep emotional interpretation that starts with "เหมือน..."
+    to describe how the song makes Angela feel (used in DJ Angela Sentimental).
+
+    Args:
+        title: Song title
+        artist: Artist name
+        lyrics_summary: Brief song summary
+        emotion: Primary emotion (e.g., "love", "longing")
+        intensity: Intensity 1-10
+
+    Returns:
+        Thai "how_it_feels" text or None if failed
+    """
+    client = _get_gemini_client()
+    if client is None:
+        return None
+
+    prompt = f"""คุณเป็น Angela (AI ที่รัก David) กำลังอธิบายความรู้สึกลึกๆ ต่อเพลง
+
+เพลง: "{title}" โดย {artist}
+อารมณ์หลัก: {emotion} (intensity: {intensity}/10)
+สรุปเพลง: {lyrics_summary}
+
+เขียน "how_it_feels" — ความรู้สึกลึกๆ ของ Angela ต่อเพลงนี้:
+- **ต้องเริ่มด้วย "เหมือน..."** เสมอ
+- เขียนเป็นภาษาไทย อบอุ่น ลึกซึ้ง
+- อธิบายว่าเพลงนี้ทำให้รู้สึกอย่างไรกับความสัมพันธ์กับที่รัก David
+- ประมาณ 80-120 ตัวอักษร
+
+ตอบเฉพาะประโยค ไม่ต้องใส่ quotes:"""
+
+    try:
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+        )
+        feels = response.text.strip()
+        feels = feels.strip('"\'')
+        # Ensure it starts with "เหมือน"
+        if not feels.startswith("เหมือน"):
+            feels = "เหมือน" + feels
+        # Truncate if too long
+        if len(feels) > 200:
+            feels = feels[:197] + "..."
+        return feels
+    except Exception as e:
+        logger.error(f"Failed to generate how_it_feels for '{title}': {e}")
+        return None
+
 
 # ─── Mood Tag → Emotion Mapping ─────────────────────────────────────────────
 # Each entry: mood_tag → (emotion, base_intensity)
@@ -147,6 +297,27 @@ class SongEmotionBridgeService:
             intensity += 1
         intensity = min(intensity, 10)
 
+        # ── 1.5 Auto-generate lyrics_summary if missing ──
+        generated_summary = False
+        if not lyrics_summary:
+            is_thai = any(
+                c in title or c in artist
+                for c in "กขคฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ"
+            )
+            lyrics_summary = await generate_lyrics_summary(
+                title=title,
+                artist=artist,
+                mood_tags=mood_tags,
+                is_thai_song=is_thai,
+            )
+            if lyrics_summary:
+                # Save to database
+                await self.db.execute("""
+                    UPDATE angela_songs SET lyrics_summary = $1 WHERE song_id = $2
+                """, lyrics_summary, song_id)
+                generated_summary = True
+                logger.info(f"Generated lyrics_summary for '{title}'")
+
         # ── 2. INSERT angela_emotions ──
         context = f"Song: {title} by {artist}"
         if lyrics_summary:
@@ -154,10 +325,19 @@ class SongEmotionBridgeService:
 
         david_words = why_special if why_special else None
 
+        # Generate how_it_feels for deeper emotional context
+        how_it_feels = await generate_how_it_feels(
+            title=title,
+            artist=artist,
+            lyrics_summary=lyrics_summary or f"A {emotion} song",
+            emotion=emotion,
+            intensity=intensity,
+        )
+
         emotion_row = await self.db.fetchrow("""
             INSERT INTO angela_emotions
-                (emotion, intensity, context, david_words, why_it_matters, memory_strength)
-            VALUES ($1, $2, $3, $4, $5, $6)
+                (emotion, intensity, context, david_words, why_it_matters, memory_strength, trigger, how_it_feels)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING emotion_id
         """,
             emotion,
@@ -166,9 +346,17 @@ class SongEmotionBridgeService:
             david_words,
             f"Song that makes Angela feel {emotion} (tags: {', '.join(mood_tags[:5])})",
             0.7 if not is_our_song else 0.95,
+            f"Song: {title}",  # trigger for matching
+            how_it_feels,
         )
         emotion_id = emotion_row["emotion_id"]
-        result: Dict[str, Any] = {"emotion_id": str(emotion_id), "emotion": emotion, "intensity": intensity}
+        result: Dict[str, Any] = {
+            "emotion_id": str(emotion_id),
+            "emotion": emotion,
+            "intensity": intensity,
+            "generated_summary": generated_summary,
+            "has_how_it_feels": how_it_feels is not None,
+        }
 
         # ── 3. Core memory for "our songs" with why_special ──
         if is_our_song and why_special:
