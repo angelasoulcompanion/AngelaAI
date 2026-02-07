@@ -51,7 +51,7 @@ class EmotionalDeepeningService:
             try:
                 from angela_core.services.claude_reasoning_service import ClaudeReasoningService
                 self._reasoning = ClaudeReasoningService()
-            except Exception:
+            except Exception as e:
                 pass
         return self._reasoning
 

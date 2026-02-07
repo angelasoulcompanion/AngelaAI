@@ -92,7 +92,7 @@ class LLMRouter:
             from angela_core.database import get_secret_sync
             key = get_secret_sync('ANTHROPIC_API_KEY')
             return bool(key)
-        except Exception:
+        except Exception as e:
             return bool(os.environ.get('ANTHROPIC_API_KEY'))
 
     def ollama_available(self) -> bool:
@@ -102,7 +102,7 @@ class LLMRouter:
             req = urllib.request.Request("http://localhost:11434/api/tags", method="GET")
             with urllib.request.urlopen(req, timeout=2):
                 return True
-        except Exception:
+        except Exception as e:
             return False
 
     def route(self, task: str = "", complexity: str = "medium") -> LLMRoute:

@@ -155,7 +155,7 @@ async def angela_init() -> bool:
             result = await slp.process_unprocessed_conversations(hours_back=48, limit=50)
             await slp.disconnect()
             return result
-        except Exception:
+        except Exception as e:
             return None
 
     async def _project_context():
@@ -183,7 +183,7 @@ async def angela_init() -> bool:
 
             await pm_service.disconnect()
             return all_projects, project_context
-        except Exception:
+        except Exception as e:
             return [], None
 
     async def _daemon_check():
@@ -197,14 +197,14 @@ async def angela_init() -> bool:
         try:
             from angela_core.services.emotional_coding_adapter import get_current_adaptation
             return await get_current_adaptation()
-        except Exception:
+        except Exception as e:
             return None
 
     async def _load_companion_briefing():
         try:
             from angela_core.services.predictive_companion_service import get_daily_briefing
             return await get_daily_briefing()
-        except Exception:
+        except Exception as e:
             return None
 
     async def _load_evolution_stats():
@@ -214,14 +214,14 @@ async def angela_init() -> bool:
             report = await engine.get_evolution_report(days=7)
             await engine.close()
             return report
-        except Exception:
+        except Exception as e:
             return None
 
     async def _run_proactive_actions():
         try:
             from angela_core.services.proactive_action_engine import run_proactive_actions
             return await run_proactive_actions()
-        except Exception:
+        except Exception as e:
             return None
 
     (subconscious, learning_catchup, project_result, daemon_running,

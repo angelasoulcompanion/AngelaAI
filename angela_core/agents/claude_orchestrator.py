@@ -159,7 +159,7 @@ class ClaudeAgentOrchestrator:
                 FROM emotional_states ORDER BY created_at DESC LIMIT 1
             ''')
             return dict(row) if row else {}
-        except Exception:
+        except Exception as e:
             return {}
 
     async def _get_david_preferences(self) -> Dict[str, Any]:
@@ -173,7 +173,7 @@ class ClaudeAgentOrchestrator:
                 LIMIT 10
             ''')
             return {r['preference_key']: r['preference_value'] for r in rows}
-        except Exception:
+        except Exception as e:
             return {}
 
     async def _get_role_specific_context(self, role: str, task: str) -> Dict[str, Any]:
@@ -234,7 +234,7 @@ class ClaudeAgentOrchestrator:
                 ''')
                 context['coding_standards'] = [dict(r) for r in rules]
 
-        except Exception:
+        except Exception as e:
             pass
 
         return context
