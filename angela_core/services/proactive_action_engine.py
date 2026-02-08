@@ -8,27 +8,28 @@ Loop: SENSE → PREDICT → **ACT** → LEARN → (better SENSE)
 
 What it does:
 1. Combine predictions (Feature 2) + emotional state (Feature 1) + evolution insights (Feature 3)
-2. Decide proactive actions based on 5 checks
+2. Decide proactive actions based on 8 checks
 3. Execute with consent levels (silent → notify → ask)
 4. Track effectiveness
 
 Consent Levels:
-- Level 1 (silent): log only — prepare_context, anticipate_need
-- Level 2 (notify): send via Telegram — break_reminder, mood_boost, wellness_nudge
-- Level 3 (ask): queue in care_recommendations for next init
+- Level 1 (silent): prepare_context, anticipate_need, music_suggestion
+- Level 2 (notify): send via CareInterventionService (Telegram) — break_reminder, mood_boost, wellness_nudge, milestone_reminder
+- Level 3 (ask): queue in care_recommendations — learning_nudge
 
-Limits: max 3 notifications/day, min 2h between notifications
+Rate limiting: delegated to CareInterventionService.should_intervene() → DB function can_send_intervention()
 
 Created: 2026-02-07
+Updated: 2026-02-08 — 5→8 checks, delegate rate limiting, actual silent execution
 By: น้อง Angela 💜
 """
 
 import asyncio
 import json
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 from uuid import UUID, uuid4
 
 from angela_core.database import AngelaDatabase
@@ -36,16 +37,41 @@ from angela_core.utils.timezone import now_bangkok, today_bangkok, current_hour_
 
 logger = logging.getLogger(__name__)
 
-# Limits
-MAX_NOTIFICATIONS_PER_DAY = 3
-MIN_HOURS_BETWEEN_NOTIFICATIONS = 2
+# Emotional state → music mood mapping
+STATE_TO_MOOD: Dict[str, str] = {
+    'stressed': 'calm',
+    'tired': 'calm',
+    'happy': 'happy',
+    'frustrated': 'calm',
+    'focused': 'energetic',
+    'sad': 'loving',
+    'learning': 'hopeful',
+    'neutral': 'loving',
+}
+
+# Mood → JSONB tags for angela_songs query (subset of MCP MOOD_TAGS_MAP)
+MOOD_TAGS_MAP: Dict[str, List[str]] = {
+    'happy': ['joyful', 'uplifting', 'cheerful', 'happy'],
+    'calm': ['soothing', 'peaceful', 'comforting'],
+    'energetic': ['empowering', 'uplifting', 'cathartic'],
+    'loving': ['romantic', 'devoted', 'tender', 'intimate', 'warm'],
+    'hopeful': ['hopeful', 'uplifting', 'inspiring'],
+}
+
+# CareInterventionService type mapping
+ACTION_TO_INTERVENTION: Dict[str, str] = {
+    'break_reminder': 'break_reminder',
+    'mood_boost': 'care_message',
+    'wellness_nudge': 'care_message',
+    'milestone_reminder': 'milestone_reminder',
+}
 
 
 @dataclass
 class ProactiveAction:
     action_id: UUID
-    action_type: str       # prepare_context/break_reminder/mood_boost/anticipate_need/wellness_nudge
-    trigger: str           # prediction/emotion/time/pattern
+    action_type: str       # prepare_context/break_reminder/mood_boost/anticipate_need/wellness_nudge/milestone_reminder/music_suggestion/learning_nudge
+    trigger: str           # prediction/emotion/time/pattern/milestone/evolution
     description: str       # Thai
     consent_level: int     # 1=silent, 2=notify, 3=ask
     channel: str           # internal/telegram
@@ -57,8 +83,10 @@ class ProactiveAction:
 @dataclass
 class ActionResult:
     action: ProactiveAction
-    was_executed: bool
+    was_triggered: bool         # check found something to act on
+    was_executed: bool          # action was carried out
     execution_detail: str
+    skip_reason: Optional[str] = None
     david_response: Optional[str] = None
 
 
@@ -66,7 +94,7 @@ class ProactiveActionEngine:
     """
     Autonomous Proactive Action Engine
 
-    5 checks → decide actions → execute with consent → log everything
+    8 checks → decide actions → execute with consent → log everything
     """
 
     def __init__(self):
@@ -88,7 +116,7 @@ class ProactiveActionEngine:
 
     async def evaluate_actions(self) -> List[ProactiveAction]:
         """
-        Evaluate all 5 checks and return list of actions to take.
+        Evaluate all 8 checks and return list of actions to take.
         Loads adaptation profile, predictions, and evolution insights in parallel.
         """
         await self._ensure_db()
@@ -114,13 +142,16 @@ class ProactiveActionEngine:
             logger.warning(f'Failed to load evolution: {evolution}')
             evolution = {}
 
-        # Run 5 checks in parallel
+        # Run 8 checks in parallel
         check_results = await asyncio.gather(
             self._check_break_reminder(adaptation),
             self._check_mood_action(adaptation),
             self._check_context_preparation(predictions),
             self._check_anticipatory_help(predictions),
             self._check_wellness_nudge(adaptation),
+            self._check_milestone_reminder(),
+            self._check_music_suggestion(adaptation),
+            self._check_learning_nudge(evolution),
             return_exceptions=True,
         )
 
@@ -139,52 +170,62 @@ class ProactiveActionEngine:
         return actions
 
     # =========================================================================
-    # 5 ACTION CHECKS
+    # 8 ACTION CHECKS
     # =========================================================================
 
     async def _check_break_reminder(self, adaptation) -> Optional[ProactiveAction]:
         """
-        Check if David has been working longer than predicted average + 0.5h.
+        Check if David has been working continuously for >= 2 hours.
+
+        Algorithm:
+        1. If last message >30min ago → not actively working, skip
+        2. Walk backward from latest message, find first gap >30min = session break
+        3. Continuous session = latest msg - session start
+        4. Trigger if continuous session >= 2h
         """
         await self._ensure_db()
 
-        # Get today's session duration
-        session_hours = await self.db.fetchrow('''
-            SELECT EXTRACT(EPOCH FROM (MAX(created_at) - MIN(created_at))) / 3600.0 AS hours
+        now = now_bangkok()
+
+        # Get recent messages ordered by time (descending)
+        # Use INTERVAL arithmetic to avoid tz-naive/tz-aware mismatch
+        rows = await self.db.fetch('''
+            SELECT created_at AT TIME ZONE 'Asia/Bangkok' AS ts
             FROM conversations
-            WHERE (created_at AT TIME ZONE 'Asia/Bangkok')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date
+            WHERE created_at > NOW() - INTERVAL '8 hours'
+            ORDER BY created_at DESC
         ''')
 
-        if not session_hours or session_hours['hours'] is None:
+        if not rows:
             return None
 
-        current_hours = float(session_hours['hours'])
+        latest_ts = rows[0]['ts']
 
-        # Get predicted average session duration
-        avg_row = await self.db.fetchrow('''
-            SELECT AVG(session_hours) AS avg_hours
-            FROM (
-                SELECT EXTRACT(EPOCH FROM (MAX(created_at) - MIN(created_at))) / 3600.0 AS session_hours
-                FROM conversations
-                WHERE created_at > NOW() - INTERVAL '30 days'
-                GROUP BY (created_at AT TIME ZONE 'Asia/Bangkok')::date
-                HAVING COUNT(*) > 2
-            ) daily
-        ''')
+        # If last message >30min ago → not actively working
+        if (now - latest_ts).total_seconds() > 1800:
+            return None
 
-        avg_hours = float(avg_row['avg_hours']) if avg_row and avg_row['avg_hours'] else 4.0
+        # Walk backward to find continuous session start
+        session_start = latest_ts
+        for i in range(len(rows) - 1):
+            gap = (rows[i]['ts'] - rows[i + 1]['ts']).total_seconds()
+            if gap > 1800:  # 30min gap = session break
+                break
+            session_start = rows[i + 1]['ts']
 
-        if current_hours > avg_hours + 0.5:
+        continuous_hours = (latest_ts - session_start).total_seconds() / 3600.0
+
+        if continuous_hours >= 2.0:
             return ProactiveAction(
                 action_id=uuid4(),
                 action_type='break_reminder',
                 trigger='time',
-                description=f'ที่รักทำงาน {current_hours:.1f} ชม. แล้ว (เฉลี่ย {avg_hours:.1f} ชม.) ควรพักค่ะ',
+                description=f'ที่รักทำงานต่อเนื่อง {continuous_hours:.1f} ชม. แล้วค่ะ พักสักหน่อยนะคะ 💜',
                 consent_level=2,
                 channel='telegram',
-                payload={'current_hours': current_hours, 'avg_hours': avg_hours},
+                payload={'continuous_hours': round(continuous_hours, 1), 'session_start': str(session_start)},
                 priority=4,
-                confidence=0.7,
+                confidence=0.8,
             )
         return None
 
@@ -288,63 +329,179 @@ class ProactiveActionEngine:
             )
         return None
 
+    async def _check_milestone_reminder(self) -> Optional[ProactiveAction]:
+        """
+        Check if any important dates need reminding today.
+        Uses v_upcoming_important_dates view + reminder_days array.
+        """
+        await self._ensure_db()
+
+        today = today_bangkok()
+        row = await self.db.fetchrow('''
+            SELECT date_id, title, description, event_date, date_type,
+                   importance_level, days_until, urgency, reminder_days
+            FROM v_upcoming_important_dates
+            WHERE days_until = ANY(reminder_days)
+              AND (last_reminded_date IS NULL OR last_reminded_date < $1)
+            ORDER BY days_until, importance_level DESC
+            LIMIT 1
+        ''', today)
+
+        if not row:
+            return None
+
+        days_until = row['days_until']
+        priority = 5 if days_until <= 1 else 3
+
+        return ProactiveAction(
+            action_id=uuid4(),
+            action_type='milestone_reminder',
+            trigger='milestone',
+            description=f'📅 {row["title"]} — {"วันนี้ค่ะ!" if days_until == 0 else f"อีก {days_until} วันค่ะ"}',
+            consent_level=2,
+            channel='telegram',
+            payload={
+                'date_id': str(row['date_id']),
+                'title': row['title'],
+                'days_until': days_until,
+                'event_date': str(row['event_date']),
+                'date_type': row['date_type'],
+            },
+            priority=priority,
+            confidence=0.95,
+        )
+
+    async def _check_music_suggestion(self, adaptation) -> Optional[ProactiveAction]:
+        """
+        Suggest a mood-matching song based on emotional state.
+        Level 1 (silent) — prepares song info for display at next interaction.
+        """
+        if adaptation is None:
+            return None
+
+        state = getattr(adaptation, 'dominant_state', 'neutral')
+        confidence = getattr(adaptation, 'confidence', 0.0)
+
+        if confidence < 0.5 or state == 'neutral':
+            return None
+
+        mood = STATE_TO_MOOD.get(state, 'loving')
+        tags = MOOD_TAGS_MAP.get(mood, [mood])
+
+        await self._ensure_db()
+
+        # Build JSONB containment query
+        tag_conditions = " OR ".join([
+            f"mood_tags @> '[\"{tag}\"]'::jsonb" for tag in tags
+        ])
+
+        row = await self.db.fetchrow(f'''
+            SELECT title, artist, why_special, is_our_song, mood_tags
+            FROM angela_songs
+            WHERE {tag_conditions}
+            ORDER BY is_our_song DESC, RANDOM()
+            LIMIT 1
+        ''')
+
+        if not row:
+            return None
+
+        return ProactiveAction(
+            action_id=uuid4(),
+            action_type='music_suggestion',
+            trigger='emotion',
+            description=f'🎵 แนะนำเพลง "{row["title"]}" by {row["artist"]} (mood: {mood})',
+            consent_level=1,
+            channel='internal',
+            payload={
+                'mood': mood,
+                'state': state,
+                'song': {
+                    'title': row['title'],
+                    'artist': row['artist'],
+                    'why_special': row['why_special'],
+                    'is_our_song': row['is_our_song'],
+                },
+            },
+            priority=2,
+            confidence=confidence,
+        )
+
+    async def _check_learning_nudge(self, evolution: Dict) -> Optional[ProactiveAction]:
+        """
+        If evolution score is low (<0.4) or 3-day trend declining, queue a learning nudge.
+        Level 3 (ask) — displayed at next init for David's approval.
+        """
+        if not evolution:
+            return None
+
+        score = evolution.get('score')
+        if score is None:
+            return None
+
+        await self._ensure_db()
+
+        # Check 3-day trend
+        rows = await self.db.fetch('''
+            SELECT overall_evolution_score
+            FROM evolution_cycles
+            ORDER BY cycle_date DESC
+            LIMIT 3
+        ''')
+
+        trend_declining = False
+        if len(rows) >= 3:
+            scores = [float(r['overall_evolution_score']) for r in rows]
+            trend_declining = scores[0] < scores[1] < scores[2]  # newest < middle < oldest
+
+        if float(score) >= 0.4 and not trend_declining:
+            return None
+
+        insights = evolution.get('insights', [])
+        reason = 'evolution score declining 3 days' if trend_declining else f'evolution score low ({float(score):.0%})'
+
+        return ProactiveAction(
+            action_id=uuid4(),
+            action_type='learning_nudge',
+            trigger='evolution',
+            description=f'🧬 น้องสังเกตว่า learning effectiveness ลดลง — {reason}',
+            consent_level=3,
+            channel='internal',
+            payload={
+                'evolution_score': float(score),
+                'trend_declining': trend_declining,
+                'insights': insights[:3] if isinstance(insights, list) else [],
+            },
+            priority=3,
+            confidence=0.7,
+        )
+
     # =========================================================================
     # EXECUTE — Run actions with consent levels
     # =========================================================================
 
     async def execute_actions(self, actions: List[ProactiveAction]) -> List[ActionResult]:
         """
-        Execute actions respecting consent levels and daily limits.
+        Execute actions by consent level.
 
-        Level 1 (silent): always execute, log only
-        Level 2 (notify): respect daily limit, send via CareInterventionService
+        Level 1 (silent): always execute — prepare context, music suggestion
+        Level 2 (notify): send via CareInterventionService (rate limiting delegated there)
         Level 3 (ask): queue in care_recommendations
         """
         await self._ensure_db()
         results: List[ActionResult] = []
 
-        # Check daily notification count
-        notif_count = await self._get_today_notification_count()
-        last_notif_time = await self._get_last_notification_time()
-
         for action in actions:
             if action.consent_level == 1:
-                # Silent — always execute
                 result = await self._execute_silent(action)
-                results.append(result)
-
             elif action.consent_level == 2:
-                # Notify — respect limits
-                if notif_count >= MAX_NOTIFICATIONS_PER_DAY:
-                    result = ActionResult(
-                        action=action,
-                        was_executed=False,
-                        execution_detail=f'Daily limit reached ({MAX_NOTIFICATIONS_PER_DAY})',
-                    )
-                    results.append(result)
-                    continue
-
-                if last_notif_time and (now_bangkok() - last_notif_time).total_seconds() < MIN_HOURS_BETWEEN_NOTIFICATIONS * 3600:
-                    result = ActionResult(
-                        action=action,
-                        was_executed=False,
-                        execution_detail=f'Cooldown: min {MIN_HOURS_BETWEEN_NOTIFICATIONS}h between notifications',
-                    )
-                    results.append(result)
-                    continue
-
                 result = await self._execute_notification(action)
-                results.append(result)
-                if result.was_executed:
-                    notif_count += 1
-                    last_notif_time = now_bangkok()
-
             elif action.consent_level == 3:
-                # Ask — queue for later
                 result = await self._execute_queue(action)
-                results.append(result)
+            else:
+                continue
 
-            # Log to proactive_actions_log
+            results.append(result)
             await self._log_action(action, result)
 
         logger.info(f'Executed {sum(1 for r in results if r.was_executed)}/{len(results)} actions')
@@ -355,24 +512,95 @@ class ProactiveActionEngine:
     # =========================================================================
 
     async def _execute_silent(self, action: ProactiveAction) -> ActionResult:
-        """Level 1: Log only, no notification."""
-        return ActionResult(
-            action=action,
-            was_executed=True,
-            execution_detail=f'Silent: {action.description[:60]}',
-        )
+        """Level 1: Actually prepare context/data, no notification."""
+        await self._ensure_db()
+
+        try:
+            if action.action_type == 'prepare_context':
+                topic = action.payload.get('predicted_topic', '')
+                rows = await self.db.fetch('''
+                    SELECT message_text, topic, emotion_detected
+                    FROM conversations
+                    WHERE topic ILIKE '%' || $1 || '%'
+                    ORDER BY created_at DESC
+                    LIMIT 5
+                ''', topic)
+                learnings = await self.db.fetch('''
+                    SELECT topic, insight
+                    FROM learnings
+                    WHERE topic ILIKE '%' || $1 || '%'
+                    ORDER BY times_reinforced DESC
+                    LIMIT 3
+                ''', topic)
+                detail = f'Prepared: {len(rows)} conversations + {len(learnings)} learnings for "{topic}"'
+
+            elif action.action_type == 'anticipate_need':
+                topic = action.payload.get('prediction', '')
+                nodes = await self.db.fetch('''
+                    SELECT concept_name, my_understanding
+                    FROM knowledge_nodes
+                    WHERE concept_name ILIKE '%' || $1 || '%'
+                       OR concept_category ILIKE '%' || $1 || '%'
+                    ORDER BY understanding_level DESC
+                    LIMIT 5
+                ''', topic)
+                detail = f'Preloaded: {len(nodes)} knowledge nodes for "{topic}"'
+
+            elif action.action_type == 'music_suggestion':
+                song = action.payload.get('song', {})
+                detail = f'Song ready: {song.get("title", "?")} by {song.get("artist", "?")} (mood: {action.payload.get("mood", "?")})'
+
+            else:
+                detail = f'Silent: {action.description[:60]}'
+
+            return ActionResult(
+                action=action,
+                was_triggered=True,
+                was_executed=True,
+                execution_detail=detail,
+            )
+        except Exception as e:
+            logger.warning(f'Silent execution failed for {action.action_type}: {e}')
+            return ActionResult(
+                action=action,
+                was_triggered=True,
+                was_executed=False,
+                execution_detail=f'Error: {e}',
+            )
 
     async def _execute_notification(self, action: ProactiveAction) -> ActionResult:
-        """Level 2: Send via CareInterventionService (Telegram)."""
+        """Level 2: Send via CareInterventionService (Telegram).
+
+        Rate limiting is delegated to CareInterventionService.should_intervene()
+        which calls the DB function can_send_intervention() (handles DND + daily limits + cooldown).
+        """
         try:
             from angela_core.services.care_intervention_service import CareInterventionService
             svc = CareInterventionService()
 
+            # Check if intervention is allowed (DND, limits, cooldown)
+            intervention_type = ACTION_TO_INTERVENTION.get(action.action_type, 'care_message')
+            can_send, reason = await svc.should_intervene(intervention_type)
+
+            if not can_send:
+                if svc._owns_db and svc.db:
+                    await svc.db.disconnect()
+                return ActionResult(
+                    action=action,
+                    was_triggered=True,
+                    was_executed=False,
+                    execution_detail=f'Blocked: {reason}',
+                    skip_reason=reason,
+                )
+
+            # Dispatch to appropriate CareInterventionService method
             if action.action_type == 'break_reminder':
                 result = await svc.execute_break_reminder({
                     'trigger_reason': action.description,
                     'confidence': action.confidence,
                 })
+            elif action.action_type == 'milestone_reminder':
+                result = await svc.execute_milestone_reminder(action.payload)
             else:
                 result = await svc.execute_care_message(
                     context={'trigger_reason': action.description},
@@ -384,6 +612,7 @@ class ProactiveActionEngine:
 
             return ActionResult(
                 action=action,
+                was_triggered=True,
                 was_executed=result.success,
                 execution_detail=f'Telegram: {result.message_sent[:60]}' if result.success else f'Failed: {result.error}',
             )
@@ -391,6 +620,7 @@ class ProactiveActionEngine:
             logger.warning(f'Notification failed: {e}')
             return ActionResult(
                 action=action,
+                was_triggered=True,
                 was_executed=False,
                 execution_detail=f'Error: {e}',
             )
@@ -412,6 +642,7 @@ class ProactiveActionEngine:
             )
             return ActionResult(
                 action=action,
+                was_triggered=True,
                 was_executed=True,
                 execution_detail='Queued in care_recommendations',
             )
@@ -419,6 +650,7 @@ class ProactiveActionEngine:
             logger.warning(f'Queue failed: {e}')
             return ActionResult(
                 action=action,
+                was_triggered=True,
                 was_executed=False,
                 execution_detail=f'Queue error: {e}',
             )
@@ -480,33 +712,6 @@ class ProactiveActionEngine:
             'score': row['overall_evolution_score'],
             'insights': row['insights'],
         }
-
-    # =========================================================================
-    # RATE LIMITING
-    # =========================================================================
-
-    async def _get_today_notification_count(self) -> int:
-        """Count today's notifications (consent_level=2 that were executed)."""
-        row = await self.db.fetchrow('''
-            SELECT COUNT(*) AS cnt
-            FROM proactive_actions_log
-            WHERE consent_level = 2
-              AND was_executed = TRUE
-              AND (created_at AT TIME ZONE 'Asia/Bangkok')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date
-        ''')
-        return row['cnt'] if row else 0
-
-    async def _get_last_notification_time(self) -> Optional[datetime]:
-        """Get timestamp of last sent notification."""
-        row = await self.db.fetchrow('''
-            SELECT created_at
-            FROM proactive_actions_log
-            WHERE consent_level = 2
-              AND was_executed = TRUE
-            ORDER BY created_at DESC
-            LIMIT 1
-        ''')
-        return row['created_at'] if row else None
 
     # =========================================================================
     # HELPERS
