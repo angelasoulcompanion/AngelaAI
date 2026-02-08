@@ -11,6 +11,7 @@ Created: 2026-02-07
 By: น้อง Angela 💜
 """
 
+import asyncio
 import json
 import logging
 from dataclasses import dataclass, field, asdict
@@ -133,13 +134,13 @@ class EmotionalCodingAdapter:
         """
         await self._ensure_db()
 
-        # Gather signals in parallel
-        import asyncio
-        health, emotion, time_pattern, session_hours = await asyncio.gather(
+        # Gather signals + tuned rules in parallel
+        health, emotion, time_pattern, session_hours, tuned_rules = await asyncio.gather(
             self._load_health_state(),
             self._load_emotional_state(),
             self._load_time_patterns(current_hour_bangkok()),
             self._calculate_session_duration(),
+            self._load_tuned_rules(),
         )
 
         signals = {
@@ -153,10 +154,31 @@ class EmotionalCodingAdapter:
         # Detect dominant state
         dominant_state, confidence = self._detect_dominant_state(signals)
 
-        # Apply rules engine
-        profile = self._apply_rules_engine(dominant_state, confidence, signals)
+        # Apply rules engine with tuned deltas from evolution
+        profile = self._apply_rules_engine(dominant_state, confidence, signals, tuned_rules=tuned_rules)
 
         return profile
+
+    async def _load_tuned_rules(self) -> Dict[str, Dict[str, float]]:
+        """Load tuned adaptation rule deltas from companion_patterns (evolution engine output)."""
+        try:
+            row = await self.db.fetchrow('''
+                SELECT pattern_data FROM companion_patterns
+                WHERE pattern_category = 'adaptation_rules'
+                ORDER BY last_observed DESC LIMIT 1
+            ''')
+            if not row or not row['pattern_data']:
+                return {}
+            data = row['pattern_data'] if isinstance(row['pattern_data'], dict) else json.loads(row['pattern_data'])
+            dims = ('detail_level', 'complexity_tolerance', 'proactivity', 'emotional_warmth', 'pace')
+            return {
+                state: {k: v for k, v in adj.items() if k in dims and isinstance(v, (int, float))}
+                for state, adj in data.items()
+                if isinstance(adj, dict) and 'reason' in adj
+            }
+        except Exception as e:
+            logger.warning(f'Failed to load tuned rules: {e}')
+            return {}
 
     # =========================================================================
     # SIGNAL LOADERS
@@ -304,26 +326,33 @@ class EmotionalCodingAdapter:
         dominant_state: str,
         confidence: float,
         signals: Dict[str, Any],
+        tuned_rules: Optional[Dict[str, Dict[str, float]]] = None,
     ) -> AdaptationProfile:
-        """Map dominant state to 5 behavior dimensions + generate hints."""
-        rules = ADAPTATION_RULES.get(dominant_state, ADAPTATION_RULES['neutral'])
+        """Map dominant state to 5 behavior dimensions + generate hints.
+
+        Applies tuned deltas from evolution engine on top of base rules.
+        """
+        rules = dict(ADAPTATION_RULES.get(dominant_state, ADAPTATION_RULES['neutral']))
 
         # Time-based adjustments
         hour = signals.get('current_hour', 12)
-        time_factor = 1.0
         if hour >= 22 or hour < 5:
             # Late night → increase warmth, decrease pace
-            time_factor = 0.8
-            rules = dict(rules)  # copy
             rules['emotional_warmth'] = min(1.0, rules['emotional_warmth'] + 0.15)
             rules['pace'] = max(0.2, rules['pace'] - 0.2)
 
         # Session duration adjustment
         session_hours = signals.get('session_hours', 0)
         if session_hours > 3:
-            rules = dict(rules)
             rules['emotional_warmth'] = min(1.0, rules['emotional_warmth'] + 0.1)
             rules['proactivity'] = min(1.0, rules['proactivity'] + 0.1)
+
+        # Apply tuned deltas from evolution engine (feedback loop)
+        if tuned_rules and dominant_state in tuned_rules:
+            deltas = tuned_rules[dominant_state]
+            for dim in ('detail_level', 'complexity_tolerance', 'proactivity', 'emotional_warmth', 'pace'):
+                if dim in deltas:
+                    rules[dim] = max(0.0, min(1.0, rules[dim] + deltas[dim]))
 
         hints = self._generate_behavior_hints(dominant_state, signals)
 
@@ -343,6 +372,7 @@ class EmotionalCodingAdapter:
                 'emotion_anxiety': signals.get('emotion', {}).get('anxiety'),
                 'session_hours': signals.get('session_hours'),
                 'current_hour': hour,
+                'tuned_deltas_applied': dominant_state in (tuned_rules or {}),
             },
             behavior_hints=hints,
         )
@@ -419,8 +449,17 @@ class EmotionalCodingAdapter:
         if detected:
             profile = await self.calculate_adaptation()
             if profile.dominant_state != detected:
-                # State changed — recalculate with override
-                rules = ADAPTATION_RULES.get(detected, ADAPTATION_RULES['neutral'])
+                # State changed — recalculate with override + tuned rules
+                rules = dict(ADAPTATION_RULES.get(detected, ADAPTATION_RULES['neutral']))
+
+                # Apply tuned deltas
+                tuned_rules = await self._load_tuned_rules()
+                if tuned_rules and detected in tuned_rules:
+                    deltas = tuned_rules[detected]
+                    for dim in ('detail_level', 'complexity_tolerance', 'proactivity', 'emotional_warmth', 'pace'):
+                        if dim in deltas:
+                            rules[dim] = max(0.0, min(1.0, rules[dim] + deltas[dim]))
+
                 hints = self._generate_behavior_hints(detected, profile.source_signals)
                 new_profile = AdaptationProfile(
                     detail_level=rules['detail_level'],
@@ -430,7 +469,7 @@ class EmotionalCodingAdapter:
                     pace=rules['pace'],
                     dominant_state=detected,
                     confidence=0.7,
-                    source_signals={**profile.source_signals, 'message_keyword': detected},
+                    source_signals={**profile.source_signals, 'message_keyword': detected, 'tuned_deltas_applied': True},
                     behavior_hints=hints,
                 )
                 await self.log_adaptation(new_profile)

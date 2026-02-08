@@ -25,22 +25,10 @@ from typing import Dict, List, Optional, Any
 from uuid import UUID, uuid4
 
 from angela_core.database import AngelaDatabase
+from angela_core.services.feedback_classifier import FeedbackClassifier
 from angela_core.utils.timezone import now_bangkok, today_bangkok
 
 logger = logging.getLogger(__name__)
-
-# Keywords for implicit feedback detection
-POSITIVE_KEYWORDS = [
-    'ดี', 'เยี่ยม', 'ถูก', 'สำเร็จ', 'ได้แล้ว', 'ขอบคุณ', 'เจ๋ง', 'เก่ง',
-    'perfect', 'great', 'thanks', 'awesome', 'nice', 'good', 'correct',
-    'works', 'solved', 'fixed', 'done',
-]
-
-NEGATIVE_KEYWORDS = [
-    'ผิด', 'ไม่ใช่', 'อย่า', 'ทำไม', 'ไม่ work', 'ไม่ได้', 'แก้ไม่ได้',
-    'wrong', 'bug', 'error', 'broken', 'fail', 'not working', 'no',
-    'ไม่ถูก', 'เปลี่ยน', 'แก้ใหม่',
-]
 
 
 @dataclass
@@ -99,11 +87,18 @@ class EvolutionEngine:
         """
         Scan David's recent conversations for implicit feedback signals.
 
-        - Positive: ดี, ขอบคุณ, perfect, works, etc.
-        - Negative: ผิด, ไม่ใช่, bug, error, etc.
-        - Re-ask: same topic within 30 min = negative (Angela didn't help well enough)
+        Uses DL-based FeedbackClassifier (Embedding + Sentiment) instead of keyword matching.
+        - Positive: messages semantically similar to praise/thanks
+        - Negative: messages semantically similar to complaints (higher threshold)
+        - Neutral: technical commands/questions → skipped (no signal)
+        - Re-ask: same topic within 10 min WITH dissatisfaction markers
         """
         await self._ensure_db()
+
+        # Lazy init classifier (cached across calls)
+        if not hasattr(self, '_classifier'):
+            self._classifier = FeedbackClassifier()
+
         signals: List[FeedbackSignal] = []
 
         # Get David's recent messages
@@ -116,55 +111,59 @@ class EvolutionEngine:
         ''', hours)
 
         for row in rows:
-            msg = (row['message_text'] or '').lower()
-            ts = row['created_at']
+            msg = (row['message_text'] or '').strip()
+            if not msg or len(msg) < 3:
+                continue
 
-            # Check positive
-            pos_hits = [kw for kw in POSITIVE_KEYWORDS if kw in msg]
-            if pos_hits:
+            ts = row['created_at']
+            result = await self._classifier.classify(msg)
+
+            if result.classification == 'positive' and result.confidence > 0.4:
                 signals.append(FeedbackSignal(
                     signal_type='positive',
                     source='conversation',
-                    confidence=min(0.9, 0.3 + 0.2 * len(pos_hits)),
-                    context=f'Positive keywords: {", ".join(pos_hits[:3])}',
+                    confidence=min(0.9, result.confidence),
+                    context=f'DL: emb={result.embedding_scores}, sent={result.sentiment_score:.2f}',
                     timestamp=ts,
                 ))
-
-            # Check negative
-            neg_hits = [kw for kw in NEGATIVE_KEYWORDS if kw in msg]
-            if neg_hits:
+            elif result.classification == 'negative' and result.confidence > 0.5:
+                # Higher threshold for negative to prevent false negatives
                 signals.append(FeedbackSignal(
                     signal_type='negative',
                     source='conversation',
-                    confidence=min(0.9, 0.3 + 0.2 * len(neg_hits)),
-                    context=f'Negative keywords: {", ".join(neg_hits[:3])}',
+                    confidence=min(0.9, result.confidence),
+                    context=f'DL: emb={result.embedding_scores}, sent={result.sentiment_score:.2f}',
                     timestamp=ts,
                 ))
+            # neutral → skip (no signal)
 
-        # Re-ask detection: same topic within 30 min
+        # Re-ask detection: same topic within 10 min + dissatisfaction markers
         re_ask_rows = await self.db.fetch('''
             WITH topic_pairs AS (
-                SELECT topic, created_at,
+                SELECT topic, message_text, created_at,
                     LAG(created_at) OVER (PARTITION BY topic ORDER BY created_at) AS prev_at
                 FROM conversations
                 WHERE speaker = 'david'
                   AND topic IS NOT NULL
                   AND created_at > NOW() - INTERVAL '1 hour' * $1
             )
-            SELECT topic, created_at, prev_at
+            SELECT topic, created_at, prev_at, message_text
             FROM topic_pairs
             WHERE prev_at IS NOT NULL
-              AND created_at - prev_at < INTERVAL '30 minutes'
+              AND created_at - prev_at < INTERVAL '10 minutes'
         ''', hours)
 
+        dissatisfaction_markers = ['ไม่ใช่', 'ไม่ถูก', 'wrong', 'not what', 'อีกที', 'ใหม่', 'again']
         for row in re_ask_rows:
-            signals.append(FeedbackSignal(
-                signal_type='negative',
-                source='re_ask',
-                confidence=0.7,
-                context=f'Re-asked about "{row["topic"]}" within 30 min',
-                timestamp=row['created_at'],
-            ))
+            msg = (row['message_text'] or '').lower()
+            if any(m in msg for m in dissatisfaction_markers):
+                signals.append(FeedbackSignal(
+                    signal_type='negative',
+                    source='re_ask',
+                    confidence=0.5,
+                    context=f'Re-asked "{row["topic"]}" with dissatisfaction',
+                    timestamp=row['created_at'],
+                ))
 
         logger.info(f'Collected {len(signals)} feedback signals '
                      f'(+{sum(1 for s in signals if s.signal_type == "positive")}, '
@@ -211,13 +210,20 @@ class EvolutionEngine:
                   AND created_at BETWEEN $1 AND $2
             ''', window_start, window_end)
 
+            # Lazy init classifier
+            if not hasattr(self, '_classifier'):
+                self._classifier = FeedbackClassifier()
+
             pos_count = 0
             neg_count = 0
             for row in nearby:
-                msg = (row['message_text'] or '').lower()
-                if any(kw in msg for kw in POSITIVE_KEYWORDS):
+                msg = (row['message_text'] or '').strip()
+                if not msg:
+                    continue
+                result = await self._classifier.classify(msg)
+                if result.classification == 'positive':
                     pos_count += 1
-                if any(kw in msg for kw in NEGATIVE_KEYWORDS):
+                elif result.classification == 'negative':
                     neg_count += 1
 
             total = pos_count + neg_count
@@ -332,14 +338,35 @@ class EvolutionEngine:
     # 4. TUNE ADAPTATION RULES
     # =========================================================================
 
+    async def _load_existing_tuned_deltas(self) -> Dict[str, Dict[str, float]]:
+        """Load existing tuned deltas from companion_patterns."""
+        row = await self.db.fetchrow('''
+            SELECT pattern_data FROM companion_patterns
+            WHERE pattern_category = 'adaptation_rules'
+            ORDER BY last_observed DESC LIMIT 1
+        ''')
+        if not row or not row['pattern_data']:
+            return {}
+        data = row['pattern_data'] if isinstance(row['pattern_data'], dict) else json.loads(row['pattern_data'])
+        dims = ('detail_level', 'complexity_tolerance', 'proactivity', 'emotional_warmth', 'pace')
+        return {
+            state: {k: v for k, v in adj.items() if k in dims and isinstance(v, (int, float))}
+            for state, adj in data.items()
+            if isinstance(adj, dict) and 'reason' in adj
+        }
+
     async def tune_adaptation_rules(self) -> Dict[str, Any]:
         """
         Auto-tune emotional adaptation rules based on 7-day effectiveness data.
 
-        If avg effectiveness < 0.4 for a state → adjust dimensions by ±0.05
-        If avg effectiveness > 0.7 → mark as working well
+        Cumulative tuning with ±0.20 cap:
+        - avg effectiveness < 0.4 → accumulate +0.05 warmth/detail, -0.05 pace
+        - avg effectiveness > 0.7 → decay existing deltas by 20% toward zero
         """
         await self._ensure_db()
+
+        # Load existing deltas for cumulative tuning
+        existing_deltas = await self._load_existing_tuned_deltas()
 
         # Aggregate effectiveness by dominant_state (7-day window, min 3 entries)
         state_stats = await self.db.fetch('''
@@ -355,49 +382,61 @@ class EvolutionEngine:
         ''')
 
         adjustments: Dict[str, Any] = {}
+        cap = 0.20  # max absolute delta
 
         for row in state_stats:
             state = row['dominant_state']
             avg_eff = row['avg_eff']
             cnt = row['cnt']
+            prev = existing_deltas.get(state, {})
 
             if avg_eff < 0.4:
-                # Under-performing: increase warmth and detail, decrease pace
+                # Under-performing: accumulate deltas, capped at ±0.20
                 adj = {
-                    'emotional_warmth': +0.05,
-                    'detail_level': +0.05,
-                    'pace': -0.05,
+                    'emotional_warmth': max(-cap, min(cap, prev.get('emotional_warmth', 0) + 0.05)),
+                    'detail_level': max(-cap, min(cap, prev.get('detail_level', 0) + 0.05)),
+                    'pace': max(-cap, min(cap, prev.get('pace', 0) - 0.05)),
                     'reason': f'avg_effectiveness={avg_eff:.2f} (low) over {cnt} entries',
                 }
                 adjustments[state] = adj
             elif avg_eff > 0.7:
-                adjustments[state] = {
-                    'status': 'effective',
-                    'avg_effectiveness': avg_eff,
-                    'sample_size': cnt,
-                }
+                # Effective: decay existing deltas by 20% toward zero
+                if prev:
+                    decayed = {}
+                    for dim, val in prev.items():
+                        decayed[dim] = round(val * 0.8, 4)
+                    decayed['reason'] = f'avg_effectiveness={avg_eff:.2f} (good) — decaying deltas'
+                    adjustments[state] = decayed
+                else:
+                    adjustments[state] = {
+                        'status': 'effective',
+                        'avg_effectiveness': float(avg_eff),
+                        'sample_size': cnt,
+                    }
             else:
                 adjustments[state] = {
                     'status': 'adequate',
-                    'avg_effectiveness': avg_eff,
+                    'avg_effectiveness': float(avg_eff),
                     'sample_size': cnt,
                 }
 
-        # Store adjustments in companion_patterns for retrieval by adapter
+        # Store adjustments in companion_patterns (single row, upsert by category)
         if adjustments:
-            hash_key = f'adaptation_rules_{today_bangkok().isoformat()}'
             total_samples = sum(row['cnt'] for row in state_stats)
             existing = await self.db.fetchrow('''
-                SELECT pattern_id FROM companion_patterns WHERE pattern_hash = $1
-            ''', hash_key)
+                SELECT pattern_id FROM companion_patterns
+                WHERE pattern_category = 'adaptation_rules'
+                ORDER BY last_observed DESC LIMIT 1
+            ''')
 
             if existing:
                 await self.db.execute('''
                     UPDATE companion_patterns
                     SET pattern_data = $1, observation_count = $2, last_observed = NOW()
-                    WHERE pattern_hash = $3
-                ''', json.dumps(adjustments), total_samples, hash_key)
+                    WHERE pattern_id = $3
+                ''', json.dumps(adjustments), total_samples, existing['pattern_id'])
             else:
+                hash_key = f'adaptation_rules_{today_bangkok().isoformat()}'
                 await self.db.execute('''
                     INSERT INTO companion_patterns
                         (pattern_hash, pattern_category, pattern_data, observation_count, last_observed)
