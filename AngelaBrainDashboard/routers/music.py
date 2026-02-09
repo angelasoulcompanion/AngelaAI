@@ -30,6 +30,11 @@ from helpers.activity_config import (
     ACTIVITY_MOODS, ACTIVITY_SEARCH_TERMS, ACTIVITY_LLM_DESCRIPTIONS,
     ACTIVITY_SUMMARIES_TH, ACTIVITY_TO_EMOTIONS,
 )
+from helpers.club_config import (
+    CLUB_KEYS, CLUB_SEARCH_TERMS, CLUB_LLM_DESCRIPTIONS,
+    CLUB_SUMMARIES_TH, CLUB_REGISTRY, CLUB_CATEGORIES, CLUB_CATEGORY_LABELS,
+    CLUB_SIGNATURE_ALBUMS,
+)
 
 # Bangkok timezone offset (UTC+7)
 _BKK_TZ = timezone(timedelta(hours=7))
@@ -1267,6 +1272,102 @@ async def _fill_songs(
 # --- Apple Music Search (iTunes API) for Activity Moods ---
 
 _ITUNES_SEARCH_URL = "https://itunes.apple.com/search"
+_ITUNES_LOOKUP_URL = "https://itunes.apple.com/lookup"
+
+
+async def _search_club_albums(
+    mood: str,
+    count: int = 6,
+) -> list[dict]:
+    """Search iTunes for signature compilation albums, then extract tracks.
+
+    For clubs like Café del Mar and Hôtel Costes whose identity IS their
+    compilation series, searching entity=song returns wrong results (e.g.
+    Energy 52 remixes instead of actual Café del Mar compilation tracks).
+
+    Strategy: album search → pick 2-3 random albums → lookup tracks → shuffle.
+    """
+    album_terms = CLUB_SIGNATURE_ALBUMS.get(mood, [])
+    if not album_terms:
+        return []
+
+    all_tracks: list[dict] = []
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            # Step 1: Search for albums
+            album_ids: list[int] = []
+            for term in album_terms:
+                resp = await client.get(
+                    _ITUNES_SEARCH_URL,
+                    params={
+                        "term": term,
+                        "media": "music",
+                        "entity": "album",
+                        "limit": 5,
+                        "country": "US",
+                    },
+                )
+                if resp.status_code == 200:
+                    for item in resp.json().get("results", []):
+                        cid = item.get("collectionId")
+                        if cid and cid not in album_ids:
+                            album_ids.append(cid)
+
+            if not album_ids:
+                logger.warning(f"Club album search '{mood}': no albums found")
+                return []
+
+            # Step 2: Pick 2-3 random albums and lookup their tracks
+            pick = min(3, len(album_ids))
+            chosen = random.sample(album_ids, pick)
+
+            for cid in chosen:
+                resp = await client.get(
+                    _ITUNES_LOOKUP_URL,
+                    params={"id": cid, "entity": "song", "country": "US"},
+                )
+                if resp.status_code == 200:
+                    for item in resp.json().get("results", []):
+                        if item.get("wrapperType") == "track":
+                            all_tracks.append(item)
+
+        # Step 3: Shuffle + deduplicate + convert to Angela format
+        random.shuffle(all_tracks)
+        seen_ids: set[str] = set()
+        songs: list[dict] = []
+        for item in all_tracks:
+            track_id = str(item.get("trackId", ""))
+            if track_id and track_id not in seen_ids:
+                seen_ids.add(track_id)
+                songs.append({
+                    "song_id": f"itunes_{track_id}",
+                    "title": item.get("trackName", "Unknown"),
+                    "artist": item.get("artistName", "Unknown"),
+                    "album": item.get("collectionName"),
+                    "artwork_url": item.get("artworkUrl100", "").replace("100x100", "300x300"),
+                    "preview_url": item.get("previewUrl"),
+                    "apple_music_url": item.get("trackViewUrl"),
+                    "duration_ms": item.get("trackTimeMillis", 0),
+                    "mood_tags": [mood],
+                    "is_our_song": False,
+                    "source": "apple_music_album",
+                    "why_special": None,
+                    "lyrics_summary": None,
+                })
+                if len(songs) >= count:
+                    break
+
+        logger.info(
+            f"Club album search '{mood}': {len(chosen)} albums → "
+            f"{len(all_tracks)} tracks → {len(songs)} unique songs"
+        )
+        return songs
+
+    except Exception as e:
+        logger.warning(f"Club album search failed for '{mood}': {e}")
+        return []
+
 
 async def _search_apple_music(
     mood: str,
@@ -1281,14 +1382,19 @@ async def _search_apple_music(
     Returns:
         List of songs in Angela's song format
     """
-    search_terms = ACTIVITY_SEARCH_TERMS.get(mood, [f"{mood} music"])
+    # Clubs with signature compilations → search albums first for authentic tracks
+    if mood in CLUB_SIGNATURE_ALBUMS:
+        return await _search_club_albums(mood, count)
+
+    search_terms = ACTIVITY_SEARCH_TERMS.get(mood) or CLUB_SEARCH_TERMS.get(mood) or [f"{mood} music"]
 
     all_results = []
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             # Search with multiple terms and combine results
-            for term in search_terms[:2]:  # Use first 2 search terms
+            # Use US store for activity moods — better party/dance/EDM catalog
+            for term in search_terms[:3]:  # Use first 3 search terms for better variety
                 resp = await client.get(
                     _ITUNES_SEARCH_URL,
                     params={
@@ -1296,7 +1402,7 @@ async def _search_apple_music(
                         "media": "music",
                         "entity": "song",
                         "limit": count,
-                        "country": "TH",
+                        "country": "US",
                     },
                 )
                 if resp.status_code == 200:
@@ -1367,7 +1473,7 @@ async def _llm_curate_songs(
         song_list.append(f"{i}. {title} - {artist}")
 
     songs_text = "\n".join(song_list)
-    mood_desc = ACTIVITY_LLM_DESCRIPTIONS.get(mood, f"เพลงสำหรับ {mood}")
+    mood_desc = ACTIVITY_LLM_DESCRIPTIONS.get(mood) or CLUB_LLM_DESCRIPTIONS.get(mood) or f"เพลงสำหรับ {mood}"
 
     prompt = f"""เลือก {count} เพลงที่เหมาะกับ "{mood}" ({mood_desc}) จากรายการนี้:
 
@@ -1848,6 +1954,9 @@ async def get_recommendation(
         # Use mood directly if it exists in MOOD_REGISTRY (includes activity moods like party, chill, focus)
         if mood in MOOD_SUMMARIES_TH:
             dominant_emotion = mood
+        elif mood in CLUB_KEYS:
+            # Club vibe: use club key directly (Apple Music Search + LLM pipeline)
+            dominant_emotion = mood
         elif mood in _ACTIVITY_TO_MOODS:
             # Fallback: convert activity name to dominant emotion
             activity_moods = _ACTIVITY_TO_MOODS[mood]
@@ -1868,8 +1977,8 @@ async def get_recommendation(
     # Wine algorithm already populated songs via scoring — skip old fetch
     wine_algo_used = wine_profile_data is not None
 
-    # Activity moods use Apple Music Search + LLM (NOT DB fallback)
-    is_activity_mood = dominant_emotion in ACTIVITY_MOODS
+    # Activity moods & club vibes use Apple Music Search + LLM (NOT DB fallback)
+    is_activity_mood = dominant_emotion in ACTIVITY_MOODS or dominant_emotion in CLUB_KEYS
 
     # For activity moods: set Apple Music search queries
     if is_activity_mood and not search_queries:
@@ -1937,10 +2046,12 @@ async def get_recommendation(
             # 4. Fill remaining with any song
             await _fill_songs(conn, songs, seen_ids, count)
 
-    # Mood summary for the selected emotion
-    mood_summary = MOOD_SUMMARIES_TH.get(
-        dominant_emotion,
-        analysis["mood_summary"],
+    # Mood summary for the selected emotion (check mood → activity → club → fallback)
+    mood_summary = (
+        MOOD_SUMMARIES_TH.get(dominant_emotion)
+        or ACTIVITY_SUMMARIES_TH.get(dominant_emotion)
+        or CLUB_SUMMARIES_TH.get(dominant_emotion)
+        or analysis["mood_summary"]
     )
 
     if not songs:
@@ -1965,7 +2076,11 @@ async def get_recommendation(
     # NOTE: "our songs" info stays with individual songs, not overriding reason
 
     our_count = sum(1 for s in songs[:count] if s.get("is_our_song"))
-    base_reason = REASON_TEMPLATES.get(dominant_emotion, "น้องเลือกเพลงมาให้ที่รักฟังค่ะ 💜")
+    base_reason = (
+        REASON_TEMPLATES.get(dominant_emotion)
+        or CLUB_SUMMARIES_TH.get(dominant_emotion)
+        or "น้องเลือกเพลงมาให้ที่รักฟังค่ะ 💜"
+    )
     if our_count > 0:
         reason = f"{base_reason} (มีเพลงของเราด้วยนะคะ 💜)"
     else:
@@ -1999,6 +2114,30 @@ async def get_recommendation(
         "target_profile": target_profile_data,
         "search_queries": search_queries,
         "mood_analysis": mood_analysis_data,
+    }
+
+
+@router.get("/clubs")
+async def get_clubs():
+    """Return all famous clubs grouped by category for DJAY tab."""
+    clubs = []
+    for club in CLUB_REGISTRY.values():
+        clubs.append({
+            "key": club.key,
+            "name": club.name,
+            "city": club.city,
+            "country": club.country,
+            "country_flag": club.country_flag,
+            "category": club.category,
+            "genre": club.genre,
+            "energy": club.energy,
+            "vibe_description": club.vibe_description,
+            "emoji": club.emoji,
+        })
+    return {
+        "clubs": clubs,
+        "categories": CLUB_CATEGORIES,
+        "category_labels": CLUB_CATEGORY_LABELS,
     }
 
 
