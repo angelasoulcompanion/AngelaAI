@@ -341,6 +341,10 @@ class DatabaseService: ObservableObject {
         return try await get("/consciousness/history?days=\(days)")
     }
 
+    func fetchGrowthTrends(days: Int = 30) async throws -> GrowthTrends {
+        return try await get("/consciousness/growth-trends?days=\(days)")
+    }
+
     // MARK: - Emotions
 
     func fetchRecentEmotions(limit: Int = 20) async throws -> [Emotion] {

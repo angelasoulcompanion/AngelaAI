@@ -127,10 +127,17 @@ async def _fetch_songs(
     order: str = "added_at DESC",
     limit: int | None = None,
 ) -> list[dict]:
-    """Fetch from angela_songs with standard columns, optional WHERE/ORDER/LIMIT."""
+    """Fetch from angela_songs with standard columns, optional WHERE/ORDER/LIMIT.
+
+    Always excludes YouTube-only songs (source='youtube') which cannot be played
+    on Apple Music due to non-standard titles/artists.
+    """
+    playable_filter = "source != 'youtube'"
     sql = f"SELECT {_SONG_COLUMNS} FROM angela_songs"
     if where:
-        sql += f" WHERE {where}"
+        sql += f" WHERE ({where}) AND {playable_filter}"
+    else:
+        sql += f" WHERE {playable_filter}"
     sql += f" ORDER BY {order}"
     p = list(params or [])
     if limit is not None:

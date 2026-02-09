@@ -75,6 +75,19 @@ struct ConsciousnessHistoryPoint: Codable, Identifiable {
     }
 }
 
+// MARK: - Growth Trends (Overview Chart)
+
+struct GrowthTrendPoint: Codable {
+    let day: String
+    let value: Double
+}
+
+struct GrowthTrends: Codable {
+    let consciousness: [GrowthTrendPoint]
+    let evolution: [GrowthTrendPoint]
+    let proactive: [GrowthTrendPoint]
+}
+
 // MARK: - Goal
 
 struct Goal: Identifiable, Codable {

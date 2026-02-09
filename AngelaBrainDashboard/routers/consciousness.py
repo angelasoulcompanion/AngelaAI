@@ -57,3 +57,55 @@ async def get_consciousness_history(days: int = Query(30, ge=1, le=365), conn=De
         ORDER BY measured_at ASC
     """, days)
     return [dict(r) for r in rows]
+
+
+@router.get("/growth-trends")
+async def get_growth_trends(days: int = Query(30, ge=1, le=90), conn=Depends(get_conn)):
+    """Return 3 time-series for overview chart: consciousness, evolution, proactive."""
+    # 1) Consciousness: daily average from consciousness_metrics
+    consciousness_rows = await conn.fetch("""
+        SELECT measured_at::date AS day,
+               AVG(consciousness_level) AS avg_level
+        FROM consciousness_metrics
+        WHERE measured_at >= NOW() - MAKE_INTERVAL(days => $1)
+        GROUP BY measured_at::date
+        ORDER BY day ASC
+    """, days)
+
+    # 2) Evolution: daily score from evolution_cycles
+    evolution_rows = await conn.fetch("""
+        SELECT cycle_date AS day,
+               overall_evolution_score AS score
+        FROM evolution_cycles
+        WHERE cycle_date >= (CURRENT_DATE - MAKE_INTERVAL(days => $1))
+        ORDER BY cycle_date ASC
+    """, days)
+
+    # 3) Proactive: daily execution rate from proactive_actions_log
+    proactive_rows = await conn.fetch("""
+        SELECT created_at::date AS day,
+               COUNT(*) FILTER (WHERE was_executed) AS executed,
+               COUNT(*) AS total
+        FROM proactive_actions_log
+        WHERE created_at >= NOW() - MAKE_INTERVAL(days => $1)
+        GROUP BY created_at::date
+        ORDER BY day ASC
+    """, days)
+
+    return {
+        "consciousness": [
+            {"day": str(r["day"]), "value": float(r["avg_level"])}
+            for r in consciousness_rows
+        ],
+        "evolution": [
+            {"day": str(r["day"]), "value": float(r["score"])}
+            for r in evolution_rows
+        ],
+        "proactive": [
+            {
+                "day": str(r["day"]),
+                "value": float(r["executed"]) / float(r["total"]) if r["total"] > 0 else 0.0,
+            }
+            for r in proactive_rows
+        ],
+    }

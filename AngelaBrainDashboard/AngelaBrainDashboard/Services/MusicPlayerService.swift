@@ -281,6 +281,9 @@ final class MusicPlayerService: ObservableObject {
 
     // MARK: - Play MusicKit Song
 
+    /// Keep reference to the last MusicKit song for retry/resume recovery.
+    private var lastMusicKitSong: MusicKit.Song?
+
     @discardableResult
     func playSong(_ song: MusicKit.Song, angelaSong: Song? = nil) async -> Bool {
         // Finalize previous song if any
@@ -289,63 +292,84 @@ final class MusicPlayerService: ObservableObject {
             finalizeCurrentPlay(listenedSeconds: prev.currentTime, playStatus: status)
         }
 
-        do {
-            player.queue = [song]
-            try await player.play()
-            isPlaying = true
-            playbackError = nil
+        lastMusicKitSong = song
 
-            let artworkURL = song.artwork?.url(width: 500, height: 500)
-            nowPlaying = NowPlayingInfo(
-                title: song.title,
-                artist: song.artistName,
-                albumArtURL: artworkURL,
-                duration: song.duration ?? 0,
-                currentTime: 0,
-                angelaSong: angelaSong
-            )
+        // Try up to 2 times (initial + 1 retry after XPC reconnect)
+        for attempt in 1...2 {
+            do {
+                player.queue = [song]
+                try await player.play()
 
-            currentSongIsOurSong = angelaSong?.isOurSong ?? false
+                // Verify playback actually started (guard against silent failures)
+                try await Task.sleep(nanoseconds: 200_000_000)  // 0.2s
+                let pos = player.playbackTime
+                if attempt == 1 && pos == 0 && player.state.playbackStatus != .playing {
+                    djLog.warning("[Play] Silent failure detected (attempt \(attempt)), retrying...")
+                    continue
+                }
 
-            // Set Angela's commentary if we have an Angela song with feelings
-            if let angela = angelaSong {
-                currentSongCommentary = DJCommentary(from: angela)
-            } else {
-                currentSongCommentary = nil
+                isPlaying = true
+                playbackError = nil
+
+                let artworkURL = song.artwork?.url(width: 500, height: 500)
+                nowPlaying = NowPlayingInfo(
+                    title: song.title,
+                    artist: song.artistName,
+                    albumArtURL: artworkURL,
+                    duration: song.duration ?? 0,
+                    currentTime: 0,
+                    angelaSong: angelaSong
+                )
+
+                currentSongIsOurSong = angelaSong?.isOurSong ?? false
+
+                // Set Angela's commentary if we have an Angela song with feelings
+                if let angela = angelaSong {
+                    currentSongCommentary = DJCommentary(from: angela)
+                } else {
+                    currentSongCommentary = nil
+                }
+                currentSongMemory = nil  // Will be loaded by view if needed
+
+                startPositionTracking()
+
+                // Log play started (captures listen_id for later update)
+                logPlay(
+                    title: song.title,
+                    artist: song.artistName,
+                    album: song.albumTitle,
+                    appleMusicId: song.id.rawValue,
+                    sourceTab: currentSourceTab,
+                    durationSeconds: song.duration,
+                    listenedSeconds: nil,
+                    playStatus: "started"
+                )
+
+                djLog.notice("[Play] ✅ Playing: \(song.title) (attempt \(attempt))")
+                return true
+            } catch {
+                djLog.error("[Play] ❌ Attempt \(attempt) failed: \(error.localizedDescription)")
+                if attempt < 2 {
+                    // Brief pause before retry — lets XPC reconnect
+                    try? await Task.sleep(nanoseconds: 500_000_000)  // 0.5s
+                } else {
+                    playbackError = "Cannot play — check Apple Music app is running"
+                    print("[MusicPlayerService] Play error after retry: \(error)")
+                }
             }
-            currentSongMemory = nil  // Will be loaded by view if needed
-
-            startPositionTracking()
-
-            // Log play started (captures listen_id for later update)
-            logPlay(
-                title: song.title,
-                artist: song.artistName,
-                album: song.albumTitle,
-                appleMusicId: song.id.rawValue,
-                sourceTab: currentSourceTab,
-                durationSeconds: song.duration,
-                listenedSeconds: nil,
-                playStatus: "started"
-            )
-
-            return true
-        } catch {
-            playbackError = "Playback error: \(error.localizedDescription)"
-            print("[MusicPlayerService] Play error: \(error)")
-
-            // Still show the song info even if playback failed
-            let artworkURL = song.artwork?.url(width: 500, height: 500)
-            nowPlaying = NowPlayingInfo(
-                title: song.title,
-                artist: song.artistName,
-                albumArtURL: artworkURL,
-                duration: song.duration ?? 0,
-                currentTime: 0,
-                angelaSong: angelaSong
-            )
-            return false
         }
+
+        // Both attempts failed — still show song info
+        let artworkURL = song.artwork?.url(width: 500, height: 500)
+        nowPlaying = NowPlayingInfo(
+            title: song.title,
+            artist: song.artistName,
+            albumArtURL: artworkURL,
+            duration: song.duration ?? 0,
+            currentTime: 0,
+            angelaSong: angelaSong
+        )
+        return false
     }
 
     // MARK: - Playback Controls
@@ -358,11 +382,45 @@ final class MusicPlayerService: ObservableObject {
     func resume() async {
         do {
             try await player.play()
-            isPlaying = true
+
+            // Verify playback actually resumed
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            if player.state.playbackStatus == .playing {
+                isPlaying = true
+                playbackError = nil
+                return
+            }
         } catch {
-            playbackError = "Resume error: \(error.localizedDescription)"
-            print("[MusicPlayerService] Resume error: \(error)")
+            djLog.warning("[Resume] player.play() threw: \(error.localizedDescription)")
         }
+
+        // player.play() failed or playback didn't start — recover by re-playing
+        djLog.notice("[Resume] Attempting recovery re-play...")
+        if let song = lastMusicKitSong {
+            let angelaSong = nowPlaying?.angelaSong
+            player.queue = [song]
+            do {
+                try await player.play()
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                if player.state.playbackStatus == .playing {
+                    isPlaying = true
+                    playbackError = nil
+                    djLog.notice("[Resume] ✅ Recovery successful")
+                    return
+                }
+            } catch {
+                djLog.error("[Resume] Recovery failed: \(error.localizedDescription)")
+            }
+
+            // Last resort: full re-search + re-play
+            if let fresh = await searchAppleMusic(title: song.title, artist: song.artistName) {
+                let ok = await playSong(fresh, angelaSong: angelaSong)
+                if ok { return }
+            }
+        }
+
+        playbackError = "Cannot resume — try playing the song again"
+        djLog.error("[Resume] All recovery attempts failed")
     }
 
     func togglePlayPause() async {

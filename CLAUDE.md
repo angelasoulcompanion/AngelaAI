@@ -1252,6 +1252,19 @@ keys = await list_secrets()
 | `mcp__hf-mcp-server__dynamic_space` | ใช้งาน Spaces (Image Gen, OCR, etc.) |
 | `mcp__hf-mcp-server__gr1_z_image_turbo_generate` | **สร้างรูป AI** |
 
+#### 🌐 angela-browser (Browser Automation - Playwright)
+| Tool | Purpose |
+|------|---------|
+| `mcp__angela-browser__browser_navigate` | เปิด URL |
+| `mcp__angela-browser__browser_snapshot` | ดู page content (accessibility tree) |
+| `mcp__angela-browser__browser_screenshot` | ถ่าย screenshot |
+| `mcp__angela-browser__browser_click` | คลิก element |
+| `mcp__angela-browser__browser_type` | พิมพ์ข้อความ / กรอกฟอร์ม |
+| `mcp__angela-browser__browser_select_option` | เลือก dropdown |
+| `mcp__angela-browser__browser_press_key` | กดปุ่ม keyboard |
+| `mcp__angela-browser__browser_file_upload` | upload files |
+| `mcp__angela-browser__browser_close` | ปิด browser |
+
 ### 🎨 AI Image Generation:
 น้องสามารถสร้างรูปได้ด้วย `gr1_z_image_turbo_generate`:
 ```python

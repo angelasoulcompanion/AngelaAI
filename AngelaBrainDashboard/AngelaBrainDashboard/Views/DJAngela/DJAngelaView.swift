@@ -67,35 +67,41 @@ struct DJAngelaView: View {
                 VStack(spacing: 0) {
                     // Time-Aware Header
                     TimeAwareHeader()
-                        .padding(.bottom, 24)
+                        .padding(.bottom, 12)
 
                     // Vinyl record
                     VinylRecordView(
                         albumArtURL: musicService.nowPlaying?.albumArtURL,
                         isPlaying: musicService.isPlaying,
-                        size: 340
+                        size: 240
                     )
-                    .padding(.bottom, 32)
+                    .padding(.bottom, 12)
 
                     // Player controls
                     PlayerControlsView(musicService: musicService)
 
-                    // DJ Commentary Card (Angela's thoughts about current song)
-                    if let commentary = musicService.currentSongCommentary, commentary.hasContent {
+                    // Song Memory Card (play history)
+                    if let memory = songMemory, memory.playCount > 0 {
+                        SongMemoryCard(memory: memory)
+                            .padding(.top, 6)
+                            .padding(.horizontal, 16)
+                    }
+
+                    // Live EQ Visualizer + Up Next
+                    DJBottomPanel(musicService: musicService)
+                        .padding(.top, 8)
+                        .padding(.horizontal, 16)
+
+                    // DJ Commentary Card — only show when queue is empty (no Up Next)
+                    if musicService.currentQueueIndex + 1 >= musicService.queue.count,
+                       let commentary = musicService.currentSongCommentary, commentary.hasContent {
                         DJCommentaryCard(
                             commentary: commentary,
                             songTitle: musicService.nowPlaying?.title,
                             songArtist: musicService.nowPlaying?.artist
                         )
-                        .padding(.top, 16)
+                        .padding(.top, 6)
                         .padding(.horizontal, 16)
-                    }
-
-                    // Song Memory Card (play history)
-                    if let memory = songMemory, memory.playCount > 0 {
-                        SongMemoryCard(memory: memory)
-                            .padding(.top, 8)
-                            .padding(.horizontal, 16)
                     }
 
                     // Error / status message
@@ -119,9 +125,9 @@ struct DJAngelaView: View {
                         .padding(.top, 8)
                     }
 
-                    Spacer(minLength: 20)
+                    Spacer(minLength: 8)
                 }
-                .padding(.vertical, 24)
+                .padding(.vertical, 12)
             }
             .frame(minWidth: 360, idealWidth: 420)
             .padding(.horizontal, 24)
@@ -339,34 +345,51 @@ struct DJCommentaryCard: View {
     }
 }
 
-// MARK: - Song Memory Card (play history) - Professional Design
+// MARK: - Song Memory Card (play history) - Professional Design with Animation
 
 struct SongMemoryCard: View {
     let memory: SongMemory
+    @State private var animateBars = false
+    @State private var animateMoods = false
+    @State private var animateHeader = false
+    @State private var pulseGlow = false
 
-    // Occasion colors and icons
-    private let occasionData: [(key: String, icon: String, color: Color)] = [
-        ("morning", "sunrise.fill", Color.orange),
-        ("afternoon", "sun.max.fill", Color.yellow),
-        ("evening", "sunset.fill", Color.pink),
-        ("late_night", "moon.stars.fill", Color.indigo),
-        ("bedtime", "moon.zzz.fill", Color.blue),
+    // Occasion colors and icons (matches _detect_occasion in music.py)
+    private let occasionData: [(key: String, icon: String, label: String, color: Color)] = [
+        ("morning", "sunrise.fill", "Morning", Color.orange),
+        ("working_morning", "desktopcomputer", "Work AM", Color.teal),
+        ("lunch", "fork.knife", "Lunch", Color.yellow),
+        ("working_afternoon", "desktopcomputer", "Work PM", Color.cyan),
+        ("evening", "sunset.fill", "Evening", Color.pink),
+        ("late_night", "moon.stars.fill", "Late", Color.indigo),
+        ("midnight", "moon.fill", "Midnight", Color.purple),
     ]
 
+    private var maxCount: Int {
+        activeOccasions.map(\.count).max() ?? 1
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header with play count badge
-            HStack(spacing: 8) {
-                // Play count badge
-                HStack(spacing: 4) {
+        // Compact single-row layout: badge | bars | moods
+        HStack(spacing: 8) {
+            // Play count badge with pulsing glow
+            ZStack {
+                Capsule()
+                    .stroke(AngelaTheme.primaryPurple.opacity(0.5), lineWidth: 1.5)
+                    .padding(-2)
+                    .scaleEffect(pulseGlow ? 1.1 : 1.0)
+                    .opacity(pulseGlow ? 0.0 : 0.6)
+
+                HStack(spacing: 3) {
                     Image(systemName: "play.circle.fill")
-                        .font(.system(size: 14))
+                        .font(.system(size: 10))
                     Text("\(memory.playCount)")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .contentTransition(.numericText())
                 }
                 .foregroundColor(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
                 .background(
                     Capsule()
                         .fill(LinearGradient(
@@ -374,79 +397,34 @@ struct SongMemoryCard: View {
                             startPoint: .leading,
                             endPoint: .trailing
                         ))
+                        .shadow(color: AngelaTheme.primaryPurple.opacity(0.4), radius: pulseGlow ? 6 : 3)
                 )
-
-                Text("plays")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(AngelaTheme.textTertiary)
-
-                Spacer()
-
-                Image(systemName: "clock.arrow.circlepath")
-                    .font(.system(size: 12))
-                    .foregroundColor(AngelaTheme.textTertiary)
-                Text("Memory")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(AngelaTheme.textTertiary)
             }
+            .fixedSize()
+            .scaleEffect(animateHeader ? 1 : 0.6)
+            .opacity(animateHeader ? 1 : 0)
 
-            // Occasion distribution mini bar chart
+            // Occasion mini bars (inline)
             if !memory.recentPlays.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("When David plays this song")
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundColor(AngelaTheme.textTertiary)
-                        .textCase(.uppercase)
-                        .tracking(0.5)
-
-                    // Horizontal occasion bars
-                    HStack(spacing: 6) {
-                        ForEach(occasionCounts, id: \.occasion) { item in
-                            if item.count > 0 {
-                                VStack(spacing: 3) {
-                                    // Bar
-                                    RoundedRectangle(cornerRadius: 3)
-                                        .fill(item.color.opacity(0.8))
-                                        .frame(width: 28, height: CGFloat(item.count) * 12 + 8)
-
-                                    // Icon
-                                    Image(systemName: item.icon)
-                                        .font(.system(size: 10))
-                                        .foregroundColor(item.color)
-                                }
-                            }
-                        }
-
-                        Spacer()
-
-                        // Mood summary
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text("Mood")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(AngelaTheme.textTertiary)
-                                .textCase(.uppercase)
-
-                            // Top moods as pills
-                            HStack(spacing: 4) {
-                                ForEach(topMoods.prefix(2), id: \.self) { mood in
-                                    Text(mood)
-                                        .font(.system(size: 9, weight: .semibold))
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 3)
-                                        .background(
-                                            Capsule()
-                                                .fill(AngelaTheme.primaryPurple.opacity(0.15))
-                                        )
-                                        .foregroundColor(AngelaTheme.primaryPurple)
-                                }
-                            }
-                        }
+                HStack(alignment: .bottom, spacing: 4) {
+                    ForEach(Array(activeOccasions.enumerated()), id: \.element.occasion) { index, item in
+                        occasionBar(item: item, index: index)
                     }
-                    .frame(height: 50)
                 }
             }
+
+            Spacer()
+
+            // Mood pills (inline, right side)
+            HStack(spacing: 4) {
+                ForEach(Array(topMoods.prefix(2).enumerated()), id: \.element) { index, mood in
+                    moodPill(mood: mood, index: index)
+                }
+            }
+            .opacity(animateMoods ? 1 : 0)
         }
-        .padding(12)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(AngelaTheme.cardBackground)
@@ -462,22 +440,111 @@ struct SongMemoryCard: View {
                         )
                 )
         )
+        .onAppear { triggerAnimations() }
+        .onChange(of: memory.playCount) { _, _ in
+            // Re-animate when song changes
+            animateBars = false
+            animateMoods = false
+            animateHeader = false
+            pulseGlow = false
+            triggerAnimations()
+        }
     }
 
-    // Count occasions from recent plays
-    private var occasionCounts: [(occasion: String, count: Int, icon: String, color: Color)] {
+    // MARK: - Occasion Bar
+
+    @ViewBuilder
+    private func occasionBar(item: (occasion: String, count: Int, icon: String, label: String, color: Color), index: Int) -> some View {
+        let barMaxHeight: CGFloat = 20
+        let barHeight = barMaxHeight * CGFloat(item.count) / CGFloat(max(maxCount, 1))
+
+        VStack(spacing: 1) {
+            Text("\(item.count)")
+                .font(.system(size: 7, weight: .bold, design: .rounded))
+                .foregroundColor(item.color)
+                .opacity(animateBars ? 1 : 0)
+                .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(Double(index) * 0.06 + 0.2), value: animateBars)
+
+            RoundedRectangle(cornerRadius: 3)
+                .fill(
+                    LinearGradient(
+                        colors: [item.color, item.color.opacity(0.4)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 14, height: animateBars ? max(barHeight, 3) : 0)
+                .animation(.spring(response: 0.5, dampingFraction: 0.65).delay(Double(index) * 0.06), value: animateBars)
+
+            Image(systemName: item.icon)
+                .font(.system(size: 7))
+                .foregroundColor(item.color.opacity(0.8))
+        }
+        .opacity(animateBars ? 1 : 0)
+        .animation(.easeOut(duration: 0.3).delay(Double(index) * 0.06), value: animateBars)
+    }
+
+    // MARK: - Mood Pill
+
+    @ViewBuilder
+    private func moodPill(mood: String, index: Int) -> some View {
+        let displayMood = mood.replacingOccurrences(of: "_", with: " ")
+
+        Text(displayMood)
+            .font(.system(size: 8, weight: .semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(
+                Capsule()
+                    .fill(AngelaTheme.primaryPurple.opacity(0.12))
+                    .overlay(
+                        Capsule()
+                            .stroke(AngelaTheme.primaryPurple.opacity(0.25), lineWidth: 0.5)
+                    )
+            )
+            .foregroundColor(AngelaTheme.primaryPurple)
+            .scaleEffect(animateMoods ? 1 : 0.7)
+            .opacity(animateMoods ? 1 : 0)
+            .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(Double(index) * 0.1 + 0.4), value: animateMoods)
+    }
+
+    // MARK: - Animation Trigger
+
+    private func triggerAnimations() {
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+            animateHeader = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            withAnimation { animateBars = true }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation { animateMoods = true }
+        }
+        // Start pulsing glow after entrance
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                pulseGlow = true
+            }
+        }
+    }
+
+    // MARK: - Data
+
+    // Only occasions with count > 0
+    private var activeOccasions: [(occasion: String, count: Int, icon: String, label: String, color: Color)] {
         var counts: [String: Int] = [:]
         for play in memory.recentPlays {
             if let occ = play.occasion {
                 counts[occ, default: 0] += 1
             }
         }
-        return occasionData.map { data in
-            (data.key, counts[data.key] ?? 0, data.icon, data.color)
+        return occasionData.compactMap { data in
+            let c = counts[data.key] ?? 0
+            guard c > 0 else { return nil }
+            return (data.key, c, data.icon, data.label, data.color)
         }
     }
 
-    // Get top moods from recent plays
     private var topMoods: [String] {
         var counts: [String: Int] = [:]
         for play in memory.recentPlays {
@@ -486,5 +553,386 @@ struct SongMemoryCard: View {
             }
         }
         return counts.sorted { $0.value > $1.value }.map { $0.key }
+    }
+}
+
+// MARK: - DJ Bottom Panel (EQ Visualizer + Up Next)
+
+struct DJBottomPanel: View {
+    @ObservedObject var musicService: MusicPlayerService
+    @State private var showContent = false
+
+    private var upNextSongs: [DisplaySong] {
+        let idx = musicService.currentQueueIndex + 1
+        guard idx < musicService.queue.count else { return [] }
+        return Array(musicService.queue[idx..<min(idx + 3, musicService.queue.count)])
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            // Live EQ Visualizer
+            if musicService.nowPlaying != nil {
+                DJEqualizerView(isPlaying: musicService.isPlaying)
+                    .opacity(showContent ? 1 : 0)
+                    .offset(y: showContent ? 0 : 8)
+            }
+
+            // Up Next Preview
+            if !upNextSongs.isEmpty {
+                UpNextPreview(songs: upNextSongs)
+                    .opacity(showContent ? 1 : 0)
+                    .offset(y: showContent ? 0 : 10)
+            }
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.5).delay(0.3)) {
+                showContent = true
+            }
+        }
+        .onChange(of: musicService.nowPlaying?.title) { _, _ in
+            showContent = false
+            withAnimation(.easeOut(duration: 0.4).delay(0.2)) {
+                showContent = true
+            }
+        }
+    }
+}
+
+// MARK: - Live EQ Visualizer (Waveform Line + Gradient Area)
+
+struct DJEqualizerView: View {
+    let isPlaying: Bool
+
+    private let pointCount = 48
+    private let waveHeight: CGFloat = 48
+
+    var body: some View {
+        VStack(spacing: 3) {
+            // Label row
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(isPlaying ? Color.green : AngelaTheme.textTertiary)
+                    .frame(width: 5, height: 5)
+                    .shadow(color: isPlaying ? Color.green.opacity(0.6) : .clear, radius: 3)
+
+                Text(isPlaying ? "LIVE" : "PAUSED")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(isPlaying ? Color.green : AngelaTheme.textTertiary)
+                    .tracking(1)
+
+                Spacer()
+
+                HStack(spacing: 10) {
+                    eqLabel("BASS", color: Color(hue: 0.78, saturation: 0.7, brightness: 0.9))
+                    eqLabel("MID", color: Color(hue: 0.85, saturation: 0.6, brightness: 0.9))
+                    eqLabel("HIGH", color: Color(hue: 0.5, saturation: 0.6, brightness: 0.9))
+                }
+            }
+
+            // Waveform
+            GeometryReader { geo in
+                TimelineView(.animation(minimumInterval: 0.033, paused: !isPlaying)) { timeline in
+                    let t = timeline.date.timeIntervalSinceReferenceDate
+                    waveformView(time: t, size: geo.size)
+                }
+            }
+            .frame(height: waveHeight)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.black.opacity(0.35))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+                )
+        )
+    }
+
+    private func eqLabel(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.system(size: 7, weight: .bold))
+            .foregroundColor(color.opacity(0.6))
+            .tracking(0.5)
+    }
+
+    // MARK: - Waveform Drawing
+
+    @ViewBuilder
+    private func waveformView(time t: Double, size: CGSize) -> some View {
+        let levels = (0..<pointCount).map { spectrumLevel(index: $0, time: t) }
+        let points = levels.enumerated().map { i, level -> CGPoint in
+            let x = size.width * CGFloat(i) / CGFloat(pointCount - 1)
+            let y = size.height * (1.0 - CGFloat(level))
+            return CGPoint(x: x, y: y)
+        }
+
+        ZStack {
+            // Gradient fill area
+            Path { path in
+                guard let first = points.first else { return }
+                path.move(to: CGPoint(x: first.x, y: size.height))
+                path.addLine(to: first)
+                addSmoothCurve(path: &path, points: points)
+                path.addLine(to: CGPoint(x: points.last?.x ?? size.width, y: size.height))
+                path.closeSubpath()
+            }
+            .fill(
+                LinearGradient(
+                    stops: areaGradientStops(height: size.height),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+
+            // Line stroke with color gradient
+            Path { path in
+                guard let first = points.first else { return }
+                path.move(to: first)
+                addSmoothCurve(path: &path, points: points)
+            }
+            .stroke(
+                LinearGradient(
+                    colors: lineGradientColors(),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                ),
+                style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
+            )
+            .shadow(color: AngelaTheme.primaryPurple.opacity(0.4), radius: 4, y: 0)
+
+            // Glow line (duplicate, wider, more transparent)
+            Path { path in
+                guard let first = points.first else { return }
+                path.move(to: first)
+                addSmoothCurve(path: &path, points: points)
+            }
+            .stroke(
+                LinearGradient(
+                    colors: lineGradientColors().map { $0.opacity(0.3) },
+                    startPoint: .leading,
+                    endPoint: .trailing
+                ),
+                style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
+            )
+            .blur(radius: 3)
+        }
+    }
+
+    // Catmull-Rom smooth curve through points
+    private func addSmoothCurve(path: inout Path, points: [CGPoint]) {
+        guard points.count > 1 else { return }
+        for i in 1..<points.count {
+            let p0 = points[max(i - 2, 0)]
+            let p1 = points[i - 1]
+            let p2 = points[i]
+            let p3 = points[min(i + 1, points.count - 1)]
+
+            let cp1x = p1.x + (p2.x - p0.x) / 6.0
+            let cp1y = p1.y + (p2.y - p0.y) / 6.0
+            let cp2x = p2.x - (p3.x - p1.x) / 6.0
+            let cp2y = p2.y - (p3.y - p1.y) / 6.0
+
+            path.addCurve(
+                to: p2,
+                control1: CGPoint(x: cp1x, y: cp1y),
+                control2: CGPoint(x: cp2x, y: cp2y)
+            )
+        }
+    }
+
+    // Area fill: line color → transparent
+    private func areaGradientStops(height: CGFloat) -> [Gradient.Stop] {
+        [
+            .init(color: AngelaTheme.primaryPurple.opacity(0.35), location: 0),
+            .init(color: AngelaTheme.primaryPurple.opacity(0.12), location: 0.5),
+            .init(color: Color.clear, location: 1.0),
+        ]
+    }
+
+    // Line color: purple → magenta → cyan
+    private func lineGradientColors() -> [Color] {
+        [
+            Color(hue: 0.78, saturation: 0.75, brightness: 0.9),
+            Color(hue: 0.82, saturation: 0.7, brightness: 0.92),
+            Color(hue: 0.87, saturation: 0.6, brightness: 0.95),
+            Color(hue: 0.55, saturation: 0.55, brightness: 0.92),
+            Color(hue: 0.5, saturation: 0.6, brightness: 0.9),
+        ]
+    }
+
+    // MARK: - Beat-synced spectrum levels
+
+    private func spectrumLevel(index: Int, time t: Double) -> Double {
+        guard isPlaying else {
+            return 0.06 + 0.03 * sin(t * 0.5 + Double(index) * 0.5)
+        }
+
+        let pos = Double(index) / Double(pointCount)
+        let bps = 2.0
+        let beat = t * bps
+        let beatFrac = fract(beat)
+
+        let beatNum = floor(beat)
+        let seed = fract(sin(beatNum * 12.9898 + Double(index) * 78.233) * 43758.5453)
+        let variation = 0.55 + seed * 0.45
+
+        var level: Double
+
+        if pos < 0.35 {
+            let kickDecay = exp(-beatFrac * 7.0)
+            let halfFrac = fract(beat + 0.5)
+            let ghostKick = exp(-halfFrac * 10.0) * 0.5
+            level = max(kickDecay, ghostKick) * variation
+            let subBoost = 1.0 + (0.35 - pos) * 0.5
+            level *= subBoost
+        } else if pos < 0.7 {
+            let snareFrac = fract(beat + 0.5)
+            let snareHit = exp(-snareFrac * 6.0) * 0.8
+            let eighthFrac = fract(beat * 2.0)
+            let eighthHit = exp(-eighthFrac * 9.0) * 0.45
+            level = max(snareHit, eighthHit) * variation
+            let midPeak = 1.0 - abs(pos - 0.52) * 3.0
+            level *= max(midPeak, 0.6)
+        } else {
+            let sixteenthFrac = fract(beat * 4.0)
+            let sixteenthNum = Int(floor(beat * 4.0))
+            let isOpen = sixteenthNum % 8 == 4
+            let decay = isOpen ? 5.0 : 14.0
+            let amp = isOpen ? 0.85 : 0.55
+            level = exp(-sixteenthFrac * decay) * amp * variation
+            let rolloff = 1.0 - (pos - 0.7) * 1.2
+            level *= max(rolloff, 0.3)
+        }
+
+        let fourBeatFrac = fract(beat / 4.0)
+        if fourBeatFrac < 0.02 {
+            level = max(level, 0.85 * variation)
+        }
+
+        return min(max(level, 0.03), 1.0)
+    }
+
+    private func fract(_ x: Double) -> Double {
+        x - floor(x)
+    }
+}
+
+// MARK: - Up Next Preview
+
+struct UpNextPreview: View {
+    let songs: [DisplaySong]
+    @State private var animateRows = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Header
+            HStack(spacing: 5) {
+                Image(systemName: "forward.end.fill")
+                    .font(.system(size: 8))
+                Text("UP NEXT")
+                    .font(.system(size: 8, weight: .bold))
+                    .tracking(1)
+                Spacer()
+                Text("\(songs.count) songs")
+                    .font(.system(size: 9))
+            }
+            .foregroundColor(AngelaTheme.textTertiary)
+
+            // Song rows
+            ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
+                upNextRow(song: song, index: index)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.black.opacity(0.3))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+                )
+        )
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.4).delay(0.5)) {
+                animateRows = true
+            }
+        }
+        .onChange(of: songs.first?.id) { _, _ in
+            animateRows = false
+            withAnimation(.easeOut(duration: 0.4).delay(0.2)) {
+                animateRows = true
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func upNextRow(song: DisplaySong, index: Int) -> some View {
+        HStack(spacing: 10) {
+            // Track number
+            Text("\(index + 1)")
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .foregroundColor(AngelaTheme.textTertiary)
+                .frame(width: 14)
+
+            // Mini album art
+            if let url = song.albumArtURL {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    default:
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(AngelaTheme.cardBackground)
+                    }
+                }
+                .frame(width: 24, height: 24)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+            } else {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(AngelaTheme.cardBackground)
+                    .frame(width: 24, height: 24)
+                    .overlay(
+                        Image(systemName: "music.note")
+                            .font(.system(size: 10))
+                            .foregroundColor(AngelaTheme.textTertiary)
+                    )
+            }
+
+            // Song info
+            VStack(alignment: .leading, spacing: 1) {
+                Text(song.title)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(AngelaTheme.textPrimary)
+                    .lineLimit(1)
+                Text(song.artist)
+                    .font(.system(size: 9))
+                    .foregroundColor(AngelaTheme.textTertiary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            // Mood tag (if available)
+            if let mood = song.moodTags.first {
+                Text(mood)
+                    .font(.system(size: 8, weight: .semibold))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(
+                        Capsule()
+                            .fill(AngelaTheme.primaryPurple.opacity(0.1))
+                    )
+                    .foregroundColor(AngelaTheme.primaryPurple.opacity(0.7))
+            }
+        }
+        .padding(.vertical, 2)
+        .opacity(animateRows ? 1 : 0)
+        .offset(x: animateRows ? 0 : 20)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8).delay(Double(index) * 0.1), value: animateRows)
     }
 }

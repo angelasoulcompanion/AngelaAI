@@ -24,7 +24,31 @@ struct PlayerControlsView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 10) {
+            // Error banner (if any)
+            if let error = musicService.playbackError {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 12))
+                    Text(error)
+                        .font(.system(size: 12))
+                        .lineLimit(1)
+                    Spacer()
+                    Button {
+                        musicService.playbackError = nil
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(AngelaTheme.errorRed.opacity(0.85))
+                .cornerRadius(8)
+            }
+
             // Song info
             songInfoSection
 
@@ -38,7 +62,7 @@ struct PlayerControlsView: View {
             activityPickerSection
         }
         .padding(.horizontal, 24)
-        .padding(.vertical, 16)
+        .padding(.vertical, 8)
     }
 
     // MARK: - Song Info
