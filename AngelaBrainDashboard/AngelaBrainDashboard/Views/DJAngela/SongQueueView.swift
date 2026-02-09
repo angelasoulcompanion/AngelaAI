@@ -39,12 +39,19 @@ struct SongQueueView: View {
     @State private var wineReactionCounts: [String: [String: Int]] = [:]
     /// Set of liked song keys (lowercase "title|artist") for quick lookup
     @State private var likedSongKeys: Set<String> = []
+    // DJAY tab state
+    @State private var selectedClubCategory: DJAngelaConstants.ClubCategory?
+    @State private var selectedClub: DJAngelaConstants.ClubInfo?
+    @State private var djayDisplays: [DisplaySong] = []
+    @State private var djayRecommendation: SongRecommendation?
+    @State private var djayPlayedKeys: Set<String> = []  // Dedup across auto-continue batches
+    @State private var djayIsLoadingMore = false
 
     enum QueueTab: String, CaseIterable {
         case liked = "Liked"
         case playlists = "Playlists"
         case ourSongs = "Our Songs"
-        case queued = "Queued"
+        case djay = "DJAY"
         case forYou = "For You"
         case bedtime = "Bedtime"
         case search = "Search"
@@ -54,7 +61,7 @@ struct SongQueueView: View {
             case .liked: return "heart.fill"
             case .playlists: return "list.bullet.rectangle"
             case .ourSongs: return "heart.circle.fill"
-            case .queued: return "list.number"
+            case .djay: return "music.mic"
             case .forYou: return "sparkles"
             case .bedtime: return "moon.zzz.fill"
             case .search: return "magnifyingglass"
@@ -67,7 +74,7 @@ struct SongQueueView: View {
             case .liked: return "liked"
             case .playlists: return "playlists"
             case .ourSongs: return "our_songs"
-            case .queued: return "queued"
+            case .djay: return "djay"
             case .forYou: return "for_you"
             case .bedtime: return "bedtime"
             case .search: return "search"
@@ -88,8 +95,8 @@ struct SongQueueView: View {
                         playlistsView
                     case .ourSongs:
                         ourSongsView
-                    case .queued:
-                        queuedView
+                    case .djay:
+                        djayView
                     case .forYou:
                         recommendationView
                     case .bedtime:
@@ -103,6 +110,12 @@ struct SongQueueView: View {
         }
         .task {
             await loadInitialData()
+        }
+        .onChange(of: musicService.queueNeedsMore) { _, needsMore in
+            guard needsMore, let club = selectedClub, selectedTab == .djay else { return }
+            musicService.queueNeedsMore = false
+            guard !djayIsLoadingMore else { return }
+            Task { await continueDjaySongs(club: club) }
         }
         .onChange(of: musicService.requestedMood) { oldValue, newValue in
             guard let mood = newValue else { return }
@@ -397,118 +410,232 @@ struct SongQueueView: View {
         }
     }
 
-    // MARK: - Queued View
+    // MARK: - DJAY View (Famous Club Vibes)
 
-    private var queuedView: some View {
-        Group {
-            if musicService.queue.isEmpty {
-                EmptyStateView(message: "No songs in queue", icon: "list.number")
-            } else {
-                // Energy flow header
-                if hasEnergyPhases {
-                    HStack(spacing: 4) {
-                        Text("Energy Flow 🎢")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(AngelaTheme.textSecondary)
-                        Spacer()
-                    }
-                    .padding(.bottom, 4)
-                }
-
-                playControlBar(
-                    songCount: musicService.queue.count,
-                    showShuffle: false,
-                    showCount: true,
-                    onPlayAll: {
-                        musicService.currentSourceTab = QueueTab.queued.sourceKey
-                        if let first = musicService.queue.first {
-                            musicService.currentQueueIndex = 0
-                            Task { await musicService.playDisplaySong(first) }
+    private var djayView: some View {
+        VStack(spacing: 12) {
+            // Category filter (horizontal scroll)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    // "All" pill
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedClubCategory = nil
+                            selectedClub = nil
                         }
+                    } label: {
+                        Text("All")
+                            .font(.system(size: 12, weight: .medium))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(selectedClubCategory == nil ? AngelaTheme.primaryPurple : AngelaTheme.backgroundLight)
+                            .foregroundColor(selectedClubCategory == nil ? .white : AngelaTheme.textSecondary)
+                            .cornerRadius(16)
                     }
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 4)
+                    .buttonStyle(.plain)
 
-                // Group by energy phase
-                ForEach(energyPhaseGroups, id: \.phase) { group in
-                    if let phase = group.phase {
-                        energyPhaseHeader(phase)
-                    }
-                    ForEach(group.songs) { song in
-                        displaySongRow(song, allSongs: musicService.queue)
+                    ForEach(DJAngelaConstants.ClubCategory.allCases, id: \.rawValue) { cat in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedClubCategory = (selectedClubCategory == cat) ? nil : cat
+                                selectedClub = nil
+                            }
+                        } label: {
+                            Text(cat.shortLabel)
+                                .font(.system(size: 12, weight: .medium))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(selectedClubCategory == cat ? AngelaTheme.primaryPurple : AngelaTheme.backgroundLight)
+                                .foregroundColor(selectedClubCategory == cat ? .white : AngelaTheme.textSecondary)
+                                .cornerRadius(16)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
+                .padding(.horizontal, 4)
             }
-        }
-    }
 
-    // MARK: - Energy Phase Helpers
+            // Club info card (when a club is selected)
+            if let club = selectedClub {
+                djayClubInfoCard(club)
 
-    private var hasEnergyPhases: Bool {
-        musicService.queue.contains { $0.energyPhase != nil }
-    }
+                // Play controls + song list
+                if isLoading {
+                    LoadingStateView(message: "Loading \(club.name) vibes...")
+                } else if !djayDisplays.isEmpty {
+                    playControlBar(
+                        songCount: djayDisplays.count,
+                        onPlayAll: {
+                            musicService.currentSourceTab = QueueTab.djay.sourceKey
+                            musicService.setQueue(djayDisplays)
+                            Task { await musicService.playDisplaySong(djayDisplays[0]) }
+                        },
+                        onShuffle: {
+                            musicService.currentSourceTab = QueueTab.djay.sourceKey
+                            let shuffled = djayDisplays.shuffled()
+                            musicService.setQueue(shuffled)
+                            Task { await musicService.playDisplaySong(shuffled[0]) }
+                        }
+                    )
 
-    private struct EnergyPhaseGroup: Identifiable {
-        let phase: String?
-        let songs: [DisplaySong]
-        var id: String { phase ?? "none" }
-    }
+                    ForEach(djayDisplays) { song in
+                        displaySongRow(song, allSongs: djayDisplays)
+                    }
 
-    private var energyPhaseGroups: [EnergyPhaseGroup] {
-        var groups: [EnergyPhaseGroup] = []
-        var currentPhase: String? = nil
-        var currentSongs: [DisplaySong] = []
-
-        for song in musicService.queue {
-            let phase = song.energyPhase
-            if phase != currentPhase {
-                if !currentSongs.isEmpty {
-                    groups.append(EnergyPhaseGroup(phase: currentPhase, songs: currentSongs))
+                    // Refresh button
+                    Button {
+                        Task { await loadDjaySongs(club: club) }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 12))
+                            Text("Refresh")
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                        .angelaSecondaryButton()
+                    }
+                    .buttonStyle(.plain)
                 }
-                currentPhase = phase
-                currentSongs = [song]
             } else {
-                currentSongs.append(song)
+                // Club grid (2-column)
+                djayClubGrid
             }
         }
-        if !currentSongs.isEmpty {
-            groups.append(EnergyPhaseGroup(phase: currentPhase, songs: currentSongs))
-        }
-        return groups
     }
+
+    // MARK: - DJAY Club Grid
+
+    private var djayClubGrid: some View {
+        let filteredClubs = DJAngelaConstants.clubs.filter { club in
+            guard let cat = selectedClubCategory else { return true }
+            return club.category == cat
+        }
+
+        return LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+            ForEach(filteredClubs) { club in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedClub = club
+                    }
+                    Task { await loadDjaySongs(club: club) }
+                } label: {
+                    djayClubCard(club)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    // MARK: - DJAY Club Card (Grid Item)
 
     @ViewBuilder
-    private func energyPhaseHeader(_ phase: String) -> some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(energyPhaseColor(phase))
-                .frame(width: 8, height: 8)
-            Text(energyPhaseLabel(phase))
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(energyPhaseColor(phase))
-            Spacer()
+    private func djayClubCard(_ club: DJAngelaConstants.ClubInfo) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                Text(club.countryFlag)
+                    .font(.system(size: 14))
+                Text(club.name)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(AngelaTheme.textPrimary)
+                    .lineLimit(1)
+            }
+
+            Text(club.city)
+                .font(.system(size: 11))
+                .foregroundColor(AngelaTheme.textTertiary)
+
+            Text(club.genre)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(AngelaTheme.secondaryPurple)
+                .lineLimit(1)
+
+            // Energy dots
+            HStack(spacing: 1) {
+                ForEach(0..<10, id: \.self) { i in
+                    Circle()
+                        .fill(i < club.energy ? AngelaTheme.primaryPurple : AngelaTheme.backgroundLight)
+                        .frame(width: 6, height: 6)
+                }
+            }
         }
-        .padding(.top, 8)
-        .padding(.bottom, 2)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AngelaTheme.cardBackground.opacity(0.6))
+        .cornerRadius(10)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(AngelaTheme.primaryPurple.opacity(0.1), lineWidth: 1)
+        )
     }
 
-    private func energyPhaseColor(_ phase: String) -> Color {
-        switch phase.lowercased() {
-        case "warmup": return .blue
-        case "peak": return AngelaTheme.primaryPurple
-        case "cooldown": return .teal
-        default: return AngelaTheme.textTertiary
-        }
-    }
+    // MARK: - DJAY Club Info Card (Selected Club)
 
-    private func energyPhaseLabel(_ phase: String) -> String {
-        switch phase.lowercased() {
-        case "warmup": return "🔵 Warmup"
-        case "peak": return "🟣 Peak"
-        case "cooldown": return "🔵 Cooldown"
-        default: return phase.capitalized
+    @ViewBuilder
+    private func djayClubInfoCard(_ club: DJAngelaConstants.ClubInfo) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(club.countryFlag)
+                    .font(.system(size: 18))
+                Text(club.name.uppercased())
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundColor(AngelaTheme.textPrimary)
+                Text("— \(club.city)")
+                    .font(.system(size: 14))
+                    .foregroundColor(AngelaTheme.textSecondary)
+                Spacer()
+
+                // Back to grid
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedClub = nil
+                        djayDisplays = []
+                        djayRecommendation = nil
+                    }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(AngelaTheme.textTertiary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Text("\"\(club.vibeDescription)\"")
+                .font(.system(size: 12))
+                .foregroundColor(AngelaTheme.textSecondary)
+                .italic()
+
+            HStack(spacing: 8) {
+                Text("Genre: \(club.genre)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(AngelaTheme.secondaryPurple)
+
+                Text("·")
+                    .foregroundColor(AngelaTheme.textTertiary)
+
+                HStack(spacing: 1) {
+                    Text("Energy:")
+                        .font(.system(size: 11))
+                        .foregroundColor(AngelaTheme.textTertiary)
+                    ForEach(0..<10, id: \.self) { i in
+                        Circle()
+                            .fill(i < club.energy ? AngelaTheme.primaryPurple : AngelaTheme.backgroundLight)
+                            .frame(width: 5, height: 5)
+                    }
+                    Text("(\(club.energy)/10)")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(AngelaTheme.textTertiary)
+                }
+            }
         }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(AngelaTheme.cardBackground.opacity(0.6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(AngelaTheme.primaryPurple.opacity(0.2), lineWidth: 1)
+                )
+        )
     }
 
     // MARK: - Recommendation View (For You)
@@ -563,7 +690,7 @@ struct SongQueueView: View {
                     }
 
                     // Tappable mood pills
-                    let moods = rec.availableMoods ?? ["happy", "loving", "calm", "excited", "grateful", "sad", "lonely", "stressed", "nostalgic", "hopeful"]
+                    let moods = rec.availableMoods ?? ["happy", "loving", "calm", "excited", "grateful", "sad", "lonely", "party", "nostalgic", "hopeful"]
                     let current = selectedMood ?? rec.basedOnEmotion
 
                     moodPickerGrid(moods: moods, selected: current)
@@ -908,7 +1035,25 @@ struct SongQueueView: View {
                         .foregroundColor(AngelaTheme.primaryPurple)
                 }
                 .buttonStyle(.plain)
+            } else if musicService.nowPlaying != nil {
+                // Something is playing — show "Load to Deck" icon
+                let targetDeck = musicService.inactiveDeck.rawValue
+                Button {
+                    onPlay()
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(AngelaTheme.secondaryPurple.opacity(0.15))
+                            .frame(width: 28, height: 28)
+                        Text(targetDeck)
+                            .font(.system(size: 12, weight: .black, design: .rounded))
+                            .foregroundColor(AngelaTheme.secondaryPurple)
+                    }
+                }
+                .buttonStyle(.plain)
+                .help("Load to Deck \(targetDeck)")
             } else {
+                // Nothing playing — show play button
                 Button {
                     onPlay()
                 } label: {
@@ -962,8 +1107,16 @@ struct SongQueueView: View {
             isCurrentSong: isCurrent,
             onPlay: {
                 musicService.currentSourceTab = selectedTab.sourceKey
-                musicService.setMusicKitQueue(allSongs, startAt: index)
-                Task { await musicService.playSong(song) }
+                let display = DisplaySong(from: song)
+                if musicService.nowPlaying != nil {
+                    // Deck is playing — load to inactive deck + switch queue to this tab
+                    musicService.setMusicKitQueue(allSongs, startAt: index)
+                    musicService.loadToDeck(display, deck: musicService.inactiveDeck)
+                } else {
+                    // Nothing playing — play immediately
+                    musicService.setMusicKitQueue(allSongs, startAt: index)
+                    Task { await musicService.playSong(song) }
+                }
             },
             onLike: {
                 // Optimistic UI update
@@ -1010,10 +1163,19 @@ struct SongQueueView: View {
             angelaFeeling: song.angelaFeeling,
             onPlay: {
                 musicService.currentSourceTab = selectedTab.sourceKey
-                if let idx = allSongs.firstIndex(where: { $0.id == song.id }) {
-                    musicService.setQueue(allSongs, startAt: idx)
+                if musicService.nowPlaying != nil {
+                    // Deck is playing — load to inactive deck + switch queue to this tab
+                    if let idx = allSongs.firstIndex(where: { $0.id == song.id }) {
+                        musicService.setQueue(allSongs, startAt: idx)
+                    }
+                    musicService.loadToDeck(song, deck: musicService.inactiveDeck)
+                } else {
+                    // Nothing playing — play immediately
+                    if let idx = allSongs.firstIndex(where: { $0.id == song.id }) {
+                        musicService.setQueue(allSongs, startAt: idx)
+                    }
+                    Task { await musicService.playDisplaySong(song) }
                 }
-                Task { await musicService.playDisplaySong(song) }
             },
             onLike: {
                 // Optimistic UI update
@@ -1451,8 +1613,8 @@ struct SongQueueView: View {
                 isLoading = false
                 Task { await enrichOurSongsArtwork() }
             }
-        case .queued:
-            break  // Queue reads directly from musicService.queue
+        case .djay:
+            break  // DJAY loads on club selection, not tab switch
         case .forYou:
             if recommendation == nil {
                 await loadRecommendation()
@@ -1484,7 +1646,7 @@ struct SongQueueView: View {
     /// Max angela_songs (DB) to include — playlists fill the rest.
     private static let maxAngelaSongs = 2
     private static let maxAngelaSongsWine = 5
-    private static let recommendTargetCount = 6
+    private static let recommendTargetCount = 20
     private static let wineRecommendTargetCount = 25
 
     private func loadRecommendation(mood: String? = nil) async {
@@ -1649,6 +1811,104 @@ struct SongQueueView: View {
         } catch {
             errorMessage = error.localizedDescription
             isLoading = false
+        }
+    }
+
+    /// Load songs matching a famous club's vibe via the recommend endpoint
+    private func loadDjaySongs(club: DJAngelaConstants.ClubInfo) async {
+        isLoading = true
+        djayDisplays = []
+        djayPlayedKeys = []  // Reset dedup for new club selection
+
+        do {
+            let targetCount = 20
+            djayRecommendation = try await chatService.getRecommendation(
+                mood: club.key, wineType: nil, count: targetCount
+            )
+
+            // Backend returns Apple Music songs via the activity/club pipeline
+            let songList = djayRecommendation?.songs ?? [djayRecommendation?.song].compactMap { $0 }
+            var displays = songList.map { DisplaySong(from: $0) }
+            var seenKeys = Set(displays.map { "\($0.title.lowercased())|\($0.artist.lowercased())" })
+
+            // Signature album clubs (Café del Mar, Hôtel Costes, etc.) return curated
+            // compilation tracks — skip generic fill to keep the authentic vibe
+            let isSignatureAlbum = songList.first?.source == "apple_music_album"
+
+            // Fill from user's playlists matching club genre
+            if !isSignatureAlbum && displays.count < targetCount {
+                let pool = await musicService.loadPlaylistSongPool()
+                let matched = pool.filter { DJAngelaConstants.playlistMatchesMood($0.name, mood: club.key) }
+                let orderedSongs = matched.flatMap(\.songs).shuffled()
+                for mkSong in orderedSongs {
+                    if displays.count >= targetCount { break }
+                    let key = "\(mkSong.title.lowercased())|\(mkSong.artistName.lowercased())"
+                    if seenKeys.insert(key).inserted {
+                        displays.append(DisplaySong(from: mkSong))
+                    }
+                }
+            }
+
+            // Fill from Apple Music catalog with club-specific search
+            if !isSignatureAlbum && displays.count < targetCount {
+                let queries: [String]
+                if let dq = djayRecommendation?.searchQueries, !dq.isEmpty {
+                    queries = dq
+                } else {
+                    queries = [DJAngelaConstants.clubSearchTerms[club.key] ?? "\(club.genre) music"]
+                }
+                let remaining = targetCount - displays.count
+                let perQuery = max(5, remaining / max(1, queries.count))
+                for query in queries {
+                    if displays.count >= targetCount { break }
+                    let catalogSongs = await musicService.searchCatalog(query: query, limit: perQuery)
+                    for mkSong in catalogSongs {
+                        if displays.count >= targetCount { break }
+                        let key = "\(mkSong.title.lowercased())|\(mkSong.artistName.lowercased())"
+                        if seenKeys.insert(key).inserted {
+                            displays.append(DisplaySong(from: mkSong))
+                        }
+                    }
+                }
+            }
+
+            djayDisplays = displays
+            djayPlayedKeys = Set(displays.map { "\($0.title.lowercased())|\($0.artist.lowercased())" })
+            isLoading = false
+            djLog.notice("[DJAY] Loaded \(displays.count) songs for \(club.name)")
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+            djLog.error("[DJAY] Failed to load songs for \(club.name): \(error)")
+        }
+    }
+
+    /// Auto-continue: fetch next batch of compilation songs when queue runs low
+    private func continueDjaySongs(club: DJAngelaConstants.ClubInfo) async {
+        djayIsLoadingMore = true
+        defer { djayIsLoadingMore = false }
+
+        do {
+            let rec = try await chatService.getRecommendation(
+                mood: club.key, wineType: nil, count: 20
+            )
+            let songList = rec.songs ?? [rec.song].compactMap { $0 }
+            let newDisplays = songList.map { DisplaySong(from: $0) }
+
+            // Filter out songs already played/queued
+            var added = 0
+            for song in newDisplays {
+                let key = "\(song.title.lowercased())|\(song.artist.lowercased())"
+                if djayPlayedKeys.insert(key).inserted {
+                    djayDisplays.append(song)
+                    musicService.queue.append(song)
+                    added += 1
+                }
+            }
+
+            djLog.notice("[DJAY] Auto-continue \(club.name): +\(added) new songs (total: \(djayDisplays.count))")
+        } catch {
+            djLog.error("[DJAY] Auto-continue failed for \(club.name): \(error)")
         }
     }
 

@@ -60,6 +60,9 @@ final class MusicPlayerService: ObservableObject {
     /// Mood request from control buttons — triggers SongQueueView to switch to For You tab and fetch recommendations
     @Published var requestedMood: String?
 
+    /// Signal that the queue is running low — SongQueueView can observe this to auto-fetch more songs
+    @Published var queueNeedsMore = false
+
     /// Whether the currently playing song is marked as "our song"
     @Published var currentSongIsOurSong = false
 
@@ -69,12 +72,34 @@ final class MusicPlayerService: ObservableObject {
     /// Play history for the current song
     @Published var currentSongMemory: SongMemory?
 
+    // MARK: - Dual Deck State
+
+    @Published var activeDeck: DeckSide = .A
+    @Published var deckA = DeckState()
+    @Published var deckB = DeckState()
+    @Published var crossfaderPosition: Double = 0.0  // 0 = A, 1 = B
+    @Published var transitionMode: TransitionMode = .smooth {
+        didSet {
+            // Cancel pending auto-mix transition when switching away from autoMix
+            if oldValue == .autoMix && transitionMode != .autoMix {
+                autoMixTask?.cancel()
+                autoMixTask = nil
+                crossfaderPosition = 0.5
+                autoMixTriggered = false
+            }
+        }
+    }
+    @Published var isTransitioning = false
+
+    var inactiveDeck: DeckSide { activeDeck == .A ? .B : .A }
+
     // MARK: - Private
 
     private let player = ApplicationMusicPlayer.shared
     private var positionTimer: Timer?
     private var searchCache: [String: MusicKit.Song] = [:]
     private var currentListenId: String?
+    private var autoMixTask: Task<Void, Never>?
 
     private init() {
         checkAuthorizationStatus()
@@ -345,6 +370,14 @@ final class MusicPlayerService: ObservableObject {
                     playStatus: "started"
                 )
 
+                // Sync deck state with now playing
+                if let currentQ = queue.indices.contains(currentQueueIndex) ? queue[currentQueueIndex] : nil {
+                    syncDeckWithNowPlaying(currentQ)
+                }
+
+                // Pre-load next queue song to inactive deck
+                autoLoadNextToDeck()
+
                 djLog.notice("[Play] ✅ Playing: \(song.title) (attempt \(attempt))")
                 return true
             } catch {
@@ -437,7 +470,16 @@ final class MusicPlayerService: ObservableObject {
         let nextIndex = currentQueueIndex + 1
         guard nextIndex < queue.count else { return }
         currentQueueIndex = nextIndex
-        await playDisplaySong(queue[nextIndex])
+        autoMixTriggered = false  // Reset so auto-mix works for next song
+
+        // If inactive deck has next song loaded, transition to it
+        let inactiveState = inactiveDeck == .A ? deckA : deckB
+        if let inactiveSong = inactiveState.song,
+           inactiveSong.title == queue[nextIndex].title {
+            await performTransition(to: inactiveDeck)
+        } else {
+            await playDisplaySong(queue[nextIndex])
+        }
     }
 
     func skipToPrevious() async {
@@ -450,6 +492,7 @@ final class MusicPlayerService: ObservableObject {
         let prevIndex = currentQueueIndex - 1
         guard prevIndex >= 0 else { return }
         currentQueueIndex = prevIndex
+        autoMixTriggered = false  // Reset so auto-mix works for next song
         await playDisplaySong(queue[prevIndex])
     }
 
@@ -663,15 +706,28 @@ final class MusicPlayerService: ObservableObject {
         positionTimer = nil
     }
 
+    private var autoMixTriggered = false
+
     private func updatePosition() {
         guard isPlaying, nowPlaying != nil else { return }
         let currentTime = player.playbackTime
         nowPlaying?.currentTime = currentTime
 
+        // Auto-mix detection: 10 seconds before song ends
+        if let duration = nowPlaying?.duration, duration > 15,
+           currentTime >= duration - 10, !autoMixTriggered, !isTransitioning {
+            let inactiveState = inactiveDeck == .A ? deckA : deckB
+            if transitionMode == .autoMix, inactiveState.song != nil {
+                autoMixTriggered = true
+                beginAutoMixTransition()
+            }
+        }
+
         // Auto-advance when song ends
         if let duration = nowPlaying?.duration, duration > 0, currentTime >= duration - 0.5 {
             // Update the existing row to "completed"
             finalizeCurrentPlay(listenedSeconds: duration, playStatus: "completed")
+            autoMixTriggered = false
 
             Task {
                 await autoAdvanceToNext()
@@ -681,11 +737,28 @@ final class MusicPlayerService: ObservableObject {
 
     /// Advance to next song without logging a skip (used for auto-advance after completion).
     private func autoAdvanceToNext() async {
-        guard !queue.isEmpty else { return }
+        guard !queue.isEmpty else {
+            isPlaying = false
+            stopPositionTracking()
+            return
+        }
         let nextIndex = currentQueueIndex + 1
-        guard nextIndex < queue.count else { return }
+        guard nextIndex < queue.count else {
+            // Queue exhausted — stop playback cleanly
+            isPlaying = false
+            stopPositionTracking()
+            djLog.notice("[Queue] Queue exhausted — stopping")
+            return
+        }
         currentQueueIndex = nextIndex
-        await playDisplaySong(queue[nextIndex])
+
+        // If inactive deck has a song loaded, transition to it
+        let inactiveState = inactiveDeck == .A ? deckA : deckB
+        if inactiveState.song != nil, !isTransitioning {
+            await performTransition(to: inactiveDeck)
+        } else {
+            await playDisplaySong(queue[nextIndex])
+        }
     }
 
     // MARK: - Play Logging (fire-and-forget to API)
@@ -767,6 +840,143 @@ final class MusicPlayerService: ObservableObject {
                 "/api/music/log-play/\(listenId)/update", body: body
             )
             print("🎯 Updated activity to: \(activity)")
+        }
+    }
+
+    // MARK: - Dual Deck Methods
+
+    /// Load a song into the specified (usually inactive) deck without playing it
+    func loadToDeck(_ song: DisplaySong, deck: DeckSide) {
+        switch deck {
+        case .A:
+            deckA = DeckState(song: song, playState: .loaded, isActive: deckA.isActive)
+        case .B:
+            deckB = DeckState(song: song, playState: .loaded, isActive: deckB.isActive)
+        }
+        djLog.notice("[Deck] Loaded '\(song.title)' to Deck \(deck.rawValue)")
+    }
+
+    /// Perform transition to the target deck (actually switch playback via MusicKit)
+    func performTransition(to targetDeck: DeckSide) async {
+        guard !isTransitioning else { return }
+
+        // Cancel any pending auto-mix timer to prevent double-transition
+        autoMixTask?.cancel()
+        autoMixTask = nil
+
+        let targetState = targetDeck == .A ? deckA : deckB
+        guard let song = targetState.song else {
+            djLog.notice("[Deck] No song on Deck \(targetDeck.rawValue)")
+            return
+        }
+
+        // Advance queue index if the target song is the next in queue
+        // (crossfader/auto-mix triggers don't advance — skipToNext/autoAdvance already do)
+        let nextIdx = currentQueueIndex + 1
+        if nextIdx < queue.count, queue[nextIdx].title == song.title {
+            currentQueueIndex = nextIdx
+        }
+
+        isTransitioning = true
+
+        // Play the song on the target deck
+        let success = await playDisplaySong(song)
+
+        if success {
+            // Update deck states
+            switch targetDeck {
+            case .A:
+                deckA.playState = .playing
+                deckA.isActive = true
+                deckB.playState = deckB.song != nil ? .loaded : .empty
+                deckB.isActive = false
+            case .B:
+                deckB.playState = .playing
+                deckB.isActive = true
+                deckA.playState = deckA.song != nil ? .loaded : .empty
+                deckA.isActive = false
+            }
+            activeDeck = targetDeck
+            djLog.notice("[Deck] ✅ Transitioned to Deck \(targetDeck.rawValue)")
+        }
+
+        // Snap crossfader back to center after transition
+        crossfaderPosition = 0.5
+
+        isTransitioning = false
+
+        // Auto-load next song to the now-inactive deck
+        autoLoadNextToDeck()
+    }
+
+    /// Auto-load the next queue song to the inactive deck
+    func autoLoadNextToDeck() {
+        let nextIndex = currentQueueIndex + 1
+        guard nextIndex < queue.count else {
+            // Queue exhausted — signal for more songs
+            queueNeedsMore = true
+            return
+        }
+        let nextSong = queue[nextIndex]
+        loadToDeck(nextSong, deck: inactiveDeck)
+
+        // Pre-fetch: signal when 2 songs from end so new batch loads seamlessly
+        if nextIndex >= queue.count - 2 {
+            queueNeedsMore = true
+        }
+    }
+
+    /// Update active deck state when a song starts playing (called from playSong).
+    /// Detects if the song matches what's loaded on Deck B (i.e., transition target).
+    private func syncDeckWithNowPlaying(_ song: DisplaySong) {
+        // Check if this song matches Deck B (meaning we transitioned to B)
+        if let bSong = deckB.song, bSong.title == song.title, !deckB.isActive {
+            activeDeck = .B
+        }
+        // Check if this song matches Deck A
+        else if let aSong = deckA.song, aSong.title == song.title, !deckA.isActive {
+            activeDeck = .A
+        }
+
+        switch activeDeck {
+        case .A:
+            deckA = DeckState(song: song, playState: .playing, isActive: true)
+            if deckB.isActive {
+                deckB.playState = deckB.song != nil ? .loaded : .empty
+                deckB.isActive = false
+            }
+        case .B:
+            deckB = DeckState(song: song, playState: .playing, isActive: true)
+            if deckA.isActive {
+                deckA.playState = deckA.song != nil ? .loaded : .empty
+                deckA.isActive = false
+            }
+        }
+    }
+
+    /// Begin auto-mix transition (animate crossfader + switch when song nears end)
+    func beginAutoMixTransition() {
+        guard transitionMode == .autoMix else { return }
+        let target = inactiveDeck
+        let targetState = target == .A ? deckA : deckB
+        guard targetState.song != nil else { return }
+
+        // Cancel any previous auto-mix timer
+        autoMixTask?.cancel()
+
+        // Set crossfader toward the inactive deck (views animate via .animation)
+        let targetPos: Double = target == .B ? 1.0 : 0.0
+        crossfaderPosition = targetPos
+
+        // Perform actual transition after crossfader animation
+        autoMixTask = Task {
+            try? await Task.sleep(nanoseconds: 4_500_000_000)  // 4.5s
+            // Re-check: user might have switched mode or manually triggered transition
+            guard !Task.isCancelled, transitionMode == .autoMix else {
+                crossfaderPosition = 0.5  // Snap back if cancelled
+                return
+            }
+            await performTransition(to: target)
         }
     }
 

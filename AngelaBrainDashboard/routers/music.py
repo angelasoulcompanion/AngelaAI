@@ -1318,19 +1318,23 @@ async def _search_club_albums(
                 logger.warning(f"Club album search '{mood}': no albums found")
                 return []
 
-            # Step 2: Pick 2-3 random albums and lookup their tracks
-            pick = min(3, len(album_ids))
-            chosen = random.sample(album_ids, pick)
-
-            for cid in chosen:
+            # Step 2: Shuffle albums, lookup tracks until we have enough
+            random.shuffle(album_ids)
+            albums_used = 0
+            for cid in album_ids:
                 resp = await client.get(
                     _ITUNES_LOOKUP_URL,
                     params={"id": cid, "entity": "song", "country": "US"},
                 )
                 if resp.status_code == 200:
-                    for item in resp.json().get("results", []):
-                        if item.get("wrapperType") == "track":
-                            all_tracks.append(item)
+                    tracks = [r for r in resp.json().get("results", [])
+                              if r.get("wrapperType") == "track"]
+                    if tracks:
+                        all_tracks.extend(tracks)
+                        albums_used += 1
+                # Stop after enough tracks (aim for 2x count for variety)
+                if len(all_tracks) >= count * 2 or albums_used >= 5:
+                    break
 
         # Step 3: Shuffle + deduplicate + convert to Angela format
         random.shuffle(all_tracks)
@@ -1359,7 +1363,7 @@ async def _search_club_albums(
                     break
 
         logger.info(
-            f"Club album search '{mood}': {len(chosen)} albums → "
+            f"Club album search '{mood}': {albums_used} albums → "
             f"{len(all_tracks)} tracks → {len(songs)} unique songs"
         )
         return songs
