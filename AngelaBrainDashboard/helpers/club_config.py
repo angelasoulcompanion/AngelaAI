@@ -41,6 +41,7 @@ CLUB_REGISTRY: dict[str, ClubConfig] = {
         vibe_description="Bangkok's EDM powerhouse. Big room drops and festival energy.",
         emoji="🔊",
         summary_th="น้องจัดเพลง EDM แบบ ONYX Bangkok ให้ค่ะ 🔊 ตึ้ดตึ้ดค่ะ!",
+        signature_albums=["Ultra Music Festival", "Big Room EDM Festival"],
     ),
 
     # --- 🏠 House & Deep House ---
@@ -92,6 +93,7 @@ CLUB_REGISTRY: dict[str, ClubConfig] = {
         vibe_description="Bangkok's rooftop jewel. Luxury lounge vibes above the skyline.",
         emoji="🏙️",
         summary_th="น้องจัดเพลง lounge แบบ Sky Bar Lebua ให้ค่ะ 🏙️ หรูหราสบาย",
+        signature_albums=["Rooftop Lounge", "Buddha Bar"],
     ),
     "hotel_costes": ClubConfig(
         key="hotel_costes",
@@ -110,6 +112,56 @@ CLUB_REGISTRY: dict[str, ClubConfig] = {
         signature_albums=["Hotel Costes", "Hôtel Costes"],
     ),
 
+    # --- 🇭🇰 Hong Kong ---
+    "ozone": ClubConfig(
+        key="ozone",
+        name="Ozone",
+        city="Hong Kong",
+        country="Hong Kong",
+        country_flag="🇭🇰",
+        category="chill",
+        genre="Electronic Lounge, Deep House",
+        energy=3,
+        search_terms=["rooftop lounge electronic", "luxury deep house ambient", "skyline chill lounge"],
+        llm_description="เพลง electronic lounge, deep house แบบ Ozone Ritz-Carlton — bar สูงที่สุดในโลก ชั้น 118 หรูหรา วิวสวย ฟังสบาย",
+        vibe_description="World's highest bar. Electronic lounge 118 floors above Hong Kong.",
+        emoji="🌃",
+        summary_th="น้องจัดเพลง lounge แบบ Ozone HK ให้ค่ะ 🌃 bar สูงที่สุดในโลก!",
+        signature_albums=["Hong Kong sunset lounge", "Hong Kong lounge"],
+    ),
+    "dragon_i": ClubConfig(
+        key="dragon_i",
+        name="Dragon-i",
+        city="Hong Kong",
+        country="Hong Kong",
+        country_flag="🇭🇰",
+        category="house",
+        genre="Commercial House, Funky House",
+        energy=7,
+        search_terms=["funky house club", "commercial house party", "VIP club house music"],
+        llm_description="เพลง commercial house, funky house แบบ Dragon-i Lan Kwai Fong — VIP club ดังที่สุดของ Hong Kong ไม่ดาร์กไม่ underground สนุก groovy",
+        vibe_description="Hong Kong's legendary VIP club. Funky house and commercial beats in Lan Kwai Fong.",
+        emoji="🐉",
+        summary_th="น้องจัดเพลง house แบบ Dragon-i HK ให้ค่ะ 🐉 VIP club ดังที่สุด!",
+        signature_albums=["Toolroom Records", "Glitterbox"],
+    ),
+    "felix": ClubConfig(
+        key="felix",
+        name="Felix",
+        city="Hong Kong",
+        country="Hong Kong",
+        country_flag="🇭🇰",
+        category="jazz",
+        genre="Cocktail Jazz, Piano Lounge",
+        energy=2,
+        search_terms=["cocktail piano jazz", "sophisticated lounge jazz", "piano bar evening"],
+        llm_description="เพลง cocktail jazz, piano lounge แบบ Felix at The Peninsula — Philippe Starck design หรูหรา elegant smooth jazz ค็อกเทล",
+        vibe_description="Philippe Starck's masterpiece at The Peninsula. Sophisticated cocktail jazz above Victoria Harbour.",
+        emoji="🍸",
+        summary_th="น้องจัดเพลง cocktail jazz แบบ Felix HK ให้ค่ะ 🍸 elegant & sophisticated",
+        signature_albums=["Cocktail Piano Bar Jazz", "Jazz Cocktail Bars"],
+    ),
+
     # --- 🎷 Jazz & Soul ---
     "blue_note": ClubConfig(
         key="blue_note",
@@ -125,6 +177,7 @@ CLUB_REGISTRY: dict[str, ClubConfig] = {
         vibe_description="Legendary jazz temple. Where jazz legends play and new stars are born.",
         emoji="🎺",
         summary_th="น้องจัดเพลง jazz แบบ Blue Note ให้ค่ะ 🎺 smooth & soulful",
+        signature_albums=["Blue Note Trip", "Jazz Bar Lounge"],
     ),
 }
 

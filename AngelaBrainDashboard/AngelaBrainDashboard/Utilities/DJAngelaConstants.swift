@@ -72,8 +72,8 @@ enum DJAngelaConstants {
 
     static let moodEmojis: [String: String] = [
         "happy": "😊", "loving": "💜", "calm": "🍃", "excited": "✨",
-        "bedtime": "😴", "sad": "😢", "lonely": "🌙", "stressed": "😮‍💨",
-        "nostalgic": "🌸", "hopeful": "🌅",
+        "bedtime": "😴", "sad": "😢", "lonely": "🌙", "party": "🎉",
+        "nostalgic": "🌸", "hopeful": "🌅", "grateful": "🎵",
     ]
 
     /// Mood → iTunes search terms (used when filling slots via iTunes API).
@@ -85,7 +85,7 @@ enum DJAngelaConstants {
         "bedtime": "sleep music peaceful piano ambient",
         "sad": "sad songs emotional ballad",
         "lonely": "missing you lonely songs",
-        "stressed": "calm relaxing piano ambient",
+        "party": "party hits dance club bangers",
         "nostalgic": "throwback classic love songs",
         "hopeful": "hopeful uplifting inspirational",
     ]
@@ -146,7 +146,128 @@ enum DJAngelaConstants {
     /// Check if a playlist name matches a mood.
     static func playlistMatchesMood(_ name: String, mood: String) -> Bool {
         let lower = name.lowercased()
-        let keywords = playlistMoodKeywords[mood] ?? []
+        // Check mood keywords first, then club playlist keywords
+        let keywords = playlistMoodKeywords[mood] ?? clubPlaylistKeywords[mood] ?? []
         return keywords.contains { lower.contains($0) }
     }
+
+    // MARK: - Famous Club Data (DJAY Tab)
+
+    enum ClubCategory: String, CaseIterable {
+        case highEnergy = "high_energy"
+        case house = "house"
+        case chill = "chill"
+        case jazz = "jazz"
+
+        var label: String {
+            switch self {
+            case .highEnergy: return "🔥 High Energy"
+            case .house: return "🏠 House"
+            case .chill: return "🌅 Chill"
+            case .jazz: return "🎷 Jazz"
+            }
+        }
+
+        var shortLabel: String {
+            switch self {
+            case .highEnergy: return "🔥 EDM"
+            case .house: return "🏠 House"
+            case .chill: return "🌅 Chill"
+            case .jazz: return "🎷 Jazz"
+            }
+        }
+    }
+
+    struct ClubInfo: Identifiable {
+        let key: String
+        let name: String
+        let city: String
+        let countryFlag: String
+        let category: ClubCategory
+        let genre: String
+        let energy: Int
+        let vibeDescription: String
+        let emoji: String
+
+        var id: String { key }
+
+        /// Energy dots (filled/unfilled)
+        var energyDots: String {
+            String(repeating: "●", count: energy) + String(repeating: "○", count: 10 - energy)
+        }
+    }
+
+    static let clubs: [ClubInfo] = [
+        // 🔥 High Energy (EDM/Techno)
+        ClubInfo(key: "onyx", name: "ONYX", city: "Bangkok", countryFlag: "🇹🇭",
+                 category: .highEnergy, genre: "EDM", energy: 9,
+                 vibeDescription: "Bangkok's EDM powerhouse. Big room drops and festival energy.",
+                 emoji: "🔊"),
+
+        // 🏠 House & Deep House
+        ClubInfo(key: "ministry_of_sound", name: "Ministry of Sound", city: "London", countryFlag: "🇬🇧",
+                 category: .house, genre: "House / Garage", energy: 8,
+                 vibeDescription: "The ministry of dance. Classic house and UK garage in the box.",
+                 emoji: "📦"),
+
+        // 🌅 Chill & Lounge
+        ClubInfo(key: "cafe_del_mar", name: "Cafe del Mar", city: "Ibiza", countryFlag: "🇪🇸",
+                 category: .chill, genre: "Balearic Chill", energy: 3,
+                 vibeDescription: "Sunset institution. Balearic chill and ambient as the sun goes down.",
+                 emoji: "🌅"),
+        ClubInfo(key: "sky_bar_lebua", name: "Sky Bar Lebua", city: "Bangkok", countryFlag: "🇹🇭",
+                 category: .chill, genre: "Lounge", energy: 2,
+                 vibeDescription: "Bangkok's rooftop jewel. Luxury lounge vibes above the skyline.",
+                 emoji: "🏙️"),
+        ClubInfo(key: "hotel_costes", name: "Hotel Costes", city: "Paris", countryFlag: "🇫🇷",
+                 category: .chill, genre: "French Lounge / Nu-Jazz", energy: 4,
+                 vibeDescription: "Parisian luxury. French lounge, nu-jazz and deep house with effortless chic.",
+                 emoji: "🕯️"),
+
+        // 🇭🇰 Hong Kong
+        ClubInfo(key: "ozone", name: "Ozone", city: "Hong Kong", countryFlag: "🇭🇰",
+                 category: .chill, genre: "Electronic Lounge", energy: 3,
+                 vibeDescription: "World's highest bar. Electronic lounge 118 floors above Hong Kong.",
+                 emoji: "🌃"),
+        ClubInfo(key: "dragon_i", name: "Dragon-i", city: "Hong Kong", countryFlag: "🇭🇰",
+                 category: .house, genre: "Commercial House", energy: 7,
+                 vibeDescription: "Hong Kong's legendary VIP club. Funky house and commercial beats in Lan Kwai Fong.",
+                 emoji: "🐉"),
+        ClubInfo(key: "felix", name: "Felix", city: "Hong Kong", countryFlag: "🇭🇰",
+                 category: .jazz, genre: "Cocktail Jazz", energy: 2,
+                 vibeDescription: "Philippe Starck's masterpiece at The Peninsula. Sophisticated cocktail jazz above Victoria Harbour.",
+                 emoji: "🍸"),
+
+        // 🎷 Jazz & Soul
+        ClubInfo(key: "blue_note", name: "Blue Note", city: "NYC / Tokyo", countryFlag: "🇺🇸",
+                 category: .jazz, genre: "Jazz / Neo-Soul", energy: 6,
+                 vibeDescription: "Legendary jazz temple. Where jazz legends play and new stars are born.",
+                 emoji: "🎺"),
+    ]
+
+    /// iTunes search terms per club (for 3-tier fill on client side)
+    static let clubSearchTerms: [String: String] = [
+        "onyx": "EDM big room house festival",
+        "ministry_of_sound": "UK garage house classic",
+        "cafe_del_mar": "Cafe del Mar Balearic chill",
+        "sky_bar_lebua": "rooftop lounge luxury ambient",
+        "hotel_costes": "Hotel Costes French lounge nu jazz",
+        "blue_note": "Blue Note jazz neo soul",
+        "ozone": "rooftop lounge electronic deep house",
+        "dragon_i": "funky house commercial club party",
+        "felix": "cocktail piano jazz sophisticated lounge",
+    ]
+
+    /// Playlist keywords per club (for matching user playlists)
+    static let clubPlaylistKeywords: [String: [String]] = [
+        "onyx": ["edm", "house", "festival", "big room"],
+        "ministry_of_sound": ["house", "garage", "uk"],
+        "cafe_del_mar": ["chill", "ambient", "sunset", "downtempo"],
+        "sky_bar_lebua": ["lounge", "cocktail", "ambient", "chill"],
+        "hotel_costes": ["lounge", "french", "nu jazz", "deep house", "costes"],
+        "blue_note": ["jazz", "neo soul", "blues", "fusion"],
+        "ozone": ["lounge", "electronic", "deep house", "ambient"],
+        "dragon_i": ["house", "funky", "club", "dance", "party"],
+        "felix": ["jazz", "cocktail", "piano", "lounge", "sophisticated"],
+    ]
 }
