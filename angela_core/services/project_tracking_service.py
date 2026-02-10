@@ -299,6 +299,8 @@ class ProjectTrackingService:
 
             # Query conversations AFTER the last session (or all today if first session)
             if last_session_end:
+                # Strip timezone for comparison with naive timestamp column
+                last_end_naive = last_session_end.replace(tzinfo=None) if last_session_end.tzinfo else last_session_end
                 time_range = await self.db.fetchrow(
                     """
                     SELECT
@@ -307,7 +309,7 @@ class ProjectTrackingService:
                     FROM conversations
                     WHERE created_at > $1
                     """,
-                    last_session_end
+                    last_end_naive
                 )
             else:
                 time_range = await self.db.fetchrow(
