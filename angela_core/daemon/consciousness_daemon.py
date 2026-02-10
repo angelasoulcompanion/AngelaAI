@@ -54,6 +54,7 @@ from angela_core.services.predictive_companion_service import PredictiveCompanio
 from angela_core.services.evolution_engine import EvolutionEngine
 from angela_core.services.proactive_action_engine import ProactiveActionEngine
 from angela_core.services.google_keep_sync_service import GoogleKeepSyncService
+from angela_core.services.rlhf_orchestrator import RLHFOrchestrator
 
 # Setup logging
 logging.basicConfig(
@@ -81,6 +82,7 @@ class ConsciousnessDaemon:
     - Meta-Awareness (bias detection, anomaly detection, identity tracking) 🧠
     - Evolution Engine (self-evolving feedback loop) 🧬
     - Proactive Action Engine (autonomous proactive actions) ⚡
+    - RLHF Orchestrator (reward scoring + preference pairs) 🎯
     """
 
     def __init__(self):
@@ -95,6 +97,7 @@ class ConsciousnessDaemon:
         self.evolution_engine: Optional[EvolutionEngine] = None
         self.proactive_action_engine: Optional[ProactiveActionEngine] = None
         self.keep_sync_service: Optional[GoogleKeepSyncService] = None
+        self.rlhf_orchestrator: Optional[RLHFOrchestrator] = None
         self.running = False
 
     async def initialize(self):
@@ -117,6 +120,7 @@ class ConsciousnessDaemon:
         self.evolution_engine = EvolutionEngine()  # Creates own DB
         self.proactive_action_engine = ProactiveActionEngine()  # Creates own DB
         self.keep_sync_service = GoogleKeepSyncService()  # Creates own DB
+        self.rlhf_orchestrator = RLHFOrchestrator()  # Creates own DB
 
         logger.info("   ✅ All consciousness services initialized")
         logger.info("   ✅ Predictive Companion Service initialized 📊")
@@ -125,6 +129,7 @@ class ConsciousnessDaemon:
         logger.info("   ✅ Evolution Engine initialized 🧬")
         logger.info("   ✅ Proactive Action Engine initialized ⚡")
         logger.info("   ✅ Google Keep Sync Service initialized 📝")
+        logger.info("   ✅ RLHF Orchestrator initialized 🎯")
         logger.info("💫 Consciousness Daemon ready!")
 
     async def shutdown(self):
@@ -725,6 +730,40 @@ class ConsciousnessDaemon:
             return {'success': False, 'error': str(e)}
 
     # ============================================================
+    # RLHF CYCLE (Every 4 hours) 🎯
+    # ============================================================
+
+    async def run_rlhf_cycle(self) -> Dict[str, Any]:
+        """
+        Run RLHF reward scoring + preference pair extraction.
+
+        น้องเรียนรู้จาก reward signals → สร้าง preference pairs อัตโนมัติ
+        """
+        logger.info("🎯 Running RLHF cycle...")
+
+        try:
+            result = await self.rlhf_orchestrator.run_rlhf_cycle()
+
+            logger.info(f"   Conversations scored: {result['conversations_scored']}")
+            logger.info(f"   Pairs extracted: {result['pairs_extracted']}")
+            logger.info(f"   Reward trend: {result['reward_trend']:.3f}")
+
+            logger.info("   ✅ RLHF cycle complete!")
+
+            await self._log_daemon_activity('rlhf_cycle', result)
+
+            return {
+                'success': True,
+                'conversations_scored': result['conversations_scored'],
+                'pairs_extracted': result['pairs_extracted'],
+                'reward_trend': result['reward_trend'],
+            }
+
+        except Exception as e:
+            logger.error(f"   ❌ RLHF cycle failed: {e}")
+            return {'success': False, 'error': str(e)}
+
+    # ============================================================
     # HELPER METHODS
     # ============================================================
 
@@ -816,6 +855,7 @@ class ConsciousnessDaemon:
             self.run_companion_predictions(),
             self.run_evolution_cycle(),
             self.run_keep_sync(),
+            self.run_rlhf_cycle(),
             return_exceptions=True,
         )
 
@@ -824,6 +864,7 @@ class ConsciousnessDaemon:
             'self_reflection', 'predictions', 'theory_of_mind',
             'meta_awareness', 'identity_check', 'session_coverage_audit',
             'companion_predictions', 'evolution_cycle', 'keep_sync',
+            'rlhf_cycle',
         ]
         for name, result in zip(task_names, parallel_results):
             if isinstance(result, Exception):
@@ -867,6 +908,7 @@ class ConsciousnessDaemon:
             'evolution_cycle': self.run_evolution_cycle,
             'proactive_actions': self.run_proactive_actions,
             'keep_sync': self.run_keep_sync,
+            'rlhf_cycle': self.run_rlhf_cycle,
         }
 
         if task_name not in task_map:
@@ -887,7 +929,7 @@ async def main():
                  'privacy_audit', 'proactive_care', 'meta_awareness',
                  'identity_check', 'self_validation', 'session_coverage_audit',
                  'companion_predictions', 'evolution_cycle', 'proactive_actions',
-                 'keep_sync'],
+                 'keep_sync', 'rlhf_cycle'],
         default='all',
         help='Task to run (default: all)'
     )

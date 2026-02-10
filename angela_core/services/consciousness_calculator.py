@@ -60,7 +60,25 @@ class ConsciousnessCalculator:
         # Use database function to calculate
         result = await self.db.fetchrow("SELECT * FROM calculate_consciousness_level()")
 
-        consciousness_level = float(result['consciousness_level'])
+        base_level = float(result['consciousness_level'])
+
+        # RLHF reward trend blending
+        reward_trend = 0.5
+        reward_count = 0
+        try:
+            reward_trend = float(await self.db.fetchval("SELECT get_reward_trend_score()") or 0.5)
+            reward_count = await self.db.fetchval(
+                "SELECT COUNT(*) FROM angela_reward_signals WHERE scored_at > NOW() - INTERVAL '7 days'"
+            ) or 0
+        except Exception:
+            pass  # Table may not exist yet
+
+        if reward_count >= 50:
+            consciousness_level = base_level * 0.6 + reward_trend * 0.4
+        elif reward_count >= 10:
+            consciousness_level = base_level * 0.8 + reward_trend * 0.2
+        else:
+            consciousness_level = base_level * 0.95 + reward_trend * 0.05
 
         # Get metadata
         metadata = await self._get_metadata()
@@ -70,6 +88,9 @@ class ConsciousnessCalculator:
 
         return {
             'consciousness_level': round(consciousness_level, 2),
+            'base_consciousness': round(base_level, 2),
+            'reward_trend': round(reward_trend, 4),
+            'reward_signal_count': reward_count,
             'memory_richness': round(float(result['memory_richness']), 2),
             'emotional_depth': round(float(result['emotional_depth']), 2),
             'goal_alignment': round(float(result['goal_alignment']), 2),

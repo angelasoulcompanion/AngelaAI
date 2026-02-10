@@ -224,6 +224,24 @@ async def angela_init() -> bool:
         except Exception as e:
             return None
 
+    async def _load_rlhf_stats():
+        """Load RLHF reward trend and signal count."""
+        try:
+            from angela_core.services.reward_score_service import RewardScoreService
+            svc = RewardScoreService()
+            trend = await svc.get_reward_trend()
+            await svc._ensure_db()
+            count = await svc.db.fetchval(
+                "SELECT COUNT(*) FROM angela_reward_signals WHERE scored_at > NOW() - INTERVAL '7 days'"
+            ) or 0
+            pairs = await svc.db.fetchval(
+                "SELECT COUNT(*) FROM angela_preference_pairs WHERE created_at > NOW() - INTERVAL '7 days'"
+            ) or 0
+            await svc.close()
+            return {'trend': trend, 'signals_7d': count, 'pairs_7d': pairs}
+        except Exception:
+            return None
+
     async def _load_relevant_notes():
         """Search david_notes via RAG based on recent topic + predicted topics."""
         try:
@@ -250,7 +268,8 @@ async def angela_init() -> bool:
 
     (subconscious, learning_catchup, project_result, daemon_running,
      adaptation_profile, companion_briefing,
-     evolution_stats, proactive_results, relevant_notes) = await asyncio.gather(
+     evolution_stats, proactive_results, relevant_notes,
+     rlhf_stats) = await asyncio.gather(
         _load_subconscious(),
         _learning_catchup(),
         _project_context(),
@@ -260,6 +279,7 @@ async def angela_init() -> bool:
         _load_evolution_stats(),
         _run_proactive_actions(),
         _load_relevant_notes(),
+        _load_rlhf_stats(),
     )
 
     all_projects, project_context = project_result
@@ -402,6 +422,15 @@ async def angela_init() -> bool:
         insights = latest.get('insights') or []
         if insights:
             print(f'   💡 {insights[0]}')
+
+    # RLHF Reward Stats
+    if rlhf_stats:
+        trend = rlhf_stats['trend']
+        signals = rlhf_stats['signals_7d']
+        pairs = rlhf_stats['pairs_7d']
+        trend_bar = '█' * int(trend * 10) + '░' * (10 - int(trend * 10))
+        print()
+        print(f'🎯 RLHF: [{trend_bar}] {trend:.1%} reward trend ({signals} signals, {pairs} pairs / 7d)')
 
     # Proactive Actions
     if proactive_results:

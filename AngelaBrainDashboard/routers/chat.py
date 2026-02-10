@@ -632,6 +632,9 @@ async def upsert_feedback(req: ChatFeedbackRequest, conn=Depends(get_conn)):
     # Reinforce learnings from this conversation (fire-and-forget)
     asyncio.create_task(reinforce_from_feedback(req.conversation_id, req.rating))
 
+    # RLHF: trigger immediate reward scoring (fire-and-forget)
+    asyncio.create_task(_trigger_reward_score(req.conversation_id, req.rating))
+
     return {"status": "saved", "conversation_id": req.conversation_id}
 
 
@@ -651,3 +654,18 @@ async def batch_load_feedbacks(req: ChatFeedbackBatchRequest, conn=Depends(get_c
         WHERE conversation_id IN ({placeholders})
     """, *req.conversation_ids)
     return [dict(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# RLHF: trigger reward scoring after feedback
+# ---------------------------------------------------------------------------
+
+async def _trigger_reward_score(conversation_id: str, rating: int) -> None:
+    """Fire-and-forget RLHF reward scoring after thumbs up/down."""
+    try:
+        from angela_core.services.rlhf_orchestrator import RLHFOrchestrator
+        orch = RLHFOrchestrator()
+        await orch.trigger_score(conversation_id, rating)
+        await orch.close()
+    except Exception:
+        logger.exception("RLHF reward scoring failed for %s", conversation_id)
