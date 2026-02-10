@@ -145,7 +145,7 @@ class EnhancedRAGService:
 
         # Default sources
         if sources is None:
-            sources = ['conversations', 'knowledge_nodes', 'core_memories', 'learnings']
+            sources = ['conversations', 'knowledge_nodes', 'core_memories', 'learnings', 'david_notes']
 
         # Query expansion
         expanded_query = None
@@ -283,6 +283,18 @@ class EnhancedRAGService:
                 ORDER BY embedding <=> $1::vector
                 LIMIT $2
             """
+        elif source == 'david_notes':
+            query = """
+                SELECT
+                    note_id::TEXT as id,
+                    CONCAT(COALESCE(title, ''), ': ', COALESCE(content, '')) as content,
+                    1 - (embedding <=> $1::vector) as similarity,
+                    category, labels
+                FROM david_notes
+                WHERE embedding IS NOT NULL AND is_trashed = FALSE
+                ORDER BY embedding <=> $1::vector
+                LIMIT $2
+            """
         else:
             return results
 
@@ -383,6 +395,17 @@ class EnhancedRAGService:
                 FROM learnings
                 WHERE topic ILIKE $1 OR insight ILIKE $1
                 ORDER BY confidence_level DESC
+                LIMIT $2
+            """
+        elif source == 'david_notes':
+            query = """
+                SELECT
+                    note_id::TEXT as id,
+                    CONCAT(COALESCE(title, ''), ': ', COALESCE(content, '')) as content,
+                    category
+                FROM david_notes
+                WHERE (title ILIKE $1 OR content ILIKE $1) AND is_trashed = FALSE
+                ORDER BY updated_at DESC
                 LIMIT $2
             """
         else:
@@ -516,9 +539,10 @@ class EnhancedRAGService:
         # Source priority
         source_weights = {
             'core_memories': 0.15,
+            'david_notes': 0.12,
             'knowledge_nodes': 0.1,
+            'learnings': 0.1,
             'conversations': 0.05,
-            'learnings': 0.1
         }
         score += source_weights.get(doc.source_table, 0)
 
@@ -650,6 +674,19 @@ class EnhancedRAGService:
             rerank=True
         )
 
+    async def search_notes(
+        self,
+        query: str,
+        top_k: int = 5
+    ) -> RAGResult:
+        """Search David's personal notes from Google Keep"""
+        return await self.retrieve(
+            query=query,
+            top_k=top_k,
+            sources=['david_notes'],
+            rerank=True
+        )
+
     async def search_all(
         self,
         query: str,
@@ -659,7 +696,7 @@ class EnhancedRAGService:
         return await self.retrieve(
             query=query,
             top_k=top_k,
-            sources=['conversations', 'knowledge_nodes', 'core_memories', 'learnings'],
+            sources=['conversations', 'knowledge_nodes', 'core_memories', 'learnings', 'david_notes'],
             mode=SearchMode.HYBRID,
             rerank=True,
             expand_query=True

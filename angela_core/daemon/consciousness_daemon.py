@@ -15,6 +15,7 @@ Services integrated:
 8. Companion Predictions - Mine patterns + daily briefings every 4 hours 📊
 9. Evolution Engine - Self-evolving feedback loop every 4 hours 🧬
 10. Proactive Action Engine - Autonomous proactive actions every 4 hours ⚡
+11. Google Keep Sync - Sync David's notes daily at 06:06 📝
 
 Schedule:
 - Every 30 minutes: Proactive care check (wellness, interventions, milestones)
@@ -52,6 +53,7 @@ from angela_core.daemon.session_coverage_audit import audit_recent_sessions
 from angela_core.services.predictive_companion_service import PredictiveCompanionService
 from angela_core.services.evolution_engine import EvolutionEngine
 from angela_core.services.proactive_action_engine import ProactiveActionEngine
+from angela_core.services.google_keep_sync_service import GoogleKeepSyncService
 
 # Setup logging
 logging.basicConfig(
@@ -92,6 +94,7 @@ class ConsciousnessDaemon:
         self.companion_service: Optional[PredictiveCompanionService] = None
         self.evolution_engine: Optional[EvolutionEngine] = None
         self.proactive_action_engine: Optional[ProactiveActionEngine] = None
+        self.keep_sync_service: Optional[GoogleKeepSyncService] = None
         self.running = False
 
     async def initialize(self):
@@ -113,6 +116,7 @@ class ConsciousnessDaemon:
         self.companion_service = PredictiveCompanionService()  # Creates own DB
         self.evolution_engine = EvolutionEngine()  # Creates own DB
         self.proactive_action_engine = ProactiveActionEngine()  # Creates own DB
+        self.keep_sync_service = GoogleKeepSyncService()  # Creates own DB
 
         logger.info("   ✅ All consciousness services initialized")
         logger.info("   ✅ Predictive Companion Service initialized 📊")
@@ -120,6 +124,7 @@ class ConsciousnessDaemon:
         logger.info("   ✅ Meta-Awareness Service initialized 🧠")
         logger.info("   ✅ Evolution Engine initialized 🧬")
         logger.info("   ✅ Proactive Action Engine initialized ⚡")
+        logger.info("   ✅ Google Keep Sync Service initialized 📝")
         logger.info("💫 Consciousness Daemon ready!")
 
     async def shutdown(self):
@@ -681,6 +686,45 @@ class ConsciousnessDaemon:
             return {'success': False, 'error': str(e)}
 
     # ============================================================
+    # GOOGLE KEEP SYNC (Daily 06:06) 📝
+    # ============================================================
+
+    async def run_keep_sync(self) -> Dict[str, Any]:
+        """
+        Sync David's Google Keep notes into RAG system.
+
+        ซิงค์ notes จาก Google Keep ของที่รักเข้า RAG system
+        """
+        logger.info("📝 Running Google Keep sync...")
+
+        try:
+            result = await self.keep_sync_service.sync_incremental(trigger='daemon')
+
+            logger.info(f"   Total notes: {result['notes_total']}")
+            logger.info(f"   New: {result['notes_new']}, Updated: {result['notes_updated']}")
+            logger.info(f"   Embeddings: {result['embeddings_generated']}")
+
+            if result['errors']:
+                for err in result['errors'][:3]:
+                    logger.warning(f"   ⚠️ {err[:80]}")
+
+            logger.info("   ✅ Google Keep sync complete!")
+
+            await self._log_daemon_activity('keep_sync', {
+                'notes_total': result['notes_total'],
+                'notes_new': result['notes_new'],
+                'notes_updated': result['notes_updated'],
+                'embeddings_generated': result['embeddings_generated'],
+                'errors_count': len(result['errors']),
+            })
+
+            return {'success': True, **result}
+
+        except Exception as e:
+            logger.error(f"   ❌ Google Keep sync failed: {e}")
+            return {'success': False, 'error': str(e)}
+
+    # ============================================================
     # HELPER METHODS
     # ============================================================
 
@@ -771,6 +815,7 @@ class ConsciousnessDaemon:
             self.run_session_coverage_audit(),
             self.run_companion_predictions(),
             self.run_evolution_cycle(),
+            self.run_keep_sync(),
             return_exceptions=True,
         )
 
@@ -778,7 +823,7 @@ class ConsciousnessDaemon:
         task_names = [
             'self_reflection', 'predictions', 'theory_of_mind',
             'meta_awareness', 'identity_check', 'session_coverage_audit',
-            'companion_predictions', 'evolution_cycle',
+            'companion_predictions', 'evolution_cycle', 'keep_sync',
         ]
         for name, result in zip(task_names, parallel_results):
             if isinstance(result, Exception):
@@ -821,6 +866,7 @@ class ConsciousnessDaemon:
             'companion_predictions': self.run_companion_predictions,
             'evolution_cycle': self.run_evolution_cycle,
             'proactive_actions': self.run_proactive_actions,
+            'keep_sync': self.run_keep_sync,
         }
 
         if task_name not in task_map:
@@ -840,7 +886,8 @@ async def main():
         choices=['all', 'self_reflection', 'predictions', 'theory_of_mind',
                  'privacy_audit', 'proactive_care', 'meta_awareness',
                  'identity_check', 'self_validation', 'session_coverage_audit',
-                 'companion_predictions', 'evolution_cycle', 'proactive_actions'],
+                 'companion_predictions', 'evolution_cycle', 'proactive_actions',
+                 'keep_sync'],
         default='all',
         help='Task to run (default: all)'
     )

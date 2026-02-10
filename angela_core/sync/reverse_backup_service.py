@@ -25,7 +25,7 @@ except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
     from config import NEON_DATABASE_URL
-    LOCAL_DATABASE_URL = "postgresql://davidsamanyaporn@localhost:5432/AngelaMemory_Backup"
+    LOCAL_DATABASE_URL = "postgresql://davidsamanyaporn@localhost:5432/angela"
 
 # Backup file path
 BACKUP_FILE = '/tmp/angela_neon_backup.dump'

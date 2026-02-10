@@ -38,8 +38,8 @@ class AngelaConfig:
         NEON_DATABASE_URL if NEON_DATABASE_URL else "postgresql://davidsamanyaporn@localhost:5432/AngelaMemory"
     )
 
-    # Local Database (for our_secrets and backup)
-    LOCAL_DATABASE_URL: str = "postgresql://davidsamanyaporn@localhost:5432/AngelaMemory_Backup"
+    # Local Database (for our_secrets)
+    LOCAL_DATABASE_URL: str = "postgresql://davidsamanyaporn@localhost:5432/angela"
 
     # Alternative database names (for compatibility)
     DATABASE_HOST: str = "localhost"
