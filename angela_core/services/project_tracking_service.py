@@ -287,23 +287,45 @@ class ProjectTrackingService:
 
         # Calculate times from conversation timestamps
         if started_at is None or duration_minutes is None:
-            # Query first and last conversation of today
-            time_range = await self.db.fetchrow(
+            # Find the end time of the last session today (if any)
+            last_session_end = await self.db.fetchval(
                 """
-                SELECT
-                    MIN(created_at) as first_msg,
-                    MAX(created_at) as last_msg
-                FROM conversations
-                WHERE DATE(created_at) = CURRENT_DATE
-                """
+                SELECT MAX(ended_at)
+                FROM project_work_sessions
+                WHERE project_id = $1 AND session_date = CURRENT_DATE
+                """,
+                project_id
             )
+
+            # Query conversations AFTER the last session (or all today if first session)
+            if last_session_end:
+                time_range = await self.db.fetchrow(
+                    """
+                    SELECT
+                        MIN(created_at) as first_msg,
+                        MAX(created_at) as last_msg
+                    FROM conversations
+                    WHERE created_at > $1
+                    """,
+                    last_session_end
+                )
+            else:
+                time_range = await self.db.fetchrow(
+                    """
+                    SELECT
+                        MIN(created_at) as first_msg,
+                        MAX(created_at) as last_msg
+                    FROM conversations
+                    WHERE DATE(created_at) = CURRENT_DATE
+                    """
+                )
 
             if time_range and time_range['first_msg']:
                 started_at = time_range['first_msg']
                 ended_at = time_range['last_msg'] or datetime.now()
                 duration_minutes = int((ended_at - started_at).total_seconds() / 60)
             else:
-                # Fallback: no conversations today, use 30 min default
+                # Fallback: no conversations yet, use 30 min default
                 started_at = datetime.now() - timedelta(minutes=30)
                 ended_at = datetime.now()
                 duration_minutes = 30
