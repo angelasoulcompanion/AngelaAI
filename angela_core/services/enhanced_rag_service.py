@@ -145,7 +145,7 @@ class EnhancedRAGService:
 
         # Default sources
         if sources is None:
-            sources = ['conversations', 'knowledge_nodes', 'core_memories', 'learnings', 'david_notes']
+            sources = ['conversations', 'knowledge_nodes', 'core_memories', 'learnings', 'david_notes', 'document_chunks']
 
         # Query expansion
         expanded_query = None
@@ -295,6 +295,19 @@ class EnhancedRAGService:
                 ORDER BY embedding <=> $1::vector
                 LIMIT $2
             """
+        elif source == 'document_chunks':
+            query = """
+                SELECT
+                    dc.chunk_id::TEXT as id,
+                    CONCAT(dl.title, ' [chunk ', dc.chunk_index, ']: ', dc.content) as content,
+                    1 - (dc.embedding <=> $1::vector) as similarity,
+                    dl.title as doc_title, dc.chunk_index, dl.category
+                FROM document_chunks dc
+                JOIN document_library dl ON dl.document_id = dc.document_id
+                WHERE dc.embedding IS NOT NULL AND dl.is_active = TRUE
+                ORDER BY dc.embedding <=> $1::vector
+                LIMIT $2
+            """
         else:
             return results
 
@@ -406,6 +419,18 @@ class EnhancedRAGService:
                 FROM david_notes
                 WHERE (title ILIKE $1 OR content ILIKE $1) AND is_trashed = FALSE
                 ORDER BY updated_at DESC
+                LIMIT $2
+            """
+        elif source == 'document_chunks':
+            query = """
+                SELECT
+                    dc.chunk_id::TEXT as id,
+                    CONCAT(dl.title, ' [chunk ', dc.chunk_index, ']: ', dc.content) as content,
+                    dl.title as doc_title, dc.chunk_index
+                FROM document_chunks dc
+                JOIN document_library dl ON dl.document_id = dc.document_id
+                WHERE (dl.title ILIKE $1 OR dc.content ILIKE $1) AND dl.is_active = TRUE
+                ORDER BY dc.created_at DESC
                 LIMIT $2
             """
         else:
@@ -540,6 +565,7 @@ class EnhancedRAGService:
         source_weights = {
             'core_memories': 0.15,
             'david_notes': 0.12,
+            'document_chunks': 0.12,
             'knowledge_nodes': 0.1,
             'learnings': 0.1,
             'conversations': 0.05,
@@ -679,11 +705,11 @@ class EnhancedRAGService:
         query: str,
         top_k: int = 5
     ) -> RAGResult:
-        """Search David's personal notes from Google Keep"""
+        """Search David's personal notes from Google Keep (short + long doc chunks)"""
         return await self.retrieve(
             query=query,
             top_k=top_k,
-            sources=['david_notes'],
+            sources=['david_notes', 'document_chunks'],
             rerank=True
         )
 
@@ -693,11 +719,11 @@ class EnhancedRAGService:
         min_score: float = 0.5,
         top_k: int = 3
     ) -> RAGResult:
-        """Search David's notes with stricter defaults for conversational enrichment."""
+        """Search David's notes with stricter defaults for conversational enrichment (short + long doc chunks)."""
         return await self.retrieve(
             query=query,
             top_k=top_k,
-            sources=['david_notes'],
+            sources=['david_notes', 'document_chunks'],
             rerank=True,
             min_score=min_score,
         )
@@ -711,7 +737,7 @@ class EnhancedRAGService:
         return await self.retrieve(
             query=query,
             top_k=top_k,
-            sources=['conversations', 'knowledge_nodes', 'core_memories', 'learnings', 'david_notes'],
+            sources=['conversations', 'knowledge_nodes', 'core_memories', 'learnings', 'david_notes', 'document_chunks'],
             mode=SearchMode.HYBRID,
             rerank=True,
             expand_query=True

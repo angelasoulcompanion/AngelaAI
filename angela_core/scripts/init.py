@@ -344,12 +344,23 @@ async def angela_init() -> bool:
         for m in subconscious['memories'][:3]:
             print(f'   • {m["title"]}')
 
-    # Related Notes (Google Keep)
+    # Related Notes (Google Keep + Document Chunks)
     if relevant_notes:
+        import re as _re
         print()
-        print('📝 Related Notes (Google Keep):')
+        print('📝 Related Notes:')
         for doc in relevant_notes[:3]:
             content = doc.content or ''
+            score_pct = int(doc.combined_score * 100)
+
+            # Handle chunk format: "Title [chunk N]: content..."
+            chunk_match = _re.match(r'^(.+?)\s*\[chunk\s+(\d+)\]:', content)
+            if chunk_match:
+                title = chunk_match.group(1).strip()
+                print(f'   • "{title}" ({score_pct}%)')
+                continue
+
+            # Standard format: "title: content"
             if ': ' in content:
                 title = content.split(': ', 1)[0]
             else:
@@ -357,7 +368,6 @@ async def angela_init() -> bool:
             title = title.strip()
             if not title or title == 'None':
                 title = content[:60].strip() if content else '(untitled)'
-            score_pct = int(doc.combined_score * 100)
             print(f'   • "{title}" ({score_pct}%)')
 
     # Emotional Adaptation Profile

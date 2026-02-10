@@ -85,10 +85,21 @@ class NoteContextService:
     @staticmethod
     def _format_notes(docs: List[RetrievedDocument]) -> str:
         """Format retrieved notes for display."""
+        import re
         lines = ["📝 ที่รักมี note เกี่ยวข้อง:"]
         for doc in docs:
-            # Extract title from "title: content" format
             content = doc.content or ''
+            score_pct = int(doc.combined_score * 100)
+
+            # Handle chunk format: "Title [chunk N]: content..."
+            chunk_match = re.match(r'^(.+?)\s*\[chunk\s+(\d+)\]:', content)
+            if chunk_match:
+                title = chunk_match.group(1).strip()
+                chunk_num = chunk_match.group(2)
+                lines.append(f'   • "{title}" ({score_pct}%, part {chunk_num})')
+                continue
+
+            # Standard format: "title: content"
             if ': ' in content:
                 title = content.split(': ', 1)[0]
             else:
@@ -98,8 +109,7 @@ class NoteContextService:
             if not title or title == 'None':
                 title = content[:60].strip() if content else '(untitled)'
 
-            score_pct = int(doc.combined_score * 100)
-            lines.append(f"   • \"{title}\" ({score_pct}%)")
+            lines.append(f'   • "{title}" ({score_pct}%)')
 
         return '\n'.join(lines)
 
