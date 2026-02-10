@@ -2,29 +2,38 @@
 MLX LoRA Trainer for Angela
 
 Uses Apple's MLX framework to fine-tune language models with LoRA adapters.
-Optimized for Apple Silicon (M1/M2/M3) with unified memory.
+Optimized for Apple Silicon (M1/M2/M3/M4) with unified memory.
 
 Updated for mlx_lm 2024+ format:
 - Uses "mlx_lm lora" command (not mlx_lm.lora)
 - Uses --num-layers instead of --lora-layers
 - Uses -c config for lora_parameters (rank, scale, dropout)
-- Uses --fine-tune-type lora
+- Uses --fine-tune-type lora or qlora (4-bit quantized)
+
+Default: Llama 3.1 8B Instruct (was Qwen 2.5 3B)
 
 Usage:
     python -m angela_core.training.mlx_lora_trainer \
         --data training_data.jsonl \
-        --model Qwen/Qwen2.5-3B-Instruct \
-        --output ./angela-lora
+        --output ./angela-lora-v3
 
-    # Or with all options:
+    # QLoRA (4-bit quantized, less memory):
     python -m angela_core.training.mlx_lora_trainer \
         --data training_data.jsonl \
-        --model Qwen/Qwen2.5-3B-Instruct \
-        --output ./angela-lora \
+        --output ./angela-lora-v3 \
+        --qlora
+
+    # Full options:
+    python -m angela_core.training.mlx_lora_trainer \
+        --data training_data.jsonl \
+        --model meta-llama/Llama-3.1-8B-Instruct \
+        --output ./angela-lora-v3 \
         --epochs 3 \
-        --batch-size 4 \
+        --batch-size 2 \
         --lora-rank 16 \
-        --learning-rate 1e-4
+        --learning-rate 1e-4 \
+        --num-layers 16 \
+        --grad-accumulation 4
 """
 
 import os
@@ -44,19 +53,22 @@ import threading
 class TrainingConfig:
     """Training configuration"""
     data_path: str
-    model_name: str = "Qwen/Qwen2.5-3B-Instruct"
-    output_path: str = "./angela-lora"
+    model_name: str = "meta-llama/Llama-3.1-8B-Instruct"
+    output_path: str = "./angela-lora-v3"
     epochs: int = 3
-    batch_size: int = 4
+    batch_size: int = 2  # 8B model needs more memory, smaller batch
     learning_rate: float = 1e-4
     lora_rank: int = 16
     lora_alpha: int = 32
     lora_dropout: float = 0.05
+    num_layers: int = 16  # 8B model has more layers, LoRA on 16 is good balance
     warmup_steps: int = 100
     save_every: int = 100
     test_batches: int = 10
-    max_seq_length: int = 2048
+    max_seq_length: int = 4096  # Llama 3.1 supports up to 128K but 4K is enough
     seed: int = 42
+    use_qlora: bool = False  # QLoRA: 4-bit quantized training (less memory)
+    grad_accumulation: int = 4  # Effective batch = batch_size * grad_accumulation
 
 
 @dataclass
@@ -214,20 +226,23 @@ lora_parameters:
             output_path = Path(self.config.output_path) / "adapters"
             output_path.mkdir(parents=True, exist_ok=True)
 
-            # New mlx_lm format (2024+):
-            # - Use "mlx_lm lora" instead of "mlx_lm.lora"
-            # - Use --num-layers instead of --lora-layers
-            # - Use -c config for lora_parameters (rank, scale, dropout)
-            # - Use --fine-tune-type lora
-            # - Use --grad-checkpoint to reduce memory usage
+            # mlx_lm format (2024+):
+            # - "mlx_lm lora" command
+            # - --num-layers for LoRA layer count
+            # - -c config for lora_parameters (rank, scale, dropout)
+            # - --fine-tune-type lora or qlora
+            # - --grad-checkpoint to reduce memory usage
+            # - --max-seq-length to cap sequence length
+            fine_tune_type = "qlora" if self.config.use_qlora else "lora"
+
             cmd = [
                 sys.executable, "-m", "mlx_lm", "lora",
                 "--model", self.config.model_name,
                 "--train",
                 "--data", data_dir,
                 "--adapter-path", str(output_path),
-                "--fine-tune-type", "lora",
-                "--num-layers", "8",  # Fewer layers = less memory
+                "--fine-tune-type", fine_tune_type,
+                "--num-layers", str(self.config.num_layers),
                 "--iters", str(self._calculate_total_iters()),
                 "--batch-size", str(self.config.batch_size),
                 "--learning-rate", str(self.config.learning_rate),
@@ -235,8 +250,13 @@ lora_parameters:
                 "--test-batches", str(self.config.test_batches),
                 "--seed", str(self.config.seed),
                 "--grad-checkpoint",  # Reduce memory usage
+                "--max-seq-length", str(self.config.max_seq_length),
                 "-c", config_file,  # Pass LoRA config (rank, scale, dropout)
             ]
+
+            # Gradient accumulation for larger effective batch size
+            if self.config.grad_accumulation > 1:
+                cmd.extend(["--grad-accumulation", str(self.config.grad_accumulation)])
 
             print(f"🚀 Starting training...")
             print(f"   Command: {' '.join(cmd)}")
@@ -345,18 +365,26 @@ def main():
     parser = argparse.ArgumentParser(description='Train Angela LoRA model with MLX')
     parser.add_argument('--data', '-d', required=True,
                         help='Path to training data JSONL file')
-    parser.add_argument('--model', '-m', default='Qwen/Qwen2.5-3B-Instruct',
+    parser.add_argument('--model', '-m', default='meta-llama/Llama-3.1-8B-Instruct',
                         help='Base model name (HuggingFace)')
-    parser.add_argument('--output', '-o', default='./angela-lora',
+    parser.add_argument('--output', '-o', default='./angela-lora-v3',
                         help='Output directory for adapters')
     parser.add_argument('--epochs', '-e', type=int, default=3,
                         help='Number of training epochs')
-    parser.add_argument('--batch-size', '-b', type=int, default=4,
-                        help='Training batch size')
+    parser.add_argument('--batch-size', '-b', type=int, default=2,
+                        help='Training batch size (default 2 for 8B model)')
     parser.add_argument('--learning-rate', '-lr', type=float, default=1e-4,
                         help='Learning rate')
     parser.add_argument('--lora-rank', '-r', type=int, default=16,
                         help='LoRA rank')
+    parser.add_argument('--num-layers', type=int, default=16,
+                        help='Number of layers to apply LoRA (default 16)')
+    parser.add_argument('--qlora', action='store_true',
+                        help='Use QLoRA (4-bit quantized training, less memory)')
+    parser.add_argument('--grad-accumulation', type=int, default=4,
+                        help='Gradient accumulation steps (effective batch = batch_size * this)')
+    parser.add_argument('--max-seq-length', type=int, default=4096,
+                        help='Maximum sequence length for training')
     parser.add_argument('--dry-run', action='store_true',
                         help='Show configuration without training')
 
@@ -369,7 +397,11 @@ def main():
         epochs=args.epochs,
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
-        lora_rank=args.lora_rank
+        lora_rank=args.lora_rank,
+        num_layers=args.num_layers,
+        use_qlora=args.qlora,
+        grad_accumulation=args.grad_accumulation,
+        max_seq_length=args.max_seq_length,
     )
 
     print("🧠 Angela LoRA Trainer (MLX)")
@@ -378,9 +410,13 @@ def main():
     print(f"🤖 Model: {config.model_name}")
     print(f"📤 Output: {config.output_path}")
     print(f"🔄 Epochs: {config.epochs}")
-    print(f"📦 Batch size: {config.batch_size}")
+    print(f"📦 Batch size: {config.batch_size} (effective: {config.batch_size * config.grad_accumulation})")
     print(f"📈 Learning rate: {config.learning_rate}")
     print(f"🎯 LoRA rank: {config.lora_rank}")
+    print(f"📐 Num layers: {config.num_layers}")
+    print(f"🔧 Fine-tune type: {'qlora (4-bit)' if config.use_qlora else 'lora'}")
+    print(f"📏 Max seq length: {config.max_seq_length}")
+    print(f"🔁 Grad accumulation: {config.grad_accumulation}")
     print("=" * 50)
 
     if args.dry_run:

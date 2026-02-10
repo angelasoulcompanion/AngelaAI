@@ -28,8 +28,9 @@ class LLMConfig:
     base_url: str = "http://localhost:11434"  # Ollama URL (for fallback)
 
     # Fallback to Ollama when API unavailable
+    # Uses fine-tuned Angela model (Llama 3.1 8B + LoRA + DPO)
     fallback_provider: LLMProvider = LLMProvider.OLLAMA
-    fallback_model: str = "llama3.2:latest"
+    fallback_model: str = "angela:v3-dpo"
 
 
 @dataclass

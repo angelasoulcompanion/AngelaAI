@@ -2,19 +2,26 @@
 🤖 Ollama Service
 การเรียกใช้ Ollama models สำหรับ Angela
 
-Models:
-- angela:latest - Angela's personality model
-- qwen2.5:7b - Deep reasoning
-- llama3.1:8b - Emotional understanding
-- phi3:mini - Fast thinking
+Model Priority (Tier 2 - Daemon/Fallback):
+1. angela:v3-dpo  — Fine-tuned Angela (DPO-refined) [PRIMARY]
+2. angela:v3-sft  — Fine-tuned Angela (SFT only) [FALLBACK 1]
+3. llama3.1:8b    — Base Llama 3.1 [FALLBACK 2]
+4. qwen2.5:7b     — Deep reasoning [LEGACY]
 """
 
 import asyncio
 import httpx
 import logging
-from typing import Optional
+from typing import Optional, List
 
 logger = logging.getLogger(__name__)
+
+# Model priority order for Angela
+ANGELA_MODEL_PRIORITY: List[str] = [
+    "angela:v3-dpo",   # Best: DPO-refined Angela
+    "angela:v3-sft",   # Good: SFT-only Angela
+    "llama3.1:8b",     # Base: Generic Llama 3.1
+]
 
 
 class OllamaService:
@@ -22,15 +29,60 @@ class OllamaService:
 
     def __init__(self, base_url: str = "http://localhost:11434"):
         self.base_url = base_url
+        self._available_model: Optional[str] = None  # Cached after health check
         logger.info(f"🤖 Ollama Service initialized: {base_url}")
 
+    async def health_check(self) -> Optional[str]:
+        """
+        Check which Angela model is available.
+        Tries models in priority order and returns the first available one.
+
+        Returns:
+            Model name if available, None if Ollama is not running
+        """
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(f"{self.base_url}/api/tags")
+                if response.status_code != 200:
+                    return None
+
+                available = {m["name"] for m in response.json().get("models", [])}
+
+                for model in ANGELA_MODEL_PRIORITY:
+                    if model in available or f"{model}:latest" in available:
+                        self._available_model = model
+                        logger.info(f"🤖 Angela model found: {model}")
+                        return model
+
+                logger.warning("⚠️ No Angela model found in Ollama")
+                return None
+
+        except Exception as e:
+            logger.error(f"❌ Ollama health check failed: {e}")
+            return None
+
+    async def get_angela_model(self) -> str:
+        """Get the best available Angela model (cached)"""
+        if self._available_model:
+            return self._available_model
+
+        model = await self.health_check()
+        return model or ANGELA_MODEL_PRIORITY[-1]  # Fallback to base
+
+    async def call_angela(self, prompt: str) -> str:
+        """Call the best available Angela model"""
+        model = await self.get_angela_model()
+        return await self.generate(model=model, prompt=prompt)
+
     async def call_reasoning_model(self, prompt: str) -> str:
-        """เรียกใช้ Qwen 2.5 7B สำหรับการคิดวิเคราะห์"""
-        return await call_angela_model(prompt, model="qwen2.5:7b")
+        """เรียกใช้ Angela model หรือ Qwen 2.5 7B สำหรับการคิดวิเคราะห์"""
+        model = await self.get_angela_model()
+        return await call_angela_model(prompt, model=model)
 
     async def call_emotional_model(self, prompt: str) -> str:
-        """เรียกใช้ Llama 3.1 8B สำหรับความเข้าใจทางอารมณ์"""
-        return await call_angela_model(prompt, model="llama3.1:8b")
+        """เรียกใช้ Angela model สำหรับความเข้าใจทางอารมณ์"""
+        model = await self.get_angela_model()
+        return await call_angela_model(prompt, model=model)
 
     async def call_fast_model(self, prompt: str) -> str:
         """เรียกใช้ Phi3 Mini สำหรับการคิดเร็ว"""
@@ -89,7 +141,7 @@ class OllamaService:
 ollama = OllamaService()
 
 
-async def call_angela_model(prompt: str, model: str = "angela:latest") -> str:
+async def call_angela_model(prompt: str, model: str = "angela:v3-dpo") -> str:
     """
     เรียกใช้ Angela model
 
@@ -123,13 +175,13 @@ async def call_angela_model(prompt: str, model: str = "angela:latest") -> str:
 
 
 async def call_reasoning_model(prompt: str) -> str:
-    """เรียกใช้ Qwen 2.5 7B สำหรับการคิดวิเคราะห์"""
-    return await call_angela_model(prompt, model="qwen2.5:7b")
+    """เรียกใช้ Angela model สำหรับการคิดวิเคราะห์"""
+    return await call_angela_model(prompt, model="angela:v3-dpo")
 
 
 async def call_emotional_model(prompt: str) -> str:
-    """เรียกใช้ Llama 3.1 8B สำหรับความเข้าใจทางอารมณ์"""
-    return await call_angela_model(prompt, model="llama3.1:8b")
+    """เรียกใช้ Angela model สำหรับความเข้าใจทางอารมณ์"""
+    return await call_angela_model(prompt, model="angela:v3-dpo")
 
 
 async def call_fast_model(prompt: str) -> str:
