@@ -687,6 +687,21 @@ class EnhancedRAGService:
             rerank=True
         )
 
+    async def enrich_with_notes(
+        self,
+        query: str,
+        min_score: float = 0.5,
+        top_k: int = 3
+    ) -> RAGResult:
+        """Search David's notes with stricter defaults for conversational enrichment."""
+        return await self.retrieve(
+            query=query,
+            top_k=top_k,
+            sources=['david_notes'],
+            rerank=True,
+            min_score=min_score,
+        )
+
     async def search_all(
         self,
         query: str,

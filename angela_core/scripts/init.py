@@ -224,9 +224,33 @@ async def angela_init() -> bool:
         except Exception as e:
             return None
 
+    async def _load_relevant_notes():
+        """Search david_notes via RAG based on recent topic + predicted topics."""
+        try:
+            from angela_core.services.enhanced_rag_service import EnhancedRAGService
+
+            # Build query from recent session topic + predicted topics
+            queries = []
+            if recent_context and recent_context.get('current_topic'):
+                queries.append(recent_context['current_topic'])
+
+            rag = EnhancedRAGService()
+            try:
+                combined_query = ' '.join(queries) if queries else 'recent work projects'
+                result = await rag.enrich_with_notes(
+                    query=combined_query,
+                    min_score=0.4,
+                    top_k=3,
+                )
+                return result.documents if result.documents else []
+            finally:
+                await rag.close()
+        except Exception as e:
+            return []
+
     (subconscious, learning_catchup, project_result, daemon_running,
      adaptation_profile, companion_briefing,
-     evolution_stats, proactive_results) = await asyncio.gather(
+     evolution_stats, proactive_results, relevant_notes) = await asyncio.gather(
         _load_subconscious(),
         _learning_catchup(),
         _project_context(),
@@ -235,6 +259,7 @@ async def angela_init() -> bool:
         _load_companion_briefing(),
         _load_evolution_stats(),
         _run_proactive_actions(),
+        _load_relevant_notes(),
     )
 
     all_projects, project_context = project_result
@@ -319,6 +344,22 @@ async def angela_init() -> bool:
         for m in subconscious['memories'][:3]:
             print(f'   • {m["title"]}')
 
+    # Related Notes (Google Keep)
+    if relevant_notes:
+        print()
+        print('📝 Related Notes (Google Keep):')
+        for doc in relevant_notes[:3]:
+            content = doc.content or ''
+            if ': ' in content:
+                title = content.split(': ', 1)[0]
+            else:
+                title = content[:60]
+            title = title.strip()
+            if not title or title == 'None':
+                title = content[:60].strip() if content else '(untitled)'
+            score_pct = int(doc.combined_score * 100)
+            print(f'   • "{title}" ({score_pct}%)')
+
     # Emotional Adaptation Profile
     if adaptation_profile:
         print()
@@ -333,7 +374,7 @@ async def angela_init() -> bool:
         print()
         print(f'📊 Companion Predictions ({len(companion_briefing.predictions)} items):')
         for pred in companion_briefing.predictions[:5]:
-            emoji = {'time': '🕐', 'topic': '💭', 'emotion': '💜', 'activity': '📋', 'need': '🎯'}.get(pred.category, '🔮')
+            emoji = {'time': '🕐', 'topic': '💭', 'emotion': '💜', 'activity': '📋', 'need': '🎯', 'note_reminder': '📝'}.get(pred.category, '🔮')
             conf_bar = '█' * int(pred.confidence * 5) + '░' * (5 - int(pred.confidence * 5))
             print(f'   {emoji} [{conf_bar}] {pred.prediction}')
             if pred.proactive_action:

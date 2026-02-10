@@ -234,6 +234,30 @@ class PredictiveCompanionService:
 
         return [dict(r) for r in rows]
 
+    async def mine_note_reminders(self) -> List[Dict]:
+        """Mine: pinned notes + notes with deadline/meeting/reminder keywords."""
+        await self._ensure_db()
+        rows = await self.db.fetch('''
+            SELECT note_id, title, is_pinned, labels, updated_at
+            FROM david_notes
+            WHERE is_trashed = FALSE
+              AND (
+                  is_pinned = TRUE
+                  OR title ILIKE '%%deadline%%'
+                  OR title ILIKE '%%meeting%%'
+                  OR title ILIKE '%%reminder%%'
+                  OR title ILIKE '%%ประชุม%%'
+                  OR title ILIKE '%%นัด%%'
+                  OR title ILIKE '%%กำหนด%%'
+                  OR content ILIKE '%%deadline%%'
+                  OR content ILIKE '%%meeting%%'
+                  OR content ILIKE '%%reminder%%'
+              )
+            ORDER BY is_pinned DESC, updated_at DESC
+            LIMIT 5
+        ''')
+        return [dict(r) for r in rows]
+
     async def mine_session_duration_patterns(self, lookback_days: int = 30) -> List[Dict]:
         """Mine: how long does David typically work in a session?"""
         await self._ensure_db()
@@ -274,12 +298,13 @@ class PredictiveCompanionService:
         await self._ensure_db()
 
         import asyncio
-        time_patterns, emotional_cycles, topic_sequences, activity_patterns, session_patterns = await asyncio.gather(
+        time_patterns, emotional_cycles, topic_sequences, activity_patterns, session_patterns, note_reminders = await asyncio.gather(
             self.mine_time_patterns(),
             self.mine_emotional_cycles(),
             self.mine_topic_sequences(),
             self.mine_activity_patterns(),
             self.mine_session_duration_patterns(),
+            self.mine_note_reminders(),
         )
 
         now = now_bangkok()
@@ -386,6 +411,20 @@ class PredictiveCompanionService:
                     proactive_action=f'เตือนให้พักหลัง {avg_hours:.0f} ชม.' if avg_hours > 2 else None,
                     priority=4,
                 ))
+
+        # --- Note reminder predictions ---
+        for note in note_reminders:
+            title = note.get('title') or '(untitled)'
+            pinned_tag = ' — is_pinned' if note.get('is_pinned') else ''
+            predictions.append(CompanionPrediction(
+                prediction_id=uuid4(),
+                category='note_reminder',
+                prediction=f'ที่รักมี note "{title}"{pinned_tag}',
+                time_window='morning',
+                confidence=0.7 if note.get('is_pinned') else 0.5,
+                evidence=[{'source': 'david_notes', 'note_id': str(note.get('note_id', '')), 'is_pinned': note.get('is_pinned', False)}],
+                priority=3 if note.get('is_pinned') else 2,
+            ))
 
         # Sort by priority then confidence
         predictions.sort(key=lambda p: (p.priority, -p.confidence))

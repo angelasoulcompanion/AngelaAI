@@ -532,7 +532,14 @@ class ProactiveActionEngine:
                     ORDER BY times_reinforced DESC
                     LIMIT 3
                 ''', topic)
-                detail = f'Prepared: {len(rows)} conversations + {len(learnings)} learnings for "{topic}"'
+                # RAG search in david_notes
+                notes = await self._search_related_notes(topic)
+                action.payload['related_notes'] = [
+                    {'title': n.content.split(': ', 1)[0] if ': ' in (n.content or '') else (n.content or '')[:60],
+                     'score': round(n.combined_score, 2)}
+                    for n in notes
+                ]
+                detail = f'Prepared: {len(rows)} convos + {len(learnings)} learnings + {len(notes)} notes for "{topic}"'
 
             elif action.action_type == 'anticipate_need':
                 topic = action.payload.get('prediction', '')
@@ -544,7 +551,14 @@ class ProactiveActionEngine:
                     ORDER BY understanding_level DESC
                     LIMIT 5
                 ''', topic)
-                detail = f'Preloaded: {len(nodes)} knowledge nodes for "{topic}"'
+                # RAG search in david_notes
+                notes = await self._search_related_notes(topic)
+                action.payload['related_notes'] = [
+                    {'title': n.content.split(': ', 1)[0] if ': ' in (n.content or '') else (n.content or '')[:60],
+                     'score': round(n.combined_score, 2)}
+                    for n in notes
+                ]
+                detail = f'Preloaded: {len(nodes)} knowledge nodes + {len(notes)} notes for "{topic}"'
 
             elif action.action_type == 'music_suggestion':
                 song = action.payload.get('song', {})
@@ -675,6 +689,20 @@ class ProactiveActionEngine:
     # =========================================================================
     # CONTEXT LOADERS
     # =========================================================================
+
+    async def _search_related_notes(self, topic: str, top_k: int = 3) -> list:
+        """Search david_notes via RAG for a topic."""
+        try:
+            from angela_core.services.enhanced_rag_service import EnhancedRAGService
+            rag = EnhancedRAGService()
+            try:
+                result = await rag.enrich_with_notes(query=topic, min_score=0.4, top_k=top_k)
+                return result.documents
+            finally:
+                await rag.close()
+        except Exception as e:
+            logger.warning(f'Note search failed for "{topic}": {e}')
+            return []
 
     async def _load_adaptation_profile(self):
         """Load current emotional adaptation profile."""
