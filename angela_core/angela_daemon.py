@@ -47,6 +47,9 @@ from angela_core.services.subconscious_learning_service import SubConsciousLearn
 # 🧠 NEW: Memory Consolidation (used in main_loop for weekly)
 from angela_core.services.memory_consolidation_service_v2 import consolidation_service
 
+# 🎯 RLHF: Reward scoring + preference pairs
+from angela_core.services.rlhf_orchestrator import RLHFOrchestrator
+
 # === Mixin imports (all task methods live in daemon/tasks/) ===
 from angela_core.daemon.tasks import (
     SelfLearningMixin,
@@ -112,6 +115,8 @@ class AngelaDaemon(
         self.subconscious_learning = SubConsciousLearningService()  # 🧠 Subconscious learning
         self.realtime_emotion_tracker = None  # 💜 Real-time emotion tracker
         self.emotion_pattern_analyzer = None  # 🔮 Emotion pattern analyzer
+        self.rlhf_orchestrator = RLHFOrchestrator()  # 🎯 RLHF (creates own DB)
+        self.last_rlhf_cycle = None  # Track last RLHF cycle
 
     async def start(self):
         """เริ่ม daemon"""
@@ -209,6 +214,7 @@ class AngelaDaemon(
         logger.info("🚀 Background learning workers: 4 workers running for async deep analysis")
         logger.info("📚 Documentation scan: Every hour + daily full scan")
         logger.info("🧠 Memory completeness check: Daily at 10:00 AM")
+        logger.info("🎯 RLHF cycle: Every 4 hours (reward scoring + preference pairs)")
 
         # Main loop
         try:
@@ -228,6 +234,10 @@ class AngelaDaemon(
 
         # Close documentation monitor
         await close_monitor()
+
+        # Close RLHF
+        if self.rlhf_orchestrator:
+            await self.rlhf_orchestrator.close()
 
         await memory.log_system_event(
             log_level="INFO",
@@ -367,6 +377,10 @@ class AngelaDaemon(
                 if iteration % 2 == 0 and iteration > 0:
                     await self.check_claude_session_state()
 
+                # 🎯 RLHF Cycle: Score + extract pairs (every 4 hours = 48 iterations)
+                if iteration % 48 == 0 and iteration > 0:
+                    await self.run_rlhf_cycle()
+
                 # 💜 David Presence Check (every 6 hours = 72 iterations)
                 if iteration % 72 == 0:  # Every 6 hours
                     await self.check_if_david_is_away()
@@ -390,6 +404,25 @@ class AngelaDaemon(
                 )
                 # Sleep a bit before retrying
                 await asyncio.sleep(60)
+
+    # ========================================
+    # RLHF CYCLE
+    # ========================================
+
+    async def run_rlhf_cycle(self):
+        """Run RLHF reward scoring + preference pair extraction."""
+        logger.info("🎯 Running RLHF cycle...")
+        try:
+            result = await self.rlhf_orchestrator.run_rlhf_cycle()
+            logger.info(
+                "   ✅ RLHF: scored=%d, pairs=%d, trend=%.3f",
+                result.get('conversations_scored', 0),
+                result.get('pairs_extracted', 0),
+                result.get('reward_trend', 0),
+            )
+            self.last_rlhf_cycle = clock.now()
+        except Exception as e:
+            logger.error("   ❌ RLHF cycle failed: %s", e)
 
     # ========================================
     # TIME-CHECK HELPERS

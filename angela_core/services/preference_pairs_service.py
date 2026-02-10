@@ -196,7 +196,7 @@ class PreferencePairsService:
             GROUP BY topic
             HAVING COUNT(DISTINCT conversation_id) >= 2
               AND MAX(CASE WHEN rank_high = 1 THEN combined_reward END)
-                - MAX(CASE WHEN rank_low = 1 THEN combined_reward END) > 0.3
+                - MAX(CASE WHEN rank_low = 1 THEN combined_reward END) >= 0.25
         ''', hours)
 
         pairs_count = 0
