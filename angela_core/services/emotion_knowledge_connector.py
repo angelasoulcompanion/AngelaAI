@@ -16,9 +16,10 @@ import asyncio
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from angela_core.database import AngelaDatabase
+from angela_core.services.base_db_service import BaseDBService
 
 
-class EmotionKnowledgeConnector:
+class EmotionKnowledgeConnector(BaseDBService):
     """
     Service to connect emotional data to knowledge graph.
 
@@ -53,18 +54,7 @@ class EmotionKnowledgeConnector:
     }
 
     def __init__(self, db: Optional[AngelaDatabase] = None):
-        self.db = db or AngelaDatabase()
-        self._connected = False
-
-    async def connect(self):
-        if not self._connected:
-            await self.db.connect()
-            self._connected = True
-
-    async def disconnect(self):
-        if self._connected:
-            await self.db.disconnect()
-            self._connected = False
+        super().__init__(db)
 
     async def sync_emotions_to_nodes(self) -> Dict[str, int]:
         """

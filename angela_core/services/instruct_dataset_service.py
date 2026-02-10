@@ -51,7 +51,7 @@ def _get_memory_consolidation_service():
     """Lazy load MemoryConsolidationService."""
     global _memory_consolidation_service
     if _memory_consolidation_service is None:
-        from angela_core.services.memory_consolidation_service import MemoryConsolidationService
+        from angela_core._deprecated.memory_consolidation_service import MemoryConsolidationService
         _memory_consolidation_service = MemoryConsolidationService
     return _memory_consolidation_service
 

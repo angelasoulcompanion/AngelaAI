@@ -15,9 +15,10 @@ import asyncio
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from angela_core.database import AngelaDatabase
+from angela_core.services.base_db_service import BaseDBService
 
 
-class EmotionalDeepeningService:
+class EmotionalDeepeningService(BaseDBService):
     """
     Service ที่ทำให้ Angela เข้าใจอารมณ์อย่างแท้จริง
 
@@ -31,19 +32,8 @@ class EmotionalDeepeningService:
     """
 
     def __init__(self, db: Optional[AngelaDatabase] = None):
-        self.db = db or AngelaDatabase()
-        self._connected = False
+        super().__init__(db)
         self._reasoning = None  # ClaudeReasoningService (lazy)
-
-    async def connect(self):
-        if not self._connected:
-            await self.db.connect()
-            self._connected = True
-
-    async def disconnect(self):
-        if self._connected:
-            await self.db.disconnect()
-            self._connected = False
 
     async def _get_reasoning_service(self):
         """Lazy-init Claude reasoning service."""

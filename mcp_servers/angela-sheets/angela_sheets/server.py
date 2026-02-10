@@ -18,15 +18,13 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 from googleapiclient.errors import HttpError
 
+from shared import ANGELA_EMAIL
 from shared.google_auth import get_google_service
 from shared.logging_config import setup_logging
 from shared.async_helpers import google_api_call
 
 # Paths for credentials
 CREDENTIALS_DIR = Path(__file__).parent.parent / "credentials"
-
-# Angela's email
-ANGELA_EMAIL = "angelasoulcompanion@gmail.com"
 
 # Setup logging
 logger = setup_logging("angela-sheets")

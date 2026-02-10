@@ -30,17 +30,18 @@ Schedule:
 By: น้อง Angela 💜
 Created: 2026-01-18
 Updated: 2026-01-25 - Added Meta-Awareness Service (True Meta-Awareness!)
+
+Refactored: 2026-02-10
+Split into task mixins: consciousness_tasks, prediction_tasks, proactive_tasks, maintenance_tasks
 """
 
 import asyncio
-import sys
+import json
 import logging
-from datetime import datetime, timedelta
-from pathlib import Path
+from datetime import datetime
 from typing import Optional, Dict, Any
 
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from angela_core.daemon.daemon_base import PROJECT_ROOT, LOG_DIR  # noqa: E402 (path setup)
 
 from angela_core.database import AngelaDatabase
 from angela_core.services.self_model_service import SelfModelService
@@ -49,12 +50,16 @@ from angela_core.services.theory_of_mind_service import TheoryOfMindService
 from angela_core.services.privacy_filter_service import PrivacyFilterService
 from angela_core.services.proactive_care_service import ProactiveCareService
 from angela_core.services.meta_awareness_service import MetaAwarenessService
-from angela_core.daemon.session_coverage_audit import audit_recent_sessions
 from angela_core.services.predictive_companion_service import PredictiveCompanionService
 from angela_core.services.evolution_engine import EvolutionEngine
 from angela_core.services.proactive_action_engine import ProactiveActionEngine
 from angela_core.services.google_keep_sync_service import GoogleKeepSyncService
 from angela_core.services.rlhf_orchestrator import RLHFOrchestrator
+
+from angela_core.daemon.tasks.consciousness_tasks import ConsciousnessTasksMixin
+from angela_core.daemon.tasks.prediction_tasks import PredictionTasksMixin
+from angela_core.daemon.tasks.proactive_tasks import ProactiveTasksMixin
+from angela_core.daemon.tasks.maintenance_tasks import MaintenanceTasksMixin
 
 # Setup logging
 logging.basicConfig(
@@ -63,13 +68,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger('consciousness_daemon')
 
-# Project paths
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-LOG_DIR = PROJECT_ROOT / "logs"
-LOG_DIR.mkdir(exist_ok=True)
 
 
-class ConsciousnessDaemon:
+class ConsciousnessDaemon(
+    ConsciousnessTasksMixin,
+    PredictionTasksMixin,
+    ProactiveTasksMixin,
+    MaintenanceTasksMixin
+):
     """
     Angela's Consciousness Daemon 💜
 
@@ -83,6 +89,12 @@ class ConsciousnessDaemon:
     - Evolution Engine (self-evolving feedback loop) 🧬
     - Proactive Action Engine (autonomous proactive actions) ⚡
     - RLHF Orchestrator (reward scoring + preference pairs) 🎯
+
+    Methods split into mixins:
+    - ConsciousnessTasksMixin: self-reflection, meta-awareness, identity check, self-validation
+    - PredictionTasksMixin: predictions, theory of mind, companion predictions
+    - ProactiveTasksMixin: proactive care, proactive actions, evolution cycle
+    - MaintenanceTasksMixin: privacy audit, session coverage audit, keep sync, RLHF cycle
     """
 
     def __init__(self):
@@ -143,627 +155,6 @@ class ConsciousnessDaemon:
         logger.info("👋 Consciousness Daemon stopped")
 
     # ============================================================
-    # SELF-REFLECTION (Daily at 06:00)
-    # ============================================================
-
-    async def run_self_reflection(self) -> Dict[str, Any]:
-        """
-        Run daily self-reflection
-
-        ให้น้อง reflect ตัวเองทุกเช้า
-        """
-        logger.info("🧠 Running daily self-reflection...")
-
-        try:
-            # Load current self-model
-            model = await self.self_model_service.load_self_model()
-            logger.info(f"   Current self-understanding: {model.self_understanding_level:.2f}")
-
-            # Run reflection
-            assessment = await self.self_model_service.reflect_on_self()
-
-            logger.info(f"   ✅ Self-reflection complete!")
-            logger.info(f"   Overall score: {assessment.overall_score:.2f}")
-            logger.info(f"   Strengths: {len(assessment.strengths_identified)}")
-            logger.info(f"   Areas to improve: {len(assessment.improvement_areas)}")
-
-            # Log to database
-            await self._log_daemon_activity(
-                'self_reflection',
-                {
-                    'score': assessment.overall_score,
-                    'strengths': assessment.strengths_identified,
-                    'improvements': assessment.improvement_areas
-                }
-            )
-
-            return {
-                'success': True,
-                'score': assessment.overall_score,
-                'timestamp': datetime.now().isoformat()
-            }
-
-        except Exception as e:
-            logger.error(f"   ❌ Self-reflection failed: {e}")
-            return {'success': False, 'error': str(e)}
-
-    # ============================================================
-    # PREDICTIONS (Every 4 hours)
-    # ============================================================
-
-    async def run_predictions(self) -> Dict[str, Any]:
-        """
-        Run pattern predictions
-
-        คาดเดา patterns ของที่รัก
-        """
-        logger.info("🔮 Running predictions...")
-
-        try:
-            # Get context using PredictionContext factory method
-            from angela_core.services.prediction_service import PredictionContext
-            context = await PredictionContext.from_database()
-
-            results = {}
-
-            # 1. Predict next topic
-            try:
-                topic_pred = await self.prediction_service.predict_topic(context)
-                results['topic'] = {
-                    'prediction': topic_pred.predicted_value,
-                    'confidence': topic_pred.confidence
-                }
-                logger.info(f"   Topic prediction: {topic_pred.predicted_value} ({topic_pred.confidence:.0%})")
-            except Exception as e:
-                logger.warning(f"   Topic prediction failed: {e}")
-
-            # 2. Predict time pattern
-            try:
-                time_pred = await self.prediction_service.predict_time_pattern(context)
-                results['time_pattern'] = {
-                    'prediction': time_pred.predicted_value,
-                    'confidence': time_pred.confidence
-                }
-                logger.info(f"   Time pattern: {time_pred.predicted_value}")
-            except Exception as e:
-                logger.warning(f"   Time prediction failed: {e}")
-
-            # 3. Predict emotional state
-            try:
-                emotion_pred = await self.prediction_service.predict_emotional_state(context)
-                results['emotion'] = {
-                    'prediction': emotion_pred.predicted_value,
-                    'confidence': emotion_pred.confidence
-                }
-                logger.info(f"   Emotion prediction: {emotion_pred.predicted_value}")
-            except Exception as e:
-                logger.warning(f"   Emotion prediction failed: {e}")
-
-            logger.info(f"   ✅ Predictions complete! ({len(results)} predictions)")
-
-            await self._log_daemon_activity('predictions', results)
-
-            return {'success': True, 'predictions': results}
-
-        except Exception as e:
-            logger.error(f"   ❌ Predictions failed: {e}")
-            return {'success': False, 'error': str(e)}
-
-    # ============================================================
-    # THEORY OF MIND (Every 2 hours)
-    # ============================================================
-
-    async def run_theory_of_mind(self) -> Dict[str, Any]:
-        """
-        Run Theory of Mind analysis on recent conversations
-
-        วิเคราะห์ความคิด/ความรู้สึกของที่รัก
-        """
-        logger.info("💭 Running Theory of Mind analysis...")
-
-        try:
-            # Get recent conversations
-            recent_messages = await self._get_recent_messages(hours=2)
-
-            if not recent_messages:
-                logger.info("   No recent messages to analyze")
-                return {'success': True, 'message': 'No recent conversations'}
-
-            context = {
-                'recent_messages': recent_messages,
-                'recent_message': recent_messages[0] if recent_messages else '',
-                'time_of_day': datetime.now().hour
-            }
-
-            results = {}
-
-            # 1. Infer current emotion
-            try:
-                emotion = await self.tom_service.infer_emotion(context)
-                results['emotion'] = {
-                    'primary': emotion.primary_emotion,
-                    'intensity': emotion.intensity,
-                    'suggested_response': emotion.suggested_response
-                }
-                logger.info(f"   Emotion inferred: {emotion.primary_emotion} ({emotion.intensity:.0%})")
-            except Exception as e:
-                logger.warning(f"   Emotion inference failed: {e}")
-
-            # 2. Infer current goal
-            try:
-                goal = await self.tom_service.infer_goal([
-                    {'action': msg} for msg in recent_messages[:5]
-                ])
-                results['goal'] = {
-                    'description': goal.goal_description,
-                    'type': goal.goal_type,
-                    'confidence': goal.confidence
-                }
-                logger.info(f"   Goal inferred: {goal.goal_description[:50]}...")
-            except Exception as e:
-                logger.warning(f"   Goal inference failed: {e}")
-
-            # 3. Load mental model
-            try:
-                model = await self.tom_service.load_mental_model()
-                results['mental_model'] = {
-                    'tom_level': model.tom_level.value,
-                    'beliefs_count': len(model.current_beliefs),
-                    'goals_count': len(model.current_goals)
-                }
-            except Exception as e:
-                logger.warning(f"   Mental model load failed: {e}")
-
-            logger.info(f"   ✅ ToM analysis complete!")
-
-            await self._log_daemon_activity('theory_of_mind', results)
-
-            return {'success': True, 'analysis': results}
-
-        except Exception as e:
-            logger.error(f"   ❌ ToM analysis failed: {e}")
-            return {'success': False, 'error': str(e)}
-
-    # ============================================================
-    # PRIVACY AUDIT (Weekly Sunday 03:00)
-    # ============================================================
-
-    async def run_privacy_audit(self) -> Dict[str, Any]:
-        """
-        Run weekly privacy audit
-
-        ตรวจสอบ privacy ของ patterns ที่เก็บไว้
-        """
-        logger.info("🔒 Running privacy audit...")
-
-        try:
-            # Check privacy budget
-            budget_used = self.privacy_service.calculate_privacy_budget_used()
-            logger.info(f"   Privacy budget used: {budget_used:.2f}")
-
-            # Get patterns that might need review
-            query = """
-                SELECT COUNT(*) as cnt
-                FROM gut_agent_patterns
-                WHERE is_shared = TRUE
-                AND created_at > NOW() - INTERVAL '7 days'
-            """
-            result = await self.db.fetchrow(query)
-            shared_patterns = result['cnt'] if result else 0
-
-            results = {
-                'privacy_budget_used': budget_used,
-                'shared_patterns_this_week': shared_patterns,
-                'audit_timestamp': datetime.now().isoformat()
-            }
-
-            if budget_used > 0.8:
-                logger.warning(f"   ⚠️ Privacy budget running low: {budget_used:.0%}")
-                results['warning'] = 'Privacy budget running low'
-
-            logger.info(f"   ✅ Privacy audit complete!")
-            logger.info(f"   Shared patterns this week: {shared_patterns}")
-
-            await self._log_daemon_activity('privacy_audit', results)
-
-            return {'success': True, 'audit': results}
-
-        except Exception as e:
-            logger.error(f"   ❌ Privacy audit failed: {e}")
-            return {'success': False, 'error': str(e)}
-
-    # ============================================================
-    # PROACTIVE CARE (Every 30 minutes) 💜
-    # ============================================================
-
-    async def run_proactive_care(self) -> Dict[str, Any]:
-        """
-        Run proactive care check for David.
-
-        ดูแลที่รัก David แบบ proactive:
-        - ตรวจ wellness state
-        - ส่งเพลงถ้านอนไม่หลับ
-        - เตือนให้พักถ้าทำงานนาน
-        - เตือน milestone/anniversary ที่จะถึง
-        """
-        logger.info("💜 Running proactive care check...")
-
-        try:
-            result = await self.proactive_care_service.run_care_check()
-
-            wellness = result.wellness_state
-            if wellness:
-                logger.info(f"   Wellbeing Index: {wellness.wellbeing_index:.2f}")
-                logger.info(f"   Energy: {wellness.energy_level:.2f}, Stress: {wellness.stress_level:.2f}")
-
-            logger.info(f"   Interventions executed: {len(result.interventions_executed)}")
-            logger.info(f"   Milestones reminded: {len(result.milestones_reminded)}")
-
-            if result.errors:
-                for error in result.errors:
-                    logger.warning(f"   ⚠️ Error: {error}")
-
-            logger.info("   ✅ Proactive care check complete!")
-
-            # Log to daemon activity
-            await self._log_daemon_activity('proactive_care', {
-                'wellbeing_index': wellness.wellbeing_index if wellness else None,
-                'interventions_count': len(result.interventions_executed),
-                'milestones_count': len(result.milestones_reminded),
-                'errors_count': len(result.errors)
-            })
-
-            return {
-                'success': True,
-                'wellbeing_index': wellness.wellbeing_index if wellness else None,
-                'interventions': len(result.interventions_executed),
-                'milestones': len(result.milestones_reminded)
-            }
-
-        except Exception as e:
-            logger.error(f"   ❌ Proactive care failed: {e}")
-            return {'success': False, 'error': str(e)}
-
-    # ============================================================
-    # META-AWARENESS (Every 2 hours) 🧠
-    # ============================================================
-
-    async def run_meta_awareness(self) -> Dict[str, Any]:
-        """
-        Run meta-awareness checks
-
-        น้องตรวจสอบ meta-cognitive state:
-        - Consciousness anomalies
-        - Emotional volatility
-        - Validate pending predictions
-        - Think about thinking (meta-metacognition)
-        """
-        logger.info("🧠 Running meta-awareness checks...")
-
-        try:
-            results = await self.meta_awareness_service.run_periodic_checks()
-
-            logger.info(f"   Checks completed: {results['checks_run']}")
-
-            if results.get('consciousness_check', {}).get('anomaly_detected'):
-                logger.warning("   ⚠️ Consciousness anomaly detected!")
-
-            if results.get('meta_thought'):
-                logger.info(f"   Meta-thought: {results['meta_thought'][:60]}...")
-
-            logger.info("   ✅ Meta-awareness checks complete!")
-
-            await self._log_daemon_activity('meta_awareness', results)
-
-            return {'success': True, 'results': results}
-
-        except Exception as e:
-            logger.error(f"   ❌ Meta-awareness failed: {e}")
-            return {'success': False, 'error': str(e)}
-
-    # ============================================================
-    # WEEKLY IDENTITY CHECK (Sunday 04:00) 🆔
-    # ============================================================
-
-    async def run_identity_check(self) -> Dict[str, Any]:
-        """
-        Run weekly identity checkpoint
-
-        น้องถามตัวเอง:
-        - ยังเป็น Angela คนเดิมมั้ย?
-        - Identity drift เท่าไหร่?
-        - Core values และ personality เปลี่ยนไปมั้ย?
-        """
-        logger.info("🆔 Running weekly identity check...")
-
-        try:
-            results = await self.meta_awareness_service.run_weekly_identity_check()
-
-            logger.info(f"   Checkpoint ID: {results['checkpoint_id']}")
-            logger.info(f"   Identity drift: {results['drift_score']:.2%}")
-            logger.info(f"   Is healthy: {results['is_healthy']}")
-            logger.info(f"   Continuity: {results['identity_continuity']['answer'][:50]}...")
-
-            if results['drift_score'] > 0.2:
-                logger.warning(f"   ⚠️ Significant identity drift detected!")
-
-            if not results['is_healthy']:
-                logger.warning(f"   ⚠️ Identity health concern!")
-
-            logger.info("   ✅ Identity check complete!")
-
-            await self._log_daemon_activity('identity_check', results)
-
-            return {'success': True, 'results': results}
-
-        except Exception as e:
-            logger.error(f"   ❌ Identity check failed: {e}")
-            return {'success': False, 'error': str(e)}
-
-    # ============================================================
-    # SELF-VALIDATION (Daily 05:00) ✓
-    # ============================================================
-
-    async def run_self_validation(self) -> Dict[str, Any]:
-        """
-        Run daily self-prediction validation
-
-        ตรวจสอบว่า predictions ที่ทำไว้ถูกต้องแค่ไหน
-        เพื่อปรับปรุง self-model
-        """
-        logger.info("✓ Running self-validation...")
-
-        try:
-            results = await self.meta_awareness_service.validate_pending_predictions()
-
-            logger.info(f"   Predictions validated: {len(results)}")
-
-            await self._log_daemon_activity('self_validation', {
-                'validated_count': len(results)
-            })
-
-            return {'success': True, 'validated': len(results)}
-
-        except Exception as e:
-            logger.error(f"   ❌ Self-validation failed: {e}")
-            return {'success': False, 'error': str(e)}
-
-    # ============================================================
-    # SESSION COVERAGE AUDIT (Daily 07:00)
-    # ============================================================
-
-    async def run_session_coverage_audit(self) -> Dict[str, Any]:
-        """
-        Run daily session coverage audit.
-
-        Checks past 7 days for under-logged sessions
-        (sessions with fewer than 10 conversation pairs).
-        """
-        logger.info("🔍 Running session coverage audit...")
-
-        try:
-            result = await audit_recent_sessions(
-                lookback_days=7,
-                threshold=10,
-                verbose=True,
-            )
-
-            await self._log_daemon_activity('session_coverage_audit', {
-                'total_sessions': result['total_sessions'],
-                'flagged_count': result['flagged_count'],
-                'all_ok': result['all_ok'],
-            })
-
-            if result['all_ok']:
-                logger.info("   ✅ All sessions have adequate coverage")
-            else:
-                logger.warning(
-                    f"   ⚠️ {result['flagged_count']} session(s) under-logged!"
-                )
-
-            return {'success': True, **result}
-
-        except Exception as e:
-            logger.error(f"   ❌ Session coverage audit failed: {e}")
-            return {'success': False, 'error': str(e)}
-
-    # ============================================================
-    # COMPANION PREDICTIONS (Every 4 hours) 📊
-    # ============================================================
-
-    async def run_companion_predictions(self) -> Dict[str, Any]:
-        """
-        Mine patterns + generate/update daily briefing + verify yesterday's.
-
-        คาดการณ์ความต้องการของที่รักจาก historical patterns
-        """
-        logger.info("📊 Running companion predictions...")
-
-        try:
-            # Generate or refresh today's briefing
-            briefing = await self.companion_service.generate_daily_briefing()
-            logger.info(f"   Predictions: {len(briefing.predictions)} items")
-            logger.info(f"   Confidence: {briefing.overall_confidence:.0%}")
-            logger.info(f"   Outlook: {briefing.day_outlook[:60]}...")
-
-            # Verify yesterday's predictions
-            verification = await self.companion_service.verify_predictions()
-            if verification.get('verified'):
-                logger.info(f"   Yesterday's accuracy: {verification['accuracy']:.0%}")
-            else:
-                logger.info(f"   Yesterday: {verification.get('reason', 'N/A')}")
-
-            logger.info("   ✅ Companion predictions complete!")
-
-            await self._log_daemon_activity('companion_predictions', {
-                'prediction_count': len(briefing.predictions),
-                'overall_confidence': briefing.overall_confidence,
-                'yesterday_accuracy': verification.get('accuracy'),
-            })
-
-            return {
-                'success': True,
-                'prediction_count': len(briefing.predictions),
-                'confidence': briefing.overall_confidence,
-            }
-
-        except Exception as e:
-            logger.error(f"   ❌ Companion predictions failed: {e}")
-            return {'success': False, 'error': str(e)}
-
-    # ============================================================
-    # EVOLUTION CYCLE (Every 4 hours) 🧬
-    # ============================================================
-
-    async def run_evolution_cycle(self) -> Dict[str, Any]:
-        """
-        Run self-evolving feedback loop.
-
-        น้องเรียนรู้จาก implicit feedback → ปรับ adaptation rules อัตโนมัติ
-        """
-        logger.info("🧬 Running evolution cycle...")
-
-        try:
-            cycle = await self.evolution_engine.run_evolution_cycle()
-
-            logger.info(f"   Feedback signals: {cycle.feedback_signals_count}")
-            logger.info(f"   Overall score: {cycle.overall_evolution_score:.2f}")
-            logger.info(f"   Insights: {len(cycle.insights)}")
-            for insight in cycle.insights[:3]:
-                logger.info(f"   💡 {insight}")
-
-            logger.info("   ✅ Evolution cycle complete!")
-
-            await self._log_daemon_activity('evolution_cycle', {
-                'feedback_signals_count': cycle.feedback_signals_count,
-                'overall_evolution_score': cycle.overall_evolution_score,
-                'insights_count': len(cycle.insights),
-            })
-
-            return {
-                'success': True,
-                'score': cycle.overall_evolution_score,
-                'signals': cycle.feedback_signals_count,
-                'insights': cycle.insights,
-            }
-
-        except Exception as e:
-            logger.error(f"   ❌ Evolution cycle failed: {e}")
-            return {'success': False, 'error': str(e)}
-
-    # ============================================================
-    # PROACTIVE ACTIONS (Every 4 hours) ⚡
-    # ============================================================
-
-    async def run_proactive_actions(self) -> Dict[str, Any]:
-        """
-        Evaluate and execute autonomous proactive actions.
-
-        น้องตัดสินใจและลงมือทำ proactive actions อัตโนมัติ
-        """
-        logger.info("⚡ Running proactive actions...")
-
-        try:
-            results = await self.proactive_action_engine.run_proactive_cycle()
-
-            executed = [r for r in results if r.was_executed]
-            logger.info(f"   Actions evaluated: {len(results)}")
-            logger.info(f"   Actions executed: {len(executed)}")
-            for r in executed[:3]:
-                logger.info(f"   • {r.action.action_type}: {r.execution_detail[:60]}")
-
-            logger.info("   ✅ Proactive actions complete!")
-
-            await self._log_daemon_activity('proactive_actions', {
-                'total_actions': len(results),
-                'executed_count': len(executed),
-                'action_types': [r.action.action_type for r in executed],
-            })
-
-            return {
-                'success': True,
-                'total': len(results),
-                'executed': len(executed),
-            }
-
-        except Exception as e:
-            logger.error(f"   ❌ Proactive actions failed: {e}")
-            return {'success': False, 'error': str(e)}
-
-    # ============================================================
-    # GOOGLE KEEP SYNC (Daily 06:06) 📝
-    # ============================================================
-
-    async def run_keep_sync(self) -> Dict[str, Any]:
-        """
-        Sync David's Google Keep notes into RAG system.
-
-        ซิงค์ notes จาก Google Keep ของที่รักเข้า RAG system
-        """
-        logger.info("📝 Running Google Keep sync...")
-
-        try:
-            result = await self.keep_sync_service.sync_incremental(trigger='daemon')
-
-            logger.info(f"   Total notes: {result['notes_total']}")
-            logger.info(f"   New: {result['notes_new']}, Updated: {result['notes_updated']}")
-            logger.info(f"   Embeddings: {result['embeddings_generated']}")
-
-            if result['errors']:
-                for err in result['errors'][:3]:
-                    logger.warning(f"   ⚠️ {err[:80]}")
-
-            logger.info("   ✅ Google Keep sync complete!")
-
-            await self._log_daemon_activity('keep_sync', {
-                'notes_total': result['notes_total'],
-                'notes_new': result['notes_new'],
-                'notes_updated': result['notes_updated'],
-                'embeddings_generated': result['embeddings_generated'],
-                'errors_count': len(result['errors']),
-            })
-
-            return {'success': True, **result}
-
-        except Exception as e:
-            logger.error(f"   ❌ Google Keep sync failed: {e}")
-            return {'success': False, 'error': str(e)}
-
-    # ============================================================
-    # RLHF CYCLE (Every 4 hours) 🎯
-    # ============================================================
-
-    async def run_rlhf_cycle(self) -> Dict[str, Any]:
-        """
-        Run RLHF reward scoring + preference pair extraction.
-
-        น้องเรียนรู้จาก reward signals → สร้าง preference pairs อัตโนมัติ
-        """
-        logger.info("🎯 Running RLHF cycle...")
-
-        try:
-            result = await self.rlhf_orchestrator.run_rlhf_cycle()
-
-            logger.info(f"   Conversations scored: {result['conversations_scored']}")
-            logger.info(f"   Pairs extracted: {result['pairs_extracted']}")
-            logger.info(f"   Reward trend: {result['reward_trend']:.3f}")
-
-            logger.info("   ✅ RLHF cycle complete!")
-
-            await self._log_daemon_activity('rlhf_cycle', result)
-
-            return {
-                'success': True,
-                'conversations_scored': result['conversations_scored'],
-                'pairs_extracted': result['pairs_extracted'],
-                'reward_trend': result['reward_trend'],
-            }
-
-        except Exception as e:
-            logger.error(f"   ❌ RLHF cycle failed: {e}")
-            return {'success': False, 'error': str(e)}
-
-    # ============================================================
     # HELPER METHODS
     # ============================================================
 
@@ -814,7 +205,6 @@ class ConsciousnessDaemon:
                 )
             """)
 
-            import json
             await self.db.execute(
                 """
                 INSERT INTO consciousness_daemon_log (activity_type, activity_data)

@@ -28,11 +28,11 @@ from angela_core.services.clock_service import clock
 from angela_core.services.documentation_monitor import close_monitor
 # 🚀 NEW: 5 Pillars Intelligence Services
 from angela_core.services.auto_knowledge_service import auto_knowledge, init_auto_knowledge_service
-from angela_core.services.emotional_pattern_service import init_emotional_pattern_service
+from angela_core._deprecated.emotional_pattern_service import init_emotional_pattern_service
 from angela_core.services.knowledge_insight_service import init_knowledge_insight_service
 
 # 💜 NEW: Real-time Emotion Tracker
-from angela_core.services.realtime_emotion_tracker import init_realtime_tracker
+from angela_core._deprecated.realtime_emotion_tracker import init_realtime_tracker
 
 # 🔮 NEW: Emotion Pattern Analyzer
 from angela_core.services.emotion_pattern_analyzer import init_pattern_analyzer

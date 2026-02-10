@@ -26,7 +26,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-from angela_core.services.embedding_service import EmbeddingService
+from angela_core.services.embedding_service import get_embedding_service
 from angela_core.services.sentiment_analyzer import analyze_sentiment
 
 logger = logging.getLogger(__name__)
@@ -158,7 +158,7 @@ class FeedbackClassifier:
     """
 
     def __init__(self):
-        self.embedding_service = EmbeddingService()
+        self.embedding_service = get_embedding_service()
         self._ref_embeddings: Dict[str, List[List[float]]] = {}
         self._initialized = False
 

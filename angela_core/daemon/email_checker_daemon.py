@@ -31,8 +31,7 @@ from email.mime.text import MIMEText
 from typing import Optional, Dict, List
 import httpx
 
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from angela_core.daemon.daemon_base import PROJECT_ROOT  # noqa: E402 (path setup)
 
 from angela_core.database import AngelaDatabase
 
@@ -42,7 +41,6 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
 # Paths
-PROJECT_ROOT = Path(__file__).parent.parent.parent
 CREDENTIALS_DIR = PROJECT_ROOT / "mcp_servers/angela-gmail/credentials"
 TOKEN_PATH = CREDENTIALS_DIR / "token.json"
 

@@ -52,14 +52,10 @@ class CognifyRAGService:
             self.conn = None
 
     async def get_embedding(self, text: str) -> list[float]:
-        """Get embedding vector from Ollama"""
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.ollama_url}/api/embeddings",
-                json={"model": self.embedding_model, "prompt": text},
-                timeout=30.0
-            )
-            return response.json()["embedding"]
+        """Get embedding vector via shared EmbeddingService singleton."""
+        from angela_core.services.embedding_service import get_embedding_service
+        service = get_embedding_service()
+        return await service.generate_embedding(text)
 
     async def semantic_search(
         self,

@@ -31,6 +31,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from angela_core.database import AngelaDatabase
+from angela_core.services.base_db_service import BaseDBService
 from angela_core.domain.entities.project_memory import (
     Project, ProjectSchema, ProjectFlow, ProjectPattern,
     ProjectEntityRelation, ProjectTechnicalDecision, ProjectContext,
@@ -41,7 +42,7 @@ from angela_core.domain.entities.project_memory import (
 logger = logging.getLogger(__name__)
 
 
-class ProjectMemoryService:
+class ProjectMemoryService(BaseDBService):
     """
     Service for managing Angela's project technical memory.
 
@@ -51,24 +52,14 @@ class ProjectMemoryService:
 
     def __init__(self, db: AngelaDatabase = None):
         """Initialize with optional database connection."""
-        self.db = db
-        self._connected = False
+        if db is None:
+            local_url = "postgresql://postgres@localhost:5432/angela"
+            db = AngelaDatabase(connection_url=local_url)
+        super().__init__(db)
 
     async def _ensure_connected(self):
         """Ensure database is connected."""
-        if self.db is None:
-            # Use local PostgreSQL 'angela' database for project memory
-            local_url = "postgresql://postgres@localhost:5432/angela"
-            self.db = AngelaDatabase(connection_url=local_url)
-        if not self._connected:
-            await self.db.connect()
-            self._connected = True
-
-    async def disconnect(self):
-        """Disconnect from database."""
-        if self.db and self._connected:
-            await self.db.disconnect()
-            self._connected = False
+        await self.connect()
 
     # ========================================================================
     # PROJECT CONTEXT RECALL (Main Entry Point)

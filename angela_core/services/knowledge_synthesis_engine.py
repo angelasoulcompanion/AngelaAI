@@ -22,7 +22,7 @@ from collections import defaultdict, Counter
 from dataclasses import dataclass, asdict
 
 from angela_core.services.deep_analysis_engine import DeepAnalysisResult
-from angela_core.services.pattern_recognition_engine import PatternRecognitionResult
+from angela_core._deprecated.pattern_recognition_engine import PatternRecognitionResult
 
 logger = logging.getLogger(__name__)
 

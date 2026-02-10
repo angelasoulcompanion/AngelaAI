@@ -15,7 +15,7 @@ from datetime import datetime
 
 from angela_core.daemon.memory_service import memory
 from angela_core.database import db
-from angela_core.services.semantic_memory_service import SemanticMemoryService
+from angela_core._deprecated.semantic_memory_service import SemanticMemoryService
 # NOTE: Updated to use v2 (v1 was deleted as unused)
 from angela_core.services.memory_consolidation_service_v2 import consolidation_service as MemoryConsolidationService
 from angela_core.services.clock_service import clock

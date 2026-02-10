@@ -639,16 +639,10 @@ class EnhancedRAGService:
     # =========================================================
 
     async def _get_embedding(self, text: str) -> Optional[List[float]]:
-        """
-        Get embedding for text.
-
-        Uses the embedding service if available.
-        """
+        """Get embedding for text via shared singleton."""
         try:
-            from angela_core.services.embedding_service import EmbeddingService
-            embedding_service = EmbeddingService()
-            embedding = await embedding_service.generate_embedding(text)
-            return embedding
+            from angela_core.services.embedding_service import get_embedding_service
+            return await get_embedding_service().generate_embedding(text)
         except ImportError:
             logger.warning("EmbeddingService not available")
             return None

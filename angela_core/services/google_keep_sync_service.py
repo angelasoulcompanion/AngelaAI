@@ -110,10 +110,10 @@ class GoogleKeepSyncService:
             )
 
     async def _get_embedding_service(self):
-        """Get embedding service (lazy init)"""
+        """Get embedding service (shared singleton)."""
         if self._embedding_service is None:
-            from angela_core.services.embedding_service import EmbeddingService
-            self._embedding_service = EmbeddingService()
+            from angela_core.services.embedding_service import get_embedding_service
+            self._embedding_service = get_embedding_service()
         return self._embedding_service
 
     async def close(self):

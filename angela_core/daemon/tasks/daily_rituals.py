@@ -14,7 +14,7 @@ from angela_core.services.goal_progress_service import goal_tracker
 from angela_core.services.learning_session_summarizer import init_session_summarizer
 from angela_core.services.memory_consolidation_service_v2 import consolidation_service
 from angela_core.services.auto_knowledge_service import auto_knowledge
-from angela_core.services.emotional_pattern_service import emotional_pattern
+from angela_core._deprecated.emotional_pattern_service import emotional_pattern
 from angela_core.services.knowledge_insight_service import knowledge_insight
 
 logger = logging.getLogger('AngelaDaemon')

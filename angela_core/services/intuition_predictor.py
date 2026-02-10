@@ -21,7 +21,7 @@ import logging
 import math
 
 from angela_core.database import get_db_connection
-from angela_core.services.enhanced_pattern_detector import get_enhanced_pattern_detector, PatternType
+from angela_core._deprecated.enhanced_pattern_detector import get_enhanced_pattern_detector, PatternType
 
 # Configure logging
 logging.basicConfig(

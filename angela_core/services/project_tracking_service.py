@@ -40,26 +40,11 @@ import sys
 sys.path.insert(0, '/Users/davidsamanyaporn/PycharmProjects/AngelaAI')
 
 from angela_core.database import AngelaDatabase
+from angela_core.services.base_db_service import BaseDBService
 
 
-class ProjectTrackingService:
+class ProjectTrackingService(BaseDBService):
     """Service for tracking projects and work sessions"""
-
-    def __init__(self, db: Optional[AngelaDatabase] = None):
-        self.db = db or AngelaDatabase()
-        self._connected = False
-
-    async def connect(self):
-        """Connect to database"""
-        if not self._connected:
-            await self.db.connect()
-            self._connected = True
-
-    async def disconnect(self):
-        """Disconnect from database"""
-        if self._connected:
-            await self.db.disconnect()
-            self._connected = False
 
     # =========================================================================
     # PROJECT MANAGEMENT

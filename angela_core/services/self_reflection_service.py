@@ -29,7 +29,7 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 from angela_core.database import AngelaDatabase
-from angela_core.services.embedding_service import EmbeddingService
+from angela_core.services.embedding_service import get_embedding_service
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class SelfReflectionService:
     def __init__(self, db: AngelaDatabase = None):
         """Initialize the service."""
         self.db = db
-        self.embedding_service = EmbeddingService()
+        self.embedding_service = get_embedding_service()
         logger.info("🪞 SelfReflectionService initialized")
 
     async def connect(self):

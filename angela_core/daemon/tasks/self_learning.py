@@ -7,7 +7,6 @@ from datetime import datetime, time
 
 from angela_core.services.clock_service import clock
 from angela_core.services.preference_learning_service import preference_learning
-from angela_core.services.pattern_recognition_service import pattern_recognition
 from angela_core.services.performance_evaluation_service import performance_evaluation
 from angela_core.services.behavioral_pattern_detector import detect_patterns_now, sync_patterns_to_learning
 from angela_core.database import db

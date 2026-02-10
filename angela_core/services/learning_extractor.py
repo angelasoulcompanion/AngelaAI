@@ -21,7 +21,7 @@ from uuid import UUID
 import logging
 
 from angela_core.database import AngelaDatabase
-from angela_core.services.embedding_service import EmbeddingService
+from angela_core.services.embedding_service import get_embedding_service
 
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ class LearningExtractor:
 
     def __init__(self, db: AngelaDatabase):
         self.db = db
-        self.embedding_service = EmbeddingService()
+        self.embedding_service = get_embedding_service()
 
     async def extract_learnings_from_conversations(
         self,

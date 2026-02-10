@@ -25,7 +25,7 @@ from angela_core.services.emotional_intelligence_service import EmotionalIntelli
 # NEW: Use new embedding service (Migration 015)
 from angela_core.services.embedding_service import get_embedding_service
 from angela_core.services.deep_analysis_engine import deep_analysis_engine, DeepAnalysisResult
-from angela_core.services.pattern_recognition_engine import pattern_recognition_engine
+from angela_core._deprecated.pattern_recognition_engine import pattern_recognition_engine
 from angela_core.services.knowledge_synthesis_engine import knowledge_synthesis_engine
 from angela_core.services.learning_loop_optimizer import learning_loop_optimizer
 

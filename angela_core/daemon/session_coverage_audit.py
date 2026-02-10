@@ -23,8 +23,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Any, List
 
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from angela_core.daemon.daemon_base import PROJECT_ROOT  # noqa: E402 (path setup)
 
 from angela_core.database import AngelaDatabase
 

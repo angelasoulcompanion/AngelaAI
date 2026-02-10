@@ -243,7 +243,7 @@ class ReasoningService:
             if step_type in ["gather_knowledge", "analyze"]:
                 # Search relevant concepts
                 try:
-                    from angela_core.services.semantic_memory_service import SemanticMemoryService
+                    from angela_core._deprecated.semantic_memory_service import SemanticMemoryService
                     semantic = SemanticMemoryService()
 
                     # Search knowledge graph for relevant concepts

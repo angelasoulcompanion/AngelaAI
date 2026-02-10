@@ -12,10 +12,10 @@ from typing import Optional, Dict, List
 from uuid import UUID, uuid4
 
 from angela_core.database import db
-from angela_core.services.embedding_service import EmbeddingService
+from angela_core.services.embedding_service import get_embedding_service
 
 logger = logging.getLogger(__name__)
-embedding_service = EmbeddingService()
+embedding_service = get_embedding_service()
 
 
 class SharedExperienceService:

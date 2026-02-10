@@ -9,7 +9,10 @@ from .async_helpers import run_in_thread, with_retry, google_api_call
 from .logging_config import setup_logging
 from .secrets import get_secret, get_neon_url
 
+ANGELA_EMAIL = "angelasoulcompanion@gmail.com"
+
 __all__ = [
+    "ANGELA_EMAIL",
     "get_google_service",
     "run_in_thread",
     "with_retry",
