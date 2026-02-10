@@ -1,0 +1,338 @@
+<mxGraphModel dx="0" dy="0" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" background="none" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+    <mxCell id="node7" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;ClassTypes&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Code: nvarchar(max)&lt;br/&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; Name: nvarchar(max)&lt;br/&gt; NameLocal: nvarchar(max)&lt;br/&gt; Status: nvarchar(max)&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="1060" y="856" width="197" height="256" as="geometry" />
+    </mxCell>
+    <mxCell id="node1" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Countries&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; Name: nvarchar(max)&lt;br/&gt; NameLocal: nvarchar(max)&lt;br/&gt; Status: nvarchar(max)&lt;br/&gt; Code: nvarchar(max)&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="20" y="856" width="197" height="256" as="geometry" />
+    </mxCell>
+    <mxCell id="node9" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Departments&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; Name: nvarchar(max)&lt;br/&gt; NameLocal: nvarchar(max)&lt;br/&gt; Status: nvarchar(max)&lt;br/&gt; Code: nvarchar(max)&lt;br/&gt; InitialName: nvarchar(max)&lt;br/&gt; GlobalDepartmentCode: varchar(max)&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="165" y="-548" width="267" height="304" as="geometry" />
+    </mxCell>
+    <mxCell id="node11" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Industries&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Code: nvarchar(max)&lt;br/&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; Name: nvarchar(max)&lt;br/&gt; NameLocal: nvarchar(max)&lt;br/&gt; Status: nvarchar(max)&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="820" y="856" width="197" height="256" as="geometry" />
+    </mxCell>
+    <mxCell id="node0" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Inquiries&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; AllStep  /* จำนวน step ทั้งหมด */: int&lt;br/&gt; CreateByUserId  /* สร้างโดย */: int&lt;br/&gt; CreateDate  /* วันที่สร้างเอกสาร inquiry */: datetime2&lt;br/&gt; CreditLineAmount  /* วงเงินเครดิตจากระบบ Express ณ วันที่เรียกข้อมูล */: decimal(18,2)&lt;br/&gt; CreditTerm  /* จำนวนวันเครดิตจากระบบ Express ณ วันที่เรียกข้อมูล */: int&lt;br/&gt; CurrentStep  /* step ปัจจุบันของ inquiry นั้น */: int&lt;br/&gt; Description  /* รายละเอียด ในแถบข้อมูลสินค้า &amp;gt; รายละเอียด */: nvarchar(max)&lt;br/&gt; HaveCredit  /* 1 = Pending↲2 = มีเครดิต↲3 = เงินสด↲null = customer temp */: int&lt;br/&gt; InquiryDate  /* วันที่สร้างเอกสาร */: datetime2&lt;br/&gt; InquiryNo  /* เลขที่เอกสาร */: nvarchar(max)&lt;br/&gt; InquiryType  /* ใน db มีแค่ 1 */: int&lt;br/&gt; ModifyByUserId  /* last user update */: int&lt;br/&gt; ModifyDate  /* last date update */: datetime2&lt;br/&gt; ProductId  /* id รหัสสินค้า Join Products */: int&lt;br/&gt; TaxId  /* เลขที่ประจำตัวผู้เสียภาษี */: nvarchar(max)&lt;br/&gt; RfqNo  /* RFQ No./PR No. (From Customer) */: nvarchar(max)&lt;br/&gt; ReceiverId  /* id user sale admin Join User */: int&lt;br/&gt; SaleId  /* id user sale Join User */: int&lt;br/&gt; Status  /* Complete = ออก so สำเร็จ↲Normal = กำลังดำเนินการ↲Cancel = ย... */: nvarchar(max)&lt;br/&gt; StatusQuotationId  /* null */: int&lt;br/&gt; UseService  /* คุณต้องการใช้ทีมเซอร์วิสหรือไม่ ? */: bit&lt;br/&gt; Tel  /* เบอร์โทร */: nvarchar(max)&lt;br/&gt; ClassTypeId  /* ชื่อคลาส Join ClassTypes */: int&lt;br/&gt; IndustryId  /* ชื่อกลุ่มอุตสาหกรรม */: int&lt;br/&gt; LocationId  /* ภูมิภาค */: int&lt;br/&gt; ProductGroupId  /* รหัสกลุ่มลูกค้า */: int&lt;br/&gt; RequesterByDeptId  /* null */: int&lt;br/&gt; RequesterByUserId  /* null */: int&lt;br/&gt; Month  /* create by Month for running */: nvarchar(max)&lt;br/&gt; Running  /* last 3 digit inquiry */: nvarchar(max)&lt;br/&gt; Year  /* create by Year for running */: nvarchar(max)&lt;br/&gt; ReciverUserId  /* null */: int&lt;br/&gt; SaleUserId  /* null */: int&lt;br/&gt; AddressName  /* address from express on create date */: nvarchar(max)&lt;br/&gt; Balance  /* balance from express on create date */: nvarchar(max)&lt;br/&gt; CustomerCode  /* customer code from express */: nvarchar(max)&lt;br/&gt; CustomerName  /* customer name from express */: nvarchar(max)&lt;br/&gt; ContactName  /* ชื่อผู้ติดต่อ */: nvarchar(max)&lt;br/&gt; RegionId  /* id Regions Join Regions */: int&lt;br/&gt; SaleTypeId: int&lt;br/&gt; ProvinceId  /* id Province Join Province */: int&lt;br/&gt; TypeCountryId  /* id Country Join Country */: int&lt;br/&gt; CustomerTemp  /* name customer temp */: nvarchar(max)&lt;br/&gt; IsNewCustomer: bit&lt;br/&gt; IsCustomerBlackList: bit&lt;br/&gt; ContractEndDate  /* Contract End Date */: datetime2&lt;br/&gt; ContractStartDate  /* Contract Start Date */: datetime2&lt;br/&gt; IsBlanketOrder  /* งาน Blanket Order (Blanket Order แบบกำหนดจำนวน) */: bit&lt;br/&gt; IsSell: bit&lt;br/&gt; CountryId: int&lt;br/&gt; IsInquiry: bit&lt;br/&gt; Branch  /* branch code from express */: nvarchar(max)&lt;br/&gt; IsMigration  /* type migration */: int&lt;br/&gt; PostToErpDate: datetime&lt;br/&gt; IsSetThePrice  /* Inquiry แบบยืนราคา  (Blanket Order แบบไม่กำหนดจำนวน) */: bit&lt;br/&gt; CustomerRemark  /* หมายเหตุ ระบุใน ข้อมูลลูกค้า &amp;gt; หมายเหตุ */: varchar(max)&lt;br/&gt; PayCondition  /* เงื่อนไขการชำระเงิน */: varchar(max)&lt;br/&gt; RemarkCancel  /* หมายเหตุการยกเลิก */: varchar(max)&lt;br/&gt; ActualStep  /* step ปัจจุบัน */: int&lt;br/&gt; InquiryJobType  /* id ประเภทของงาน เช่น งาน routine หรือ project */: int&lt;br/&gt; InquiryJobTypeName  /* ชื่อประเภทของงาน เช่น งาน routine หรือ project */: varchar(max)&lt;br/&gt; InquiryJobProjectName  /* ชื่อ project name */: varchar(max)&lt;br/&gt; InquiryJobEndUser  /* End User */: varchar(max)&lt;br/&gt; DepartmentId  /* id department sale */: int&lt;br/&gt; InquiryInBranch  /* id Branch sale */: int&lt;br/&gt; InquiryInProductGroup  /* id Product Group */: int&lt;br/&gt; CancelDate: datetime&lt;br/&gt; CancelBy: int&lt;br/&gt; ContractNo: varchar(max)&lt;br/&gt; ContractDetail: varchar(max)&lt;br/&gt; IsNewSystem: bit&lt;br/&gt; CustomerTempPhone: varchar(20)&lt;br/&gt; CustomerTempAddress: varchar(max)&lt;br/&gt; ContractApproveBy: int&lt;br/&gt; ContractApproveByName: varchar(10)&lt;br/&gt; CustomerTransfer: bit&lt;br/&gt; Projectid: int&lt;br/&gt; ProjectTypeId: int&lt;br/&gt; IsDrawing: bit&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="418" y="1264" width="441" height="1960" as="geometry" />
+    </mxCell>
+    <mxCell id="node19" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Locations&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Code: nvarchar(max)&lt;br/&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; Name: nvarchar(max)&lt;br/&gt; NameLocal: nvarchar(max)&lt;br/&gt; Status: nvarchar(max)&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="-220" y="856" width="197" height="256" as="geometry" />
+    </mxCell>
+    <mxCell id="node15" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Menus&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; Icon: nvarchar(max)&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; Name: nvarchar(max)&lt;br/&gt; NameLocal: nvarchar(max)&lt;br/&gt; ParentMenuId: int&lt;br/&gt; Sequence: int&lt;br/&gt; Status: nvarchar(max)&lt;br/&gt; Url: nvarchar(max)&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="640" y="-980" width="197" height="328" as="geometry" />
+    </mxCell>
+    <mxCell id="node3" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;ProductGroups&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Code: nvarchar(max)&lt;br/&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; Name: nvarchar(max)&lt;br/&gt; NameLocal: nvarchar(max)&lt;br/&gt; Status: nvarchar(max)&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="-100" y="-184" width="197" height="256" as="geometry" />
+    </mxCell>
+    <mxCell id="node4" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Products&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; Code: nvarchar(max)&lt;br/&gt; Name: nvarchar(max)&lt;br/&gt; Status: nvarchar(max)&lt;br/&gt; NameLocal: nvarchar(max)&lt;br/&gt; ProductGroupId: int&lt;br/&gt; DepartmentId: int&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="140" y="332" width="197" height="304" as="geometry" />
+    </mxCell>
+    <mxCell id="node16" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Provinces&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; Name: nvarchar(max)&lt;br/&gt; NameLocal: nvarchar(max)&lt;br/&gt; Status: nvarchar(max)&lt;br/&gt; Code: nvarchar(max)&lt;br/&gt; RegionId: int&lt;br/&gt; InitialName: nvarchar(max)&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="1180" y="332" width="197" height="304" as="geometry" />
+    </mxCell>
+    <mxCell id="node14" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Regions&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Code: nvarchar(max)&lt;br/&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; Name: nvarchar(max)&lt;br/&gt; NameLocal: nvarchar(max)&lt;br/&gt; Status: nvarchar(max)&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="940" y="-184" width="197" height="256" as="geometry" />
+    </mxCell>
+    <mxCell id="node6" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;SaleOrderItems&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Code: nvarchar(max)&lt;br/&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; UnitSell: nvarchar(max)&lt;br/&gt; Discount: nvarchar(max)&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; TotalPrice: decimal(18,2)&lt;br/&gt; Qty: decimal(18,2)&lt;br/&gt; SaleOrderId: int&lt;br/&gt; Status: nvarchar(max)&lt;br/&gt; PriceSell: decimal(18,2)&lt;br/&gt; Detail: nvarchar(max)&lt;br/&gt; Item: int&lt;br/&gt; LocCode: nvarchar(max)&lt;br/&gt; ShipmentDate: nvarchar(max)&lt;br/&gt; PriceCost: decimal(18,2)&lt;br/&gt; UnitCost: nvarchar(max)&lt;br/&gt; TotalPriceNet: decimal(18,2)&lt;br/&gt; Free: nvarchar(max)&lt;br/&gt; No: nvarchar(max)&lt;br/&gt; Desc1: varchar(max)&lt;br/&gt; Desc2: varchar(max)&lt;br/&gt; Desc3: varchar(max)&lt;br/&gt; Desc4: varchar(max)&lt;br/&gt; Desc5: varchar(max)&lt;br/&gt; Desc6: varchar(max)&lt;br/&gt; Desc7: varchar(max)&lt;br/&gt; Desc8: varchar(max)&lt;br/&gt; Desc9: varchar(max)&lt;br/&gt; Desc10: varchar(max)&lt;br/&gt; SupplierCode: varchar(max)&lt;br/&gt; Note1: varchar(max)&lt;br/&gt; Note2: varchar(max)&lt;br/&gt; Note3: varchar(max)&lt;br/&gt; RefText: varchar(max)&lt;br/&gt; PendingQty: decimal(19,2)&lt;br/&gt; CancelQty: decimal(19,2)&lt;br/&gt; CancelType: varchar(max)&lt;br/&gt; CancelDate: varchar(max)&lt;br/&gt; DepartmentId: int&lt;br/&gt; InitialDepartment: varchar(max)&lt;br/&gt; ProductGroupId: int&lt;br/&gt; ProductGroupName: varchar(max)&lt;br/&gt; CostPriceId: int&lt;br/&gt; IsWarranty: bit&lt;br/&gt; WarrantyOfMonth: int&lt;br/&gt; Balance: decimal(18,2)&lt;br/&gt; Comingsoon: decimal(18,2)&lt;br/&gt; IsWarrantyOfProduct: bit&lt;br/&gt; IsWarrantyOfservice: bit&lt;br/&gt; WarrantyOfProduct: int&lt;br/&gt; WarrantyOfService: int&lt;br/&gt; PoQty: decimal(18)&lt;br/&gt; QtyBalance: decimal(18)&lt;br/&gt; ItemCode35: varchar(100)&lt;br/&gt; ItemCodeExpress: varchar(max)&lt;br/&gt; Unit35Digit: varchar(max)&lt;br/&gt; UnitExpress: varchar(max)&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="516" y="5344" width="244" height="1480" as="geometry" />
+    </mxCell>
+    <mxCell id="node17" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;SaleOrders&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; DeliveryDate: datetime2&lt;br/&gt; Description: nvarchar(max)&lt;br/&gt; DiscountAmount: decimal(18,2)&lt;br/&gt; DiscountPercent: nvarchar(max)&lt;br/&gt; InquiryId: int&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; SaleOrderDate: datetime2&lt;br/&gt; SaleOrderNo: nvarchar(max)&lt;br/&gt; Status: nvarchar(max)&lt;br/&gt; TotalMoney: decimal(18,2)&lt;br/&gt; Vat: decimal(18,2)&lt;br/&gt; RequestForApprovedDate: datetime2&lt;br/&gt; StatusApproved: int&lt;br/&gt; CountryId: int&lt;br/&gt; DepartmentId: int&lt;br/&gt; TypeCountryId: int&lt;br/&gt; SaleTypeId: int&lt;br/&gt; Year: nvarchar(max)&lt;br/&gt; Running: nvarchar(max)&lt;br/&gt; TotalMoneyOfDiscount: decimal(18,2)&lt;br/&gt; TotalMoneyOfVat: decimal(18,2)&lt;br/&gt; TotalPrice: decimal(18,2)&lt;br/&gt; StatusApprovedOrReject: int&lt;br/&gt; LocationId: int&lt;br/&gt; BillToCode: nvarchar(max)&lt;br/&gt; BillToName: nvarchar(max)&lt;br/&gt; AreaCode: nvarchar(max)&lt;br/&gt; TransportCode: nvarchar(max)&lt;br/&gt; TypePrice: nvarchar(max)&lt;br/&gt; QtnSec: nvarchar(max)&lt;br/&gt; QtnSupplier: nvarchar(max)&lt;br/&gt; RefPOCustomer: nvarchar(max)&lt;br/&gt; Description2: nvarchar(max)&lt;br/&gt; Description3: nvarchar(max)&lt;br/&gt; ApprovedDateByCoso: datetime2&lt;br/&gt; RejectDateByCoso: datetime2&lt;br/&gt; DiscountType: nvarchar(max)&lt;br/&gt; AreaCodeText: varchar(max)&lt;br/&gt; DepartmentInitial: varchar(max)&lt;br/&gt; DepartmentCode: varchar(max)&lt;br/&gt; InDepartmentId: varchar(max)&lt;br/&gt; InDepartmentInitial: varchar(max)&lt;br/&gt; InDepartmentCode: varchar(max)&lt;br/&gt; SaleId: int&lt;br/&gt; ProductGroupId: int&lt;br/&gt; ProductId: int&lt;br/&gt; CreditTerm: int&lt;br/&gt; SaleOrderOfDepartmentId: int&lt;br/&gt; SaleOrderMasterId: int&lt;br/&gt; RemarkCancel: varchar(max)&lt;br/&gt; CustomerCode: varchar(max)&lt;br/&gt; CustomerName: varchar(max)&lt;br/&gt; AddressName: varchar(max)&lt;br/&gt; ContactName: varchar(max)&lt;br/&gt; TaxId: varchar(max)&lt;br/&gt; Tel: varchar(max)&lt;br/&gt; SaleOrderInBranch: int&lt;br/&gt; SaleOrderInProductGroup: int&lt;br/&gt; IsSaleOrderContract: bit&lt;br/&gt; SaleOrderContractStart: datetime&lt;br/&gt; SaleOrderContractEnd: datetime&lt;br/&gt; ContractNo: varchar(max)&lt;br/&gt; ContractApproveBy: int&lt;br/&gt; ContractApporveByName: varchar(10)&lt;br/&gt; ContractApproveByName: varchar(10)&lt;br/&gt; ContractCurrencyId: int&lt;br/&gt; ContractExchangeRate: decimal(19,3)&lt;br/&gt; ContractExchangeRateDate: datetime&lt;br/&gt; Simulate: bit&lt;br/&gt; Description4: varchar(max)&lt;br/&gt; Description5: varchar(max)&lt;br/&gt; QuotationNoTemp: varchar(max)&lt;br/&gt; InquirySaleId: int&lt;br/&gt; InquiryReceiverId: int&lt;br/&gt; TempRunning: int&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="504" y="3316" width="269" height="1936" as="geometry" />
+    </mxCell>
+    <mxCell id="node5" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;SaleTypes&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Code: nvarchar(max)&lt;br/&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; Name: nvarchar(max)&lt;br/&gt; NameLocal: nvarchar(max)&lt;br/&gt; Status: nvarchar(max)&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="380" y="856" width="197" height="256" as="geometry" />
+    </mxCell>
+    <mxCell id="node8" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;StatusQuotations&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Code: nvarchar(max)&lt;br/&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; Group: nvarchar(max)&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; Name: nvarchar(max)&lt;br/&gt; NameLocal: nvarchar(max)&lt;br/&gt; Remark: nvarchar(max)&lt;br/&gt; Status: nvarchar(max)&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="1300" y="832" width="197" height="304" as="geometry" />
+    </mxCell>
+    <mxCell id="node18" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;UserConfigs&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; DefaultMenuId: int&lt;br/&gt; Language: nvarchar(max)&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="684" y="-160" width="189" height="208" as="geometry" />
+    </mxCell>
+    <mxCell id="node13" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;UserProfiles&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; FirstName: nvarchar(max)&lt;br/&gt; FirstNameLocal: nvarchar(max)&lt;br/&gt; Image: nvarchar(max)&lt;br/&gt; InitialName: nvarchar(max)&lt;br/&gt; LastName: nvarchar(max)&lt;br/&gt; LastNameLocal: nvarchar(max)&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; NickName: nvarchar(max)&lt;br/&gt; Phone: nvarchar(max)&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="526" y="-572" width="225" height="352" as="geometry" />
+    </mxCell>
+    <mxCell id="node2" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;UserRoles&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; Name: nvarchar(max)&lt;br/&gt; NameLocal: nvarchar(max)&lt;br/&gt; Status: nvarchar(max)&lt;br/&gt; IsSystemRole: bit&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="400" y="-184" width="197" height="256" as="geometry" />
+    </mxCell>
+    <mxCell id="node10" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;UserTypes&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; Name: nvarchar(max)&lt;br/&gt; NameLocal: nvarchar(max)&lt;br/&gt; Status: nvarchar(max)&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="800" y="-512" width="197" height="232" as="geometry" />
+    </mxCell>
+    <mxCell id="node12" parent="1" vertex="1" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Users&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; AccessFailedCount: int&lt;br/&gt; CreateByUserId: int&lt;br/&gt; CreateDate: datetime2&lt;br/&gt; Email: nvarchar(max)&lt;br/&gt; EndDate: datetime2&lt;br/&gt; EndDateEnabled: bit&lt;br/&gt; ExpirePasswordEnabled: bit&lt;br/&gt; ExpirePasswordNumber: int&lt;br/&gt; ExpirePasswordType: nvarchar(max)&lt;br/&gt; ModifyByUserId: int&lt;br/&gt; ModifyDate: datetime2&lt;br/&gt; NextExpiredPasswordDate: datetime2&lt;br/&gt; Password: nvarchar(max)&lt;br/&gt; SecurityStamp: timestamp&lt;br/&gt; StartDate: datetime2&lt;br/&gt; Status: nvarchar(max)&lt;br/&gt; UserConfigId: int&lt;br/&gt; UserProfileId: int&lt;br/&gt; UserRoleId: int&lt;br/&gt; UserTypeId: int&lt;br/&gt; EmployeeCode: varchar(max)&lt;br/&gt; CanAccessSaleSystem: bit&lt;br/&gt; CanAccessSmartSearch: bit&lt;br/&gt; CanAccessCreditSystem: bit&lt;/p&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;p style=&quot;margin:0 0 0 4px;line-height:1.6;&quot;&gt; Id: int&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=14;fontFamily=Helvetica;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;">
+      <mxGeometry x="564" y="164" width="269" height="640" as="geometry" />
+    </mxCell>
+    <mxCell id="edge4" edge="1" value="" parent="1" source="node0" target="node7" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.821;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="780" y="1204" />
+          <mxPoint x="1158" y="1204" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label26" parent="edge4" vertex="1" connectable="0" value="ClassTypeId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="1069" y="1172" as="geometry" />
+    </mxCell>
+    <mxCell id="edge23" edge="1" value="" parent="1" source="node0" target="node1" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.179;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="496" y="1204" />
+          <mxPoint x="118" y="1204" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label140" parent="edge23" vertex="1" connectable="0" value="CountryId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="270" y="1186" as="geometry" />
+    </mxCell>
+    <mxCell id="edge19" edge="1" value="" parent="1" source="node0" target="node9" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.321;exitY=0.000;exitDx=0;exitDy=0;entryX=0.750;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="559" y="1164" />
+          <mxPoint x="358" y="1164" />
+          <mxPoint x="358" y="844" />
+          <mxPoint x="365" y="844" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label116" parent="edge19" vertex="1" connectable="0" value="RequesterByDeptId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="228" y="995" as="geometry" />
+    </mxCell>
+    <mxCell id="edge11" edge="1" value="" parent="1" source="node0" target="node11" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.679;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="717" y="1164" />
+          <mxPoint x="918" y="1164" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label68" parent="edge11" vertex="1" connectable="0" value="IndustryId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="842" y="1129" as="geometry" />
+    </mxCell>
+    <mxCell id="edge24" edge="1" value="" parent="1" source="node0" target="node19" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.036;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="433" y="1244" />
+          <mxPoint x="-122" y="1244" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label146" parent="edge24" vertex="1" connectable="0" value="LocationId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="117" y="1226" as="geometry" />
+    </mxCell>
+    <mxCell id="edge21" edge="1" value="" parent="1" source="node0" target="node3" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.107;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="465" y="1224" />
+          <mxPoint x="-2" y="1224" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label128" parent="edge21" vertex="1" connectable="0" value="ProductGroupId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="355" y="1215" as="geometry" />
+    </mxCell>
+    <mxCell id="edge12" edge="1" value="" parent="1" source="node0" target="node4" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.250;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="528" y="1184" />
+          <mxPoint x="238" y="1184" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label74" parent="edge12" vertex="1" connectable="0" value="ProductId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="164" y="1120" as="geometry" />
+    </mxCell>
+    <mxCell id="edge1" edge="1" value="" parent="1" source="node0" target="node16" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.893;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="811" y="1224" />
+          <mxPoint x="1278" y="1224" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label8" parent="edge1" vertex="1" connectable="0" value="ProvinceId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="1200" y="1156" as="geometry" />
+    </mxCell>
+    <mxCell id="edge6" edge="1" value="" parent="1" source="node0" target="node14" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.750;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="748" y="1184" />
+          <mxPoint x="1038" y="1184" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label38" parent="edge6" vertex="1" connectable="0" value="RegionId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="931" y="1166" as="geometry" />
+    </mxCell>
+    <mxCell id="edge20" edge="1" value="" parent="1" source="node0" target="node5" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.393;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="591" y="1144" />
+          <mxPoint x="478" y="1144" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label122" parent="edge20" vertex="1" connectable="0" value="SaleTypeId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="509" y="1135" as="geometry" />
+    </mxCell>
+    <mxCell id="edge3" edge="1" value="" parent="1" source="node0" target="node8" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.964;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="843" y="1244" />
+          <mxPoint x="1398" y="1244" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label20" parent="edge3" vertex="1" connectable="0" value="StatusQuotationId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="1061" y="1226" as="geometry" />
+    </mxCell>
+    <mxCell id="edge5" edge="1" value="" parent="1" source="node0" target="node12" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.607;exitY=0.000;exitDx=0;exitDy=0;entryX=0.833;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="685" y="1144" />
+          <mxPoint x="788" y="1144" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label32" parent="edge5" vertex="1" connectable="0" value="ReciverUserId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="687" y="1086" as="geometry" />
+    </mxCell>
+    <mxCell id="edge7" edge="1" value="" parent="1" source="node0" target="node12" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.536;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="654" y="1124" />
+          <mxPoint x="698" y="1124" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label44" parent="edge7" vertex="1" connectable="0" value="RequesterByUserId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="526" y="1115" as="geometry" />
+    </mxCell>
+    <mxCell id="edge18" edge="1" value="" parent="1" source="node0" target="node12" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.464;exitY=0.000;exitDx=0;exitDy=0;entryX=0.167;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="622" y="1244" />
+          <mxPoint x="608" y="1244" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label110" parent="edge18" vertex="1" connectable="0" value="SaleUserId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="543" y="1245" as="geometry" />
+    </mxCell>
+    <mxCell id="edge8" edge="1" value="" parent="1" source="node15" target="node15" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.000;exitY=0.500;exitDx=0;exitDy=0;entryX=0.250;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="598" y="-816" />
+          <mxPoint x="598" y="-616" />
+          <mxPoint x="689" y="-616" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label50" parent="edge8" vertex="1" connectable="0" value="ParentMenuId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="591" y="-643" as="geometry" />
+    </mxCell>
+    <mxCell id="edge17" edge="1" value="" parent="1" source="node4" target="node9" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.750;exitY=0.000;exitDx=0;exitDy=0;entryX=0.250;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="287" y="304" />
+          <mxPoint x="231" y="304" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label104" parent="edge17" vertex="1" connectable="0" value="DepartmentId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="188" y="309" as="geometry" />
+    </mxCell>
+    <mxCell id="edge9" edge="1" value="" parent="1" source="node4" target="node3" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.250;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="189" y="304" />
+          <mxPoint x="-2" y="304" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label56" parent="edge9" vertex="1" connectable="0" value="ProductGroupId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="79" y="295" as="geometry" />
+    </mxCell>
+    <mxCell id="edge10" edge="1" value="" parent="1" source="node16" target="node14" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.500;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="1278" y="304" />
+          <mxPoint x="1038" y="304" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label62" parent="edge10" vertex="1" connectable="0" value="RegionId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="1124" y="286" as="geometry" />
+    </mxCell>
+    <mxCell id="edge22" edge="1" value="" parent="1" source="node6" target="node17" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.500;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label134" parent="edge22" vertex="1" connectable="0" value="SaleOrderId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="551" y="5289" as="geometry" />
+    </mxCell>
+    <mxCell id="edge13" edge="1" value="" parent="1" source="node17" target="node0" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.500;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label80" parent="edge13" vertex="1" connectable="0" value="InquiryId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="569" y="3261" as="geometry" />
+    </mxCell>
+    <mxCell id="edge0" edge="1" value="" parent="1" source="node18" target="node15" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.500;exitY=0.000;exitDx=0;exitDy=0;entryX=0.750;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="778" y="-536" />
+          <mxPoint x="787" y="-536" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label2" parent="edge0" vertex="1" connectable="0" value="DefaultMenuId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="685" y="-603" as="geometry" />
+    </mxCell>
+    <mxCell id="edge14" edge="1" value="" parent="1" source="node12" target="node18" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.625;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="732" y="144" />
+          <mxPoint x="778" y="144" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label86" parent="edge14" vertex="1" connectable="0" value="UserConfigId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="686" y="111" as="geometry" />
+    </mxCell>
+    <mxCell id="edge15" edge="1" value="" parent="1" source="node12" target="node13" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.375;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="664" y="144" />
+          <mxPoint x="638" y="144" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label92" parent="edge15" vertex="1" connectable="0" value="UserProfileId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="546" y="99" as="geometry" />
+    </mxCell>
+    <mxCell id="edge16" edge="1" value="" parent="1" source="node12" target="node2" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.125;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="597" y="144" />
+          <mxPoint x="498" y="144" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label98" parent="edge16" vertex="1" connectable="0" value="UserRoleId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="516" y="145" as="geometry" />
+    </mxCell>
+    <mxCell id="edge2" edge="1" value="" parent="1" source="node12" target="node10" style="html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=0;startArrow=none;endArrow=block;endSize=12;strokeColor=#595959;exitX=0.875;exitY=0.000;exitDx=0;exitDy=0;entryX=0.500;entryY=1.000;entryDx=0;entryDy=0;">
+      <mxGeometry width="50" height="50" relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="799" y="144" />
+          <mxPoint x="898" y="144" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="label14" parent="edge2" vertex="1" connectable="0" value="UserTypeId:Id" style="edgeLabel;resizable=0;html=1;align=left;verticalAlign=top;strokeColor=default;">
+      <mxGeometry x="813" y="93" as="geometry" />
+    </mxCell>
+  </root>
+</mxGraphModel>

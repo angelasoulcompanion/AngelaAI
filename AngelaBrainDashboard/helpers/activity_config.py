@@ -20,8 +20,8 @@ class ActivityConfig:
 ACTIVITY_REGISTRY: dict[str, ActivityConfig] = {
     "party": ActivityConfig(
         key="party",
-        search_terms=["party hits 2024", "dance party mix", "club bangers"],
-        llm_description="เพลงสนุก มันส์ เต้นได้ tempo เร็ว เหมาะกับปาร์ตี้",
+        search_terms=["dance pop hits 2024", "party dance floor", "upbeat dance EDM", "club hits top 40", "fun party anthems"],
+        llm_description="เพลงสนุก มันส์ เต้นได้ tempo เร็ว เหมาะกับปาร์ตี้ ห้ามเพลงช้า ห้ามเพลงรัก ต้องเพลงจังหวะเร็วเท่านั้น",
         emotion_weights={"happy": 0.4, "energetic": 0.4, "excited": 0.2},
         summary_th="ปาร์ตี้ไทม์! น้องเปิดเพลงมันส์ๆ ให้ที่รักค่ะ 🎉",
         emoji="🎉",

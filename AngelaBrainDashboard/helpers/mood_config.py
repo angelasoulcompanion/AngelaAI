@@ -275,7 +275,7 @@ MOOD_REGISTRY: dict[str, MoodConfig] = {
 
 AVAILABLE_MOODS: list[str] = [
     "happy", "loving", "calm", "excited", "grateful",
-    "sad", "lonely", "stressed", "nostalgic", "hopeful",
+    "sad", "lonely", "party", "nostalgic", "hopeful",
 ]
 
 EMOTION_TO_MOODS: dict[str, list[str]] = {k: list(v.mood_tags) for k, v in MOOD_REGISTRY.items()}

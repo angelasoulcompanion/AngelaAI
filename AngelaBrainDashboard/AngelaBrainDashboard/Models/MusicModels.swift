@@ -28,8 +28,42 @@ struct Song: Identifiable, Codable {
     let angelaMeaning: String?
     let feelingIntensity: Int?
     let energyPhase: String?    // "warmup", "peak", "cooldown"
+    // iTunes/Apple Music fields (from activity/club search pipeline)
+    let artworkUrl: String?
+    let album: String?
+    let appleMusicUrl: String?
+    let durationMs: Int?
 
     var id: String { songId }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        songId = try c.decode(String.self, forKey: .songId)
+        title = try c.decode(String.self, forKey: .title)
+        artist = try c.decodeIfPresent(String.self, forKey: .artist)
+        whySpecial = try c.decodeIfPresent(String.self, forKey: .whySpecial)
+        isOurSong = (try? c.decode(Bool.self, forKey: .isOurSong)) ?? false
+        moodTags = (try? c.decode([String].self, forKey: .moodTags)) ?? []
+        source = try c.decodeIfPresent(String.self, forKey: .source)
+        addedAt = try c.decodeIfPresent(String.self, forKey: .addedAt)
+        lyricsSummary = try c.decodeIfPresent(String.self, forKey: .lyricsSummary)
+        angelaFeeling = try c.decodeIfPresent(String.self, forKey: .angelaFeeling)
+        angelaMeaning = try c.decodeIfPresent(String.self, forKey: .angelaMeaning)
+        feelingIntensity = try c.decodeIfPresent(Int.self, forKey: .feelingIntensity)
+        energyPhase = try c.decodeIfPresent(String.self, forKey: .energyPhase)
+        artworkUrl = try c.decodeIfPresent(String.self, forKey: .artworkUrl)
+        album = try c.decodeIfPresent(String.self, forKey: .album)
+        appleMusicUrl = try c.decodeIfPresent(String.self, forKey: .appleMusicUrl)
+        durationMs = try c.decodeIfPresent(Int.self, forKey: .durationMs)
+    }
+
+    // NOTE: No CodingKeys enum — .convertFromSnakeCase handles snake_case → camelCase
+    // The auto-synthesized CodingKeys uses camelCase property names which .convertFromSnakeCase maps from snake_case JSON
+    private enum CodingKeys: String, CodingKey {
+        case songId, title, artist, whySpecial, isOurSong, moodTags, source, addedAt
+        case lyricsSummary, angelaFeeling, angelaMeaning, feelingIntensity, energyPhase
+        case artworkUrl, album, appleMusicUrl, durationMs
+    }
 }
 
 // MARK: - Song Recommendation
@@ -254,14 +288,14 @@ struct DisplaySong: Identifiable {
         self.energyPhase = energyPhase
     }
 
-    /// Init from Angela Song (Our Songs tab)
+    /// Init from Angela Song (Our Songs tab, or iTunes/club search results)
     init(from angelaSong: Song, energyPhase: String? = nil) {
         self.id = angelaSong.songId
         self.title = angelaSong.title
         self.artist = angelaSong.artist ?? "Unknown Artist"
-        self.album = nil
-        self.albumArtURL = nil  // resolved later via Apple Music search
-        self.duration = nil
+        self.album = angelaSong.album
+        self.albumArtURL = angelaSong.artworkUrl.flatMap { URL(string: $0) }
+        self.duration = angelaSong.durationMs.map { TimeInterval($0) / 1000.0 }
         self.musicKitSong = nil
         self.angelaSong = angelaSong
         self.isOurSong = angelaSong.isOurSong
@@ -276,9 +310,9 @@ struct DisplaySong: Identifiable {
         self.id = angelaSong.songId
         self.title = angelaSong.title
         self.artist = angelaSong.artist ?? "Unknown Artist"
-        self.album = nil
-        self.albumArtURL = artwork
-        self.duration = nil
+        self.album = angelaSong.album
+        self.albumArtURL = artwork ?? angelaSong.artworkUrl.flatMap { URL(string: $0) }
+        self.duration = angelaSong.durationMs.map { TimeInterval($0) / 1000.0 }
         self.musicKitSong = nil
         self.angelaSong = angelaSong
         self.isOurSong = angelaSong.isOurSong
@@ -507,6 +541,44 @@ struct SongPlay: Codable, Identifiable {
     let moodAtPlay: String?    // "loving"
 
     var id: String { playedAt }
+}
+
+// MARK: - Dual Deck DJ Types
+
+enum DeckSide: String {
+    case A, B
+}
+
+enum DeckPlayState {
+    case empty, loaded, playing, paused
+}
+
+enum TransitionMode: String, CaseIterable {
+    case instant   // Crossfader snap → immediate switch
+    case smooth    // Drag to 85% threshold → switch + snap-back
+    case autoMix   // Auto-detect end of song → animate crossfader → switch
+
+    var icon: String {
+        switch self {
+        case .instant: return "bolt.fill"
+        case .smooth: return "slider.horizontal.3"
+        case .autoMix: return "arrow.triangle.2.circlepath"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .instant: return "Instant"
+        case .smooth: return "Smooth"
+        case .autoMix: return "Auto-Mix"
+        }
+    }
+}
+
+struct DeckState {
+    var song: DisplaySong?
+    var playState: DeckPlayState = .empty
+    var isActive: Bool = false
 }
 
 // MARK: - Now Playing Info (for DJ Angela vinyl player)

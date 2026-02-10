@@ -199,3 +199,4 @@ mcp_servers/**/credentials/credentials.json
 # ========================================
 dumbs/
 outputs/
+recordings/

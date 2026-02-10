@@ -1,0 +1,392 @@
+<mxfile host="app.diagrams.net" modified="2026-01-23T05:50:00.000Z" agent="Angela AI" version="22.1.0">
+  <diagram name="GitHub Security Architecture" id="github-security-arch">
+    <mxGraphModel dx="1434" dy="836" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="&lt;b&gt;GitHub Security Control Architecture&lt;/b&gt;&lt;br&gt;สถาปัตยกรรมการควบคุมความปลอดภัย GitHub&lt;br&gt;&lt;i&gt;Orbplus Co., Ltd.&lt;/i&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="500" y="10" width="400" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- External Layer -->
+        <mxCell id="external-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="1320" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="external-label" value="&lt;b&gt;External Access Layer&lt;/b&gt; | ชั้นการเข้าถึงภายนอก" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="50" y="85" width="300" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Users -->
+        <mxCell id="developer" value="&lt;b&gt;Developer&lt;/b&gt;&lt;br&gt;นักพัฒนา" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="100" y="120" width="40" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tech-lead" value="&lt;b&gt;Tech Lead&lt;/b&gt;&lt;br&gt;หัวหน้าทีม" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="230" y="120" width="40" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="security-team" value="&lt;b&gt;Security Team&lt;/b&gt;&lt;br&gt;ทีมความปลอดภัย" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="360" y="120" width="40" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="devops" value="&lt;b&gt;DevOps&lt;/b&gt;&lt;br&gt;ทีม DevOps" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="490" y="120" width="40" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Authentication Box -->
+        <mxCell id="auth-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="600" y="110" width="350" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="auth-label" value="&lt;b&gt;Authentication Layer&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="700" y="115" width="150" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="2fa" value="&lt;b&gt;2FA&lt;/b&gt;&lt;br&gt;Two-Factor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="620" y="140" width="80" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ssh" value="&lt;b&gt;SSH Keys&lt;/b&gt;&lt;br&gt;Signed Commits" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="710" y="140" width="100" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pat" value="&lt;b&gt;PAT&lt;/b&gt;&lt;br&gt;Personal Token" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="820" y="140" width="110" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- External Services -->
+        <mxCell id="external-services" value="&lt;b&gt;External Services&lt;/b&gt;&lt;br&gt;Third-party Integrations" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="110" width="150" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="webhook" value="Webhooks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="110" width="80" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="api-access" value="API Access" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="160" width="80" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- GitHub Organization Layer -->
+        <mxCell id="github-org-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="240" width="1320" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="github-org-label" value="&lt;b&gt;GitHub Organization&lt;/b&gt; | Orbplus GitHub Org" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="50" y="245" width="250" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Access Control -->
+        <mxCell id="access-control" value="&lt;b&gt;Access Control&lt;/b&gt;&lt;br&gt;การควบคุมการเข้าถึง" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="280" width="150" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="role-read" value="Read" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="350" width="45" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="role-write" value="Write" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="350" width="45" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="role-maintain" value="Maintain" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="380" width="45" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="role-admin" value="Admin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="380" width="45" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Repository Layer -->
+        <mxCell id="repo-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="270" width="480" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="repo-label" value="&lt;b&gt;Repositories&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="250" y="275" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Repos -->
+        <mxCell id="repo-main" value="&lt;b&gt;main-app&lt;/b&gt;&lt;br&gt;(Private)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="260" y="300" width="80" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="repo-api" value="&lt;b&gt;api-service&lt;/b&gt;&lt;br&gt;(Private)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="360" y="300" width="80" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="repo-infra" value="&lt;b&gt;infrastructure&lt;/b&gt;&lt;br&gt;(Private)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="460" y="300" width="80" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="repo-docs" value="&lt;b&gt;docs&lt;/b&gt;&lt;br&gt;(Internal)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="560" y="300" width="80" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Branch Protection -->
+        <mxCell id="branch-protection" value="&lt;b&gt;Branch Protection Rules&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="260" y="365" width="150" height="15" as="geometry" />
+        </mxCell>
+
+        <mxCell id="branch-main" value="main ★" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="260" y="383" width="55" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="branch-develop" value="develop" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="320" y="383" width="55" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="branch-release" value="release/*" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="380" y="383" width="55" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="branch-feature" value="feature/*" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="440" y="383" width="55" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Code Review -->
+        <mxCell id="code-review-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="740" y="270" width="200" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="code-review-label" value="&lt;b&gt;Code Review&lt;/b&gt;&lt;br&gt;การตรวจสอบโค้ด" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="760" y="275" width="160" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="codeowners" value="&lt;b&gt;CODEOWNERS&lt;/b&gt;&lt;br&gt;Auto-assign reviewers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="310" width="160" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pr-review" value="&lt;b&gt;PR Review Process&lt;/b&gt;&lt;br&gt;Min 2 approvals (main)&lt;br&gt;Min 1 approval (develop)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="355" width="160" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Org Settings -->
+        <mxCell id="org-settings" value="&lt;b&gt;Organization Settings&lt;/b&gt;&lt;br&gt;• Member privileges&lt;br&gt;• Security policies&lt;br&gt;• Audit log access" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="960" y="270" width="150" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="teams" value="&lt;b&gt;Teams&lt;/b&gt;&lt;br&gt;@backend-team&lt;br&gt;@frontend-team&lt;br&gt;@security-team&lt;br&gt;@devops-team" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="270" width="120" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Security & Automation Layer -->
+        <mxCell id="security-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="440" width="650" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="security-label" value="&lt;b&gt;Security Controls Layer&lt;/b&gt; | ชั้นควบคุมความปลอดภัย" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="50" y="445" width="300" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Secrets Management -->
+        <mxCell id="secrets-mgmt" value="&lt;b&gt;Secrets Management&lt;/b&gt;&lt;br&gt;การจัดการข้อมูลลับ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="60" y="475" width="150" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gh-secrets" value="GitHub Secrets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="535" width="70" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="env-vars" value="Environment&lt;br&gt;Variables" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="140" y="535" width="70" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Pre-commit Hooks -->
+        <mxCell id="precommit-hooks" value="&lt;b&gt;Pre-commit Hooks&lt;/b&gt;&lt;br&gt;ตรวจสอบก่อน Commit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="230" y="475" width="150" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="secret-scan-hook" value="Secret Detection" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="230" y="535" width="70" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lint-hook" value="Linting &amp;&lt;br&gt;Format" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="310" y="535" width="70" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Secret Scanning -->
+        <mxCell id="secret-scanning" value="&lt;b&gt;GitHub Secret Scanning&lt;/b&gt;&lt;br&gt;ตรวจจับ Secrets อัตโนมัติ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="400" y="475" width="150" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="push-protection" value="Push Protection" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="535" width="70" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="alert-notify" value="Alert &amp;&lt;br&gt;Notification" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="480" y="535" width="70" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Vulnerability Scanning -->
+        <mxCell id="vuln-scan" value="&lt;b&gt;Dependabot&lt;/b&gt;&lt;br&gt;Vulnerability Alerts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="570" y="475" width="110" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="security-updates" value="Security&lt;br&gt;Updates" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="570" y="535" width="55" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dep-review" value="Dep&lt;br&gt;Review" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="630" y="535" width="50" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- CI/CD Layer -->
+        <mxCell id="cicd-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="710" y="440" width="340" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="cicd-label" value="&lt;b&gt;CI/CD Automation Layer&lt;/b&gt; | GitHub Actions" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="445" width="300" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="workflow-security" value="&lt;b&gt;Security Checks&lt;/b&gt;&lt;br&gt;• SAST (CodeQL)&lt;br&gt;• Secret Scanning&lt;br&gt;• License Check" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="720" y="475" width="100" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="workflow-test" value="&lt;b&gt;Testing&lt;/b&gt;&lt;br&gt;• Unit Tests&lt;br&gt;• Integration&lt;br&gt;• E2E Tests" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="830" y="475" width="100" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="workflow-deploy" value="&lt;b&gt;Deployment&lt;/b&gt;&lt;br&gt;• Build&lt;br&gt;• Deploy&lt;br&gt;• Notify" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="940" y="475" width="100" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="required-checks" value="&lt;b&gt;Required Status Checks&lt;/b&gt;&lt;br&gt;ต้องผ่านทุก workflow ก่อน merge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="720" y="555" width="320" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Monitoring Layer -->
+        <mxCell id="monitoring-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="440" width="290" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="monitoring-label" value="&lt;b&gt;Monitoring &amp; Audit&lt;/b&gt; | การติดตามและตรวจสอบ" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="445" width="270" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="audit-log" value="&lt;b&gt;Audit Log&lt;/b&gt;&lt;br&gt;บันทึกกิจกรรม&lt;br&gt;เก็บ 3 ปี" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1085" y="475" width="80" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="siem" value="&lt;b&gt;SIEM&lt;/b&gt;&lt;br&gt;Security Events&lt;br&gt;Correlation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1175" y="475" width="80" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="alerting" value="&lt;b&gt;Alerting&lt;/b&gt;&lt;br&gt;Slack&lt;br&gt;Email&lt;br&gt;PagerDuty" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1265" y="475" width="80" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dashboard" value="&lt;b&gt;Security Dashboard&lt;/b&gt;&lt;br&gt;Metrics &amp; KPIs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1085" y="545" width="175" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- Incident Response -->
+        <mxCell id="incident-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#b85450;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="620" width="1320" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="incident-label" value="&lt;b&gt;Incident Response Layer&lt;/b&gt; | การตอบสนองต่อเหตุการณ์" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="50" y="625" width="350" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ir-detect" value="&lt;b&gt;1. Detection&lt;/b&gt;&lt;br&gt;ตรวจจับเหตุการณ์" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="655" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ir-contain" value="&lt;b&gt;2. Containment&lt;/b&gt;&lt;br&gt;ควบคุมเหตุการณ์" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="200" y="655" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ir-investigate" value="&lt;b&gt;3. Investigation&lt;/b&gt;&lt;br&gt;สืบสวนสาเหตุ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="340" y="655" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ir-eradicate" value="&lt;b&gt;4. Eradication&lt;/b&gt;&lt;br&gt;กำจัดภัยคุกคาม" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="480" y="655" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ir-recover" value="&lt;b&gt;5. Recovery&lt;/b&gt;&lt;br&gt;กู้คืนระบบ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="620" y="655" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ir-lessons" value="&lt;b&gt;6. Lessons Learned&lt;/b&gt;&lt;br&gt;สรุปบทเรียน" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="655" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Contact Info -->
+        <mxCell id="contact-box" value="&lt;b&gt;Security Contact&lt;/b&gt;&lt;br&gt;📧 security@orbplus.co.th&lt;br&gt;💬 #security-incidents (Slack)&lt;br&gt;🔴 Critical: Security Hotline" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="920" y="650" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Compliance -->
+        <mxCell id="compliance-box" value="&lt;b&gt;Compliance&lt;/b&gt;&lt;br&gt;✓ ISO 27001&lt;br&gt;✓ PDPA&lt;br&gt;✓ OWASP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="650" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Review Schedule -->
+        <mxCell id="review-box" value="&lt;b&gt;Review Schedule&lt;/b&gt;&lt;br&gt;Weekly: Security alerts&lt;br&gt;Monthly: Access review&lt;br&gt;Quarterly: Full audit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1255" y="650" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Arrows connecting layers -->
+        <mxCell id="conn1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=1;dashed=1;" edge="1" parent="1" source="auth-box" target="github-org-box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="conn2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=1;dashed=1;" edge="1" parent="1" source="github-org-box" target="security-box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="conn3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=1;dashed=1;" edge="1" parent="1" source="github-org-box" target="cicd-box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="conn4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=1;dashed=1;" edge="1" parent="1" source="cicd-box" target="monitoring-box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="conn5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=2;" edge="1" parent="1" source="monitoring-box" target="incident-box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="740" width="600" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-title" value="&lt;b&gt;คำอธิบายสี&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="50" y="745" width="80" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="50" y="770" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1-text" value="Organization/Access" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="75" y="765" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="180" y="770" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2-text" value="Repository/Audit" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="205" y="765" width="90" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="300" y="770" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3-text" value="Code Review/Approved" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="325" y="765" width="110" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="440" y="770" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4-text" value="Security/Critical" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="465" y="765" width="90" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg5" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="555" y="770" width="20" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5-text" value="CI/CD" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="580" y="765" width="50" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Version -->
+        <mxCell id="version" value="Version 1.0 | OBP-SEC-GH-001 | Orbplus Co., Ltd. | 23 มกราคม 2569" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#666666;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="790" width="360" height="20" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

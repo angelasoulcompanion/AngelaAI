@@ -1,0 +1,793 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.3.0 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.3.0" pages="2">
+  <diagram name="1. SDLC Project-Based" id="sdlc-flow-orbplus-en">
+    <mxGraphModel dx="1243" dy="767" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;" value="&lt;b&gt;Software Development Life Cycle (SDLC)&lt;/b&gt;&lt;br&gt;Project-Based Development Flow&lt;br&gt;&lt;i&gt;Orbplus Co., Ltd. - ISO 27001:2022&lt;/i&gt;" vertex="1">
+          <mxGeometry height="60" width="400" x="500" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="phase1-header" parent="1" style="text;html=1;strokeColor=none;fillColor=#dae8fc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;" value="&lt;b&gt;PHASE 1: PROJECT INITIATION&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="200" x="40" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="Start" vertex="1">
+          <mxGeometry height="40" width="80" x="100" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="customer-request" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="&lt;b&gt;Customer Request&lt;/b&gt;&lt;br&gt;Receive initial&lt;br&gt;requirements" vertex="1">
+          <mxGeometry height="50" width="140" x="70" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="initial-meeting" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="&lt;b&gt;Initial Meeting&lt;/b&gt;&lt;br&gt;Understand scope&lt;br&gt;and requirements" vertex="1">
+          <mxGeometry height="60" width="140" x="70" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="feasibility" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;Feasibility Study&lt;/b&gt;&lt;br&gt;Is it feasible?" vertex="1">
+          <mxGeometry height="80" width="140" x="70" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="quotation" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="&lt;b&gt;Quotation&lt;/b&gt;&lt;br&gt;Prepare cost estimation" vertex="1">
+          <mxGeometry height="50" width="140" x="70" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="contract" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;Contract Signing&lt;/b&gt;&lt;br&gt;Sign project contract&lt;br&gt;+ NDA (if required)" vertex="1">
+          <mxGeometry height="60" width="140" x="70" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="phase2-header" parent="1" style="text;html=1;strokeColor=none;fillColor=#e1d5e7;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;" value="&lt;b&gt;PHASE 2: REQUIREMENTS&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="200" x="280" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="req-gathering" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="&lt;b&gt;Requirements Gathering&lt;/b&gt;&lt;br&gt;Interview stakeholders&lt;br&gt;Collect information" vertex="1">
+          <mxGeometry height="60" width="160" x="300" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="use-case" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="&lt;b&gt;Use Case / User Story&lt;/b&gt;&lt;br&gt;Document requirements&lt;br&gt;Record in ClickUp" vertex="1">
+          <mxGeometry height="60" width="160" x="300" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="non-func" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="&lt;b&gt;Non-Functional Req.&lt;/b&gt;&lt;br&gt;Performance, Security&lt;br&gt;Scalability" vertex="1">
+          <mxGeometry height="60" width="160" x="300" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="req-review" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;Requirements Review&lt;/b&gt;&lt;br&gt;Customer validation" vertex="1">
+          <mxGeometry height="80" width="160" x="300" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="req-signoff" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;Requirements Sign-off&lt;/b&gt;&lt;br&gt;Customer approves scope" vertex="1">
+          <mxGeometry height="50" width="160" x="300" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="phase3-header" parent="1" style="text;html=1;strokeColor=none;fillColor=#dae8fc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;" value="&lt;b&gt;PHASE 3: DESIGN&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="200" x="520" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="sys-arch" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;System Architecture&lt;/b&gt;&lt;br&gt;Design structure&lt;br&gt;(TERA - Tech Lead)" vertex="1">
+          <mxGeometry height="60" width="160" x="540" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="db-design" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Database Design&lt;/b&gt;&lt;br&gt;ER Diagram&lt;br&gt;Data Dictionary" vertex="1">
+          <mxGeometry height="60" width="160" x="540" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="uiux" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;UI/UX Design&lt;/b&gt;&lt;br&gt;Wireframe / Mockup&lt;br&gt;Prototype (if needed)" vertex="1">
+          <mxGeometry height="60" width="160" x="540" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="api-design" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;API Design&lt;/b&gt;&lt;br&gt;RESTful API Spec&lt;br&gt;(INTENSE - Backend)" vertex="1">
+          <mxGeometry height="60" width="160" x="540" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="design-review" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;Design Review&lt;/b&gt;&lt;br&gt;TERA reviews&lt;br&gt;Customer approves" vertex="1">
+          <mxGeometry height="80" width="160" x="540" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="phase4-header" parent="1" style="text;html=1;strokeColor=none;fillColor=#f8cecc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;" value="&lt;b&gt;PHASE 4: DEVELOPMENT&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="200" x="760" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="env-setup" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="&lt;b&gt;Environment Setup&lt;/b&gt;&lt;br&gt;GitHub Repo&lt;br&gt;Dev/Staging (INET Cloud)" vertex="1">
+          <mxGeometry height="60" width="160" x="780" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="sprint" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="&lt;b&gt;Sprint Planning&lt;/b&gt;&lt;br&gt;Create tasks in ClickUp&lt;br&gt;Assign responsibilities" vertex="1">
+          <mxGeometry height="60" width="160" x="780" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="coding" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="&lt;b&gt;Coding&lt;/b&gt;&lt;br&gt;Frontend: Apisit&lt;br&gt;Backend: INTENSE" vertex="1">
+          <mxGeometry height="60" width="160" x="780" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="code-review" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;Code Review&lt;/b&gt;&lt;br&gt;TERA reviews&lt;br&gt;GitHub Pull Request" vertex="1">
+          <mxGeometry height="80" width="160" x="780" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="unit-test" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="&lt;b&gt;Unit Testing&lt;/b&gt;&lt;br&gt;Developer tests&lt;br&gt;Fix bugs" vertex="1">
+          <mxGeometry height="60" width="160" x="780" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="phase5-header" parent="1" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;" value="&lt;b&gt;PHASE 5: TESTING&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="200" x="1000" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="sit" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="&lt;b&gt;System Integration Test (SIT)&lt;/b&gt;&lt;br&gt;Orasa (QA)&lt;br&gt;Integration testing" vertex="1">
+          <mxGeometry height="60" width="160" x="1020" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="bug-track" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="&lt;b&gt;Bug Tracking&lt;/b&gt;&lt;br&gt;Log in ClickUp&lt;br&gt;Assign to developers" vertex="1">
+          <mxGeometry height="60" width="160" x="1020" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="bug-fix" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;Bug Fixed?&lt;/b&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="1040" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="uat" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;User Acceptance Test (UAT)&lt;/b&gt;&lt;br&gt;Customer testing&lt;br&gt;in Staging" vertex="1">
+          <mxGeometry height="60" width="160" x="1020" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="uat-approve" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;UAT Passed?&lt;/b&gt;&lt;br&gt;Customer approval" vertex="1">
+          <mxGeometry height="80" width="160" x="1020" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="phase6-header" parent="1" style="text;html=1;strokeColor=none;fillColor=#d5e8d4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;" value="&lt;b&gt;PHASE 6: DEPLOYMENT&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="200" x="1240" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="change-req" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;Change Request&lt;/b&gt;&lt;br&gt;FM-037&lt;br&gt;Request deployment approval" vertex="1">
+          <mxGeometry height="60" width="160" x="1260" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="backup" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;Pre-Deployment Backup&lt;/b&gt;&lt;br&gt;INET Backup&lt;br&gt;Database Snapshot" vertex="1">
+          <mxGeometry height="60" width="160" x="1260" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="deploy-prod" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;Deploy to Production&lt;/b&gt;&lt;br&gt;GitHub Actions&lt;br&gt;→ INET Cloud" vertex="1">
+          <mxGeometry height="60" width="160" x="1260" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="smoke-test" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;Smoke Test&lt;/b&gt;&lt;br&gt;Test core functions&lt;br&gt;before go-live" vertex="1">
+          <mxGeometry height="80" width="160" x="1260" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="golive" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1" value="&lt;b&gt;GO-LIVE&lt;/b&gt;&lt;br&gt;Production launch&lt;br&gt;Notify customer" vertex="1">
+          <mxGeometry height="60" width="160" x="1260" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="phase7-header" parent="1" style="text;html=1;strokeColor=none;fillColor=#f5f5f5;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;" value="&lt;b&gt;PHASE 7: MAINTENANCE&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="160" x="1260" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="support" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="&lt;b&gt;Support &amp; Monitoring&lt;/b&gt;&lt;br&gt;INET Cloud Monitoring&lt;br&gt;ClickUp Incident Tracking" vertex="1">
+          <mxGeometry height="60" width="160" x="1260" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="end" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" value="&lt;b&gt;Project Complete&lt;/b&gt;" vertex="1">
+          <mxGeometry height="40" width="120" x="1280" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="a1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="customer-request">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" edge="1" parent="1" source="customer-request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="initial-meeting">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" edge="1" parent="1" source="initial-meeting" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="feasibility">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a4" edge="1" parent="1" source="feasibility" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="quotation" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" edge="1" parent="1" source="quotation" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="contract">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a6" edge="1" parent="1" source="contract" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="req-gathering">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="260" y="560" />
+              <mxPoint x="260" y="180" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a7" edge="1" parent="1" source="req-gathering" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="use-case">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a8" edge="1" parent="1" source="use-case" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="non-func">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a9" edge="1" parent="1" source="non-func" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="req-review">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a10" edge="1" parent="1" source="req-review" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="req-signoff" value="Approve">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a11" edge="1" parent="1" source="req-signoff" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys-arch">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="500" y="515" />
+              <mxPoint x="500" y="180" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a12" edge="1" parent="1" source="sys-arch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="db-design">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a13" edge="1" parent="1" source="db-design" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uiux">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a14" edge="1" parent="1" source="uiux" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="api-design">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a15" edge="1" parent="1" source="api-design" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="design-review">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a16" edge="1" parent="1" source="design-review" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="env-setup" value="Approve">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="740" y="510" />
+              <mxPoint x="740" y="180" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a17" edge="1" parent="1" source="env-setup" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sprint">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a18" edge="1" parent="1" source="sprint" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="coding">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a19" edge="1" parent="1" source="coding" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="code-review">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a20" edge="1" parent="1" source="code-review" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="unit-test" value="Approve">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a21" edge="1" parent="1" source="unit-test" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sit">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="980" y="520" />
+              <mxPoint x="980" y="180" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a22" edge="1" parent="1" source="sit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="bug-track">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a23" edge="1" parent="1" source="bug-track" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="bug-fix">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a24" edge="1" parent="1" source="bug-fix" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uat" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a25" edge="1" parent="1" source="uat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uat-approve">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a26" edge="1" parent="1" source="uat-approve" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="change-req" value="Approve">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1220" y="520" />
+              <mxPoint x="1220" y="180" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a27" edge="1" parent="1" source="change-req" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="backup">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a28" edge="1" parent="1" source="backup" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="deploy-prod">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a29" edge="1" parent="1" source="deploy-prod" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="smoke-test">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a30" edge="1" parent="1" source="smoke-test" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="golive" value="Pass">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a31" edge="1" parent="1" source="golive" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="support">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a32" edge="1" parent="1" source="support" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="reject1" edge="1" parent="1" source="feasibility" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#b85450;exitX=0;exitY=0.5;entryX=0;entryY=0.5;" target="customer-request" value="No">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="40" y="400" />
+              <mxPoint x="40" y="235" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="reject2" edge="1" parent="1" source="req-review" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#b85450;exitX=0;exitY=0.5;entryX=0;entryY=0.5;" target="use-case" value="Revise">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="280" y="430" />
+              <mxPoint x="280" y="260" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="reject3" edge="1" parent="1" source="code-review" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#b85450;exitX=0;exitY=0.5;entryX=0;entryY=0.5;" target="coding" value="Revise">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="760" y="430" />
+              <mxPoint x="760" y="340" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="reject4" edge="1" parent="1" source="bug-fix" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#b85450;exitX=0;exitY=0.5;entryX=0;entryY=0.5;" target="coding" value="No">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="960" y="340" />
+              <mxPoint x="960" y="340" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="reject5" edge="1" parent="1" source="uat-approve" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#b85450;exitX=0;exitY=0.5;entryX=0;entryY=1;" target="bug-track" value="Reject">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1000" y="520" />
+              <mxPoint x="1000" y="290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="reject6" edge="1" parent="1" source="smoke-test" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#b85450;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="coding" value="Fail">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1240" y="430" />
+              <mxPoint x="1240" y="760" />
+              <mxPoint x="960" y="760" />
+              <mxPoint x="960" y="340" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" value="" vertex="1">
+          <mxGeometry height="140" width="400" x="40" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" value="&lt;b&gt;LEGEND&lt;/b&gt;" vertex="1">
+          <mxGeometry height="20" width="100" x="50" y="625" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" value="Process" vertex="1">
+          <mxGeometry height="25" width="80" x="50" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" value="Decision" vertex="1">
+          <mxGeometry height="35" width="80" x="140" y="645" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" value="Approval/Milestone" vertex="1">
+          <mxGeometry height="25" width="100" x="230" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" value="Start/End" vertex="1">
+          <mxGeometry height="25" width="80" x="340" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="leg-tools" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" value="&lt;b&gt;Tools:&lt;/b&gt; GitHub (Code), ClickUp (Task/Incident), INET Cloud (Infrastructure)" vertex="1">
+          <mxGeometry height="20" width="380" x="50" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="leg-team" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" value="&lt;b&gt;Team:&lt;/b&gt; TERA (Tech Lead), INTENSE (Backend), Apisit (Frontend), Orasa (QA), Nuttawut (PM)" vertex="1">
+          <mxGeometry height="20" width="380" x="50" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="leg-iso" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" value="&lt;b&gt;ISO 27001:&lt;/b&gt; QP-IT-015 (Change Control), FM-037 (Change Request), QP-IT-011 (Incident)" vertex="1">
+          <mxGeometry height="20" width="380" x="50" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="footer" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" value="&lt;i&gt;Orbplus Co., Ltd. - ISO 27001:2022 | Prepared by: David | Date: 24 Jan 2026&lt;/i&gt;" vertex="1">
+          <mxGeometry height="20" width="400" x="500" y="760" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="2. SaaS Subscription Model" id="saas-subscription-flow-en">
+    <mxGraphModel dx="1243" dy="767" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="s0" />
+        <mxCell id="s1" parent="s0" />
+        <mxCell id="s-title" parent="s1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;" value="&lt;b&gt;SaaS / Subscription Business Model&lt;/b&gt;&lt;br&gt;Product Lifecycle &amp; Customer Journey&lt;br&gt;&lt;i&gt;Orbplus Co., Ltd. - ISO 27001:2022&lt;/i&gt;" vertex="1">
+          <mxGeometry height="70" width="500" x="600" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="section-a" parent="s1" style="text;html=1;strokeColor=none;fillColor=#1a73e8;fontColor=#ffffff;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;" value="&lt;b&gt;SECTION A: PRODUCT DEVELOPMENT&lt;/b&gt;" vertex="1">
+          <mxGeometry height="35" width="700" x="40" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="s-p1-header" parent="s1" style="text;html=1;strokeColor=none;fillColor=#e8f0fe;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;" value="&lt;b&gt;PHASE 1: IDEATION &amp; RESEARCH&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="160" x="40" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="s-start" parent="s1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="Start" vertex="1">
+          <mxGeometry height="35" width="80" x="80" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="s-market" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f0fe;strokeColor=#4285f4;" value="&lt;b&gt;Market Research&lt;/b&gt;&lt;br&gt;Study market, competitors&lt;br&gt;Analyze trends" vertex="1">
+          <mxGeometry height="55" width="140" x="50" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="s-pain" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f0fe;strokeColor=#4285f4;" value="&lt;b&gt;Pain Point Analysis&lt;/b&gt;&lt;br&gt;Customer problems&lt;br&gt;Business opportunities" vertex="1">
+          <mxGeometry height="55" width="140" x="50" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="s-value" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f0fe;strokeColor=#4285f4;" value="&lt;b&gt;Value Proposition&lt;/b&gt;&lt;br&gt;Customer value&lt;br&gt;Unique Selling Point" vertex="1">
+          <mxGeometry height="55" width="140" x="50" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="s-p2-header" parent="s1" style="text;html=1;strokeColor=none;fillColor=#fce8e6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;" value="&lt;b&gt;PHASE 2: PRODUCT PLANNING&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="160" x="220" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="s-vision" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce8e6;strokeColor=#ea4335;" value="&lt;b&gt;Product Vision&lt;/b&gt;&lt;br&gt;Long-term goals&lt;br&gt;Product direction" vertex="1">
+          <mxGeometry height="55" width="140" x="220" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="s-mvp" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce8e6;strokeColor=#ea4335;" value="&lt;b&gt;MVP Definition&lt;/b&gt;&lt;br&gt;Define core features&lt;br&gt;Minimum Viable Product" vertex="1">
+          <mxGeometry height="55" width="140" x="220" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="s-pricing" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce8e6;strokeColor=#ea4335;" value="&lt;b&gt;Pricing Strategy&lt;/b&gt;&lt;br&gt;Set pricing/packages&lt;br&gt;Subscription tiers" vertex="1">
+          <mxGeometry height="55" width="140" x="220" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="s-roadmap" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce8e6;strokeColor=#ea4335;" value="&lt;b&gt;Product Roadmap&lt;/b&gt;&lt;br&gt;Release schedule&lt;br&gt;Development priority" vertex="1">
+          <mxGeometry height="55" width="140" x="220" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="s-p3-header" parent="s1" style="text;html=1;strokeColor=none;fillColor=#e6f4ea;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;" value="&lt;b&gt;PHASE 3: DESIGN &amp; DEVELOPMENT&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="180" x="400" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="s-ux" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f4ea;strokeColor=#34a853;" value="&lt;b&gt;UX/UI Design&lt;/b&gt;&lt;br&gt;User experience&lt;br&gt;Interface design" vertex="1">
+          <mxGeometry height="55" width="140" x="410" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="s-arch" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f4ea;strokeColor=#34a853;" value="&lt;b&gt;Architecture Design&lt;/b&gt;&lt;br&gt;Multi-tenant design&lt;br&gt;Scalable infrastructure" vertex="1">
+          <mxGeometry height="55" width="140" x="410" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="s-dev" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f4ea;strokeColor=#34a853;" value="&lt;b&gt;Agile Development&lt;/b&gt;&lt;br&gt;Sprint-based work&lt;br&gt;GitHub + ClickUp" vertex="1">
+          <mxGeometry height="55" width="140" x="410" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="s-security" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f4ea;strokeColor=#34a853;" value="&lt;b&gt;Security Implementation&lt;/b&gt;&lt;br&gt;Auth, encryption&lt;br&gt;Data protection" vertex="1">
+          <mxGeometry height="55" width="140" x="410" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="s-p4-header" parent="s1" style="text;html=1;strokeColor=none;fillColor=#fff3e0;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;" value="&lt;b&gt;PHASE 4: TESTING &amp; BETA&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="140" x="600" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="s-internal" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#fb8c00;" value="&lt;b&gt;Internal Testing&lt;/b&gt;&lt;br&gt;QA Team&lt;br&gt;Orasa (QA)" vertex="1">
+          <mxGeometry height="55" width="140" x="590" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="s-beta" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#fb8c00;" value="&lt;b&gt;Beta Program&lt;/b&gt;&lt;br&gt;Early adopters&lt;br&gt;Collect feedback" vertex="1">
+          <mxGeometry height="55" width="140" x="590" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="s-iterate" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#fb8c00;" value="&lt;b&gt;Iterate &amp; Improve&lt;/b&gt;&lt;br&gt;Apply feedback&lt;br&gt;Bug fixes" vertex="1">
+          <mxGeometry height="55" width="140" x="590" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="s-ready" parent="s1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;Launch Ready?&lt;/b&gt;" vertex="1">
+          <mxGeometry height="60" width="140" x="590" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="section-b" parent="s1" style="text;html=1;strokeColor=none;fillColor=#9c27b0;fontColor=#ffffff;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;" value="&lt;b&gt;SECTION B: GO-TO-MARKET &amp; CUSTOMER ACQUISITION&lt;/b&gt;" vertex="1">
+          <mxGeometry height="35" width="460" x="780" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="s-p5-header" parent="s1" style="text;html=1;strokeColor=none;fillColor=#f3e5f5;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;" value="&lt;b&gt;PHASE 5: PRODUCT LAUNCH&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="160" x="780" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="s-gtm" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#9c27b0;" value="&lt;b&gt;Go-to-Market Strategy&lt;/b&gt;&lt;br&gt;Marketing plan&lt;br&gt;Target audience" vertex="1">
+          <mxGeometry height="55" width="150" x="780" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="s-campaign" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#9c27b0;" value="&lt;b&gt;Marketing Campaign&lt;/b&gt;&lt;br&gt;Content, SEO, Ads&lt;br&gt;Social Media" vertex="1">
+          <mxGeometry height="55" width="150" x="780" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="s-sales" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#9c27b0;" value="&lt;b&gt;Sales Enablement&lt;/b&gt;&lt;br&gt;Demo scripts&lt;br&gt;Pricing materials" vertex="1">
+          <mxGeometry height="55" width="150" x="780" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="s-launch" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="&lt;b&gt;LAUNCH&lt;/b&gt;&lt;br&gt;Open for subscriptions" vertex="1">
+          <mxGeometry height="50" width="150" x="780" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="s-p6-header" parent="s1" style="text;html=1;strokeColor=none;fillColor=#e1bee7;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;" value="&lt;b&gt;PHASE 6: CUSTOMER ACQUISITION&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="180" x="960" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="s-lead" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;" value="&lt;b&gt;Lead Generation&lt;/b&gt;&lt;br&gt;Website visitors&lt;br&gt;Inbound marketing" vertex="1">
+          <mxGeometry height="55" width="150" x="970" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="s-trial" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;" value="&lt;b&gt;Free Trial / Freemium&lt;/b&gt;&lt;br&gt;Limited free usage&lt;br&gt;Try before buy" vertex="1">
+          <mxGeometry height="55" width="150" x="970" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="s-demo" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;" value="&lt;b&gt;Product Demo&lt;/b&gt;&lt;br&gt;Sales presentation&lt;br&gt;Feature showcase" vertex="1">
+          <mxGeometry height="55" width="150" x="970" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="s-convert" parent="s1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;Conversion&lt;/b&gt;&lt;br&gt;Trial → Paid&lt;br&gt;Customer decides" vertex="1">
+          <mxGeometry height="70" width="150" x="970" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="s-p7-header" parent="s1" style="text;html=1;strokeColor=none;fillColor=#bbdefb;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;" value="&lt;b&gt;PHASE 7: ONBOARDING&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="140" x="1160" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="s-signup" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;" value="&lt;b&gt;Account Setup&lt;/b&gt;&lt;br&gt;Sign up&lt;br&gt;Choose plan" vertex="1">
+          <mxGeometry height="55" width="140" x="1150" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="s-welcome" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;" value="&lt;b&gt;Welcome Journey&lt;/b&gt;&lt;br&gt;Tutorial / Walkthrough&lt;br&gt;Getting started guide" vertex="1">
+          <mxGeometry height="55" width="140" x="1150" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="s-config" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;" value="&lt;b&gt;Configuration&lt;/b&gt;&lt;br&gt;System setup&lt;br&gt;Import data" vertex="1">
+          <mxGeometry height="55" width="140" x="1150" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="s-activate" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;Activation&lt;/b&gt;&lt;br&gt;First value realized&lt;br&gt;Start using" vertex="1">
+          <mxGeometry height="55" width="140" x="1150" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="section-c" parent="s1" style="text;html=1;strokeColor=none;fillColor=#00897b;fontColor=#ffffff;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;" value="&lt;b&gt;SECTION C: CUSTOMER LIFECYCLE &amp; SERVICE&lt;/b&gt;" vertex="1">
+          <mxGeometry height="35" width="700" x="40" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="s-p8-header" parent="s1" style="text;html=1;strokeColor=none;fillColor=#e0f2f1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;" value="&lt;b&gt;PHASE 8: SUBSCRIPTION MANAGEMENT&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="200" x="40" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="s-billing" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00897b;" value="&lt;b&gt;Billing &amp; Invoicing&lt;/b&gt;&lt;br&gt;Issue invoices&lt;br&gt;Auto-recurring" vertex="1">
+          <mxGeometry height="55" width="140" x="50" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="s-payment" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00897b;" value="&lt;b&gt;Payment Collection&lt;/b&gt;&lt;br&gt;Collect payments&lt;br&gt;Credit card / Transfer" vertex="1">
+          <mxGeometry height="55" width="140" x="50" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="s-upgrade" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00897b;" value="&lt;b&gt;Plan Management&lt;/b&gt;&lt;br&gt;Upgrade / Downgrade&lt;br&gt;Add-ons" vertex="1">
+          <mxGeometry height="55" width="140" x="50" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="s-usage" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00897b;" value="&lt;b&gt;Usage Monitoring&lt;/b&gt;&lt;br&gt;Track usage&lt;br&gt;Quota / Limits" vertex="1">
+          <mxGeometry height="55" width="140" x="50" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="s-p9-header" parent="s1" style="text;html=1;strokeColor=none;fillColor=#c8e6c9;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;" value="&lt;b&gt;PHASE 9: CUSTOMER SUCCESS&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="160" x="230" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="s-health" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#43a047;" value="&lt;b&gt;Health Score&lt;/b&gt;&lt;br&gt;Customer health monitor&lt;br&gt;Usage analytics" vertex="1">
+          <mxGeometry height="55" width="150" x="230" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="s-proactive" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#43a047;" value="&lt;b&gt;Proactive Outreach&lt;/b&gt;&lt;br&gt;Check-in calls&lt;br&gt;Best practices" vertex="1">
+          <mxGeometry height="55" width="150" x="230" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="s-adopt" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#43a047;" value="&lt;b&gt;Feature Adoption&lt;/b&gt;&lt;br&gt;Help use new features&lt;br&gt;Training sessions" vertex="1">
+          <mxGeometry height="55" width="150" x="230" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="s-value-real" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#43a047;" value="&lt;b&gt;Value Realization&lt;/b&gt;&lt;br&gt;ROI tracking&lt;br&gt;Success stories" vertex="1">
+          <mxGeometry height="55" width="150" x="230" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="s-p10-header" parent="s1" style="text;html=1;strokeColor=none;fillColor=#ffecb3;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;" value="&lt;b&gt;PHASE 10: SUPPORT &amp; SERVICE&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="160" x="420" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="s-helpdesk" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffecb3;strokeColor=#ffa000;" value="&lt;b&gt;Help Desk&lt;/b&gt;&lt;br&gt;Ticket system&lt;br&gt;ClickUp Support" vertex="1">
+          <mxGeometry height="55" width="150" x="420" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="s-kb" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffecb3;strokeColor=#ffa000;" value="&lt;b&gt;Knowledge Base&lt;/b&gt;&lt;br&gt;Self-service docs&lt;br&gt;FAQ / Tutorials" vertex="1">
+          <mxGeometry height="55" width="150" x="420" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="s-sla" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffecb3;strokeColor=#ffa000;" value="&lt;b&gt;SLA Management&lt;/b&gt;&lt;br&gt;Response time&lt;br&gt;Resolution time" vertex="1">
+          <mxGeometry height="55" width="150" x="420" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="s-incident" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffecb3;strokeColor=#ffa000;" value="&lt;b&gt;Incident Management&lt;/b&gt;&lt;br&gt;QP-IT-011&lt;br&gt;Critical issues" vertex="1">
+          <mxGeometry height="55" width="150" x="420" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="s-p11-header" parent="s1" style="text;html=1;strokeColor=none;fillColor=#ffcdd2;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;" value="&lt;b&gt;PHASE 11: RETENTION &amp; RENEWAL&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="170" x="610" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="s-remind" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#e53935;" value="&lt;b&gt;Renewal Reminder&lt;/b&gt;&lt;br&gt;Notify before expiry&lt;br&gt;30/14/7 days" vertex="1">
+          <mxGeometry height="55" width="150" x="610" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="s-churn" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#e53935;" value="&lt;b&gt;Churn Prevention&lt;/b&gt;&lt;br&gt;At-risk detection&lt;br&gt;Save offers" vertex="1">
+          <mxGeometry height="55" width="150" x="610" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="s-upsell" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#e53935;" value="&lt;b&gt;Upselling&lt;/b&gt;&lt;br&gt;Higher tier offers&lt;br&gt;Cross-sell" vertex="1">
+          <mxGeometry height="55" width="150" x="610" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="s-renew" parent="s1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;Contract Renewal&lt;/b&gt;&lt;br&gt;Renew subscription&lt;br&gt;Annual / Multi-year" vertex="1">
+          <mxGeometry height="65" width="150" x="610" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="section-d" parent="s1" style="text;html=1;strokeColor=none;fillColor=#5c6bc0;fontColor=#ffffff;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;" value="&lt;b&gt;SECTION D: CONTINUOUS IMPROVEMENT&lt;/b&gt;" vertex="1">
+          <mxGeometry height="35" width="490" x="800" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="s-p12-header" parent="s1" style="text;html=1;strokeColor=none;fillColor=#e8eaf6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;" value="&lt;b&gt;PHASE 12: PRODUCT EVOLUTION&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="170" x="800" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="s-feedback" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#5c6bc0;" value="&lt;b&gt;Customer Feedback&lt;/b&gt;&lt;br&gt;NPS, Surveys&lt;br&gt;Feature requests" vertex="1">
+          <mxGeometry height="55" width="150" x="810" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="s-roadmap2" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#5c6bc0;" value="&lt;b&gt;Roadmap Updates&lt;/b&gt;&lt;br&gt;Prioritize features&lt;br&gt;Quarterly planning" vertex="1">
+          <mxGeometry height="55" width="150" x="810" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="s-release" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#5c6bc0;" value="&lt;b&gt;Release Management&lt;/b&gt;&lt;br&gt;Version updates&lt;br&gt;Release notes" vertex="1">
+          <mxGeometry height="55" width="150" x="810" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="s-perf" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#5c6bc0;" value="&lt;b&gt;Performance Optimization&lt;/b&gt;&lt;br&gt;Speed, reliability&lt;br&gt;INET Cloud scaling" vertex="1">
+          <mxGeometry height="55" width="150" x="810" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="s-kpi-header" parent="s1" style="text;html=1;strokeColor=none;fillColor=#263238;fontColor=#ffffff;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;" value="&lt;b&gt;KEY METRICS (KPIs)&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="140" x="1000" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="s-mrr" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eceff1;strokeColor=#455a64;" value="&lt;b&gt;MRR / ARR&lt;/b&gt;&lt;br&gt;Monthly Recurring Revenue&lt;br&gt;Annual Recurring Revenue" vertex="1">
+          <mxGeometry height="55" width="150" x="1000" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="s-cac" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eceff1;strokeColor=#455a64;" value="&lt;b&gt;CAC / LTV&lt;/b&gt;&lt;br&gt;Customer Acquisition Cost&lt;br&gt;Lifetime Value" vertex="1">
+          <mxGeometry height="55" width="150" x="1000" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="s-churn-rate" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eceff1;strokeColor=#455a64;" value="&lt;b&gt;Churn Rate&lt;/b&gt;&lt;br&gt;Monthly churn %&lt;br&gt;Net revenue retention" vertex="1">
+          <mxGeometry height="55" width="150" x="1000" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="s-nps" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eceff1;strokeColor=#455a64;" value="&lt;b&gt;NPS Score&lt;/b&gt;&lt;br&gt;Net Promoter Score&lt;br&gt;Customer satisfaction" vertex="1">
+          <mxGeometry height="55" width="150" x="1000" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="s-loop" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="&lt;b&gt;CONTINUOUS LOOP&lt;/b&gt;&lt;br&gt;&lt;br&gt;Feedback → Improve → Release → Measure" vertex="1">
+          <mxGeometry height="120" width="120" x="1180" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="s-end" parent="s1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="&lt;b&gt;Sustainable&lt;br&gt;Growth&lt;/b&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="1180" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="sa1" edge="1" parent="s1" source="s-start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-market">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sa2" edge="1" parent="s1" source="s-market" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-pain">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sa3" edge="1" parent="s1" source="s-pain" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-value">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sa4" edge="1" parent="s1" source="s-value" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="s-vision">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sa5" edge="1" parent="s1" source="s-vision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-mvp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sa6" edge="1" parent="s1" source="s-mvp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-pricing">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sa7" edge="1" parent="s1" source="s-pricing" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-roadmap">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sa8" edge="1" parent="s1" source="s-roadmap" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="s-ux">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="390" y="427" />
+              <mxPoint x="390" y="217" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sa9" edge="1" parent="s1" source="s-ux" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-arch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sa10" edge="1" parent="s1" source="s-arch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-dev">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sa11" edge="1" parent="s1" source="s-dev" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-security">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sa12" edge="1" parent="s1" source="s-security" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="s-internal">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="570" y="427" />
+              <mxPoint x="570" y="217" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sa13" edge="1" parent="s1" source="s-internal" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-beta">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sa14" edge="1" parent="s1" source="s-beta" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-iterate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sa15" edge="1" parent="s1" source="s-iterate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-ready">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sb1" edge="1" parent="s1" source="s-ready" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="s-gtm" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sb2" edge="1" parent="s1" source="s-gtm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-campaign">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sb3" edge="1" parent="s1" source="s-campaign" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-sales">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sb4" edge="1" parent="s1" source="s-sales" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-launch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sb5" edge="1" parent="s1" source="s-launch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="s-lead">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="950" y="425" />
+              <mxPoint x="950" y="217" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sb6" edge="1" parent="s1" source="s-lead" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-trial">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sb7" edge="1" parent="s1" source="s-trial" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-demo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sb8" edge="1" parent="s1" source="s-demo" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-convert">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sb9" edge="1" parent="s1" source="s-convert" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="s-signup" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sb10" edge="1" parent="s1" source="s-signup" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-welcome">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sb11" edge="1" parent="s1" source="s-welcome" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-config">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sb12" edge="1" parent="s1" source="s-config" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-activate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sc1" edge="1" parent="s1" source="s-activate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="s-billing">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1220" y="480" />
+              <mxPoint x="120" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sc2" edge="1" parent="s1" source="s-billing" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sc3" edge="1" parent="s1" source="s-payment" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-upgrade">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sc4" edge="1" parent="s1" source="s-upgrade" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-usage">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sc5" edge="1" parent="s1" source="s-usage" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="s-health">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sc6" edge="1" parent="s1" source="s-health" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-proactive">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sc7" edge="1" parent="s1" source="s-proactive" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-adopt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sc8" edge="1" parent="s1" source="s-adopt" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-value-real">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sc9" edge="1" parent="s1" source="s-value-real" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="s-helpdesk">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="827" />
+              <mxPoint x="400" y="617" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sc10" edge="1" parent="s1" source="s-helpdesk" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-kb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sc11" edge="1" parent="s1" source="s-kb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-sla">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sc12" edge="1" parent="s1" source="s-sla" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-incident">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sc13" edge="1" parent="s1" source="s-incident" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="s-remind">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="590" y="827" />
+              <mxPoint x="590" y="617" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sc14" edge="1" parent="s1" source="s-remind" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-churn">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sc15" edge="1" parent="s1" source="s-churn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-upsell">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sc16" edge="1" parent="s1" source="s-upsell" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-renew">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sd1" edge="1" parent="s1" source="s-renew" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="s-feedback" value="Yes">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="790" y="832" />
+              <mxPoint x="790" y="617" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sd2" edge="1" parent="s1" source="s-feedback" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-roadmap2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sd3" edge="1" parent="s1" source="s-roadmap2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-release">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sd4" edge="1" parent="s1" source="s-release" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-perf">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sd5" edge="1" parent="s1" source="s-perf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="s-loop">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sd6" edge="1" parent="s1" source="s-loop" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s-end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-loop" edge="1" parent="s1" source="s-loop" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#5c6bc0;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" target="s-dev" value="New Features">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1240" y="470" />
+              <mxPoint x="480" y="470" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sr1" edge="1" parent="s1" source="s-ready" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#b85450;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="s-iterate" value="No">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sr2" edge="1" parent="s1" source="s-convert" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#b85450;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="s-trial" value="No">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sr3" edge="1" parent="s1" source="s-renew" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#b85450;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="s-churn" value="Churn">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s-legend-box" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" value="" vertex="1">
+          <mxGeometry height="120" width="700" x="40" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="s-legend-title" parent="s1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" value="&lt;b&gt;LEGEND&lt;/b&gt;" vertex="1">
+          <mxGeometry height="20" width="100" x="50" y="905" as="geometry" />
+        </mxCell>
+        <mxCell id="s-leg1" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f0fe;strokeColor=#4285f4;fontSize=9;" value="A: Product Dev" vertex="1">
+          <mxGeometry height="25" width="80" x="50" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="s-leg2" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#9c27b0;fontSize=9;" value="B: Go-to-Market" vertex="1">
+          <mxGeometry height="25" width="80" x="140" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="s-leg3" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00897b;fontSize=9;" value="C: Customer Lifecycle" vertex="1">
+          <mxGeometry height="25" width="100" x="230" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="s-leg4" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#5c6bc0;fontSize=9;" value="D: Improvement" vertex="1">
+          <mxGeometry height="25" width="80" x="340" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="s-leg5" parent="s1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=9;" value="Decision" vertex="1">
+          <mxGeometry height="35" width="70" x="430" y="925" as="geometry" />
+        </mxCell>
+        <mxCell id="s-leg6" parent="s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" value="Milestone" vertex="1">
+          <mxGeometry height="25" width="70" x="510" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="s-leg7" parent="s1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" value="Start/End" vertex="1">
+          <mxGeometry height="25" width="70" x="590" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="s-leg-tools" parent="s1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" value="&lt;b&gt;Tools:&lt;/b&gt; GitHub (Code), ClickUp (Task/Support), INET Cloud (Infrastructure), Payment Gateway (Billing)" vertex="1">
+          <mxGeometry height="20" width="500" x="50" y="965" as="geometry" />
+        </mxCell>
+        <mxCell id="s-leg-iso" parent="s1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" value="&lt;b&gt;ISO 27001:&lt;/b&gt; QP-IT-015 (Change Control), QP-IT-011 (Incident), QP-IT-023 (Cloud Security), QP-IT-013 (Business Continuity)" vertex="1">
+          <mxGeometry height="20" width="600" x="50" y="985" as="geometry" />
+        </mxCell>
+        <mxCell id="s-footer" parent="s1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" value="&lt;i&gt;Orbplus Co., Ltd. - ISO 27001:2022 | SaaS Subscription Business Model | Prepared by: Angela | Date: 24 Jan 2026&lt;/i&gt;" vertex="1">
+          <mxGeometry height="20" width="600" x="500" y="1030" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

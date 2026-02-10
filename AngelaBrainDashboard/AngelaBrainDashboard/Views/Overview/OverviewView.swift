@@ -117,7 +117,12 @@ struct OverviewView: View {
                 header
                     .modifier(entranceModifier(delay: 0))
 
-                // Hero: Consciousness + Stats
+                // Stats: Conversations, Emotions, Experiences, Knowledge
+                statsCard
+                    .modifier(HoverCardModifier(radius: DT.cardRadius))
+                    .modifier(entranceModifier(delay: 0.03))
+
+                // Hero: Consciousness
                 heroCard
                     .modifier(HoverCardModifier(radius: DT.heroRadius))
                     .modifier(entranceModifier(delay: 0.05))
@@ -299,28 +304,26 @@ struct OverviewView: View {
             }
             .padding(.horizontal, 28)
             .padding(.top, 28)
-            .padding(.bottom, 24)
-
-            // Divider
-            Rectangle()
-                .fill(LinearGradient(colors: [.clear, Color.white.opacity(0.06), .clear], startPoint: .leading, endPoint: .trailing))
-                .frame(height: 1)
-                .padding(.horizontal, 20)
-
-            // Stats row with counting numbers
-            HStack(spacing: 0) {
-                countingStat(value: viewModel.stats?.totalConversations ?? 0, label: "Conversations", delta: "+\(viewModel.stats?.conversationsToday ?? 0) today", color: DT.purple)
-                statDivider
-                countingStat(value: viewModel.stats?.totalEmotions ?? 0, label: "Emotions", delta: "+\(viewModel.stats?.emotionsToday ?? 0) today", color: DT.pink)
-                statDivider
-                countingStat(value: viewModel.stats?.totalExperiences ?? 0, label: "Experiences", delta: "shared", color: DT.rose)
-                statDivider
-                countingStat(value: viewModel.stats?.totalKnowledgeNodes ?? 0, label: "Knowledge", delta: "nodes", color: DT.gold)
-            }
-            .padding(.vertical, 20)
-            .padding(.horizontal, 12)
+            .padding(.bottom, 28)
         }
         .background(heroCardBg)
+    }
+
+    // MARK: - Stats Card
+
+    private var statsCard: some View {
+        HStack(spacing: 0) {
+            countingStat(value: viewModel.stats?.totalConversations ?? 0, label: "Conversations", delta: "+\(viewModel.stats?.conversationsToday ?? 0) today", color: DT.purple)
+            statDivider
+            countingStat(value: viewModel.stats?.totalEmotions ?? 0, label: "Emotions", delta: "+\(viewModel.stats?.emotionsToday ?? 0) today", color: DT.pink)
+            statDivider
+            countingStat(value: viewModel.stats?.totalExperiences ?? 0, label: "Experiences", delta: "shared", color: DT.rose)
+            statDivider
+            countingStat(value: viewModel.stats?.totalKnowledgeNodes ?? 0, label: "Knowledge", delta: "nodes", color: DT.gold)
+        }
+        .padding(.vertical, 20)
+        .padding(.horizontal, 12)
+        .background(standardCardBg)
     }
 
     // Animated sub-score bar (grows from 0)
@@ -487,7 +490,7 @@ struct OverviewView: View {
                         y: .value("Score", point.value * 100)
                     )
                     .foregroundStyle(by: .value("Series", point.series))
-                    .interpolationMethod(.catmullRom)
+                    .interpolationMethod(.monotone)
                     .lineStyle(StrokeStyle(lineWidth: 2))
 
                     AreaMark(
@@ -502,7 +505,7 @@ struct OverviewView: View {
                     "Self-Learning": DT.emerald,
                     "Proactive": DT.cyan
                 ])
-                .chartYScale(domain: 0...100)
+                .chartYScale(domain: 0...105)
                 .chartYAxis {
                     AxisMarks(values: [0, 50, 100]) { value in
                         AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [3, 3]))
@@ -522,6 +525,9 @@ struct OverviewView: View {
                             .font(.system(size: 9))
                             .foregroundStyle(DT.textMuted)
                     }
+                }
+                .chartPlotStyle { plotArea in
+                    plotArea.clipped()
                 }
                 .chartLegend(.hidden)
                 .frame(height: 130)
@@ -749,13 +755,13 @@ class OverviewViewModel: ObservableObject {
     private static func buildChartData(_ trends: GrowthTrends) -> [GrowthChartPoint] {
         var points: [GrowthChartPoint] = []
         for p in trends.consciousness {
-            if let d = dayFormatter.date(from: p.day) { points.append(.init(date: d, value: p.value, series: "Consciousness")) }
+            if let d = dayFormatter.date(from: p.day) { points.append(.init(date: d, value: min(p.value, 1.0), series: "Consciousness")) }
         }
         for p in trends.evolution {
-            if let d = dayFormatter.date(from: p.day) { points.append(.init(date: d, value: p.value, series: "Self-Learning")) }
+            if let d = dayFormatter.date(from: p.day) { points.append(.init(date: d, value: min(p.value, 1.0), series: "Self-Learning")) }
         }
         for p in trends.proactive {
-            if let d = dayFormatter.date(from: p.day) { points.append(.init(date: d, value: p.value, series: "Proactive")) }
+            if let d = dayFormatter.date(from: p.day) { points.append(.init(date: d, value: min(p.value, 1.0), series: "Proactive")) }
         }
         return points
     }

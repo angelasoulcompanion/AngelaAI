@@ -11,8 +11,12 @@ import MusicKit
 struct DJAngelaView: View {
     @StateObject private var musicService = MusicPlayerService.shared
     @ObservedObject private var chatService = ChatService.shared
-    @State private var songMemory: SongMemory?
-    @State private var lastLoadedSongKey: String = ""
+
+    private var upNextSongs: [DisplaySong] {
+        let idx = musicService.currentQueueIndex + 1
+        guard idx < musicService.queue.count else { return [] }
+        return Array(musicService.queue[idx..<min(idx + 3, musicService.queue.count)])
+    }
 
     var body: some View {
         ZStack {
@@ -30,32 +34,6 @@ struct DJAngelaView: View {
                 await musicService.requestAuthorization()
             }
         }
-        .onChange(of: musicService.nowPlaying?.title) { _, newTitle in
-            Task { await loadSongMemory() }
-        }
-    }
-
-    // MARK: - Load Song Memory
-
-    private func loadSongMemory() async {
-        guard let now = musicService.nowPlaying else {
-            songMemory = nil
-            return
-        }
-        let key = "\(now.title)|\(now.artist)"
-        guard key != lastLoadedSongKey else { return }
-        lastLoadedSongKey = key
-
-        do {
-            let memory = try await chatService.fetchSongMemory(title: now.title, artist: now.artist)
-            await MainActor.run {
-                self.songMemory = memory
-            }
-        } catch {
-            await MainActor.run {
-                self.songMemory = nil
-            }
-        }
     }
 
     // MARK: - Main Player Layout (HSplitView)
@@ -69,39 +47,22 @@ struct DJAngelaView: View {
                     TimeAwareHeader()
                         .padding(.bottom, 12)
 
-                    // Vinyl record
-                    VinylRecordView(
-                        albumArtURL: musicService.nowPlaying?.albumArtURL,
-                        isPlaying: musicService.isPlaying,
-                        size: 240
-                    )
-                    .padding(.bottom, 12)
+                    // Dual Turntable Decks
+                    DJDualDeckView(musicService: musicService)
+                        .padding(.bottom, 4)
+
+                    // Transition Mode Picker
+                    TransitionModePickerView(musicService: musicService)
+                        .padding(.bottom, 8)
 
                     // Player controls
                     PlayerControlsView(musicService: musicService)
 
-                    // Song Memory Card (play history)
-                    if let memory = songMemory, memory.playCount > 0 {
-                        SongMemoryCard(memory: memory)
-                            .padding(.top, 6)
+                    // Up Next Preview (3 songs only — keep compact for larger vinyl)
+                    if !upNextSongs.isEmpty {
+                        UpNextPreview(songs: upNextSongs)
+                            .padding(.top, 8)
                             .padding(.horizontal, 16)
-                    }
-
-                    // Live EQ Visualizer + Up Next
-                    DJBottomPanel(musicService: musicService)
-                        .padding(.top, 8)
-                        .padding(.horizontal, 16)
-
-                    // DJ Commentary Card — only show when queue is empty (no Up Next)
-                    if musicService.currentQueueIndex + 1 >= musicService.queue.count,
-                       let commentary = musicService.currentSongCommentary, commentary.hasContent {
-                        DJCommentaryCard(
-                            commentary: commentary,
-                            songTitle: musicService.nowPlaying?.title,
-                            songArtist: musicService.nowPlaying?.artist
-                        )
-                        .padding(.top, 6)
-                        .padding(.horizontal, 16)
                     }
 
                     // Error / status message
@@ -129,10 +90,10 @@ struct DJAngelaView: View {
                 }
                 .padding(.vertical, 12)
             }
-            .frame(minWidth: 360, idealWidth: 420)
+            .frame(minWidth: 420, idealWidth: 520)
             .padding(.horizontal, 24)
 
-            // Right: Song Queue (55%)
+            // Right: Song Queue (compact)
             VStack(spacing: 0) {
                 // Queue header
                 HStack {
@@ -185,7 +146,7 @@ struct DJAngelaView: View {
                     chatService: chatService
                 )
             }
-            .frame(minWidth: 400, idealWidth: 500)
+            .frame(minWidth: 300, idealWidth: 360)
         }
     }
 

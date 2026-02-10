@@ -1,0 +1,486 @@
+<mxfile host="app.diagrams.net" modified="2025-01-15" agent="Angela" version="22.1.0" type="device">
+  <diagram id="overview" name="1. SOP Overview">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="ov-0" />
+        <mxCell id="ov-1" parent="ov-0" />
+        <mxCell id="ov-2" value="ORBPLUS SOP OVERVIEW" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=24;fontStyle=1;fontColor=#1a365d;" vertex="1" parent="ov-1">
+          <mxGeometry x="550" y="30" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-3" value="INFORMATION SECURITY" style="swimlane;fillColor=#dbeafe;strokeColor=#3b82f6;fontStyle=1;fontSize=14;" vertex="1" parent="ov-1">
+          <mxGeometry x="40" y="100" width="360" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-4" value="SOP-01&#xa;Access Control" style="rounded=1;fillColor=#3b82f6;fontColor=#ffffff;strokeColor=none;fontSize=12;" vertex="1" parent="ov-3">
+          <mxGeometry x="20" y="40" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-5" value="SOP-02&#xa;Incident Response" style="rounded=1;fillColor=#ef4444;fontColor=#ffffff;strokeColor=none;fontSize=12;" vertex="1" parent="ov-3">
+          <mxGeometry x="190" y="40" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-6" value="SOP-03&#xa;Change Management" style="rounded=1;fillColor=#f59e0b;fontColor=#ffffff;strokeColor=none;fontSize=12;" vertex="1" parent="ov-3">
+          <mxGeometry x="20" y="110" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-7" value="SOP-04&#xa;Backup &amp; Recovery" style="rounded=1;fillColor=#10b981;fontColor=#ffffff;strokeColor=none;fontSize=12;" vertex="1" parent="ov-3">
+          <mxGeometry x="190" y="110" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-10" value="SOP-10&#xa;Document Control" style="rounded=1;fillColor=#6366f1;fontColor=#ffffff;strokeColor=none;fontSize=12;" vertex="1" parent="ov-3">
+          <mxGeometry x="100" y="200" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-20" value="SOFTWARE DEVELOPMENT" style="swimlane;fillColor=#dcfce7;strokeColor=#22c55e;fontStyle=1;fontSize=14;" vertex="1" parent="ov-1">
+          <mxGeometry x="420" y="100" width="360" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-21" value="SOP-05&#xa;SDLC" style="rounded=1;fillColor=#22c55e;fontColor=#ffffff;strokeColor=none;fontSize=12;" vertex="1" parent="ov-20">
+          <mxGeometry x="20" y="40" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-22" value="SOP-06&#xa;Code Review" style="rounded=1;fillColor=#14b8a6;fontColor=#ffffff;strokeColor=none;fontSize=12;" vertex="1" parent="ov-20">
+          <mxGeometry x="190" y="40" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-23" value="SOP-07&#xa;Release Management" style="rounded=1;fillColor=#0ea5e9;fontColor=#ffffff;strokeColor=none;fontSize=12;" vertex="1" parent="ov-20">
+          <mxGeometry x="100" y="120" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-30" value="CUSTOMER OPERATIONS" style="swimlane;fillColor=#fef3c7;strokeColor=#f59e0b;fontStyle=1;fontSize=14;" vertex="1" parent="ov-1">
+          <mxGeometry x="800" y="100" width="360" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-31" value="SOP-08&#xa;Customer Onboarding" style="rounded=1;fillColor=#f59e0b;fontColor=#ffffff;strokeColor=none;fontSize=12;" vertex="1" parent="ov-30">
+          <mxGeometry x="20" y="40" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-32" value="SOP-09&#xa;Support Tickets" style="rounded=1;fillColor=#ec4899;fontColor=#ffffff;strokeColor=none;fontSize=12;" vertex="1" parent="ov-30">
+          <mxGeometry x="190" y="40" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ov-40" value="ISO 27001:2022 Aligned" style="text;html=1;strokeColor=#9333ea;fillColor=#f3e8ff;align=center;verticalAlign=middle;fontSize=14;fontStyle=1;rounded=1;" vertex="1" parent="ov-1">
+          <mxGeometry x="550" y="420" width="200" height="40" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="access" name="2. Access Control Flow">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="ac-0" />
+        <mxCell id="ac-1" parent="ac-0" />
+        <mxCell id="ac-2" value="SOP-01: ACCESS CONTROL MANAGEMENT" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=20;fontStyle=1;fontColor=#1e40af;" vertex="1" parent="ac-1">
+          <mxGeometry x="400" y="20" width="500" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-10" value="NEW USER" style="ellipse;fillColor=#22c55e;fontColor=#fff;strokeColor=none;fontSize=12;fontStyle=1;" vertex="1" parent="ac-1">
+          <mxGeometry x="40" y="80" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-11" value="Submit Access&#xa;Request Form" style="rounded=1;fillColor=#dbeafe;strokeColor=#3b82f6;fontSize=11;" vertex="1" parent="ac-1">
+          <mxGeometry x="180" y="85" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-12" value="HR Verify&#xa;Employment" style="rounded=1;fillColor=#dbeafe;strokeColor=#3b82f6;fontSize=11;" vertex="1" parent="ac-1">
+          <mxGeometry x="340" y="85" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-13" value="Dept Head&#xa;Approve" style="rhombus;fillColor=#fef3c7;strokeColor=#f59e0b;fontSize=11;" vertex="1" parent="ac-1">
+          <mxGeometry x="500" y="75" width="100" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-14" value="Create&#xa;Accounts" style="rounded=1;fillColor=#dbeafe;strokeColor=#3b82f6;fontSize=11;" vertex="1" parent="ac-1">
+          <mxGeometry x="640" y="85" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-15" value="Assign&#xa;Permissions" style="rounded=1;fillColor=#dbeafe;strokeColor=#3b82f6;fontSize=11;" vertex="1" parent="ac-1">
+          <mxGeometry x="800" y="85" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-16" value="Security&#xa;Briefing" style="rounded=1;fillColor=#dcfce7;strokeColor=#22c55e;fontSize=11;" vertex="1" parent="ac-1">
+          <mxGeometry x="960" y="85" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-17" value="ACCESS&#xa;GRANTED" style="ellipse;fillColor=#22c55e;fontColor=#fff;strokeColor=none;fontSize=11;fontStyle=1;" vertex="1" parent="ac-1">
+          <mxGeometry x="1120" y="80" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="ac-1" source="ac-10" target="ac-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="ac-1" source="ac-11" target="ac-12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="ac-1" source="ac-12" target="ac-13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-21" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;fontColor=#22c55e;" edge="1" parent="ac-1" source="ac-13" target="ac-14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="ac-1" source="ac-14" target="ac-15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="ac-1" source="ac-15" target="ac-16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="ac-1" source="ac-16" target="ac-17">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-30" value="TERMINATION" style="ellipse;fillColor=#ef4444;fontColor=#fff;strokeColor=none;fontSize=12;fontStyle=1;" vertex="1" parent="ac-1">
+          <mxGeometry x="40" y="220" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-31" value="HR Notifies IT" style="rounded=1;fillColor=#fee2e2;strokeColor=#ef4444;fontSize=11;" vertex="1" parent="ac-1">
+          <mxGeometry x="180" y="225" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-32" value="Disable All&#xa;Accounts&#xa;(&lt;4 hours)" style="rounded=1;fillColor=#fee2e2;strokeColor=#ef4444;fontSize=11;" vertex="1" parent="ac-1">
+          <mxGeometry x="340" y="220" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-33" value="Revoke VPN&#xa;&amp; Remote" style="rounded=1;fillColor=#fee2e2;strokeColor=#ef4444;fontSize=11;" vertex="1" parent="ac-1">
+          <mxGeometry x="500" y="225" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-34" value="Collect&#xa;Devices" style="rounded=1;fillColor=#fee2e2;strokeColor=#ef4444;fontSize=11;" vertex="1" parent="ac-1">
+          <mxGeometry x="660" y="225" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-35" value="Archive&#xa;Data" style="rounded=1;fillColor=#fee2e2;strokeColor=#ef4444;fontSize=11;" vertex="1" parent="ac-1">
+          <mxGeometry x="820" y="225" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-36" value="ACCESS&#xa;REVOKED" style="ellipse;fillColor=#ef4444;fontColor=#fff;strokeColor=none;fontSize=11;fontStyle=1;" vertex="1" parent="ac-1">
+          <mxGeometry x="980" y="220" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-37" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="ac-1" source="ac-30" target="ac-31">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-38" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="ac-1" source="ac-31" target="ac-32">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-39" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="ac-1" source="ac-32" target="ac-33">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-40" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="ac-1" source="ac-33" target="ac-34">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="ac-1" source="ac-34" target="ac-35">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-42" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="ac-1" source="ac-35" target="ac-36">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-50" value="ACCESS LEVELS" style="swimlane;fillColor=#f3e8ff;strokeColor=#9333ea;fontSize=12;fontStyle=1;" vertex="1" parent="ac-1">
+          <mxGeometry x="40" y="340" width="500" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-51" value="L1 Basic&#xa;(Read-only)" style="rounded=1;fillColor=#e0e7ff;strokeColor=#6366f1;fontSize=10;" vertex="1" parent="ac-50">
+          <mxGeometry x="20" y="40" width="80" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-52" value="L2 Standard&#xa;(Read/Write)" style="rounded=1;fillColor=#c7d2fe;strokeColor=#6366f1;fontSize=10;" vertex="1" parent="ac-50">
+          <mxGeometry x="115" y="40" width="80" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-53" value="L3 Elevated&#xa;(Sensitive)" style="rounded=1;fillColor=#a5b4fc;strokeColor=#6366f1;fontSize=10;" vertex="1" parent="ac-50">
+          <mxGeometry x="210" y="40" width="80" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-54" value="L4 Admin&#xa;(System)" style="rounded=1;fillColor=#818cf8;strokeColor=#6366f1;fontColor=#fff;fontSize=10;" vertex="1" parent="ac-50">
+          <mxGeometry x="305" y="40" width="80" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-55" value="L5 Super&#xa;(Full Access)" style="rounded=1;fillColor=#6366f1;strokeColor=#4f46e5;fontColor=#fff;fontSize=10;" vertex="1" parent="ac-50">
+          <mxGeometry x="400" y="40" width="80" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-56" value="Supervisor" style="text;fontSize=9;fontColor=#6b7280;" vertex="1" parent="ac-50">
+          <mxGeometry x="20" y="95" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-57" value="Dept Head" style="text;fontSize=9;fontColor=#6b7280;" vertex="1" parent="ac-50">
+          <mxGeometry x="115" y="95" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-58" value="Head of Tech" style="text;fontSize=9;fontColor=#6b7280;" vertex="1" parent="ac-50">
+          <mxGeometry x="210" y="95" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-59" value="CEO" style="text;fontSize=9;fontColor=#6b7280;" vertex="1" parent="ac-50">
+          <mxGeometry x="305" y="95" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ac-60" value="CEO + Security" style="text;fontSize=9;fontColor=#6b7280;" vertex="1" parent="ac-50">
+          <mxGeometry x="400" y="95" width="80" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="incident" name="3. Incident Response Flow">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="ir-0" />
+        <mxCell id="ir-1" parent="ir-0" />
+        <mxCell id="ir-2" value="SOP-02: INCIDENT RESPONSE FLOW" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=20;fontStyle=1;fontColor=#dc2626;" vertex="1" parent="ir-1">
+          <mxGeometry x="450" y="20" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-10" value="INCIDENT&#xa;DETECTED" style="ellipse;fillColor=#ef4444;fontColor=#fff;strokeColor=none;fontSize=12;fontStyle=1;" vertex="1" parent="ir-1">
+          <mxGeometry x="40" y="160" width="100" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-11" value="1. DETECT &amp; REPORT" style="swimlane;fillColor=#fee2e2;strokeColor=#ef4444;fontSize=11;fontStyle=1;" vertex="1" parent="ir-1">
+          <mxGeometry x="180" y="80" width="180" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-12" value="Report via Form" style="rounded=1;fillColor=#fff;strokeColor=#ef4444;fontSize=10;" vertex="1" parent="ir-11">
+          <mxGeometry x="15" y="35" width="150" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-13" value="Log in System" style="rounded=1;fillColor=#fff;strokeColor=#ef4444;fontSize=10;" vertex="1" parent="ir-11">
+          <mxGeometry x="15" y="80" width="150" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-14" value="Assign Severity" style="rounded=1;fillColor=#fff;strokeColor=#ef4444;fontSize=10;" vertex="1" parent="ir-11">
+          <mxGeometry x="15" y="125" width="150" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-15" value="Notify IRT" style="rounded=1;fillColor=#fff;strokeColor=#ef4444;fontSize=10;" vertex="1" parent="ir-11">
+          <mxGeometry x="15" y="165" width="150" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-20" value="2. CONTAIN" style="swimlane;fillColor=#fef3c7;strokeColor=#f59e0b;fontSize=11;fontStyle=1;" vertex="1" parent="ir-1">
+          <mxGeometry x="380" y="80" width="180" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-21" value="Assess Scope" style="rounded=1;fillColor=#fff;strokeColor=#f59e0b;fontSize=10;" vertex="1" parent="ir-20">
+          <mxGeometry x="15" y="35" width="150" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-22" value="Identify Systems" style="rounded=1;fillColor=#fff;strokeColor=#f59e0b;fontSize=10;" vertex="1" parent="ir-20">
+          <mxGeometry x="15" y="80" width="150" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-23" value="Containment" style="rounded=1;fillColor=#fff;strokeColor=#f59e0b;fontSize=10;" vertex="1" parent="ir-20">
+          <mxGeometry x="15" y="125" width="150" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-24" value="Preserve Evidence" style="rounded=1;fillColor=#fff;strokeColor=#f59e0b;fontSize=10;" vertex="1" parent="ir-20">
+          <mxGeometry x="15" y="165" width="150" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-30" value="3. ERADICATE" style="swimlane;fillColor=#dcfce7;strokeColor=#22c55e;fontSize=11;fontStyle=1;" vertex="1" parent="ir-1">
+          <mxGeometry x="580" y="80" width="180" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-31" value="Root Cause" style="rounded=1;fillColor=#fff;strokeColor=#22c55e;fontSize=10;" vertex="1" parent="ir-30">
+          <mxGeometry x="15" y="35" width="150" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-32" value="Remove Threat" style="rounded=1;fillColor=#fff;strokeColor=#22c55e;fontSize=10;" vertex="1" parent="ir-30">
+          <mxGeometry x="15" y="80" width="150" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-33" value="Restore Systems" style="rounded=1;fillColor=#fff;strokeColor=#22c55e;fontSize=10;" vertex="1" parent="ir-30">
+          <mxGeometry x="15" y="125" width="150" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-34" value="Verify Integrity" style="rounded=1;fillColor=#fff;strokeColor=#22c55e;fontSize=10;" vertex="1" parent="ir-30">
+          <mxGeometry x="15" y="165" width="150" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-40" value="4. POST-INCIDENT" style="swimlane;fillColor=#dbeafe;strokeColor=#3b82f6;fontSize=11;fontStyle=1;" vertex="1" parent="ir-1">
+          <mxGeometry x="780" y="80" width="180" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-41" value="Post-Mortem" style="rounded=1;fillColor=#fff;strokeColor=#3b82f6;fontSize=10;" vertex="1" parent="ir-40">
+          <mxGeometry x="15" y="35" width="150" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-42" value="Document Lessons" style="rounded=1;fillColor=#fff;strokeColor=#3b82f6;fontSize=10;" vertex="1" parent="ir-40">
+          <mxGeometry x="15" y="80" width="150" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-43" value="Update Procedures" style="rounded=1;fillColor=#fff;strokeColor=#3b82f6;fontSize=10;" vertex="1" parent="ir-40">
+          <mxGeometry x="15" y="125" width="150" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-44" value="Implement Prevention" style="rounded=1;fillColor=#fff;strokeColor=#3b82f6;fontSize=10;" vertex="1" parent="ir-40">
+          <mxGeometry x="15" y="165" width="150" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-50" value="RESOLVED" style="ellipse;fillColor=#22c55e;fontColor=#fff;strokeColor=none;fontSize=12;fontStyle=1;" vertex="1" parent="ir-1">
+          <mxGeometry x="980" y="160" width="100" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-60" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeWidth=2;strokeColor=#ef4444;" edge="1" parent="ir-1" source="ir-10" target="ir-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-61" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeWidth=2;strokeColor=#f59e0b;" edge="1" parent="ir-1" source="ir-11" target="ir-20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-62" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeWidth=2;strokeColor=#22c55e;" edge="1" parent="ir-1" source="ir-20" target="ir-30">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-63" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeWidth=2;strokeColor=#3b82f6;" edge="1" parent="ir-1" source="ir-30" target="ir-40">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-64" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeWidth=2;strokeColor=#22c55e;" edge="1" parent="ir-1" source="ir-40" target="ir-50">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-70" value="SEVERITY LEVELS" style="swimlane;fillColor=#fef2f2;strokeColor=#ef4444;fontSize=11;fontStyle=1;" vertex="1" parent="ir-1">
+          <mxGeometry x="180" y="320" width="600" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-71" value="P1 Critical&#xa;15 min" style="rounded=1;fillColor=#ef4444;fontColor=#fff;strokeColor=none;fontSize=10;" vertex="1" parent="ir-70">
+          <mxGeometry x="20" y="35" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-72" value="P2 High&#xa;1 hour" style="rounded=1;fillColor=#f97316;fontColor=#fff;strokeColor=none;fontSize=10;" vertex="1" parent="ir-70">
+          <mxGeometry x="160" y="35" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-73" value="P3 Medium&#xa;4 hours" style="rounded=1;fillColor=#eab308;fontColor=#fff;strokeColor=none;fontSize=10;" vertex="1" parent="ir-70">
+          <mxGeometry x="300" y="35" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ir-74" value="P4 Low&#xa;24 hours" style="rounded=1;fillColor=#22c55e;fontColor=#fff;strokeColor=none;fontSize=10;" vertex="1" parent="ir-70">
+          <mxGeometry x="440" y="35" width="120" height="50" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sdlc" name="4. SDLC Flow">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="sd-0" />
+        <mxCell id="sd-1" parent="sd-0" />
+        <mxCell id="sd-2" value="SOP-05: SOFTWARE DEVELOPMENT LIFECYCLE (SDLC)" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=20;fontStyle=1;fontColor=#15803d;" vertex="1" parent="sd-1">
+          <mxGeometry x="350" y="20" width="500" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-10" value="1. REQUIREMENTS" style="rounded=1;fillColor=#3b82f6;fontColor=#fff;strokeColor=none;fontSize=12;fontStyle=1;" vertex="1" parent="sd-1">
+          <mxGeometry x="40" y="100" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-11" value="Gather requirements&#xa;Define user stories&#xa;Security requirements&#xa;Prioritize backlog" style="rounded=1;fillColor=#dbeafe;strokeColor=#3b82f6;fontSize=10;align=left;spacingLeft=10;" vertex="1" parent="sd-1">
+          <mxGeometry x="40" y="170" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-20" value="2. DESIGN" style="rounded=1;fillColor=#8b5cf6;fontColor=#fff;strokeColor=none;fontSize=12;fontStyle=1;" vertex="1" parent="sd-1">
+          <mxGeometry x="240" y="100" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-21" value="Technical design&#xa;Database schema&#xa;API contracts&#xa;Security review" style="rounded=1;fillColor=#ede9fe;strokeColor=#8b5cf6;fontSize=10;align=left;spacingLeft=10;" vertex="1" parent="sd-1">
+          <mxGeometry x="240" y="170" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-30" value="3. DEVELOPMENT" style="rounded=1;fillColor=#22c55e;fontColor=#fff;strokeColor=none;fontSize=12;fontStyle=1;" vertex="1" parent="sd-1">
+          <mxGeometry x="440" y="100" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-31" value="Create feature branch&#xa;Implement code&#xa;Write unit tests&#xa;Submit PR" style="rounded=1;fillColor=#dcfce7;strokeColor=#22c55e;fontSize=10;align=left;spacingLeft=10;" vertex="1" parent="sd-1">
+          <mxGeometry x="440" y="170" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-40" value="4. CODE REVIEW" style="rounded=1;fillColor=#f59e0b;fontColor=#fff;strokeColor=none;fontSize=12;fontStyle=1;" vertex="1" parent="sd-1">
+          <mxGeometry x="640" y="100" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-41" value="Quality review&#xa;Security check&#xa;Test coverage&#xa;Approval" style="rounded=1;fillColor=#fef3c7;strokeColor=#f59e0b;fontSize=10;align=left;spacingLeft=10;" vertex="1" parent="sd-1">
+          <mxGeometry x="640" y="170" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-50" value="5. TESTING" style="rounded=1;fillColor=#ec4899;fontColor=#fff;strokeColor=none;fontSize=12;fontStyle=1;" vertex="1" parent="sd-1">
+          <mxGeometry x="840" y="100" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-51" value="Automated tests&#xa;Integration tests&#xa;Security testing&#xa;UAT sign-off" style="rounded=1;fillColor=#fce7f3;strokeColor=#ec4899;fontSize=10;align=left;spacingLeft=10;" vertex="1" parent="sd-1">
+          <mxGeometry x="840" y="170" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-60" value="6. DEPLOYMENT" style="rounded=1;fillColor=#06b6d4;fontColor=#fff;strokeColor=none;fontSize=12;fontStyle=1;" vertex="1" parent="sd-1">
+          <mxGeometry x="1040" y="100" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-61" value="Merge to main&#xa;Deploy to staging&#xa;Final verification&#xa;Go live!" style="rounded=1;fillColor=#cffafe;strokeColor=#06b6d4;fontSize=10;align=left;spacingLeft=10;" vertex="1" parent="sd-1">
+          <mxGeometry x="1040" y="170" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-70" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="sd-1" source="sd-10" target="sd-20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-71" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="sd-1" source="sd-20" target="sd-30">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-72" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="sd-1" source="sd-30" target="sd-40">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-73" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="sd-1" source="sd-40" target="sd-50">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-74" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeWidth=2;strokeColor=#6b7280;" edge="1" parent="sd-1" source="sd-50" target="sd-60">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-80" value="BRANCHING STRATEGY" style="swimlane;fillColor=#f3f4f6;strokeColor=#6b7280;fontSize=11;fontStyle=1;" vertex="1" parent="sd-1">
+          <mxGeometry x="40" y="300" width="700" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-81" value="main" style="rounded=1;fillColor=#22c55e;fontColor=#fff;strokeColor=none;fontSize=11;" vertex="1" parent="sd-80">
+          <mxGeometry x="560" y="40" width="100" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-82" value="develop" style="rounded=1;fillColor=#3b82f6;fontColor=#fff;strokeColor=none;fontSize=11;" vertex="1" parent="sd-80">
+          <mxGeometry x="400" y="40" width="100" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-83" value="feature/*" style="rounded=1;fillColor=#8b5cf6;fontColor=#fff;strokeColor=none;fontSize=11;" vertex="1" parent="sd-80">
+          <mxGeometry x="80" y="40" width="100" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-84" value="bugfix/*" style="rounded=1;fillColor=#f59e0b;fontColor=#fff;strokeColor=none;fontSize=11;" vertex="1" parent="sd-80">
+          <mxGeometry x="200" y="40" width="100" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-85" value="hotfix/*" style="rounded=1;fillColor=#ef4444;fontColor=#fff;strokeColor=none;fontSize=11;" vertex="1" parent="sd-80">
+          <mxGeometry x="320" y="40" width="70" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-90" value="Production" style="text;fontSize=9;fontColor=#22c55e;fontStyle=2;" vertex="1" parent="sd-80">
+          <mxGeometry x="560" y="80" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="sd-91" value="Integration" style="text;fontSize=9;fontColor=#3b82f6;fontStyle=2;" vertex="1" parent="sd-80">
+          <mxGeometry x="400" y="80" width="100" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="support" name="5. Support Ticket Flow">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="st-0" />
+        <mxCell id="st-1" parent="st-0" />
+        <mxCell id="st-2" value="SOP-09: SUPPORT TICKET HANDLING" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=20;fontStyle=1;fontColor=#be185d;" vertex="1" parent="st-1">
+          <mxGeometry x="450" y="20" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="st-10" value="CUSTOMER" style="ellipse;fillColor=#ec4899;fontColor=#fff;strokeColor=none;fontSize=11;fontStyle=1;" vertex="1" parent="st-1">
+          <mxGeometry x="40" y="100" width="90" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="st-11" value="Submit Ticket" style="rounded=1;fillColor=#fce7f3;strokeColor=#ec4899;fontSize=10;" vertex="1" parent="st-1">
+          <mxGeometry x="160" y="105" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-12" value="Log &amp; Classify" style="rounded=1;fillColor=#fce7f3;strokeColor=#ec4899;fontSize=10;" vertex="1" parent="st-1">
+          <mxGeometry x="290" y="105" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-13" value="Assign&#xa;Priority" style="rhombus;fillColor=#fef3c7;strokeColor=#f59e0b;fontSize=10;" vertex="1" parent="st-1">
+          <mxGeometry x="420" y="95" width="80" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="st-14" value="Assign Agent" style="rounded=1;fillColor=#dbeafe;strokeColor=#3b82f6;fontSize=10;" vertex="1" parent="st-1">
+          <mxGeometry x="530" y="105" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-15" value="Send ACK" style="rounded=1;fillColor=#dcfce7;strokeColor=#22c55e;fontSize=10;" vertex="1" parent="st-1">
+          <mxGeometry x="660" y="105" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-20" value="Investigate" style="rounded=1;fillColor=#dbeafe;strokeColor=#3b82f6;fontSize=10;" vertex="1" parent="st-1">
+          <mxGeometry x="160" y="220" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-21" value="Can&#xa;Resolve?" style="rhombus;fillColor=#fef3c7;strokeColor=#f59e0b;fontSize=10;" vertex="1" parent="st-1">
+          <mxGeometry x="290" y="210" width="80" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="st-22" value="Escalate" style="rounded=1;fillColor=#fee2e2;strokeColor=#ef4444;fontSize=10;" vertex="1" parent="st-1">
+          <mxGeometry x="290" y="320" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="st-23" value="Implement&#xa;Solution" style="rounded=1;fillColor=#dcfce7;strokeColor=#22c55e;fontSize=10;" vertex="1" parent="st-1">
+          <mxGeometry x="410" y="220" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-24" value="Update&#xa;Customer" style="rounded=1;fillColor=#dbeafe;strokeColor=#3b82f6;fontSize=10;" vertex="1" parent="st-1">
+          <mxGeometry x="540" y="220" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-25" value="Confirm&#xa;Resolution" style="rounded=1;fillColor=#dcfce7;strokeColor=#22c55e;fontSize=10;" vertex="1" parent="st-1">
+          <mxGeometry x="670" y="220" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-26" value="Close" style="rounded=1;fillColor=#22c55e;fontColor=#fff;strokeColor=none;fontSize=10;" vertex="1" parent="st-1">
+          <mxGeometry x="800" y="225" width="70" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="st-27" value="Survey" style="ellipse;fillColor=#8b5cf6;fontColor=#fff;strokeColor=none;fontSize=10;" vertex="1" parent="st-1">
+          <mxGeometry x="900" y="220" width="70" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-30" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="st-1" source="st-10" target="st-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="st-1" source="st-11" target="st-12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="st-1" source="st-12" target="st-13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="st-1" source="st-13" target="st-14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="st-1" source="st-14" target="st-15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-35" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="st-1" source="st-15" target="st-20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-36" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="st-1" source="st-20" target="st-21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-37" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;fontColor=#22c55e;" edge="1" parent="st-1" source="st-21" target="st-23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-38" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;fontColor=#ef4444;" edge="1" parent="st-1" source="st-21" target="st-22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-39" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="st-1" source="st-22" target="st-23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-40" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="st-1" source="st-23" target="st-24">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="st-1" source="st-24" target="st-25">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-42" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="st-1" source="st-25" target="st-26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-43" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;" edge="1" parent="st-1" source="st-26" target="st-27">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="st-50" value="SLA TARGETS" style="swimlane;fillColor=#fef2f2;strokeColor=#ef4444;fontSize=11;fontStyle=1;" vertex="1" parent="st-1">
+          <mxGeometry x="160" y="400" width="650" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="st-51" value="P1 Critical&#xa;Resp: 30min&#xa;Resolve: 4hrs" style="rounded=1;fillColor=#ef4444;fontColor=#fff;strokeColor=none;fontSize=9;" vertex="1" parent="st-50">
+          <mxGeometry x="20" y="30" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-52" value="P2 High&#xa;Resp: 2hrs&#xa;Resolve: 8hrs" style="rounded=1;fillColor=#f97316;fontColor=#fff;strokeColor=none;fontSize=9;" vertex="1" parent="st-50">
+          <mxGeometry x="180" y="30" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-53" value="P3 Medium&#xa;Resp: 4hrs&#xa;Resolve: 24hrs" style="rounded=1;fillColor=#eab308;fontColor=#fff;strokeColor=none;fontSize=9;" vertex="1" parent="st-50">
+          <mxGeometry x="340" y="30" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="st-54" value="P4 Low&#xa;Resp: 8hrs&#xa;Resolve: 72hrs" style="rounded=1;fillColor=#22c55e;fontColor=#fff;strokeColor=none;fontSize=9;" vertex="1" parent="st-50">
+          <mxGeometry x="500" y="30" width="140" height="50" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
