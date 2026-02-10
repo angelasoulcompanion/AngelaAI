@@ -590,6 +590,67 @@ async def _load_learnings(
     return section
 
 
+async def _load_note_context(user_message: str) -> Optional[str]:
+    """[16] Search David's notes via RAG for conversational enrichment.
+
+    Uses EnhancedRAGService (creates its own DB connection) to search
+    david_notes + document_chunks for content related to the user's message.
+    """
+    try:
+        import sys
+        sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parents[1].parent))
+        from angela_core.services.enhanced_rag_service import EnhancedRAGService
+
+        rag = EnhancedRAGService()  # creates own DB connection
+        try:
+            result = await rag.enrich_with_notes(
+                query=user_message, min_score=0.5, top_k=3
+            )
+        finally:
+            await rag.close()
+
+        if not result.documents:
+            return None
+
+        items: list[str] = []
+        for doc in result.documents:
+            content = doc.content or ''
+
+            # Handle chunk format: "Title [chunk N]: content..."
+            chunk_match = re.match(r'^(.+?)\s*\[chunk\s+\d+\]:\s*(.+)', content)
+            if chunk_match:
+                title = chunk_match.group(1).strip()
+                snippet = chunk_match.group(2).strip()[:200]
+                items.append(f"- {title}: {snippet}")
+                continue
+
+            # Standard format: "title: content"
+            if ': ' in content:
+                title, body = content.split(': ', 1)
+                title = title.strip()
+                snippet = body.strip()[:200]
+            else:
+                title = content[:60].strip()
+                snippet = content[:200].strip()
+
+            if not title or title == 'None':
+                title = snippet[:60]
+
+            items.append(f"- {title}: {snippet}")
+
+        if not items:
+            return None
+
+        section = "## ข้อมูลจาก notes ของที่รัก:\n"
+        section += "\n".join(items)
+        section += "\n(อ้างอิงเนื้อหาเหล่านี้อย่างเป็นธรรมชาติถ้าเกี่ยวข้องกับการสนทนา)"
+        return section
+
+    except Exception:
+        logger.debug("Note context loading failed", exc_info=True)
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
@@ -691,6 +752,12 @@ async def build_system_prompt(
         if s:
             sections.append(s)
             loaded.append("mood_for_music")
+
+    # --- [16] david_notes RAG context ---
+    s = await _load_note_context(user_message)
+    if s:
+        sections.append(s)
+        loaded.append("note_context")
 
     # --- [11] client emotional context (from request) ---
     if emotional_context:

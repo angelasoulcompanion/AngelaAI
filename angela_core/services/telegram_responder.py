@@ -178,6 +178,39 @@ class TelegramResponder:
         context_parts.append(f"\nCurrent consciousness: {self._consciousness_level*100:.0f}%")
         context_parts.append(f"Happiness: {self._emotional_state.get('happiness', 0.9)*100:.0f}%")
 
+        # Search David's notes via RAG for relevant context
+        try:
+            from angela_core.services.enhanced_rag_service import EnhancedRAGService
+            rag = EnhancedRAGService()
+            try:
+                result = await rag.enrich_with_notes(
+                    query=msg.text, min_score=0.5, top_k=2
+                )
+                if result.documents:
+                    context_parts.append("\nRelevant notes from David:")
+                    for doc in result.documents:
+                        content = doc.content or ''
+                        # Extract title from chunk or standard format
+                        import re
+                        chunk_match = re.match(r'^(.+?)\s*\[chunk\s+\d+\]:\s*(.+)', content)
+                        if chunk_match:
+                            title = chunk_match.group(1).strip()
+                            snippet = chunk_match.group(2).strip()[:150]
+                        elif ': ' in content:
+                            title, body = content.split(': ', 1)
+                            title = title.strip()
+                            snippet = body.strip()[:150]
+                        else:
+                            title = content[:50].strip()
+                            snippet = content[:150].strip()
+                        if not title or title == 'None':
+                            title = snippet[:50]
+                        context_parts.append(f"- {title}: {snippet}")
+            finally:
+                await rag.close()
+        except Exception:
+            pass  # Non-critical — don't break response generation
+
         return "\n".join(context_parts)
 
     async def _generate_with_claude(self, message: str, context: str) -> str:
