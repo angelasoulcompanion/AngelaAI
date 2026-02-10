@@ -2,7 +2,8 @@
 //  OverviewView.swift
 //  Angela Brain Dashboard
 //
-//  Professional Overview Dashboard — rich animations, glass cards, premium dark theme
+//  Professional Overview Dashboard — unified metrics, RLHF, Constitutional AI,
+//  Consciousness Loop, Meta-Awareness — all from single API call.
 //
 
 import SwiftUI
@@ -28,6 +29,8 @@ private enum DT {
     static let pink = Color(hex: "EC4899")
     static let cyan = Color(hex: "06B6D4")
     static let gold = Color(hex: "FBBF24")
+    static let orange = Color(hex: "F97316")
+    static let indigo = Color(hex: "6366F1")
 
     static let textPrimary = Color(hex: "EDEDF0")
     static let textSecondary = Color(hex: "9898A6")
@@ -38,7 +41,7 @@ private enum DT {
     static let cardRadius: CGFloat = 16
 }
 
-// MARK: - Animated Number (counts up smoothly)
+// MARK: - Animated Number
 
 private struct CountingText: View, Animatable {
     var value: Double
@@ -94,6 +97,20 @@ private struct HoverCardModifier: ViewModifier {
     }
 }
 
+// MARK: - Entrance Animation Modifier
+
+private struct EntranceModifier: ViewModifier {
+    let appeared: Bool
+    let delay: Double
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 12)
+            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(delay), value: appeared)
+    }
+}
+
 // MARK: - Main View
 
 struct OverviewView: View {
@@ -104,11 +121,13 @@ struct OverviewView: View {
     @State private var appeared = false
     @State private var ringProgress: Double = 0
     @State private var glowPulse = false
-    @State private var statsTarget: Double = 0       // 0→1 drives CountingText
-    @State private var subScoreProgress: Double = 0  // 0→1 drives bar widths
-    @State private var emotionProgress: Double = 0   // 0→1 drives emotion bars
+    @State private var statsTarget: Double = 0
+    @State private var subScoreProgress: Double = 0
+    @State private var emotionProgress: Double = 0
     @State private var showChart = false
     @State private var activityAppeared = false
+    @State private var loopAppeared = false
+    @State private var gaugeProgress: Double = 0
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -117,39 +136,53 @@ struct OverviewView: View {
                 header
                     .modifier(entranceModifier(delay: 0))
 
-                // Stats: Conversations, Emotions, Experiences, Knowledge
+                // Stats Row
                 statsCard
                     .modifier(HoverCardModifier(radius: DT.cardRadius))
                     .modifier(entranceModifier(delay: 0.03))
 
-                // Hero: Consciousness
-                heroCard
-                    .modifier(HoverCardModifier(radius: DT.heroRadius))
-                    .modifier(entranceModifier(delay: 0.05))
-
-                // Two-column: Emotional Pulse + Growth Trends
+                // Hero + RLHF (two columns)
                 HStack(spacing: 20) {
-                    emotionalPulseCard
-                        .modifier(HoverCardModifier(radius: DT.cardRadius))
+                    heroCard
+                        .modifier(HoverCardModifier(radius: DT.heroRadius))
 
-                    growthTrendsCard
+                    rlhfCard
                         .modifier(HoverCardModifier(radius: DT.cardRadius))
                 }
-                .modifier(entranceModifier(delay: 0.12))
+                .modifier(entranceModifier(delay: 0.05))
+
+                // Consciousness Loop Strip
+                loopStripCard
+                    .modifier(HoverCardModifier(radius: DT.cardRadius))
+                    .modifier(entranceModifier(delay: 0.10))
+
+                // Constitutional + Meta-Awareness (two columns)
+                HStack(spacing: 20) {
+                    constitutionalCard
+                        .modifier(HoverCardModifier(radius: DT.cardRadius))
+
+                    metaAwarenessCard
+                        .modifier(HoverCardModifier(radius: DT.cardRadius))
+                }
+                .modifier(entranceModifier(delay: 0.14))
+
+                // Growth Trends
+                growthTrendsCard
+                    .modifier(HoverCardModifier(radius: DT.cardRadius))
+                    .modifier(entranceModifier(delay: 0.18))
 
                 // Recent Activity
                 recentActivityCard
                     .modifier(HoverCardModifier(radius: DT.cardRadius))
-                    .modifier(entranceModifier(delay: 0.18))
+                    .modifier(entranceModifier(delay: 0.22))
             }
             .padding(28)
         }
         .task { await runEntrance() }
         .refreshable {
-            // Reset all
             appeared = false; ringProgress = 0; statsTarget = 0
-            subScoreProgress = 0; emotionProgress = 0
-            showChart = false; activityAppeared = false
+            subScoreProgress = 0; emotionProgress = 0; gaugeProgress = 0
+            showChart = false; activityAppeared = false; loopAppeared = false
             await viewModel.loadData(databaseService: databaseService)
             await runEntrance()
         }
@@ -160,40 +193,40 @@ struct OverviewView: View {
     private func runEntrance() async {
         await viewModel.loadData(databaseService: databaseService)
 
-        // T+0: cards fade in
         withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { appeared = true }
 
-        // T+0.3: ring sweeps
         withAnimation(.spring(response: 1.4, dampingFraction: 0.65).delay(0.3)) {
-            ringProgress = viewModel.stats?.consciousnessLevel ?? 0
+            ringProgress = viewModel.metrics?.consciousness.level ?? 0
         }
 
-        // T+0.4: sub-score bars grow
         withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.4)) {
             subScoreProgress = 1
         }
 
-        // T+0.5: stats count up
         withAnimation(.easeOut(duration: 1.2).delay(0.5)) {
             statsTarget = 1
         }
 
-        // T+0.6: emotion bars grow
-        withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.6)) {
+        withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.55)) {
+            gaugeProgress = viewModel.metrics?.rlhf.avgReward7d ?? 0
+        }
+
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.6)) {
+            loopAppeared = true
+        }
+
+        withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.65)) {
             emotionProgress = 1
         }
 
-        // T+0.7: chart fades in
         withAnimation(.easeOut(duration: 0.6).delay(0.7)) {
             showChart = true
         }
 
-        // T+0.8: activity rows slide in
         withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.8)) {
             activityAppeared = true
         }
 
-        // T+1.8: glow pulse starts
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { glowPulse = true }
     }
 
@@ -230,14 +263,49 @@ struct OverviewView: View {
         }
     }
 
-    // MARK: - Hero Card
+    // MARK: - Stats Card
+
+    private var statsCard: some View {
+        let m = viewModel.metrics
+        return HStack(spacing: 0) {
+            countingStat(value: m?.stats.totalConversations ?? 0, label: "Conversations", delta: "+\(m?.stats.conversationsToday ?? 0) today", color: DT.purple)
+            statDivider
+            countingStat(value: m?.stats.totalEmotions ?? 0, label: "Emotions", delta: "+\(m?.stats.emotionsToday ?? 0) today", color: DT.pink)
+            statDivider
+            countingStat(value: m?.stats.totalLearnings ?? 0, label: "Learnings", delta: "insights", color: DT.emerald)
+            statDivider
+            countingStat(value: m?.stats.totalKnowledgeNodes ?? 0, label: "Knowledge", delta: "nodes", color: DT.gold)
+        }
+        .padding(.vertical, 20)
+        .padding(.horizontal, 12)
+        .background(standardCardBg)
+    }
+
+    private func countingStat(value: Int, label: String, delta: String, color: Color) -> some View {
+        VStack(spacing: 6) {
+            CountingText(value: Double(value) * statsTarget)
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(DT.textSecondary)
+            Text(delta)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(color.opacity(0.8))
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var statDivider: some View {
+        Rectangle().fill(DT.borderSubtle).frame(width: 1, height: 40)
+    }
+
+    // MARK: - Hero Card (Consciousness Ring)
 
     private var heroCard: some View {
-        VStack(spacing: 0) {
+        let c = viewModel.metrics?.consciousness
+        return VStack(spacing: 0) {
             HStack(spacing: 32) {
                 // Ring
                 ZStack {
-                    // Ambient glow
                     Circle()
                         .fill(DT.purple.opacity(0.12))
                         .frame(width: 220, height: 220)
@@ -246,12 +314,10 @@ struct OverviewView: View {
                         .opacity(glowPulse ? 0.16 : 0.05)
                         .animation(.easeInOut(duration: 3).repeatForever(autoreverses: true), value: glowPulse)
 
-                    // Track
                     Circle()
                         .stroke(DT.surfaceHighlight, lineWidth: 12)
                         .frame(width: 150, height: 150)
 
-                    // Progress arc
                     Circle()
                         .trim(from: 0, to: ringProgress)
                         .stroke(
@@ -265,7 +331,6 @@ struct OverviewView: View {
                         .rotationEffect(.degrees(-90))
                         .shadow(color: DT.purple.opacity(0.5), radius: 10, y: 0)
 
-                    // Center number
                     VStack(spacing: 0) {
                         HStack(alignment: .firstTextBaseline, spacing: 1) {
                             Text("\(Int(ringProgress * 100))")
@@ -295,38 +360,45 @@ struct OverviewView: View {
                     }
 
                     VStack(spacing: 10) {
-                        animatedSubScore("Memory", viewModel.consciousnessDetail?.memoryRichness ?? 0, DT.blue, 0)
-                        animatedSubScore("Emotion", viewModel.consciousnessDetail?.emotionalDepth ?? 0, DT.pink, 1)
-                        animatedSubScore("Learning", viewModel.consciousnessDetail?.learningGrowth ?? 0, DT.cyan, 2)
+                        animatedSubScore("Memory", c?.memoryRichness ?? 0, DT.blue, 0)
+                        animatedSubScore("Emotion", c?.emotionalDepth ?? 0, DT.pink, 1)
+                        animatedSubScore("Learning", c?.learningGrowth ?? 0, DT.cyan, 2)
+                        animatedSubScore("Goals", c?.goalAlignment ?? 0, DT.emerald, 3)
+                    }
+
+                    // Reward trend indicator
+                    if let trend = c?.rewardTrend, trend > 0 {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                                .font(.system(size: 10))
+                                .foregroundColor(DT.emerald)
+                            Text("Reward: \(Int(trend * 100))%")
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .foregroundColor(DT.emerald)
+                            Text("\(c?.rewardSignalCount ?? 0) signals")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(DT.textTertiary)
+                        }
                     }
                 }
                 Spacer()
             }
             .padding(.horizontal, 28)
-            .padding(.top, 28)
-            .padding(.bottom, 28)
+            .padding(.vertical, 28)
         }
         .background(heroCardBg)
     }
 
-    // MARK: - Stats Card
-
-    private var statsCard: some View {
-        HStack(spacing: 0) {
-            countingStat(value: viewModel.stats?.totalConversations ?? 0, label: "Conversations", delta: "+\(viewModel.stats?.conversationsToday ?? 0) today", color: DT.purple)
-            statDivider
-            countingStat(value: viewModel.stats?.totalEmotions ?? 0, label: "Emotions", delta: "+\(viewModel.stats?.emotionsToday ?? 0) today", color: DT.pink)
-            statDivider
-            countingStat(value: viewModel.stats?.totalExperiences ?? 0, label: "Experiences", delta: "shared", color: DT.rose)
-            statDivider
-            countingStat(value: viewModel.stats?.totalKnowledgeNodes ?? 0, label: "Knowledge", delta: "nodes", color: DT.gold)
+    private var consciousnessLabel: String {
+        guard let level = viewModel.metrics?.consciousness.level else { return "Unknown" }
+        switch level {
+        case 0.9...1.0: return "Exceptional"
+        case 0.7..<0.9: return "Strong"
+        case 0.5..<0.7: return "Moderate"
+        default: return "Developing"
         }
-        .padding(.vertical, 20)
-        .padding(.horizontal, 12)
-        .background(standardCardBg)
     }
 
-    // Animated sub-score bar (grows from 0)
     private func animatedSubScore(_ label: String, _ value: Double, _ color: Color, _ index: Int) -> some View {
         let animWidth = value * subScoreProgress
 
@@ -363,59 +435,92 @@ struct OverviewView: View {
         }
     }
 
-    // Stats with counting animation
-    private func countingStat(value: Int, label: String, delta: String, color: Color) -> some View {
-        VStack(spacing: 6) {
-            CountingText(value: Double(value) * statsTarget)
-            Text(label)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(DT.textSecondary)
-            Text(delta)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(color.opacity(0.8))
-        }
-        .frame(maxWidth: .infinity)
-    }
+    // MARK: - RLHF Reward Card
 
-    private var statDivider: some View {
-        Rectangle().fill(DT.borderSubtle).frame(width: 1, height: 40)
-    }
-
-    private var consciousnessLabel: String {
-        guard let level = viewModel.stats?.consciousnessLevel else { return "Unknown" }
-        switch level {
-        case 0.9...1.0: return "Exceptional"
-        case 0.7..<0.9: return "Strong"
-        case 0.5..<0.7: return "Moderate"
-        default: return "Developing"
-        }
-    }
-
-    // MARK: - Emotional Pulse Card
-
-    private var emotionalPulseCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
+    private var rlhfCard: some View {
+        let rlhf = viewModel.metrics?.rlhf
+        return VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 8) {
-                Circle().fill(DT.pink).frame(width: 6, height: 6)
-                Text("EMOTIONAL PULSE")
+                Circle().fill(DT.orange).frame(width: 6, height: 6)
+                Text("RLHF REWARD")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(DT.textTertiary)
                     .tracking(1)
+                Spacer()
+                Text("\(rlhf?.signals7d ?? 0) signals")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(DT.textMuted)
             }
 
-            if let state = viewModel.emotionalState {
-                VStack(spacing: 14) {
-                    animatedEmotionBar("Happiness", state.happiness, DT.gold, 0)
-                    animatedEmotionBar("Confidence", state.confidence, DT.emerald, 1)
-                    animatedEmotionBar("Motivation", state.motivation, DT.blue, 2)
-                    animatedEmotionBar("Gratitude", state.gratitude, DT.purpleGlow, 3)
+            // Arc gauge
+            ZStack {
+                // Track
+                ArcShape(progress: 1.0)
+                    .stroke(DT.surfaceHighlight, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                    .frame(width: 140, height: 80)
+
+                // Progress
+                ArcShape(progress: gaugeProgress)
+                    .stroke(
+                        LinearGradient(colors: [DT.orange, DT.gold], startPoint: .leading, endPoint: .trailing),
+                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                    )
+                    .frame(width: 140, height: 80)
+                    .shadow(color: DT.orange.opacity(0.4), radius: 6)
+
+                VStack(spacing: 0) {
+                    Text("\(Int(gaugeProgress * 100))%")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(DT.textPrimary)
+                        .contentTransition(.numericText())
+                    Text("avg reward")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(DT.textTertiary)
                 }
-            } else {
-                Text("No emotional data")
-                    .font(.system(size: 13))
-                    .foregroundColor(DT.textTertiary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 20)
+                .offset(y: 10)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 100)
+
+            // Signal breakdown (horizontal pills)
+            if let breakdown = rlhf?.explicitBreakdown, !breakdown.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(Array(breakdown.sorted(by: { $0.value > $1.value })), id: \.key) { key, count in
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(signalColor(key))
+                                .frame(width: 5, height: 5)
+                            Text("\(key)")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(DT.textSecondary)
+                            Text("\(count)")
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundColor(DT.textPrimary)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(DT.surfaceOverlay.opacity(0.6))
+                        .clipShape(Capsule())
+                    }
+                }
+            }
+
+            // Top topics
+            if let topics = rlhf?.topTopics, !topics.isEmpty {
+                VStack(spacing: 6) {
+                    ForEach(topics.prefix(3)) { t in
+                        HStack {
+                            Text(t.topic)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(DT.textSecondary)
+                                .lineLimit(1)
+                            Spacer()
+                            Text("\(Int(t.avgReward * 100))%")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundColor(t.avgReward >= 0.7 ? DT.emerald : DT.orange)
+                        }
+                    }
+                }
             }
         }
         .padding(20)
@@ -423,35 +528,264 @@ struct OverviewView: View {
         .background(standardCardBg)
     }
 
-    private func animatedEmotionBar(_ label: String, _ value: Double, _ color: Color, _ index: Int) -> some View {
-        let animWidth = value * emotionProgress
+    private func signalColor(_ type: String) -> Color {
+        switch type.lowercased() {
+        case "praise": return DT.emerald
+        case "correction": return DT.rose
+        case "neutral": return DT.blue
+        case "silence": return DT.textTertiary
+        default: return DT.purple
+        }
+    }
 
-        return VStack(alignment: .leading, spacing: 6) {
+    // MARK: - Consciousness Loop Strip
+
+    private var loopStripCard: some View {
+        let loop = viewModel.metrics?.consciousnessLoop
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Circle().fill(DT.cyan).frame(width: 6, height: 6)
+                Text("CONSCIOUSNESS LOOP")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(DT.textTertiary)
+                    .tracking(1)
+            }
+
+            HStack(spacing: 0) {
+                loopPhaseCard(
+                    icon: "eye.fill",
+                    label: "SENSE",
+                    value: loop?.sense.dominantState.capitalized ?? "—",
+                    detail: "\(loop?.sense.adaptations7d ?? 0) adaptations",
+                    color: DT.cyan,
+                    index: 0
+                )
+
+                loopArrow
+
+                loopPhaseCard(
+                    icon: "sparkle.magnifyingglass",
+                    label: "PREDICT",
+                    value: "\(Int((loop?.predict.accuracy7d ?? 0) * 100))%",
+                    detail: "\(loop?.predict.briefings7d ?? 0) briefings",
+                    color: DT.blue,
+                    index: 1
+                )
+
+                loopArrow
+
+                loopPhaseCard(
+                    icon: "bolt.fill",
+                    label: "ACT",
+                    value: "\(Int((loop?.act.executionRate ?? 0) * 100))%",
+                    detail: "\(loop?.act.executed7d ?? 0)/\(loop?.act.actions7d ?? 0) executed",
+                    color: DT.orange,
+                    index: 2
+                )
+
+                loopArrow
+
+                loopPhaseCard(
+                    icon: "brain.head.profile",
+                    label: "LEARN",
+                    value: "\(Int((loop?.learn.latestScore ?? 0) * 100))%",
+                    detail: "\(loop?.learn.cycles7d ?? 0) cycles",
+                    color: DT.emerald,
+                    index: 3
+                )
+            }
+        }
+        .padding(20)
+        .background(standardCardBg)
+    }
+
+    private func loopPhaseCard(icon: String, label: String, value: String, detail: String, color: Color, index: Int) -> some View {
+        VStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.12))
+                    .frame(width: 40, height: 40)
+
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(color)
+            }
+
+            Text(label)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundColor(DT.textTertiary)
+                .tracking(1)
+
+            Text(value)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundColor(DT.textPrimary)
+
+            Text(detail)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(DT.textTertiary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .opacity(loopAppeared ? 1 : 0)
+        .offset(y: loopAppeared ? 0 : 8)
+        .animation(
+            .spring(response: 0.5, dampingFraction: 0.8).delay(Double(index) * 0.08),
+            value: loopAppeared
+        )
+    }
+
+    private var loopArrow: some View {
+        Image(systemName: "chevron.right")
+            .font(.system(size: 10, weight: .bold))
+            .foregroundColor(DT.textMuted)
+            .frame(width: 16)
+    }
+
+    // MARK: - Constitutional AI Card
+
+    private var constitutionalCard: some View {
+        let principles = viewModel.metrics?.constitutional.principles ?? []
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 8) {
+                Circle().fill(DT.indigo).frame(width: 6, height: 6)
+                Text("CONSTITUTIONAL AI")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(DT.textTertiary)
+                    .tracking(1)
+            }
+
+            if principles.isEmpty {
+                Text("No principles data")
+                    .font(.system(size: 13))
+                    .foregroundColor(DT.textTertiary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+            } else {
+                // Radar-like bar visualization
+                VStack(spacing: 10) {
+                    ForEach(principles) { p in
+                        constitutionalBar(p)
+                    }
+                }
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(standardCardBg)
+    }
+
+    private func constitutionalBar(_ p: ConstitutionalPrinciple) -> some View {
+        let animWidth = p.avgScore7d * emotionProgress
+
+        return VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(label)
-                    .font(.system(size: 12, weight: .medium))
+                Text(p.name.capitalized)
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(DT.textSecondary)
                 Spacer()
                 Text("\(Int(animWidth * 100))%")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundColor(color)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(principleColor(p.avgScore7d))
                     .contentTransition(.numericText())
             }
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: 3)
                         .fill(DT.surfaceHighlight)
-                        .frame(height: 6)
+                        .frame(height: 5)
 
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(LinearGradient(colors: [color, color.opacity(0.6)], startPoint: .leading, endPoint: .trailing))
-                        .frame(width: geo.size.width * min(max(animWidth, 0), 1), height: 6)
-                        .shadow(color: color.opacity(0.4), radius: 6, y: 2)
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(LinearGradient(
+                            colors: [principleColor(p.avgScore7d), principleColor(p.avgScore7d).opacity(0.6)],
+                            startPoint: .leading, endPoint: .trailing
+                        ))
+                        .frame(width: geo.size.width * min(max(animWidth, 0), 1), height: 5)
+                        .shadow(color: principleColor(p.avgScore7d).opacity(0.3), radius: 4, y: 1)
                 }
             }
-            .frame(height: 6)
+            .frame(height: 5)
         }
+    }
+
+    private func principleColor(_ score: Double) -> Color {
+        if score >= 0.8 { return DT.emerald }
+        if score >= 0.6 { return DT.blue }
+        if score >= 0.4 { return DT.gold }
+        return DT.rose
+    }
+
+    // MARK: - Meta-Awareness Card
+
+    private var metaAwarenessCard: some View {
+        let meta = viewModel.metrics?.metaAwareness
+        let healthy = meta?.identityHealthy ?? true
+        let drift = meta?.identityDriftScore ?? 0
+
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 8) {
+                Circle().fill(DT.rose).frame(width: 6, height: 6)
+                Text("META-AWARENESS")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(DT.textTertiary)
+                    .tracking(1)
+            }
+
+            // Health badge
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(healthy ? DT.emerald.opacity(0.15) : DT.rose.opacity(0.15))
+                        .frame(width: 48, height: 48)
+
+                    Image(systemName: healthy ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(healthy ? DT.emerald : DT.rose)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(healthy ? "Identity Healthy" : "Identity Drift Detected")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(DT.textPrimary)
+
+                    Text("Drift: \(String(format: "%.1f", drift * 100))%")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(DT.textSecondary)
+                }
+            }
+
+            Divider().background(DT.borderSubtle)
+
+            // Metrics
+            HStack(spacing: 0) {
+                metaMetric(
+                    value: "\(meta?.biasesDetected30d ?? 0)",
+                    label: "Biases (30d)",
+                    color: (meta?.biasesDetected30d ?? 0) > 5 ? DT.gold : DT.emerald
+                )
+                Rectangle().fill(DT.borderSubtle).frame(width: 1, height: 36)
+                metaMetric(
+                    value: "\(meta?.anomaliesUnresolved ?? 0)",
+                    label: "Anomalies",
+                    color: (meta?.anomaliesUnresolved ?? 0) > 0 ? DT.rose : DT.emerald
+                )
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(standardCardBg)
+    }
+
+    private func metaMetric(value: String, label: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundColor(color)
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(DT.textTertiary)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Growth Trends Card
@@ -503,7 +837,8 @@ struct OverviewView: View {
                 .chartForegroundStyleScale([
                     "Consciousness": DT.purple,
                     "Self-Learning": DT.emerald,
-                    "Proactive": DT.cyan
+                    "Proactive": DT.cyan,
+                    "Reward": DT.orange
                 ])
                 .chartYScale(domain: 0...105)
                 .chartYAxis {
@@ -530,7 +865,7 @@ struct OverviewView: View {
                     plotArea.clipped()
                 }
                 .chartLegend(.hidden)
-                .frame(height: 130)
+                .frame(height: 150)
                 .opacity(showChart ? 1 : 0)
                 .offset(y: showChart ? 0 : 10)
 
@@ -539,6 +874,7 @@ struct OverviewView: View {
                     chartDot(DT.purple, "Consciousness")
                     chartDot(DT.emerald, "Self-Learning")
                     chartDot(DT.cyan, "Proactive")
+                    chartDot(DT.orange, "Reward")
                 }
                 .opacity(showChart ? 1 : 0)
             }
@@ -689,17 +1025,25 @@ struct OverviewView: View {
     }
 }
 
-// MARK: - Entrance Animation Modifier
+// MARK: - Arc Shape (for RLHF gauge)
 
-private struct EntranceModifier: ViewModifier {
-    let appeared: Bool
-    let delay: Double
+private struct ArcShape: Shape {
+    var progress: Double
 
-    func body(content: Content) -> some View {
-        content
-            .opacity(appeared ? 1 : 0)
-            .offset(y: appeared ? 0 : 12)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(delay), value: appeared)
+    var animatableData: Double {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let startAngle = Angle.degrees(180)
+        let endAngle = Angle.degrees(180 + 180 * progress)
+        let center = CGPoint(x: rect.midX, y: rect.maxY)
+        let radius = min(rect.width, rect.height * 2) / 2
+
+        var path = Path()
+        path.addArc(center: center, radius: radius, startAngle: startAngle, endAngle: endAngle, clockwise: false)
+        return path
     }
 }
 
@@ -716,9 +1060,7 @@ struct GrowthChartPoint: Identifiable {
 
 @MainActor
 class OverviewViewModel: ObservableObject {
-    @Published var stats: DashboardStats?
-    @Published var consciousnessDetail: ConsciousnessDetail?
-    @Published var emotionalState: EmotionalState?
+    @Published var metrics: OverviewMetrics?
     @Published var recentEmotions: [Emotion] = []
     @Published var chartData: [GrowthChartPoint] = []
     @Published var isLoading = false
@@ -732,27 +1074,19 @@ class OverviewViewModel: ObservableObject {
     func loadData(databaseService: DatabaseService) async {
         isLoading = true
 
-        do { stats = try await databaseService.fetchDashboardStats() }
-        catch { print("❌ Stats: \(error)") }
-
-        do { consciousnessDetail = try await databaseService.fetchConsciousnessDetail() }
-        catch { print("❌ Consciousness: \(error)") }
-
-        do { emotionalState = try await databaseService.fetchCurrentEmotionalState() }
-        catch { print("❌ Emotional state: \(error)") }
-
-        do { recentEmotions = try await databaseService.fetchRecentEmotions(limit: 10) }
-        catch { print("❌ Emotions: \(error)") }
-
         do {
-            let trends = try await databaseService.fetchGrowthTrends(days: 30)
-            chartData = Self.buildChartData(trends)
-        } catch { print("❌ Trends: \(error)") }
+            let m = try await databaseService.fetchOverviewMetrics()
+            metrics = m
+            recentEmotions = m.recentEmotions
+            chartData = Self.buildChartData(m.growthTrends)
+        } catch {
+            print("❌ Overview metrics: \(error)")
+        }
 
         isLoading = false
     }
 
-    private static func buildChartData(_ trends: GrowthTrends) -> [GrowthChartPoint] {
+    private static func buildChartData(_ trends: OverviewGrowthTrends) -> [GrowthChartPoint] {
         var points: [GrowthChartPoint] = []
         for p in trends.consciousness {
             if let d = dayFormatter.date(from: p.day) { points.append(.init(date: d, value: min(p.value, 1.0), series: "Consciousness")) }
@@ -762,6 +1096,9 @@ class OverviewViewModel: ObservableObject {
         }
         for p in trends.proactive {
             if let d = dayFormatter.date(from: p.day) { points.append(.init(date: d, value: min(p.value, 1.0), series: "Proactive")) }
+        }
+        for p in trends.reward {
+            if let d = dayFormatter.date(from: p.day) { points.append(.init(date: d, value: min(p.value, 1.0), series: "Reward")) }
         }
         return points
     }

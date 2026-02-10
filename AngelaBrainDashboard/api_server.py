@@ -30,6 +30,7 @@ from routers import (
     meetings,
     music,
     news,
+    overview,
     preferences,
     projects,
     scheduled_tasks,
@@ -91,6 +92,7 @@ app.include_router(diary.router)
 app.include_router(human_mind.router)
 app.include_router(guidelines.router)
 app.include_router(news.router)
+app.include_router(overview.router)
 app.include_router(subconsciousness.router)
 app.include_router(meetings.router)
 app.include_router(music.router)

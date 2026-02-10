@@ -321,6 +321,12 @@ class DatabaseService: ObservableObject {
         return try decoder.decode(T.self, from: data)
     }
 
+    // MARK: - Overview (Unified)
+
+    func fetchOverviewMetrics() async throws -> OverviewMetrics {
+        return try await get("/overview/metrics")
+    }
+
     // MARK: - Dashboard Stats
 
     func fetchDashboardStats() async throws -> DashboardStats {
