@@ -20,6 +20,9 @@ from uuid import UUID, uuid4
 
 from angela_core.database import AngelaDatabase
 from angela_core.utils.timezone import now_bangkok, today_bangkok
+from angela_core.services.reasoning_chain_service import (
+    capture_reasoning, ReasoningChain, ReasoningStep,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -461,6 +464,38 @@ class PredictiveCompanionService:
             time_patterns, emotional_cycles, topic_sequences,
             activity_patterns, session_patterns,
         )
+
+        # Capture reasoning chain (fire-and-forget)
+        capture_reasoning(ReasoningChain(
+            service_name='predict',
+            decision_type='daily_briefing',
+            input_signals={
+                'dow': pg_dow, 'day_name': day_name, 'hour': hour_now,
+                'pattern_counts': {
+                    'time': len(time_patterns), 'emotion': len(emotional_cycles),
+                    'topic_seq': len(topic_sequences), 'activity': len(activity_patterns),
+                    'session': len(session_patterns), 'notes': len(note_reminders),
+                },
+            },
+            steps=[
+                ReasoningStep('mine_patterns', 'parallel mine 6 pattern types from 30-day history',
+                              f'time={len(time_patterns)}, emotion={len(emotional_cycles)}, topic={len(topic_sequences)}, activity={len(activity_patterns)}',
+                              'pattern data collected'),
+                ReasoningStep('generate_predictions', 'combine patterns into predictions per time window',
+                              f'predictions_generated={len(predictions)}',
+                              f'outlook: {outlook[:80]}'),
+                ReasoningStep('prepare_actions', 'extract proactive actions from high-confidence predictions',
+                              f'prepared_actions={len(prepared)}',
+                              f'overall_confidence={overall_conf:.2f}'),
+            ],
+            output_decision={
+                'prediction_count': len(predictions),
+                'overall_confidence': overall_conf,
+                'day_outlook': outlook,
+                'prepared_actions': prepared,
+            },
+            confidence=overall_conf,
+        ))
 
         return briefing
 

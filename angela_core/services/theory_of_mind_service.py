@@ -32,6 +32,9 @@ from uuid import UUID, uuid4
 from enum import Enum
 
 from angela_core.database import AngelaDatabase
+from angela_core.services.reasoning_chain_service import (
+    capture_reasoning, ReasoningChain, ReasoningStep,
+)
 
 
 class ToMLevel(int, Enum):
@@ -629,6 +632,18 @@ class TheoryOfMindService:
                     suggested_response=claude_result.get('suggested_response', '')
                 )
                 await self._store_inference('emotion', inference.to_dict())
+                capture_reasoning(ReasoningChain(
+                    service_name='understand',
+                    decision_type='emotion_inference',
+                    input_signals={'recent_message': recent_message[:200], 'method': 'claude_reasoning'},
+                    steps=[
+                        ReasoningStep('claude_analysis', 'semantic emotion analysis via Claude API',
+                                      f'primary={claude_result["primary_emotion"]}, intensity={claude_result.get("intensity")}',
+                                      f'high-confidence semantic inference'),
+                    ],
+                    output_decision=inference.to_dict(),
+                    confidence=inference.confidence,
+                ))
                 return inference
 
         # =====================================================================
@@ -721,6 +736,22 @@ class TheoryOfMindService:
         )
 
         await self._store_inference('emotion', inference.to_dict())
+
+        capture_reasoning(ReasoningChain(
+            service_name='understand',
+            decision_type='emotion_inference',
+            input_signals={'recent_message': recent_message[:200], 'method': 'keyword_fallback', 'time_of_day': time_of_day},
+            steps=[
+                ReasoningStep('keyword_scan', 'match message against emotion keywords',
+                              f'scores={emotion_scores}',
+                              f'primary={primary_emotion}, secondary={secondary_emotions}'),
+                ReasoningStep('db_history', 'load recent emotional_states for context',
+                              f'avg_happiness={avg_happiness:.2f}, avg_anxiety={avg_anxiety:.2f}',
+                              f'historical context factored in'),
+            ],
+            output_decision=inference.to_dict(),
+            confidence=inference.confidence,
+        ))
 
         return inference
 

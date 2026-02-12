@@ -179,6 +179,7 @@ class EnhancedDataExporter:
         format: str = "llama3",
         use_short_prompt: bool = False,
         scorer: Optional[Any] = None,
+        include_reasoning: bool = False,
     ) -> Dict[str, Any]:
         """
         Export enhanced training data to JSONL.
@@ -219,6 +220,7 @@ class EnhancedDataExporter:
                     include_memories=include_memories,
                     include_emotions=include_emotions,
                     use_short_prompt=use_short_prompt,
+                    include_reasoning=include_reasoning,
                 )
             else:
                 examples = await self._build_single_turn_examples(
@@ -289,16 +291,16 @@ class EnhancedDataExporter:
         try:
             query = """
             SELECT
-                pp.prompt,
-                pp.chosen_response,
+                pp.david_message,
+                pp.preferred_response,
                 pp.rejected_response,
-                pp.chosen_score,
-                pp.rejected_score,
+                pp.preference_strength,
+                pp.topic,
                 pp.created_at
             FROM angela_preference_pairs pp
             WHERE pp.created_at >= NOW() - INTERVAL '1 day' * $1
-            AND (pp.chosen_score - pp.rejected_score) >= $2
-            ORDER BY (pp.chosen_score - pp.rejected_score) DESC
+            AND pp.preference_strength >= $2
+            ORDER BY pp.preference_strength DESC
             """
 
             rows = await self.db.pool.fetch(query, days, min_score_gap)
@@ -309,11 +311,11 @@ class EnhancedDataExporter:
             pairs = []
             for row in rows:
                 pair = {
-                    "prompt": row["prompt"],
-                    "chosen": row["chosen_response"],
+                    "prompt": row["david_message"],
+                    "chosen": row["preferred_response"],
                     "rejected": row["rejected_response"],
-                    "chosen_score": float(row["chosen_score"]),
-                    "rejected_score": float(row["rejected_score"]),
+                    "chosen_score": float(row["preference_strength"]),
+                    "rejected_score": 0.0,
                 }
                 pairs.append(pair)
 
@@ -420,6 +422,7 @@ class EnhancedDataExporter:
                 "core_memories_available": int(mem["count"] or 0),
                 "knowledge_nodes_available": int(know["count"] or 0),
                 "dpo_pairs_available": int(dpo["count"] or 0),
+                "reasoning_chains_available": await self._count_reasoning_chains(days),
                 "feedback": {
                     "positive": int(fb["positive"] or 0),
                     "negative": int(fb["negative"] or 0),
@@ -542,6 +545,7 @@ class EnhancedDataExporter:
         include_memories: bool = True,
         include_emotions: bool = True,
         use_short_prompt: bool = False,
+        include_reasoning: bool = False,
     ) -> List[EnhancedTrainingExample]:
         """Build multi-turn training examples from sessions"""
         examples: List[EnhancedTrainingExample] = []
@@ -592,6 +596,13 @@ class EnhancedDataExporter:
                     "num_turns": len(window),
                     "session_start": str(session.start_time),
                 }
+
+                if include_reasoning:
+                    chains = await self._fetch_reasoning_for_session(
+                        session.start_time, session.end_time
+                    )
+                    if chains:
+                        metadata["reasoning_chains"] = chains
 
                 examples.append(EnhancedTrainingExample(
                     messages=messages,
@@ -716,14 +727,15 @@ class EnhancedDataExporter:
         """Preload core memories into cache"""
         try:
             query = """
-            SELECT memory_id, title, content, category, emotional_weight
+            SELECT memory_id, title, content, memory_type, emotional_weight
             FROM core_memories
+            WHERE is_active = true
             ORDER BY emotional_weight DESC
             LIMIT 200
             """
             rows = await self.db.pool.fetch(query)
             for row in rows:
-                category = (row.get("category") or "general").lower()
+                category = (row.get("memory_type") or "general").lower()
                 if category not in self._memory_cache:
                     self._memory_cache[category] = []
                 self._memory_cache[category].append(dict(row))
@@ -812,6 +824,51 @@ class EnhancedDataExporter:
         return adaptations.get(emotion, "ตอบด้วยความอบอุ่นและเอาใจใส่")
 
     # =========================================================================
+    # Reasoning Chain Enrichment
+    # =========================================================================
+
+    async def _fetch_reasoning_for_session(
+        self, start_time: Optional[datetime], end_time: Optional[datetime]
+    ) -> List[Dict[str, Any]]:
+        """Fetch reasoning chains that overlap with a session time window."""
+        if not start_time or not end_time:
+            return []
+
+        try:
+            rows = await self.db.pool.fetch("""
+                SELECT service_name, decision_type, input_signals,
+                       reasoning_steps, output_decision, confidence
+                FROM angela_reasoning_chains
+                WHERE created_at BETWEEN $1 AND $2
+                ORDER BY created_at ASC
+            """, start_time, end_time)
+
+            chains = []
+            for row in rows:
+                chain = {
+                    'service_name': row['service_name'],
+                    'decision_type': row['decision_type'],
+                    'reasoning_steps': row['reasoning_steps'] if isinstance(row['reasoning_steps'], list) else json.loads(row['reasoning_steps'] or '[]'),
+                    'output_decision': row['output_decision'] if isinstance(row['output_decision'], dict) else json.loads(row['output_decision'] or '{}'),
+                    'confidence': row['confidence'],
+                }
+                chains.append(chain)
+            return chains
+        except Exception as e:
+            return []
+
+    async def _count_reasoning_chains(self, days: int) -> int:
+        """Count reasoning chains available for export."""
+        try:
+            row = await self.db.pool.fetchrow("""
+                SELECT COUNT(*) as count FROM angela_reasoning_chains
+                WHERE created_at >= NOW() - INTERVAL '1 day' * $1
+            """, days)
+            return int(row["count"] or 0) if row else 0
+        except Exception:
+            return 0
+
+    # =========================================================================
     # Helpers
     # =========================================================================
 
@@ -885,6 +942,8 @@ async def main():
                         help="Chat template format")
     parser.add_argument("--short-prompt", action="store_true",
                         help="Use shorter system prompt")
+    parser.add_argument("--include-reasoning", action="store_true",
+                        help="Include reasoning chains in metadata")
     parser.add_argument("--preview", action="store_true",
                         help="Show preview statistics only")
 
@@ -915,6 +974,7 @@ async def main():
     print(f"   Multi-turn: {args.multi_turn}")
     print(f"   Include memories: {args.include_memories}")
     print(f"   Include emotions: {args.include_emotions}")
+    print(f"   Include reasoning: {args.include_reasoning}")
     print()
 
     # Optionally create scorer
@@ -939,6 +999,7 @@ async def main():
         format=args.format,
         use_short_prompt=args.short_prompt,
         scorer=scorer,
+        include_reasoning=args.include_reasoning,
     )
 
     print("\n✅ SFT Export Complete!")

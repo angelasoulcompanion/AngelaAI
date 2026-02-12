@@ -34,6 +34,9 @@ from uuid import UUID, uuid4
 
 from angela_core.database import AngelaDatabase
 from angela_core.utils.timezone import now_bangkok, today_bangkok, current_hour_bangkok
+from angela_core.services.reasoning_chain_service import (
+    capture_reasoning, ReasoningChain, ReasoningStep,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +170,39 @@ class ProactiveActionEngine:
         actions.sort(key=lambda a: a.priority, reverse=True)
 
         logger.info(f'Evaluated {len(actions)} proactive actions')
+
+        # Capture reasoning chain (fire-and-forget)
+        check_names = ['break_reminder', 'mood_action', 'context_prep', 'anticipatory_help',
+                        'wellness_nudge', 'milestone_reminder', 'music_suggestion', 'learning_nudge']
+        triggered = [a.action_type for a in actions]
+        capture_reasoning(ReasoningChain(
+            service_name='act',
+            decision_type='evaluate_actions',
+            input_signals={
+                'adaptation_available': adaptation is not None,
+                'adaptation_state': getattr(adaptation, 'dominant_state', None) if adaptation else None,
+                'predictions_count': len(predictions) if isinstance(predictions, list) else 0,
+                'evolution_score': evolution.get('score') if isinstance(evolution, dict) else None,
+            },
+            steps=[
+                ReasoningStep('load_context', 'parallel load adaptation+predictions+evolution',
+                              f'adaptation={adaptation is not None}, predictions={len(predictions) if isinstance(predictions, list) else 0}',
+                              'context loaded for 8 checks'),
+                ReasoningStep('run_8_checks', f'parallel evaluate {len(check_names)} action checks',
+                              f'checks_run={check_names}',
+                              f'triggered={triggered}'),
+                ReasoningStep('sort_actions', 'sort by priority descending',
+                              f'total_actions={len(actions)}',
+                              f'top_priority={actions[0].priority if actions else "none"}'),
+            ],
+            output_decision={
+                'actions_triggered': triggered,
+                'action_count': len(actions),
+                'consent_levels': [a.consent_level for a in actions],
+            },
+            confidence=max((a.confidence for a in actions), default=0.0),
+        ))
+
         return actions
 
     # =========================================================================

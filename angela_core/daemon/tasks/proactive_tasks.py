@@ -114,6 +114,16 @@ class ProactiveTasksMixin:
             for insight in cycle.insights[:3]:
                 logger.info(f"   💡 {insight}")
 
+            # Link reasoning chains to reward signals
+            try:
+                from angela_core.services.reasoning_chain_service import ReasoningChainService
+                rcs = ReasoningChainService()
+                linked = await rcs.link_reward_signals(hours=24)
+                await rcs.close()
+                logger.info(f"   🔗 Linked {linked} reasoning chains to rewards")
+            except Exception as link_err:
+                logger.warning(f"   ⚠️ Reward linking failed: {link_err}")
+
             logger.info("   ✅ Evolution cycle complete!")
 
             await self._log_daemon_activity('evolution_cycle', {

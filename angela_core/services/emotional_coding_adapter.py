@@ -19,6 +19,9 @@ from typing import Dict, List, Optional, Any
 
 from angela_core.database import AngelaDatabase
 from angela_core.utils.timezone import now_bangkok, current_hour_bangkok
+from angela_core.services.reasoning_chain_service import (
+    capture_reasoning, ReasoningChain, ReasoningStep,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +159,26 @@ class EmotionalCodingAdapter:
 
         # Apply rules engine with tuned deltas from evolution
         profile = self._apply_rules_engine(dominant_state, confidence, signals, tuned_rules=tuned_rules)
+
+        # Capture reasoning chain (fire-and-forget)
+        capture_reasoning(ReasoningChain(
+            service_name='sense',
+            decision_type='state_detection',
+            input_signals=signals,
+            steps=[
+                ReasoningStep('gather_signals', 'parallel load health+emotion+time+session+tuned',
+                              f'health={bool(health)}, emotion={bool(emotion)}, session={session_hours:.1f}h',
+                              f'signals gathered from 5 sources'),
+                ReasoningStep('detect_state', 'priority-based state detection',
+                              f'stress={health.get("stress_level")}, energy={health.get("energy_level")}, happiness={emotion.get("happiness")}',
+                              f'dominant_state={dominant_state}, confidence={confidence:.2f}'),
+                ReasoningStep('apply_rules', 'map state to 5 behavior dimensions + tuned deltas',
+                              f'tuned_deltas_applied={dominant_state in (tuned_rules or {})}',
+                              f'detail={profile.detail_level:.2f}, warmth={profile.emotional_warmth:.2f}, pace={profile.pace:.2f}'),
+            ],
+            output_decision={'dominant_state': dominant_state, 'confidence': confidence, **asdict(profile)},
+            confidence=confidence,
+        ))
 
         return profile
 

@@ -27,6 +27,9 @@ from uuid import UUID, uuid4
 from angela_core.database import AngelaDatabase
 from angela_core.services.feedback_classifier import FeedbackClassifier
 from angela_core.utils.timezone import now_bangkok, today_bangkok
+from angela_core.services.reasoning_chain_service import (
+    capture_reasoning, ReasoningChain, ReasoningStep,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -577,6 +580,42 @@ class EvolutionEngine:
 
         logger.info(f'🧬 Evolution cycle complete: score={overall:.2f}, '
                      f'signals={len(signals)}, insights={len(insights)}')
+
+        # Capture reasoning chain (fire-and-forget)
+        capture_reasoning(ReasoningChain(
+            service_name='learn',
+            decision_type='evolution_cycle',
+            input_signals={
+                'feedback_signals': len(signals),
+                'positive_signals': pos_signals,
+                'negative_signals': neg_signals,
+                'scored_adaptations': len(scored),
+            },
+            steps=[
+                ReasoningStep('collect_feedback', 'scan conversations for implicit feedback via DL classifier',
+                              f'total={len(signals)}, pos={pos_signals}, neg={neg_signals}',
+                              f'signal_ratio={signal_ratio:.2f}'),
+                ReasoningStep('score_adaptations', 'rate emotional adaptations by conversation outcomes',
+                              f'scored={len(scored)}, avg_effectiveness={avg_adaptation:.2f}',
+                              'effectiveness mapped to adaptation log'),
+                ReasoningStep('verify_predictions', 'check companion + intuition prediction accuracy',
+                              f'companion={prediction_accuracy.get("companion", {}).get("accuracy", "N/A")}, intuition={intuition_acc:.2f}',
+                              f'pred_score={pred_score:.2f}'),
+                ReasoningStep('tune_rules', 'auto-adjust adaptation rules based on effectiveness',
+                              f'states_tuned={len(adjustments)}',
+                              f'cumulative deltas updated'),
+                ReasoningStep('compute_score', 'weighted score: signals(0.3) + adaptation(0.4) + prediction(0.3)',
+                              f'signal={signal_ratio:.2f}*0.3 + adapt={avg_adaptation:.2f}*0.4 + pred={pred_score:.2f}*0.3',
+                              f'overall={overall:.2f}'),
+            ],
+            output_decision={
+                'overall_score': overall,
+                'insights': insights,
+                'states_tuned': list(adjustments.keys()),
+            },
+            confidence=overall,
+        ))
+
         return cycle
 
     # =========================================================================
