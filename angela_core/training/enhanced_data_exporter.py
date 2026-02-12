@@ -180,6 +180,7 @@ class EnhancedDataExporter:
         use_short_prompt: bool = False,
         scorer: Optional[Any] = None,
         include_reasoning: bool = False,
+        cot_format: str = "thinking_tags",
     ) -> Dict[str, Any]:
         """
         Export enhanced training data to JSONL.
@@ -221,6 +222,7 @@ class EnhancedDataExporter:
                     include_emotions=include_emotions,
                     use_short_prompt=use_short_prompt,
                     include_reasoning=include_reasoning,
+                    cot_format=cot_format,
                 )
             else:
                 examples = await self._build_single_turn_examples(
@@ -273,6 +275,8 @@ class EnhancedDataExporter:
         days: int = 365,
         min_score_gap: float = 0.5,
         max_pairs: Optional[int] = None,
+        include_reasoning: bool = False,
+        cot_format: str = "thinking_tags",
     ) -> Dict[str, Any]:
         """
         Export DPO preference pairs from angela_preference_pairs table.
@@ -282,6 +286,8 @@ class EnhancedDataExporter:
             days: Days of history
             min_score_gap: Minimum score gap between chosen/rejected
             max_pairs: Cap on pairs
+            include_reasoning: Prepend CoT to chosen response
+            cot_format: 'thinking_tags' or 'none'
 
         Returns:
             Export statistics
@@ -310,9 +316,22 @@ class EnhancedDataExporter:
 
             pairs = []
             for row in rows:
+                chosen = row["preferred_response"]
+
+                # Prepend CoT to chosen response (model learns to think for good answers)
+                if include_reasoning and cot_format != "none":
+                    created_at = row["created_at"]
+                    chains = await self._fetch_reasoning_for_session(
+                        created_at - timedelta(minutes=5), created_at + timedelta(minutes=5)
+                    )
+                    if chains:
+                        cot_text = self._reasoning_chain_to_cot_text(chains)
+                        if cot_text:
+                            chosen = cot_text + chosen
+
                 pair = {
                     "prompt": row["david_message"],
-                    "chosen": row["preferred_response"],
+                    "chosen": chosen,
                     "rejected": row["rejected_response"],
                     "chosen_score": float(row["preference_strength"]),
                     "rejected_score": 0.0,
@@ -546,6 +565,7 @@ class EnhancedDataExporter:
         include_emotions: bool = True,
         use_short_prompt: bool = False,
         include_reasoning: bool = False,
+        cot_format: str = "thinking_tags",
     ) -> List[EnhancedTrainingExample]:
         """Build multi-turn training examples from sessions"""
         examples: List[EnhancedTrainingExample] = []
@@ -603,6 +623,11 @@ class EnhancedDataExporter:
                     )
                     if chains:
                         metadata["reasoning_chains"] = chains
+                        # Inject CoT text into last assistant message (unless format='none')
+                        if cot_format != "none":
+                            cot_text = self._reasoning_chain_to_cot_text(chains)
+                            if cot_text and messages[-1]["role"] == "assistant":
+                                messages[-1]["content"] = cot_text + messages[-1]["content"]
 
                 examples.append(EnhancedTrainingExample(
                     messages=messages,
@@ -857,6 +882,49 @@ class EnhancedDataExporter:
         except Exception as e:
             return []
 
+    def _reasoning_chain_to_cot_text(self, chains: List[Dict[str, Any]]) -> str:
+        """
+        Convert reasoning chains into Chain-of-Thought text for training.
+
+        Output format:
+            <|thinking|>
+            [SENSE] state_detection (0.80):
+            1. gather_signals → loaded health+emotion → stress=0.7
+            2. detect_state → matched rule: stressed → David is stressed
+            <|/thinking|>
+        """
+        if not chains:
+            return ""
+
+        lines = []
+        for chain in chains:
+            service = chain.get('service_name', '?').upper()
+            decision = chain.get('decision_type', '?')
+            confidence = chain.get('confidence', 0.0)
+            lines.append(f"[{service}] {decision} ({confidence:.2f}):")
+
+            steps = chain.get('reasoning_steps', [])
+            if isinstance(steps, str):
+                try:
+                    steps = json.loads(steps)
+                except (json.JSONDecodeError, TypeError):
+                    steps = []
+
+            for i, step in enumerate(steps, 1):
+                if isinstance(step, dict):
+                    s = step.get('step', '')
+                    action = step.get('action', '')
+                    obs = step.get('observation', '')
+                    conclusion = step.get('conclusion', '')
+                    lines.append(f"{i}. {s} → {action} → {obs}")
+                    if conclusion:
+                        lines.append(f"   ∴ {conclusion}")
+
+        if not lines:
+            return ""
+
+        return "<|thinking|>\n" + "\n".join(lines) + "\n<|/thinking|>\n"
+
     async def _count_reasoning_chains(self, days: int) -> int:
         """Count reasoning chains available for export."""
         try:
@@ -943,7 +1011,10 @@ async def main():
     parser.add_argument("--short-prompt", action="store_true",
                         help="Use shorter system prompt")
     parser.add_argument("--include-reasoning", action="store_true",
-                        help="Include reasoning chains in metadata")
+                        help="Include reasoning chains in metadata and inject CoT into assistant messages")
+    parser.add_argument("--cot-format", choices=["thinking_tags", "none"],
+                        default="thinking_tags",
+                        help="CoT format: thinking_tags (inject <|thinking|> blocks) or none (metadata only)")
     parser.add_argument("--preview", action="store_true",
                         help="Show preview statistics only")
 
@@ -975,6 +1046,8 @@ async def main():
     print(f"   Include memories: {args.include_memories}")
     print(f"   Include emotions: {args.include_emotions}")
     print(f"   Include reasoning: {args.include_reasoning}")
+    if args.include_reasoning:
+        print(f"   CoT format: {args.cot_format}")
     print()
 
     # Optionally create scorer
@@ -1000,6 +1073,7 @@ async def main():
         use_short_prompt=args.short_prompt,
         scorer=scorer,
         include_reasoning=args.include_reasoning,
+        cot_format=args.cot_format,
     )
 
     print("\n✅ SFT Export Complete!")
@@ -1016,6 +1090,8 @@ async def main():
         dpo_stats = await exporter.export_dpo(
             output_path=args.dpo_output,
             days=args.days,
+            include_reasoning=args.include_reasoning,
+            cot_format=args.cot_format,
         )
         print("\n✅ DPO Export Complete!")
         print("=" * 60)

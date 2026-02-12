@@ -91,6 +91,20 @@ class ReasoningChainService:
         if self._own_db and self.db:
             await self.db.disconnect()
 
+    async def _auto_link_conversation_id(self) -> Optional[UUID]:
+        """
+        Auto-link to the most recent conversation within 5 minutes.
+
+        When services fire capture_reasoning() without a conversation_id,
+        this finds the latest conversation so link_reward_signals() can work.
+        """
+        row = await self.db.fetchrow("""
+            SELECT conversation_id FROM conversations
+            WHERE created_at > NOW() - INTERVAL '5 minutes'
+            ORDER BY created_at DESC LIMIT 1
+        """)
+        return row['conversation_id'] if row else None
+
     async def capture(self, chain: ReasoningChain) -> Optional[UUID]:
         """
         Store a reasoning chain in the database.
@@ -99,6 +113,10 @@ class ReasoningChainService:
             chain_id if successful, None on error
         """
         await self._ensure_db()
+
+        # Auto-link to recent conversation if not provided
+        if chain.conversation_id is None:
+            chain.conversation_id = await self._auto_link_conversation_id()
 
         chain_id = uuid4()
         try:
