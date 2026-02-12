@@ -711,16 +711,353 @@ class ProactiveActionEngine:
             await self.db.execute('''
                 INSERT INTO proactive_actions_log
                     (action_id, action_type, trigger_source, description,
-                     consent_level, channel, payload, was_executed, execution_detail)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                     consent_level, channel, payload, was_executed, execution_detail,
+                     david_response)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             ''',
                 action.action_id, action.action_type, action.trigger,
                 action.description, action.consent_level, action.channel,
                 json.dumps(action.payload, default=str),
                 result.was_executed, result.execution_detail,
+                result.david_response,
             )
         except Exception as e:
             logger.warning(f'Failed to log action: {e}')
+
+    # =========================================================================
+    # DAVID RESPONSE TRACKING & PROACTIVE PRECISION
+    # =========================================================================
+
+    async def record_david_response(
+        self, action_id: UUID, response: str, effectiveness: float
+    ) -> None:
+        """
+        Manually record David's response to a proactive action.
+
+        Args:
+            action_id: UUID of the proactive action
+            response: "welcomed" / "ignored" / "dismissed" / "annoyed"
+            effectiveness: 0.0-1.0
+        """
+        await self._ensure_db()
+        await self.db.execute('''
+            UPDATE proactive_actions_log
+            SET david_response = $1, effectiveness_score = $2
+            WHERE action_id = $3
+        ''', response, effectiveness, action_id)
+        logger.info(f'Recorded response for {action_id}: {response} ({effectiveness:.1f})')
+
+    async def compute_proactive_precision(self, days: int = 30) -> dict:
+        """
+        Compute Proactive Precision metric.
+
+        PP = welcomed_actions / total_classified — target > 0.7
+
+        Returns dict with total, by_type, by_consent_level, trend_7d.
+        """
+        await self._ensure_db()
+
+        # Overall counts
+        rows = await self.db.fetch('''
+            SELECT david_response, COUNT(*) AS cnt
+            FROM proactive_actions_log
+            WHERE created_at > NOW() - INTERVAL '1 day' * $1
+              AND david_response IS NOT NULL
+            GROUP BY david_response
+        ''', days)
+
+        counts: dict[str, int] = {r['david_response']: int(r['cnt']) for r in rows}
+        total = sum(counts.values())
+        welcomed = counts.get('welcomed', 0)
+
+        # By action_type
+        type_rows = await self.db.fetch('''
+            SELECT action_type, david_response, COUNT(*) AS cnt
+            FROM proactive_actions_log
+            WHERE created_at > NOW() - INTERVAL '1 day' * $1
+              AND david_response IS NOT NULL
+            GROUP BY action_type, david_response
+        ''', days)
+
+        by_type: dict[str, dict] = {}
+        for r in type_rows:
+            at = r['action_type']
+            if at not in by_type:
+                by_type[at] = {'total': 0, 'welcomed': 0}
+            by_type[at]['total'] += int(r['cnt'])
+            if r['david_response'] == 'welcomed':
+                by_type[at]['welcomed'] += int(r['cnt'])
+        for at in by_type:
+            t = by_type[at]['total']
+            by_type[at]['precision'] = round(by_type[at]['welcomed'] / t, 2) if t else 0.0
+
+        # By consent_level
+        cl_rows = await self.db.fetch('''
+            SELECT consent_level, david_response, COUNT(*) AS cnt
+            FROM proactive_actions_log
+            WHERE created_at > NOW() - INTERVAL '1 day' * $1
+              AND david_response IS NOT NULL
+            GROUP BY consent_level, david_response
+        ''', days)
+
+        by_consent: dict[int, dict] = {}
+        for r in cl_rows:
+            cl = int(r['consent_level'])
+            if cl not in by_consent:
+                by_consent[cl] = {'total': 0, 'welcomed': 0}
+            by_consent[cl]['total'] += int(r['cnt'])
+            if r['david_response'] == 'welcomed':
+                by_consent[cl]['welcomed'] += int(r['cnt'])
+        for cl in by_consent:
+            t = by_consent[cl]['total']
+            by_consent[cl]['precision'] = round(by_consent[cl]['welcomed'] / t, 2) if t else 0.0
+
+        # 7-day trend
+        trend_rows = await self.db.fetch('''
+            SELECT (created_at AT TIME ZONE 'Asia/Bangkok')::date AS day,
+                   COUNT(*) FILTER (WHERE david_response = 'welcomed') AS welcomed,
+                   COUNT(*) AS total
+            FROM proactive_actions_log
+            WHERE created_at > NOW() - INTERVAL '7 days'
+              AND david_response IS NOT NULL
+            GROUP BY day
+            ORDER BY day
+        ''')
+
+        trend_7d = [
+            {
+                'day': str(r['day']),
+                'precision': round(int(r['welcomed']) / int(r['total']), 2) if int(r['total']) else 0.0,
+            }
+            for r in trend_rows
+        ]
+
+        return {
+            'total_actions': total,
+            'welcomed': welcomed,
+            'ignored': counts.get('ignored', 0),
+            'dismissed': counts.get('dismissed', 0),
+            'annoyed': counts.get('annoyed', 0),
+            'precision': round(welcomed / total, 2) if total else 0.0,
+            'by_type': by_type,
+            'by_consent_level': by_consent,
+            'trend_7d': trend_7d,
+        }
+
+    async def auto_classify_responses(self, hours: int = 24) -> int:
+        """
+        Batch-classify unclassified proactive actions by proxy signals.
+
+        Level 1 (silent): auto "welcomed" (0.5) — no time window, always classify.
+        Level 2/3 (notify/ask) within last `hours`:
+        - Check conversations for David's message within 10 min after action
+        - Substantial reply (>20 chars) → "welcomed" (0.8)
+        - Short dismiss (<= 20 chars) → "dismissed" (0.2)
+        - No reply within 30 min → "ignored" (0.3)
+
+        Returns count of newly classified actions.
+        """
+        await self._ensure_db()
+        classified = 0
+
+        # ── Level 1 (silent): classify ALL unclassified, no time window ──
+        status = await self.db.execute('''
+            UPDATE proactive_actions_log
+            SET david_response = 'welcomed', effectiveness_score = 0.5
+            WHERE david_response IS NULL
+              AND was_executed = TRUE
+              AND consent_level = 1
+        ''')
+        # status = "UPDATE N"
+        level1_updated = int(status.split()[-1]) if status else 0
+        classified += level1_updated
+
+        # ── Level 2/3: need conversation check, use time window ──
+        unclassified = await self.db.fetch('''
+            SELECT action_id, created_at
+            FROM proactive_actions_log
+            WHERE david_response IS NULL
+              AND was_executed = TRUE
+              AND consent_level >= 2
+              AND created_at > NOW() - INTERVAL '1 hour' * $1
+            ORDER BY created_at
+        ''', hours)
+
+        for row in unclassified:
+            action_id = row['action_id']
+            created = row['created_at']
+
+            # Cast to naive (UTC) for comparison with conversations.created_at (timestamp without tz)
+            created_naive = created.replace(tzinfo=None) if created.tzinfo else created
+
+            reply = await self.db.fetchrow('''
+                SELECT message_text
+                FROM conversations
+                WHERE speaker = 'david'
+                  AND created_at > $1
+                  AND created_at < $1 + INTERVAL '10 minutes'
+                ORDER BY created_at
+                LIMIT 1
+            ''', created_naive)
+
+            if reply and reply['message_text']:
+                msg = reply['message_text'].strip()
+                if len(msg) > 20:
+                    response, score = 'welcomed', 0.8
+                else:
+                    response, score = 'dismissed', 0.2
+            else:
+                # Check if 30 min have passed (otherwise too early to classify)
+                now = now_bangkok()
+                elapsed = (now - created).total_seconds() if created.tzinfo else (now.replace(tzinfo=None) - created).total_seconds()
+
+                if elapsed < 1800:
+                    continue  # Too early to classify as ignored
+                response, score = 'ignored', 0.3
+
+            await self.db.execute('''
+                UPDATE proactive_actions_log
+                SET david_response = $1, effectiveness_score = $2
+                WHERE action_id = $3
+            ''', response, score, action_id)
+            classified += 1
+
+        logger.info(f'Auto-classified {classified} proactive actions')
+        return classified
+
+    async def compute_proactive_f1(self, days: int = 30) -> dict:
+        """
+        Compute Proactive F1 = 2*P*R / (P+R)
+
+        Precision: from compute_proactive_precision() (welcomed / classified)
+        Recall: acted / (acted + missed)
+          - missed = blocked actions + emotional misses + milestone misses
+        """
+        await self._ensure_db()
+
+        precision_data = await self.compute_proactive_precision(days)
+        precision = precision_data.get('precision', 0.0)
+
+        # --- Acted count (executed actions) ---
+        acted_row = await self.db.fetchrow('''
+            SELECT COUNT(*) AS cnt
+            FROM proactive_actions_log
+            WHERE created_at > NOW() - INTERVAL '1 day' * $1
+              AND was_executed = TRUE
+        ''', days)
+        acted = int(acted_row['cnt']) if acted_row else 0
+
+        # --- Missed: blocked actions (by type) ---
+        blocked_rows = await self.db.fetch('''
+            SELECT action_type, COUNT(*) AS cnt
+            FROM proactive_actions_log
+            WHERE created_at > NOW() - INTERVAL '1 day' * $1
+              AND was_executed = FALSE
+              AND execution_detail LIKE 'Blocked:%'
+            GROUP BY action_type
+        ''', days)
+        blocked_by_type: dict[str, int] = {r['action_type']: int(r['cnt']) for r in blocked_rows}
+        blocked_total = sum(blocked_by_type.values())
+
+        # --- Missed: emotional misses (sad/stressed/frustrated without mood_boost within 15 min) ---
+        emotional_miss_row = await self.db.fetchrow('''
+            SELECT COUNT(*) AS cnt
+            FROM emotional_adaptation_log eal
+            WHERE eal.created_at > NOW() - INTERVAL '1 day' * $1
+              AND eal.dominant_state IN ('sad', 'stressed', 'frustrated')
+              AND eal.confidence > 0.5
+              AND NOT EXISTS (
+                  SELECT 1 FROM proactive_actions_log pal
+                  WHERE pal.action_type = 'mood_boost'
+                    AND pal.was_executed = TRUE
+                    AND pal.created_at BETWEEN eal.created_at - INTERVAL '5 minutes'
+                                            AND eal.created_at + INTERVAL '15 minutes'
+              )
+        ''', days)
+        emotional_miss = int(emotional_miss_row['cnt']) if emotional_miss_row else 0
+
+        # --- Missed: milestone misses ---
+        milestone_miss_row = await self.db.fetchrow('''
+            SELECT COUNT(*) AS cnt
+            FROM v_upcoming_important_dates
+            WHERE days_until = ANY(reminder_days)
+              AND last_reminded_date IS NULL
+        ''')
+        milestone_miss = int(milestone_miss_row['cnt']) if milestone_miss_row else 0
+
+        missed = blocked_total + emotional_miss + milestone_miss
+        warranted = acted + missed
+
+        recall = acted / warranted if warranted > 0 else 1.0
+        f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+
+        # --- By type breakdown ---
+        acted_by_type_rows = await self.db.fetch('''
+            SELECT action_type, COUNT(*) AS cnt
+            FROM proactive_actions_log
+            WHERE created_at > NOW() - INTERVAL '1 day' * $1
+              AND was_executed = TRUE
+            GROUP BY action_type
+        ''', days)
+        acted_by_type: dict[str, int] = {r['action_type']: int(r['cnt']) for r in acted_by_type_rows}
+
+        all_types = set(acted_by_type.keys()) | set(blocked_by_type.keys())
+        by_type = {}
+        for t in all_types:
+            a = acted_by_type.get(t, 0)
+            b = blocked_by_type.get(t, 0)
+            w = a + b
+            by_type[t] = {
+                'acted': a,
+                'blocked': b,
+                'recall': round(a / w, 2) if w > 0 else 1.0,
+            }
+
+        # --- 7-day trend ---
+        trend_rows = await self.db.fetch('''
+            SELECT
+                (created_at AT TIME ZONE 'Asia/Bangkok')::date AS day,
+                COUNT(*) FILTER (WHERE was_executed = TRUE) AS acted,
+                COUNT(*) FILTER (WHERE was_executed = FALSE AND execution_detail LIKE 'Blocked:%') AS blocked,
+                COUNT(*) FILTER (WHERE david_response = 'welcomed') AS welcomed,
+                COUNT(*) FILTER (WHERE david_response IS NOT NULL) AS classified
+            FROM proactive_actions_log
+            WHERE created_at > NOW() - INTERVAL '7 days'
+            GROUP BY day
+            ORDER BY day
+        ''')
+
+        trend_7d = []
+        for r in trend_rows:
+            a_day = int(r['acted'])
+            b_day = int(r['blocked'])
+            w_day = int(r['welcomed'])
+            c_day = int(r['classified'])
+            p_day = w_day / c_day if c_day > 0 else 0.0
+            r_day = a_day / (a_day + b_day) if (a_day + b_day) > 0 else 1.0
+            f1_day = (2 * p_day * r_day / (p_day + r_day)) if (p_day + r_day) > 0 else 0.0
+            trend_7d.append({
+                'day': str(r['day']),
+                'precision': round(p_day, 2),
+                'recall': round(r_day, 2),
+                'f1': round(f1_day, 2),
+            })
+
+        return {
+            'precision': round(precision, 2),
+            'recall': round(recall, 2),
+            'f1': round(f1, 2),
+            'acted_count': acted,
+            'missed_count': missed,
+            'warranted_count': warranted,
+            'missed_breakdown': {
+                'blocked': blocked_total,
+                'emotional_miss': emotional_miss,
+                'milestone_miss': milestone_miss,
+            },
+            'by_type': by_type,
+            'trend_7d': trend_7d,
+        }
 
     # =========================================================================
     # CONTEXT LOADERS

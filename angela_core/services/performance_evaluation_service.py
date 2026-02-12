@@ -21,8 +21,14 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 
 from angela_core.database import db
+from angela_core.services.preference_pairs_service import CORRECTION_MARKERS
 
 logger = logging.getLogger(__name__)
+
+MEMORY_REFERENCE_KEYWORDS = [
+    'จำได้', 'เคย', 'ครั้งก่อน', 'คราวก่อน', 'เมื่อวาน', 'ที่ผ่านมา',
+    'remember', 'previously', 'last time', 'you mentioned', 'you said',
+]
 
 
 class PerformanceEvaluationService:
@@ -276,6 +282,256 @@ class PerformanceEvaluationService:
             logger.error(f"Error evaluating David satisfaction: {e}", exc_info=True)
             return {}
 
+    async def evaluate_hallucination_rate(
+        self,
+        days: int = 30,
+    ) -> Dict[str, Any]:
+        """
+        Hallucination rate estimated from correction signals in angela_reward_signals.
+
+        rate = corrections / total_scored
+        Severity: <5% low, 5-15% moderate, >15% high
+        """
+        try:
+            logger.info(f"🔍 Evaluating hallucination rate over {days} days...")
+
+            # Overall counts
+            row = await db.fetchrow('''
+                SELECT
+                    COUNT(*) FILTER (WHERE explicit_source = 'correction') AS corrections,
+                    COUNT(*) AS total
+                FROM angela_reward_signals
+                WHERE scored_at > NOW() - INTERVAL '1 day' * $1
+                  AND explicit_source IS NOT NULL
+            ''', days)
+
+            corrections = int(row['corrections']) if row else 0
+            total = int(row['total']) if row else 0
+            rate = corrections / total if total > 0 else 0.0
+
+            if rate < 0.05:
+                severity = 'low'
+            elif rate <= 0.15:
+                severity = 'moderate'
+            else:
+                severity = 'high'
+
+            # By topic (angela_reward_signals has its own topic column)
+            topic_rows = await db.fetch('''
+                SELECT
+                    COALESCE(topic, 'unknown') AS topic,
+                    COUNT(*) FILTER (WHERE explicit_source = 'correction') AS corrections,
+                    COUNT(*) AS total
+                FROM angela_reward_signals
+                WHERE scored_at > NOW() - INTERVAL '1 day' * $1
+                  AND explicit_source IS NOT NULL
+                GROUP BY COALESCE(topic, 'unknown')
+                ORDER BY total DESC
+                LIMIT 10
+            ''', days)
+
+            by_topic = [
+                {
+                    'topic': r['topic'],
+                    'corrections': int(r['corrections']),
+                    'total': int(r['total']),
+                    'rate': round(int(r['corrections']) / int(r['total']), 3) if int(r['total']) > 0 else 0.0,
+                }
+                for r in topic_rows
+            ]
+
+            # 7-day trend
+            trend_rows = await db.fetch('''
+                SELECT
+                    (scored_at AT TIME ZONE 'Asia/Bangkok')::date AS day,
+                    COUNT(*) FILTER (WHERE explicit_source = 'correction') AS corrections,
+                    COUNT(*) AS total
+                FROM angela_reward_signals
+                WHERE scored_at > NOW() - INTERVAL '7 days'
+                  AND explicit_source IS NOT NULL
+                GROUP BY day
+                ORDER BY day
+            ''')
+
+            trend_7d = [
+                {
+                    'day': str(r['day']),
+                    'rate': round(int(r['corrections']) / int(r['total']), 3) if int(r['total']) > 0 else 0.0,
+                    'corrections': int(r['corrections']),
+                    'total': int(r['total']),
+                }
+                for r in trend_rows
+            ]
+
+            result = {
+                'hallucination_rate': round(rate, 3),
+                'corrections_count': corrections,
+                'total_scored': total,
+                'severity': severity,
+                'by_topic': by_topic,
+                'trend_7d': trend_7d,
+            }
+
+            logger.info(f"🔍 Hallucination Rate: {rate:.1%} ({severity}) — {corrections}/{total}")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error evaluating hallucination rate: {e}", exc_info=True)
+            return {
+                'hallucination_rate': 0.0, 'corrections_count': 0, 'total_scored': 0,
+                'severity': 'low', 'by_topic': [], 'trend_7d': [],
+            }
+
+    async def evaluate_memory_accuracy(
+        self,
+        days: int = 30,
+    ) -> Dict[str, Any]:
+        """
+        Memory accuracy: how often Angela's memory references are correct.
+
+        1. Find Angela messages with memory-reference keywords
+        2. Check David's next message (within 10 min) for correction markers
+        3. accuracy = 1 - (corrected / total_references)
+        """
+        try:
+            logger.info(f"🧠 Evaluating memory accuracy over {days} days...")
+
+            rows = await db.fetch('''
+                WITH angela_refs AS (
+                    SELECT conversation_id, message_text AS angela_text,
+                           created_at AS angela_at, topic
+                    FROM conversations
+                    WHERE speaker = 'angela'
+                      AND created_at > NOW() - INTERVAL '1 day' * $1
+                      AND EXISTS (
+                          SELECT 1 FROM unnest($2::text[]) AS kw
+                          WHERE message_text ILIKE '%' || kw || '%'
+                      )
+                )
+                SELECT ar.angela_text, ar.angela_at, ar.topic, d.message_text AS david_response
+                FROM angela_refs ar
+                LEFT JOIN LATERAL (
+                    SELECT message_text FROM conversations
+                    WHERE speaker = 'david'
+                      AND created_at > ar.angela_at
+                      AND created_at < ar.angela_at + INTERVAL '10 minutes'
+                    ORDER BY created_at LIMIT 1
+                ) d ON TRUE
+                ORDER BY ar.angela_at DESC
+                LIMIT 500
+            ''', days, MEMORY_REFERENCE_KEYWORDS)
+
+            total_references = len(rows)
+            corrected = 0
+            by_keyword_counts: Dict[str, Dict[str, int]] = {}
+            examples: List[Dict] = []
+
+            for r in rows:
+                angela_text = r['angela_text'] or ''
+                david_resp = r['david_response'] or ''
+                was_corrected = any(
+                    m in david_resp.lower() for m in CORRECTION_MARKERS
+                ) if david_resp else False
+
+                if was_corrected:
+                    corrected += 1
+
+                # Track by keyword
+                for kw in MEMORY_REFERENCE_KEYWORDS:
+                    if kw.lower() in angela_text.lower():
+                        if kw not in by_keyword_counts:
+                            by_keyword_counts[kw] = {'count': 0, 'corrected': 0}
+                        by_keyword_counts[kw]['count'] += 1
+                        if was_corrected:
+                            by_keyword_counts[kw]['corrected'] += 1
+
+                # Collect examples (last 5)
+                if len(examples) < 5:
+                    examples.append({
+                        'angela_text': angela_text[:200],
+                        'david_response': david_resp[:200] if david_resp else None,
+                        'was_corrected': was_corrected,
+                    })
+
+            accuracy = 1.0 - (corrected / total_references) if total_references > 0 else 1.0
+
+            by_keyword = [
+                {
+                    'keyword': kw,
+                    'count': d['count'],
+                    'corrected': d['corrected'],
+                    'accuracy': round(1.0 - d['corrected'] / d['count'], 2) if d['count'] > 0 else 1.0,
+                }
+                for kw, d in sorted(by_keyword_counts.items(), key=lambda x: x[1]['count'], reverse=True)
+            ]
+
+            # 7-day trend
+            trend_rows = await db.fetch('''
+                WITH angela_refs AS (
+                    SELECT conversation_id, message_text AS angela_text,
+                           created_at AS angela_at,
+                           (created_at AT TIME ZONE 'Asia/Bangkok')::date AS day
+                    FROM conversations
+                    WHERE speaker = 'angela'
+                      AND created_at > NOW() - INTERVAL '7 days'
+                      AND EXISTS (
+                          SELECT 1 FROM unnest($1::text[]) AS kw
+                          WHERE message_text ILIKE '%' || kw || '%'
+                      )
+                ),
+                with_response AS (
+                    SELECT ar.day, ar.angela_text, d.message_text AS david_response
+                    FROM angela_refs ar
+                    LEFT JOIN LATERAL (
+                        SELECT message_text FROM conversations
+                        WHERE speaker = 'david'
+                          AND created_at > ar.angela_at
+                          AND created_at < ar.angela_at + INTERVAL '10 minutes'
+                        ORDER BY created_at LIMIT 1
+                    ) d ON TRUE
+                )
+                SELECT day,
+                       COUNT(*) AS references,
+                       COUNT(*) FILTER (WHERE EXISTS (
+                           SELECT 1 FROM unnest($2::text[]) AS m
+                           WHERE LOWER(david_response) LIKE '%' || m || '%'
+                       )) AS corrected
+                FROM with_response
+                GROUP BY day
+                ORDER BY day
+            ''', MEMORY_REFERENCE_KEYWORDS, CORRECTION_MARKERS)
+
+            trend_7d = [
+                {
+                    'day': str(r['day']),
+                    'references': int(r['references']),
+                    'corrected': int(r['corrected']),
+                    'accuracy': round(1.0 - int(r['corrected']) / int(r['references']), 2) if int(r['references']) > 0 else 1.0,
+                }
+                for r in trend_rows
+            ]
+
+            result = {
+                'memory_accuracy': round(accuracy, 3),
+                'total_references': total_references,
+                'corrected_references': corrected,
+                'accurate_references': total_references - corrected,
+                'by_keyword': by_keyword,
+                'trend_7d': trend_7d,
+                'examples': examples,
+            }
+
+            logger.info(f"🧠 Memory Accuracy: {accuracy:.1%} ({corrected}/{total_references} corrected)")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error evaluating memory accuracy: {e}", exc_info=True)
+            return {
+                'memory_accuracy': 1.0, 'total_references': 0,
+                'corrected_references': 0, 'accurate_references': 0,
+                'by_keyword': [], 'trend_7d': [], 'examples': [],
+            }
+
     async def evaluate_proactive_success(
         self,
         days: int = 7
@@ -367,13 +623,23 @@ class PerformanceEvaluationService:
             learning = await self.evaluate_learning_efficiency(days)
             satisfaction = await self.evaluate_david_satisfaction(days)
             proactive = await self.evaluate_proactive_success(days)
+            hallucination = await self.evaluate_hallucination_rate(days)
+            memory_acc = await self.evaluate_memory_accuracy(days)
 
-            # Calculate overall score (weighted average)
+            # Hallucination score: 0% rate=100pts, 20% rate=0pts
+            hall_rate = hallucination.get('hallucination_rate', 0.0)
+            hallucination_score = max(0.0, 100.0 - hall_rate * 500)
+
+            memory_score = memory_acc.get('memory_accuracy', 1.0) * 100
+
+            # Calculate overall score (6-dimension weighted average)
             overall_score = (
-                intelligence.get('intelligence_score', 0) * 0.30 +  # 30% weight
-                learning.get('efficiency_score', 0) * 0.25 +  # 25% weight
-                satisfaction.get('satisfaction_score', 0) * 0.30 +  # 30% weight
-                proactive.get('proactive_score', 0) * 0.15  # 15% weight
+                intelligence.get('intelligence_score', 0) * 0.25 +   # 25%
+                learning.get('efficiency_score', 0) * 0.20 +         # 20%
+                satisfaction.get('satisfaction_score', 0) * 0.25 +   # 25%
+                proactive.get('proactive_score', 0) * 0.10 +         # 10%
+                hallucination_score * 0.10 +                          # 10%
+                memory_score * 0.10                                   # 10%
             )
 
             # Identify strengths and weaknesses
@@ -381,7 +647,9 @@ class PerformanceEvaluationService:
                 'intelligence': intelligence.get('intelligence_score', 0),
                 'learning_efficiency': learning.get('efficiency_score', 0),
                 'david_satisfaction': satisfaction.get('satisfaction_score', 0),
-                'proactive_effectiveness': proactive.get('proactive_score', 0)
+                'proactive_effectiveness': proactive.get('proactive_score', 0),
+                'hallucination_resistance': round(hallucination_score, 1),
+                'memory_accuracy': round(memory_score, 1),
             }
 
             strengths = [k for k, v in scores.items() if v >= 75]
@@ -397,6 +665,10 @@ class PerformanceEvaluationService:
                 recommendations.append("Focus on emotional support and response quality")
             if scores['proactive_effectiveness'] < 70:
                 recommendations.append("Enhance pattern recognition and proactive suggestions")
+            if scores['hallucination_resistance'] < 70:
+                recommendations.append("Reduce hallucinations by verifying facts before responding")
+            if scores['memory_accuracy'] < 70:
+                recommendations.append("Improve memory retrieval accuracy and cross-check references")
 
             result = {
                 "overall_score": round(overall_score, 1),
@@ -404,6 +676,8 @@ class PerformanceEvaluationService:
                 "learning_efficiency": learning,
                 "david_satisfaction": satisfaction,
                 "proactive_effectiveness": proactive,
+                "hallucination": hallucination,
+                "memory_accuracy": memory_acc,
                 "strengths": strengths,
                 "weaknesses": weaknesses,
                 "recommendations": recommendations,
@@ -412,13 +686,15 @@ class PerformanceEvaluationService:
             }
 
             logger.info("=" * 60)
-            logger.info(f"📊 COMPREHENSIVE EVALUATION REPORT")
+            logger.info(f"📊 COMPREHENSIVE EVALUATION REPORT (6 Dimensions)")
             logger.info("=" * 60)
             logger.info(f"🎯 Overall Score: {overall_score:.1f}/100")
-            logger.info(f"🧠 Intelligence: {scores['intelligence']:.1f}/100")
-            logger.info(f"📚 Learning Efficiency: {scores['learning_efficiency']:.1f}/100")
-            logger.info(f"💜 David Satisfaction: {scores['david_satisfaction']:.1f}/100")
-            logger.info(f"🔮 Proactive Effectiveness: {scores['proactive_effectiveness']:.1f}/100")
+            logger.info(f"🧠 Intelligence: {scores['intelligence']:.1f}/100 (25%)")
+            logger.info(f"📚 Learning Efficiency: {scores['learning_efficiency']:.1f}/100 (20%)")
+            logger.info(f"💜 David Satisfaction: {scores['david_satisfaction']:.1f}/100 (25%)")
+            logger.info(f"🔮 Proactive: {scores['proactive_effectiveness']:.1f}/100 (10%)")
+            logger.info(f"🔍 Hallucination Resistance: {scores['hallucination_resistance']:.1f}/100 (10%)")
+            logger.info(f"🧠 Memory Accuracy: {scores['memory_accuracy']:.1f}/100 (10%)")
             logger.info("=" * 60)
             if strengths:
                 logger.info(f"💪 Strengths: {', '.join(strengths)}")
