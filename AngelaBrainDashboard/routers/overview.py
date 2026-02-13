@@ -63,19 +63,22 @@ async def _fetch_stats(pool) -> dict:
         row = await conn.fetchrow("""
             SELECT
                 (SELECT COUNT(*) FROM conversations) AS total_conversations,
-                (SELECT COUNT(*) FROM angela_emotions) AS total_emotions,
-                (SELECT COUNT(*) FROM learnings) AS total_learnings,
                 (SELECT COUNT(*) FROM knowledge_nodes) AS total_knowledge_nodes,
                 (SELECT COUNT(*) FROM conversations WHERE DATE(created_at) = CURRENT_DATE) AS conversations_today,
-                (SELECT COUNT(*) FROM angela_emotions WHERE DATE(felt_at) = CURRENT_DATE) AS emotions_today
+                (SELECT COUNT(DISTINCT DATE(created_at)) FROM conversations
+                 WHERE created_at >= NOW() - INTERVAL '30 days') AS active_days_30d,
+                (SELECT COALESCE(AVG(cnt), 0) FROM (
+                    SELECT COUNT(*) AS cnt FROM conversations
+                    WHERE created_at >= NOW() - INTERVAL '30 days'
+                    GROUP BY session_id
+                ) sub) AS avg_msgs_per_session
         """)
     return {
         "total_conversations": row["total_conversations"] or 0,
-        "total_emotions": row["total_emotions"] or 0,
-        "total_learnings": row["total_learnings"] or 0,
         "total_knowledge_nodes": row["total_knowledge_nodes"] or 0,
         "conversations_today": row["conversations_today"] or 0,
-        "emotions_today": row["emotions_today"] or 0,
+        "active_days_30d": row["active_days_30d"] or 0,
+        "avg_msgs_per_session": round(float(row["avg_msgs_per_session"] or 0), 1),
     }
 
 
@@ -138,47 +141,6 @@ async def _fetch_rlhf(pool) -> dict:
         "reward_distribution": distribution,
         "top_topics": top_topics,
     }
-
-
-async def _fetch_constitutional(pool) -> dict:
-    async with pool.acquire() as conn:
-        # Check if evals table exists
-        has_evals = await conn.fetchval("""
-            SELECT EXISTS(
-                SELECT 1 FROM information_schema.tables
-                WHERE table_name = 'angela_constitutional_evals'
-            )
-        """)
-
-        if has_evals:
-            rows = await conn.fetch("""
-                SELECT c.principle_name,
-                       c.weight,
-                       COALESCE(AVG(e.score), 0) AS avg_score_7d
-                FROM angela_constitution c
-                LEFT JOIN angela_constitutional_evals e
-                    ON e.principle_id = c.principle_id
-                   AND e.evaluated_at >= NOW() - INTERVAL '7 days'
-                GROUP BY c.principle_name, c.weight
-                ORDER BY c.weight DESC
-            """)
-        else:
-            rows = await conn.fetch("""
-                SELECT principle_name, weight
-                FROM angela_constitution
-                WHERE is_active = TRUE
-                ORDER BY weight DESC
-            """)
-
-    principles = [
-        {
-            "name": r["principle_name"],
-            "weight": round(float(r["weight"]), 3),
-            "avg_score_7d": round(float(r.get("avg_score_7d", 0)), 3) if "avg_score_7d" in r.keys() else 0.0,
-        }
-        for r in rows
-    ]
-    return {"principles": principles}
 
 
 async def _fetch_consciousness_loop(pool) -> dict:
@@ -266,34 +228,6 @@ async def _fetch_consciousness_loop(pool) -> dict:
     return {"sense": sense, "predict": predict, "act": act, "learn": learn}
 
 
-async def _fetch_meta_awareness(pool) -> dict:
-    async with pool.acquire() as conn:
-        biases = await conn.fetchval("""
-            SELECT COUNT(*) FROM meta_bias_detections
-            WHERE detected_at >= NOW() - INTERVAL '30 days'
-        """) or 0
-
-        anomalies = await conn.fetchval("""
-            SELECT COUNT(*) FROM consciousness_anomalies
-            WHERE is_resolved = FALSE
-        """) or 0
-
-        identity_row = await conn.fetchrow("""
-            SELECT identity_drift_score, is_healthy
-            FROM identity_checkpoints
-            ORDER BY created_at DESC LIMIT 1
-        """)
-        drift = round(float(identity_row["identity_drift_score"]), 3) if identity_row else 0.0
-        healthy = identity_row["is_healthy"] if identity_row else True
-
-    return {
-        "biases_detected_30d": biases,
-        "anomalies_unresolved": anomalies,
-        "identity_drift_score": drift,
-        "identity_healthy": healthy,
-    }
-
-
 async def _fetch_growth_trends(pool, days: int = 30) -> dict:
     async with pool.acquire() as conn:
         consciousness_rows = await conn.fetch("""
@@ -337,6 +271,109 @@ async def _fetch_growth_trends(pool, days: int = 30) -> dict:
     }
 
 
+async def _fetch_ai_metrics(pool) -> dict:
+    """Industry-standard AI quality metrics (30 days)."""
+    async with pool.acquire() as conn:
+        # User Satisfaction (conservative: praise / total — all signals as denominator)
+        satisfaction_row = await conn.fetchrow("""
+            SELECT
+                COUNT(*) FILTER (WHERE explicit_source = 'praise') AS praise,
+                COUNT(*) FILTER (WHERE explicit_source = 'correction') AS corrections,
+                COUNT(*) AS total
+            FROM angela_reward_signals
+            WHERE scored_at >= NOW() - INTERVAL '30 days'
+        """)
+        praise = satisfaction_row["praise"] or 0
+        corrections_explicit = satisfaction_row["corrections"] or 0
+        satisfaction_total = satisfaction_row["total"] or 0
+        satisfaction = round(praise / max(satisfaction_total, 1), 3)
+
+        # Engagement Rate (conservative: explicit positive signals only, no biased implicit catch-all)
+        engagement_row = await conn.fetchrow("""
+            SELECT
+                COUNT(*) FILTER (WHERE explicit_source IN
+                    ('praise', 'follow_up')) AS engaged,
+                COUNT(*) AS total
+            FROM angela_reward_signals
+            WHERE scored_at >= NOW() - INTERVAL '30 days'
+        """)
+        engaged = engagement_row["engaged"] or 0
+        total_eng = engagement_row["total"] or 1
+        engagement_rate = round(engaged / total_eng, 3)
+
+        # Correction Rate (from implicit classification)
+        corr_row = await conn.fetchrow("""
+            SELECT
+                COUNT(*) FILTER (WHERE implicit_classification = 'correction') AS corrections,
+                COUNT(*) AS total
+            FROM angela_reward_signals
+            WHERE scored_at >= NOW() - INTERVAL '30 days'
+        """)
+        corr_corrections = corr_row["corrections"] or 0
+        corr_total = corr_row["total"] or 1
+        correction_rate = round(corr_corrections / max(corr_total, 1), 3)
+
+        # Memory Accuracy (keep existing logic)
+        mem_row = await conn.fetchrow("""
+            WITH angela_refs AS (
+                SELECT conversation_id, created_at
+                FROM conversations
+                WHERE speaker = 'angela'
+                  AND created_at >= NOW() - INTERVAL '30 days'
+                  AND (
+                      message_text ILIKE '%จำได้%' OR message_text ILIKE '%เคย%'
+                      OR message_text ILIKE '%remember%' OR message_text ILIKE '%previously%'
+                      OR message_text ILIKE '%last time%' OR message_text ILIKE '%ครั้งก่อน%'
+                  )
+            ),
+            corrected AS (
+                SELECT ar.conversation_id
+                FROM angela_refs ar
+                JOIN LATERAL (
+                    SELECT 1 FROM conversations c2
+                    WHERE c2.speaker = 'david'
+                      AND c2.created_at > ar.created_at
+                      AND c2.created_at <= ar.created_at + INTERVAL '10 minutes'
+                      AND (
+                          c2.message_text ILIKE '%ไม่ใช่%' OR c2.message_text ILIKE '%wrong%'
+                          OR c2.message_text ILIKE '%ไม่%ถูก%' OR c2.message_text ILIKE '%ผิด%'
+                      )
+                    LIMIT 1
+                ) d ON TRUE
+            )
+            SELECT
+                (SELECT COUNT(*) FROM angela_refs) AS total_refs,
+                (SELECT COUNT(*) FROM corrected) AS corrected
+        """)
+        total_refs = mem_row["total_refs"] or 0
+        corrected_refs = mem_row["corrected"] or 0
+        mem_accuracy = round(1.0 - (corrected_refs / total_refs), 3) if total_refs > 0 else 1.0
+
+    return {
+        "satisfaction": {
+            "rate": satisfaction,
+            "praise": praise,
+            "corrections": corrections_explicit,
+            "total": satisfaction_total,
+        },
+        "engagement": {
+            "rate": engagement_rate,
+            "engaged": engaged,
+            "total": total_eng,
+        },
+        "correction_rate": {
+            "rate": correction_rate,
+            "corrections": corr_corrections,
+            "total": corr_total,
+        },
+        "memory_accuracy": {
+            "accuracy": mem_accuracy,
+            "total_refs": total_refs,
+            "corrected": corrected_refs,
+        },
+    }
+
+
 async def _fetch_recent_emotions(pool, limit: int = 10) -> list[dict]:
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
@@ -353,34 +390,31 @@ async def get_overview_metrics():
     """Unified endpoint — returns ALL overview dashboard data in one call."""
     pool = get_pool()
 
-    # Run all 8 fetches in parallel — each acquires its own connection
+    # Run all 7 fetches in parallel — each acquires its own connection
     (
         consciousness,
         stats,
         rlhf,
-        constitutional,
         loop,
-        meta,
         trends,
         emotions,
+        ai_metrics,
     ) = await asyncio.gather(
         _fetch_consciousness(pool),
         _fetch_stats(pool),
         _fetch_rlhf(pool),
-        _fetch_constitutional(pool),
         _fetch_consciousness_loop(pool),
-        _fetch_meta_awareness(pool),
         _fetch_growth_trends(pool),
         _fetch_recent_emotions(pool),
+        _fetch_ai_metrics(pool),
     )
 
     return {
         "consciousness": consciousness,
         "stats": stats,
         "rlhf": rlhf,
-        "constitutional": constitutional,
         "consciousness_loop": loop,
-        "meta_awareness": meta,
         "growth_trends": trends,
         "recent_emotions": emotions,
+        "ai_metrics": ai_metrics,
     }

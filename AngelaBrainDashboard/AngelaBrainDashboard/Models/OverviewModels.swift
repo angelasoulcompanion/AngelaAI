@@ -13,18 +13,63 @@ struct OverviewMetrics: Codable {
     let consciousness: ConsciousnessMetrics
     let stats: OverviewStats
     let rlhf: RLHFMetrics
-    let constitutional: ConstitutionalMetrics
     let consciousnessLoop: ConsciousnessLoopMetrics
-    let metaAwareness: MetaAwarenessMetrics
     let growthTrends: OverviewGrowthTrends
     let recentEmotions: [Emotion]
+    let aiMetrics: AIMetricsData?
 
     enum CodingKeys: String, CodingKey {
-        case consciousness, stats, rlhf, constitutional
+        case consciousness, stats, rlhf
         case consciousnessLoop = "consciousness_loop"
-        case metaAwareness = "meta_awareness"
         case growthTrends = "growth_trends"
         case recentEmotions = "recent_emotions"
+        case aiMetrics = "ai_metrics"
+    }
+}
+
+// MARK: - AI Quality Metrics
+
+struct AIMetricsData: Codable {
+    let satisfaction: SatisfactionData
+    let engagement: EngagementData
+    let correctionRate: CorrectionRateData
+    let memoryAccuracy: MemoryAccuracyData
+
+    enum CodingKeys: String, CodingKey {
+        case satisfaction, engagement
+        case correctionRate = "correction_rate"
+        case memoryAccuracy = "memory_accuracy"
+    }
+}
+
+struct SatisfactionData: Codable {
+    let rate: Double
+    let praise: Int
+    let corrections: Int
+    let total: Int
+}
+
+struct EngagementData: Codable {
+    let rate: Double
+    let engaged: Int
+    let total: Int
+}
+
+struct CorrectionRateData: Codable {
+    let rate: Double
+    let corrections: Int
+    let total: Int
+}
+
+struct MemoryAccuracyData: Codable {
+    let accuracy: Double
+    let totalRefs: Int
+    let corrected: Int
+
+    enum CodingKeys: String, CodingKey {
+        case accuracy
+        case totalRefs = "total_refs"
+        case corrected
     }
 }
 
@@ -60,19 +105,17 @@ struct ConsciousnessMetrics: Codable {
 
 struct OverviewStats: Codable {
     let totalConversations: Int
-    let totalEmotions: Int
-    let totalLearnings: Int
     let totalKnowledgeNodes: Int
     let conversationsToday: Int
-    let emotionsToday: Int
+    let activeDays30d: Int
+    let avgMsgsPerSession: Double
 
     enum CodingKeys: String, CodingKey {
         case totalConversations = "total_conversations"
-        case totalEmotions = "total_emotions"
-        case totalLearnings = "total_learnings"
         case totalKnowledgeNodes = "total_knowledge_nodes"
         case conversationsToday = "conversations_today"
-        case emotionsToday = "emotions_today"
+        case activeDays30d = "active_days_30d"
+        case avgMsgsPerSession = "avg_msgs_per_session"
     }
 }
 
@@ -110,24 +153,6 @@ struct TopicReward: Codable, Identifiable {
         case topic
         case avgReward = "avg_reward"
         case count
-    }
-}
-
-// MARK: - Constitutional AI
-
-struct ConstitutionalMetrics: Codable {
-    let principles: [ConstitutionalPrinciple]
-}
-
-struct ConstitutionalPrinciple: Codable, Identifiable {
-    var id: String { name }
-    let name: String
-    let weight: Double
-    let avgScore7d: Double
-
-    enum CodingKeys: String, CodingKey {
-        case name, weight
-        case avgScore7d = "avg_score_7d"
     }
 }
 
@@ -199,22 +224,6 @@ struct LearnMetrics: Codable {
         case cycles7d = "cycles_7d"
         case avgEvolutionScore = "avg_evolution_score"
         case latestScore = "latest_score"
-    }
-}
-
-// MARK: - Meta-Awareness
-
-struct MetaAwarenessMetrics: Codable {
-    let biasesDetected30d: Int
-    let anomaliesUnresolved: Int
-    let identityDriftScore: Double
-    let identityHealthy: Bool
-
-    enum CodingKeys: String, CodingKey {
-        case biasesDetected30d = "biases_detected_30d"
-        case anomaliesUnresolved = "anomalies_unresolved"
-        case identityDriftScore = "identity_drift_score"
-        case identityHealthy = "identity_healthy"
     }
 }
 

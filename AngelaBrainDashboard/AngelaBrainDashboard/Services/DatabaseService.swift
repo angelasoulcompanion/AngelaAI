@@ -420,6 +420,14 @@ class DatabaseService: ObservableObject {
         return response.map { ($0.fromNodeId, $0.toNodeId, $0.relationshipType, $0.strength) }
     }
 
+    func fetchConsciousnessNodeAnalysis() async throws -> ConsciousnessNodeAnalysis {
+        return try await get("/knowledge/consciousness-analysis")
+    }
+
+    func fetchConsciousnessGraph(limit: Int = 500) async throws -> GraphData {
+        return try await get("/knowledge/consciousness-graph?limit=\(limit)")
+    }
+
     func fetchKnowledgeStats() async -> (total: Int, categories: Int, avgUnderstanding: Double) {
         do {
             let response: KnowledgeStatsResponse = try await get("/knowledge/stats")
