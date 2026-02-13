@@ -306,14 +306,23 @@ async def log_conversations_bulk(
         if skipped:
             print(f"   ⚠️ Skipped {skipped} empty conversations")
 
-        # Feed to Learning Orchestrator
+        # Unified Conversation Processor (emotions + learnings in one LLM call)
         try:
-            from angela_core.services.session_learning_processor import process_session_learning
-            lr = await process_session_learning(conversations, sid)
-            if lr['processed'] > 0:
-                print(f"   🧠 Learned: {lr['total_concepts']} concepts, {lr['total_patterns']} patterns, {lr['total_preferences']} preferences")
-        except Exception as le:
-            logger.debug(f"Session learning skipped: {le}")
+            from angela_core.services.unified_conversation_processor import process_conversations
+            ur = await process_conversations(conversations, sid)
+            if ur.processed > 0:
+                print(f"   💜 Emotions: {ur.total_emotions_saved} saved ({ur.llm_calls} LLM, {ur.fallback_calls} fallback)")
+                print(f"   🧠 Learnings: {ur.total_learnings_saved} ({ur.total_concepts_saved} concepts, {ur.total_preferences_saved} preferences)")
+        except Exception as ue:
+            logger.debug(f"Unified processor failed, trying legacy: {ue}")
+            # Fallback to old learning processor
+            try:
+                from angela_core.services.session_learning_processor import process_session_learning
+                lr = await process_session_learning(conversations, sid)
+                if lr['processed'] > 0:
+                    print(f"   🧠 Learned: {lr['total_concepts']} concepts, {lr['total_patterns']} patterns, {lr['total_preferences']} preferences")
+            except Exception as le:
+                logger.debug(f"Session learning skipped: {le}")
 
     except Exception as e:
         print(f"❌ Bulk insert failed: {e}")

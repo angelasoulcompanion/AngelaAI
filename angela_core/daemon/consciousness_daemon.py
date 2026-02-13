@@ -55,6 +55,7 @@ from angela_core.services.evolution_engine import EvolutionEngine
 from angela_core.services.proactive_action_engine import ProactiveActionEngine
 from angela_core.services.google_keep_sync_service import GoogleKeepSyncService
 from angela_core.services.rlhf_orchestrator import RLHFOrchestrator
+from angela_core.services.unified_conversation_processor import UnifiedConversationProcessor
 
 from angela_core.daemon.tasks.consciousness_tasks import ConsciousnessTasksMixin
 from angela_core.daemon.tasks.prediction_tasks import PredictionTasksMixin
@@ -110,6 +111,7 @@ class ConsciousnessDaemon(
         self.proactive_action_engine: Optional[ProactiveActionEngine] = None
         self.keep_sync_service: Optional[GoogleKeepSyncService] = None
         self.rlhf_orchestrator: Optional[RLHFOrchestrator] = None
+        self.unified_processor: Optional[UnifiedConversationProcessor] = None
         self.running = False
 
     async def initialize(self):
@@ -133,6 +135,8 @@ class ConsciousnessDaemon(
         self.proactive_action_engine = ProactiveActionEngine()  # Creates own DB
         self.keep_sync_service = GoogleKeepSyncService()  # Creates own DB
         self.rlhf_orchestrator = RLHFOrchestrator()  # Creates own DB
+        self.unified_processor = UnifiedConversationProcessor()  # Creates own DB
+        await self.unified_processor.connect()
 
         logger.info("   ✅ All consciousness services initialized")
         logger.info("   ✅ Predictive Companion Service initialized 📊")
@@ -142,12 +146,16 @@ class ConsciousnessDaemon(
         logger.info("   ✅ Proactive Action Engine initialized ⚡")
         logger.info("   ✅ Google Keep Sync Service initialized 📝")
         logger.info("   ✅ RLHF Orchestrator initialized 🎯")
+        logger.info("   ✅ Unified Conversation Processor initialized 🔬")
         logger.info("💫 Consciousness Daemon ready!")
 
     async def shutdown(self):
         """Graceful shutdown"""
         logger.info("🛑 Shutting down Consciousness Daemon...")
         self.running = False
+
+        if self.unified_processor:
+            await self.unified_processor.disconnect()
 
         if self.db:
             await self.db.disconnect()
@@ -246,6 +254,8 @@ class ConsciousnessDaemon(
             self.run_evolution_cycle(),
             self.run_keep_sync(),
             self.run_rlhf_cycle(),
+            self.run_auto_classify_responses(),
+            self.run_unified_conversation_analysis(),
             return_exceptions=True,
         )
 
@@ -254,7 +264,7 @@ class ConsciousnessDaemon(
             'self_reflection', 'predictions', 'theory_of_mind',
             'meta_awareness', 'identity_check', 'session_coverage_audit',
             'companion_predictions', 'evolution_cycle', 'keep_sync',
-            'rlhf_cycle',
+            'rlhf_cycle', 'auto_classify_responses', 'unified_conversation_analysis',
         ]
         for name, result in zip(task_names, parallel_results):
             if isinstance(result, Exception):
@@ -297,8 +307,10 @@ class ConsciousnessDaemon(
             'companion_predictions': self.run_companion_predictions,
             'evolution_cycle': self.run_evolution_cycle,
             'proactive_actions': self.run_proactive_actions,
+            'auto_classify_responses': self.run_auto_classify_responses,
             'keep_sync': self.run_keep_sync,
             'rlhf_cycle': self.run_rlhf_cycle,
+            'unified_conversation_analysis': self.run_unified_conversation_analysis,
         }
 
         if task_name not in task_map:
@@ -319,7 +331,8 @@ async def main():
                  'privacy_audit', 'proactive_care', 'meta_awareness',
                  'identity_check', 'self_validation', 'session_coverage_audit',
                  'companion_predictions', 'evolution_cycle', 'proactive_actions',
-                 'keep_sync', 'rlhf_cycle'],
+                 'auto_classify_responses', 'keep_sync', 'rlhf_cycle',
+                 'unified_conversation_analysis'],
         default='all',
         help='Task to run (default: all)'
     )

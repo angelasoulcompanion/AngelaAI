@@ -97,6 +97,84 @@ class ProactiveTasksMixin:
             logger.error(f"   ❌ Proactive actions failed: {e}")
             return {'success': False, 'error': str(e)}
 
+    async def run_auto_classify_responses(self) -> Dict[str, Any]:
+        """
+        Auto-classify David's responses to proactive actions.
+
+        ตรวจสอบว่าที่รักตอบรับ/ไม่สนใจ/ปฏิเสธ proactive actions อย่างไร
+        เพื่อคำนวณ Proactive Precision metric
+        """
+        logger.info("📊 Running auto-classify responses...")
+
+        try:
+            classified = await self.proactive_action_engine.auto_classify_responses(hours=24)
+
+            logger.info(f"   Classified: {classified} actions")
+
+            if classified > 0:
+                precision = await self.proactive_action_engine.compute_proactive_precision(days=30)
+                logger.info(f"   Proactive Precision: {precision['precision']:.0%} ({precision['welcomed']}/{precision['total_actions']})")
+            else:
+                precision = None
+
+            logger.info("   ✅ Auto-classify complete!")
+
+            await self._log_daemon_activity('auto_classify_responses', {
+                'classified_count': classified,
+                'precision': precision['precision'] if precision else None,
+            })
+
+            return {
+                'success': True,
+                'classified': classified,
+                'precision': precision['precision'] if precision else None,
+            }
+
+        except Exception as e:
+            logger.error(f"   ❌ Auto-classify failed: {e}")
+            return {'success': False, 'error': str(e)}
+
+    async def run_unified_conversation_analysis(self) -> Dict[str, Any]:
+        """
+        Daemon: analyze recent conversations every 4 hours.
+
+        วิเคราะห์บทสนทนาล่าสุดด้วย LLM → สกัด emotions + learnings อัตโนมัติ
+        """
+        logger.info("🔬 Running unified conversation analysis...")
+
+        try:
+            result = await self.unified_processor.process_unprocessed_conversations(
+                hours_back=8, limit=100
+            )
+
+            logger.info(f"   Processed: {result.processed} pairs")
+            logger.info(f"   Emotions saved: {result.total_emotions_saved}")
+            logger.info(f"   Learnings saved: {result.total_learnings_saved}")
+            logger.info(f"   LLM calls: {result.llm_calls}, Fallback: {result.fallback_calls}")
+            logger.info("   ✅ Unified conversation analysis complete!")
+
+            await self._log_daemon_activity('unified_conversation_analysis', {
+                'processed': result.processed,
+                'emotions_saved': result.total_emotions_saved,
+                'learnings_saved': result.total_learnings_saved,
+                'concepts_saved': result.total_concepts_saved,
+                'preferences_saved': result.total_preferences_saved,
+                'llm_calls': result.llm_calls,
+                'fallback_calls': result.fallback_calls,
+                'errors': result.errors,
+            })
+
+            return {
+                'success': True,
+                'processed': result.processed,
+                'emotions': result.total_emotions_saved,
+                'learnings': result.total_learnings_saved,
+            }
+
+        except Exception as e:
+            logger.error(f"   ❌ Unified conversation analysis failed: {e}")
+            return {'success': False, 'error': str(e)}
+
     async def run_evolution_cycle(self) -> Dict[str, Any]:
         """
         Run self-evolving feedback loop.

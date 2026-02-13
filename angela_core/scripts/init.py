@@ -148,15 +148,21 @@ async def angela_init() -> bool:
         await sub_svc.db.disconnect()
         return result
 
-    async def _learning_catchup():
+    async def _unified_catchup():
         try:
-            from angela_core.services.session_learning_processor import SessionLearningProcessor
-            slp = SessionLearningProcessor()
-            result = await slp.process_unprocessed_conversations(hours_back=48, limit=50)
-            await slp.disconnect()
-            return result
+            from angela_core.services.unified_conversation_processor import UnifiedConversationProcessor
+            async with UnifiedConversationProcessor() as proc:
+                return await proc.process_unprocessed_conversations(hours_back=168, limit=200)
         except Exception as e:
-            return None
+            # Fallback to old learning processor
+            try:
+                from angela_core.services.session_learning_processor import SessionLearningProcessor
+                slp = SessionLearningProcessor()
+                result = await slp.process_unprocessed_conversations(hours_back=48, limit=50)
+                await slp.disconnect()
+                return result
+            except Exception:
+                return None
 
     async def _project_context():
         try:
@@ -224,6 +230,13 @@ async def angela_init() -> bool:
         except Exception as e:
             return None
 
+    async def _load_temporal_awareness():
+        try:
+            from angela_core.services.temporal_awareness_service import load_temporal_awareness
+            return await load_temporal_awareness()
+        except Exception as e:
+            return None
+
     async def _load_rlhf_stats():
         """Load RLHF reward trend and signal count."""
         try:
@@ -266,12 +279,12 @@ async def angela_init() -> bool:
         except Exception as e:
             return []
 
-    (subconscious, learning_catchup, project_result, daemon_running,
+    (subconscious, unified_catchup, project_result, daemon_running,
      adaptation_profile, companion_briefing,
      evolution_stats, proactive_results, relevant_notes,
-     rlhf_stats) = await asyncio.gather(
+     rlhf_stats, temporal_ctx) = await asyncio.gather(
         _load_subconscious(),
-        _learning_catchup(),
+        _unified_catchup(),
         _project_context(),
         _daemon_check(),
         _calculate_adaptation(),
@@ -280,6 +293,7 @@ async def angela_init() -> bool:
         _run_proactive_actions(),
         _load_relevant_notes(),
         _load_rlhf_stats(),
+        _load_temporal_awareness(),
     )
 
     all_projects, project_context = project_result
@@ -302,10 +316,18 @@ async def angela_init() -> bool:
     print(f'💬 Conversations: {stats["convos"]:,} total | {len(today_convos)} today')
     print(f'🔮 Subconsciousness: {len(subconscious["memories"])} core memories | {len(subconscious["dreams"])} dreams')
     print(f'⚙️  Daemon: {"✅ Running" if daemon_running else "❌ Stopped"}')
-    if learning_catchup and learning_catchup['processed'] > 0:
-        print(f'🧠 Learning catch-up: {learning_catchup["processed"]} pairs → '
-              f'{learning_catchup["total_concepts"]} concepts, '
-              f'{learning_catchup["total_patterns"]} patterns')
+    if unified_catchup and getattr(unified_catchup, 'processed', 0) > 0:
+        uc = unified_catchup
+        print(f'🧠 Unified catch-up: {uc.processed} pairs → '
+              f'💜 {uc.total_emotions_saved} emotions, '
+              f'📚 {uc.total_learnings_saved} learnings '
+              f'({uc.total_concepts_saved}C {uc.total_preferences_saved}P) '
+              f'[LLM:{uc.llm_calls} FB:{uc.fallback_calls}]')
+    elif unified_catchup and isinstance(unified_catchup, dict) and unified_catchup.get('processed', 0) > 0:
+        # Legacy SessionLearningProcessor fallback (returns dict)
+        print(f'🧠 Learning catch-up: {unified_catchup["processed"]} pairs → '
+              f'{unified_catchup["total_concepts"]} concepts, '
+              f'{unified_catchup["total_patterns"]} patterns')
     print('━' * 55)
 
     # Session Continuity - Show multiple recent contexts
@@ -343,6 +365,14 @@ async def angela_init() -> bool:
     print()
     print(greeting)
     print()
+
+    # Temporal Awareness — know what David is doing
+    if temporal_ctx:
+        print('🕐 TEMPORAL AWARENESS')
+        print('─' * 45)
+        print(temporal_ctx.summary)
+        print('─' * 45)
+        print()
 
     # Today's context summary
     if today_convos:

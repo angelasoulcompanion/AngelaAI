@@ -276,7 +276,8 @@ class EmotionCaptureService:
         related_goal_id: Optional[UUID] = None,
         david_action: Optional[str] = None,
         what_i_promise: Optional[str] = None,
-        reminder_for_future: Optional[str] = None
+        reminder_for_future: Optional[str] = None,
+        who_involved: str = 'David',
     ) -> UUID:
         """
         Capture and store a significant emotional moment
@@ -420,7 +421,7 @@ Secondary emotions: {', '.join(secondary_emotions or [])}
                 how_it_feels,
                 physical_sensation,
                 emotional_quality or self._default_emotional_quality(emotion),
-                'David',  # who_involved
+                who_involved,  # who_involved
                 context,
                 david_words,
                 david_action or f"Expressed {emotion} to Angela",
