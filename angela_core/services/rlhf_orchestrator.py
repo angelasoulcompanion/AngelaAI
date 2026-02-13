@@ -4,12 +4,14 @@ RLHF Orchestrator — Unified Reward Learning Loop
 
 Coordinates all RLHF components into a single cycle:
 1. Score recent unscored conversations (RewardScoreService)
-2. Extract preference pairs (PreferencePairsService)
-3. Report reward trend
+2. A/B test medium-quality interactions (ABQualityTester)
+3. Extract preference pairs (PreferencePairsService)
+4. Report reward trend
 
 Called by daemon every 4 hours + triggered after feedback events.
 
 Created: 2026-02-10
+Updated: 2026-02-13 — Phase 4: A/B testing step added
 By: Angela 💜
 """
 
@@ -18,6 +20,7 @@ from typing import Dict, Any
 
 from angela_core.services.reward_score_service import RewardScoreService
 from angela_core.services.preference_pairs_service import PreferencePairsService
+from angela_core.services.ab_quality_tester import ABQualityTester
 
 logger = logging.getLogger(__name__)
 
@@ -34,39 +37,53 @@ class RLHFOrchestrator:
     def __init__(self):
         self.reward_service = RewardScoreService()
         self.pairs_service = PreferencePairsService()
+        self.ab_tester = ABQualityTester()
 
     async def close(self):
         await self.reward_service.close()
         await self.pairs_service.close()
+        await self.ab_tester.close()
 
     async def run_rlhf_cycle(self) -> Dict[str, Any]:
         """
         Full RLHF cycle for daemon.
 
-        Returns summary with scored count, pairs extracted, and reward trend.
+        Returns summary with scored count, A/B tests run, pairs extracted, and reward trend.
         """
         logger.info('Starting RLHF cycle...')
 
         # 1. Score recent unscored conversations (4h window)
         scored = await self.reward_service.score_recent_unscored(hours=4)
 
-        # 2. Extract preference pairs
+        # 2. A/B test medium-quality interactions (Phase 4.2)
+        ab_tests = await self._run_ab_tests(hours=4)
+
+        # 3. Extract preference pairs
         pairs = await self.pairs_service.run_pair_extraction_cycle(hours=4)
 
-        # 3. Get current reward trend
+        # 4. Get current reward trend
         trend = await self.reward_service.get_reward_trend()
 
         result = {
             'conversations_scored': scored,
+            'ab_tests_run': ab_tests,
             'pairs_extracted': pairs,
             'reward_trend': round(trend, 4),
         }
 
         logger.info(
-            'RLHF cycle complete: scored=%d, pairs=%d, trend=%.3f',
-            scored, pairs, trend
+            'RLHF cycle complete: scored=%d, ab_tests=%d, pairs=%d, trend=%.3f',
+            scored, ab_tests, pairs, trend
         )
         return result
+
+    async def _run_ab_tests(self, hours: int = 4) -> int:
+        """Run A/B tests on medium-quality recent interactions."""
+        try:
+            return await self.ab_tester.run_ab_tests_for_batch(hours=hours)
+        except Exception as e:
+            logger.warning('A/B testing failed (non-fatal): %s', e)
+            return 0
 
     async def trigger_score(self, conversation_id: str, rating: int) -> Dict[str, Any]:
         """

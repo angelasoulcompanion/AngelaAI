@@ -3,11 +3,11 @@ Reward Score Service — RLHF Signal Collection
 ===============================================
 
 Scores every Angela response from 3 sources:
-  combined = explicit * 0.4 + implicit * 0.3 + self_eval * 0.3
+  combined = explicit * 0.4 + implicit * 0.4 + self_eval * 0.2
 
 Explicit: thumbs_up/down from conversation_feedback, or FeedbackClassifier on David's next message
 Implicit: David's follow-up behavior (question, silence, correction)
-Self-eval: Constitutional check score from ConstitutionalAngelaService
+Self-eval: LLM-as-Judge score (3 dimensions: helpfulness, relevance, emotional)
 
 Pattern: Standalone with own DB (like EvolutionEngine).
 
@@ -26,9 +26,11 @@ from angela_core.utils.timezone import now_bangkok
 logger = logging.getLogger(__name__)
 
 # Weights for combined reward
+# Self-eval now uses LLM-as-Judge with real variance (0.2-1.0)
+# Explicit has real signal when present → upweight to 0.4
 W_EXPLICIT = 0.4
-W_IMPLICIT = 0.3
-W_SELF_EVAL = 0.3
+W_IMPLICIT = 0.4
+W_SELF_EVAL = 0.2
 
 
 class RewardScoreService:
@@ -44,7 +46,7 @@ class RewardScoreService:
     def __init__(self):
         self.db: Optional[AngelaDatabase] = None
         self._classifier: Optional[FeedbackClassifier] = None
-        self._constitutional: Optional[Any] = None
+        self._judge: Optional[Any] = None
 
     async def _ensure_db(self):
         if self.db is None:
@@ -56,21 +58,19 @@ class RewardScoreService:
             self._classifier = FeedbackClassifier()
         return self._classifier
 
-    async def _ensure_constitutional(self):
-        if self._constitutional is None:
+    async def _ensure_judge(self):
+        if self._judge is None:
             try:
-                from angela_core.services.constitutional_angela_service import ConstitutionalAngelaService
-                self._constitutional = ConstitutionalAngelaService()
+                from angela_core.services.llm_judge_service import LLMJudgeService
+                self._judge = LLMJudgeService()
             except Exception as e:
-                logger.warning("Constitutional service unavailable: %s", e)
-        return self._constitutional
+                logger.warning("LLM Judge service unavailable: %s", e)
+        return self._judge
 
     async def close(self):
         if self.db:
             await self.db.disconnect()
             self.db = None
-        if self._constitutional and hasattr(self._constitutional, 'close'):
-            await self._constitutional.close()
 
     # =========================================================================
     # 1. SCORE INTERACTION
@@ -256,25 +256,25 @@ class RewardScoreService:
         ''', angela_at_naive, window_end)
 
         if not next_david or not next_david['message_text']:
-            return 0.0, 'silence'
+            return 0.1, 'silence'  # No response — consistent with implicit silence
 
         msg = next_david['message_text'].strip()
         if len(msg) < 3:
-            return 0.0, 'silence'
+            return 0.3, 'minimal'  # Short acknowledgment is mildly positive
 
         classifier = await self._ensure_classifier()
         result = await classifier.classify(msg)
 
-        if result.classification == 'positive' and result.confidence > 0.4:
+        if result.classification == 'positive' and result.confidence > 0.3:
             return 0.5, 'praise'
-        elif result.classification == 'negative' and result.confidence > 0.5:
+        elif result.classification == 'negative' and result.confidence > 0.4:
             return -0.5, 'correction'
         else:
             # Neutral — check if it's a follow-up question (engagement signal)
             question_markers = ['?', 'ทำไม', 'อย่างไร', 'ยังไง', 'how', 'why', 'what']
             if any(m in msg.lower() for m in question_markers):
                 return 0.2, 'follow_up'
-            return 0.0, 'neutral'
+            return 0.0, 'neutral'  # No clear signal — don't inflate
 
     # =========================================================================
     # PRIVATE: Implicit Score
@@ -284,8 +284,8 @@ class RewardScoreService:
         """
         Classify David's follow-up behavior within 30min window.
 
-        Positive: continued engagement, multiple messages
-        Negative: silence, topic switch
+        Scans ALL messages for correction/praise markers (not just first).
+        Correction takes priority over praise (honest measurement).
         """
         await self._ensure_db()
 
@@ -303,46 +303,83 @@ class RewardScoreService:
         ''', angela_at_naive, window_end)
 
         if not followups:
-            return 0.0, 'silence'
+            return 0.1, 'silence'
 
-        # Multiple follow-ups = engagement
+        # Scan ALL messages for correction and praise markers
+        correction_markers = [
+            'ไม่ใช่', 'ผิด', 'wrong', 'ไม่ถูก', 'ไม่ work', 'ไม่ได้',
+            'แก้ใหม่', 'ทำใหม่', 'ไม่ถูกต้อง', 'ลองใหม่',
+            'not working', 'broken', 'bug', 'error',
+        ]
+        praise_markers = [
+            'ขอบคุณ', 'เก่ง', 'ดีมาก', 'เยี่ยม', 'ถูกต้อง', 'สำเร็จ',
+            'ได้แล้ว', 'เจ๋ง', 'perfect', 'great', 'good job', 'nice',
+            'awesome', 'love it', 'works',
+        ]
+
+        correction_found = False
+        praise_found = False
+
+        for row in followups:
+            msg = (row['message_text'] or '').strip().lower()
+            if not msg:
+                continue
+
+            for marker in correction_markers:
+                if marker in msg:
+                    correction_found = True
+                    break
+
+            for marker in praise_markers:
+                if marker in msg:
+                    praise_found = True
+                    break
+
+        # Correction takes priority (honest measurement)
+        if correction_found:
+            return -0.5, 'correction'
+
+        if praise_found:
+            return 0.5, 'praise'
+
+        # No explicit markers — classify by engagement level
         msg_count = len(followups)
         if msg_count >= 3:
-            return 0.5, 'high_engagement'
+            return 0.4, 'high_engagement'
         elif msg_count >= 1:
-            # Check content of first follow-up
-            first_msg = (followups[0]['message_text'] or '').strip()
-
-            # Correction markers
-            correction_markers = ['ไม่ใช่', 'ผิด', 'wrong', 'ไม่ถูก', 'แก้', 'fix', 'ไม่ work']
-            if any(m in first_msg.lower() for m in correction_markers):
-                return -0.5, 'correction'
-
             return 0.2, 'continued'
 
         return 0.0, 'neutral'
 
     # =========================================================================
-    # PRIVATE: Self-Eval Score (Constitutional)
+    # PRIVATE: Self-Eval Score (LLM-as-Judge)
     # =========================================================================
 
     async def _compute_self_eval_score(
         self, angela_text: str, david_text: str, topic: Optional[str]
     ) -> tuple[Optional[float], Optional[list]]:
         """
-        Constitutional self-evaluation score.
+        LLM-as-Judge quality score.
 
-        Uses ConstitutionalAngelaService if available, falls back to 0.5.
+        1 Claude call → 3 dimensions (helpfulness, relevance, emotional).
+        Stores dimension scores as TEXT[]: ['helpfulness:4', 'relevance:5', 'emotional:3']
+        Same return type as old ConstitutionalAngelaService for backward compatibility.
         """
-        constitutional = await self._ensure_constitutional()
-        if not constitutional:
+        judge = await self._ensure_judge()
+        if not judge:
             return 0.5, []
 
         try:
-            result = await constitutional.evaluate_response(angela_text, david_text, topic)
-            return result.score, result.checked_principles
+            result = await judge.evaluate_response(angela_text, david_text, topic)
+            # Format dimension scores as TEXT[] for self_eval_principles column
+            dimensions_list = [
+                f'{dim}:{score}' for dim, score in result.dimension_scores.items()
+            ]
+            if result.reasoning:
+                dimensions_list.append(f'reasoning:{result.reasoning}')
+            return result.score, dimensions_list
         except Exception as e:
-            logger.warning('Constitutional check failed: %s', e)
+            logger.warning('LLM Judge check failed: %s', e)
             return 0.5, []
 
 
