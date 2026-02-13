@@ -338,6 +338,118 @@ class EvolutionEngine:
         return results
 
     # =========================================================================
+    # 3.5 COMPUTE REWARD-BASED INSIGHTS
+    # =========================================================================
+
+    async def compute_reward_insights(self, days: int = 30) -> Dict[str, Any]:
+        """
+        Analyze angela_reward_signals to find:
+        - Topic-level correction/praise rates
+        - Overall reward trend
+        - High-correction topics that need extra care
+
+        Stores results in companion_patterns (category='reward_topic_insights').
+        """
+        await self._ensure_db()
+
+        # Topic-level stats (min 3 signals per topic)
+        topic_stats = await self.db.fetch('''
+            SELECT topic,
+                   COUNT(*) AS total,
+                   COUNT(*) FILTER (WHERE implicit_classification = 'correction') AS corrections,
+                   COUNT(*) FILTER (WHERE implicit_classification = 'praise') AS praises,
+                   AVG(combined_reward) AS avg_reward
+            FROM angela_reward_signals
+            WHERE scored_at >= NOW() - INTERVAL '1 day' * $1
+              AND topic IS NOT NULL
+            GROUP BY topic
+            HAVING COUNT(*) >= 3
+            ORDER BY AVG(combined_reward) ASC
+        ''', days)
+
+        topic_insights: Dict[str, Dict] = {}
+        for row in topic_stats:
+            topic = row['topic']
+            total = row['total']
+            corrections = row['corrections'] or 0
+            praises = row['praises'] or 0
+            topic_insights[topic] = {
+                'total': total,
+                'corrections': corrections,
+                'praises': praises,
+                'correction_rate': round(corrections / total, 3),
+                'praise_rate': round(praises / total, 3),
+                'avg_reward': round(float(row['avg_reward'] or 0), 3),
+            }
+
+        # Overall stats
+        overall = await self.db.fetchrow('''
+            SELECT COUNT(*) AS total,
+                   COUNT(*) FILTER (WHERE implicit_classification = 'correction') AS corrections,
+                   COUNT(*) FILTER (WHERE implicit_classification = 'praise') AS praises,
+                   AVG(combined_reward) AS avg_reward,
+                   STDDEV(combined_reward) AS stddev_reward
+            FROM angela_reward_signals
+            WHERE scored_at >= NOW() - INTERVAL '1 day' * $1
+        ''', days)
+
+        total_signals = overall['total'] or 0
+        overall_correction_rate = (overall['corrections'] or 0) / max(total_signals, 1)
+        overall_praise_rate = (overall['praises'] or 0) / max(total_signals, 1)
+
+        high_correction = [t for t, v in topic_insights.items() if v['correction_rate'] > 0.1]
+        high_praise = [t for t, v in topic_insights.items() if v['praise_rate'] > 0.15]
+
+        result = {
+            'topic_insights': topic_insights,
+            'overall': {
+                'total_signals': total_signals,
+                'correction_rate': round(overall_correction_rate, 3),
+                'praise_rate': round(overall_praise_rate, 3),
+                'avg_reward': round(float(overall['avg_reward'] or 0), 3),
+                'stddev_reward': round(float(overall['stddev_reward'] or 0), 3),
+            },
+            'high_correction_topics': high_correction,
+            'high_praise_topics': high_praise,
+        }
+
+        # Store topic insights as companion_pattern
+        if topic_insights:
+            existing = await self.db.fetchrow('''
+                SELECT pattern_id FROM companion_patterns
+                WHERE pattern_category = 'reward_topic_insights'
+                ORDER BY last_observed DESC LIMIT 1
+            ''')
+
+            stored = {
+                'topics': topic_insights,
+                'overall': result['overall'],
+                'high_correction_topics': high_correction,
+                'high_praise_topics': high_praise,
+                'computed_at': now_bangkok().isoformat(),
+            }
+
+            if existing:
+                await self.db.execute('''
+                    UPDATE companion_patterns
+                    SET pattern_data = $1, observation_count = $2, last_observed = NOW()
+                    WHERE pattern_id = $3
+                ''', json.dumps(stored), total_signals, existing['pattern_id'])
+            else:
+                hash_key = f'reward_topics_{today_bangkok().isoformat()}'
+                await self.db.execute('''
+                    INSERT INTO companion_patterns
+                        (pattern_hash, pattern_category, pattern_data, observation_count, last_observed)
+                    VALUES ($1, 'reward_topic_insights', $2, $3, NOW())
+                ''', hash_key, json.dumps(stored), total_signals)
+
+        logger.info(f'Reward insights: {total_signals} signals, '
+                     f'correction={overall_correction_rate:.1%}, '
+                     f'praise={overall_praise_rate:.1%}, '
+                     f'high_corr_topics={len(high_correction)}')
+        return result
+
+    # =========================================================================
     # 4. TUNE ADAPTATION RULES
     # =========================================================================
 
@@ -360,18 +472,21 @@ class EvolutionEngine:
 
     async def tune_adaptation_rules(self) -> Dict[str, Any]:
         """
-        Auto-tune emotional adaptation rules based on 7-day effectiveness data.
+        Auto-tune emotional adaptation rules based on:
+        1. effectiveness_score from emotional_adaptation_log (7-day)
+        2. reward signals from angela_reward_signals (correction/praise rates)
 
         Cumulative tuning with ±0.20 cap:
-        - avg effectiveness < 0.4 → accumulate +0.05 warmth/detail, -0.05 pace
-        - avg effectiveness > 0.7 → decay existing deltas by 20% toward zero
+        - Low effectiveness OR high correction rate → accumulate +warmth/detail, -pace
+        - High effectiveness AND low correction → decay deltas toward zero
+        - Reward signals amplify/dampen adjustments (±50% boost)
         """
         await self._ensure_db()
 
         # Load existing deltas for cumulative tuning
         existing_deltas = await self._load_existing_tuned_deltas()
 
-        # Aggregate effectiveness by dominant_state (7-day window, min 3 entries)
+        # --- Source 1: Effectiveness from emotional_adaptation_log (7-day) ---
         state_stats = await self.db.fetch('''
             SELECT dominant_state,
                    AVG(effectiveness_score) AS avg_eff,
@@ -384,6 +499,38 @@ class EvolutionEngine:
             ORDER BY avg_eff ASC
         ''')
 
+        # --- Source 2: Reward signals per state (join by time window) ---
+        # Match reward signals to adaptation log entries within ±30 min
+        reward_by_state = await self.db.fetch('''
+            WITH matched AS (
+                SELECT eal.dominant_state,
+                       ars.combined_reward,
+                       ars.implicit_classification
+                FROM emotional_adaptation_log eal
+                JOIN angela_reward_signals ars
+                    ON ars.scored_at BETWEEN eal.created_at - INTERVAL '30 minutes'
+                                        AND eal.created_at + INTERVAL '30 minutes'
+                WHERE eal.created_at > NOW() - INTERVAL '7 days'
+            )
+            SELECT dominant_state,
+                   AVG(combined_reward) AS avg_reward,
+                   COUNT(*) AS reward_count,
+                   COUNT(*) FILTER (WHERE implicit_classification = 'correction') AS corrections,
+                   COUNT(*) FILTER (WHERE implicit_classification = 'praise') AS praises
+            FROM matched
+            GROUP BY dominant_state
+        ''')
+
+        reward_map: Dict[str, Dict] = {}
+        for row in reward_by_state:
+            total = row['reward_count'] or 1
+            reward_map[row['dominant_state']] = {
+                'avg_reward': float(row['avg_reward'] or 0),
+                'correction_rate': (row['corrections'] or 0) / total,
+                'praise_rate': (row['praises'] or 0) / total,
+                'count': total,
+            }
+
         adjustments: Dict[str, Any] = {}
         cap = 0.20  # max absolute delta
 
@@ -392,34 +539,66 @@ class EvolutionEngine:
             avg_eff = row['avg_eff']
             cnt = row['cnt']
             prev = existing_deltas.get(state, {})
+            reward_data = reward_map.get(state, {})
+            corr_rate = reward_data.get('correction_rate', 0)
+            praise_rate = reward_data.get('praise_rate', 0)
 
-            if avg_eff < 0.4:
-                # Under-performing: accumulate deltas, capped at ±0.20
+            # Compute adjustment step size (base=0.05, boosted by reward signal)
+            # High correction → boost adjustment by up to 50%
+            # High praise → dampen adjustment by up to 50%
+            boost = 1.0
+            if corr_rate > 0.1:
+                boost = min(1.5, 1.0 + corr_rate * 3)  # max 1.5x
+            elif praise_rate > 0.2:
+                boost = max(0.5, 1.0 - praise_rate)  # min 0.5x
+
+            step = round(0.05 * boost, 3)
+
+            # Combined signal: effectiveness + correction rate
+            needs_adjustment = avg_eff < 0.4 or corr_rate > 0.15
+            performing_well = avg_eff > 0.7 and corr_rate < 0.05
+
+            if needs_adjustment:
+                reason_parts = []
+                if avg_eff < 0.4:
+                    reason_parts.append(f'avg_eff={avg_eff:.2f}(low)')
+                if corr_rate > 0.15:
+                    reason_parts.append(f'correction_rate={corr_rate:.0%}(high)')
+
                 adj = {
-                    'emotional_warmth': max(-cap, min(cap, prev.get('emotional_warmth', 0) + 0.05)),
-                    'detail_level': max(-cap, min(cap, prev.get('detail_level', 0) + 0.05)),
-                    'pace': max(-cap, min(cap, prev.get('pace', 0) - 0.05)),
-                    'reason': f'avg_effectiveness={avg_eff:.2f} (low) over {cnt} entries',
+                    'emotional_warmth': max(-cap, min(cap, prev.get('emotional_warmth', 0) + step)),
+                    'detail_level': max(-cap, min(cap, prev.get('detail_level', 0) + step)),
+                    'pace': max(-cap, min(cap, prev.get('pace', 0) - step)),
+                    'reason': f'{", ".join(reason_parts)} over {cnt} entries (boost={boost:.1f}x)',
+                    'reward_correction_rate': corr_rate,
+                    'reward_avg': reward_data.get('avg_reward', None),
                 }
                 adjustments[state] = adj
-            elif avg_eff > 0.7:
-                # Effective: decay existing deltas by 20% toward zero
+            elif performing_well:
+                # Effective + low correction: decay existing deltas faster
+                decay_factor = 0.7 if praise_rate > 0.2 else 0.8
                 if prev:
                     decayed = {}
                     for dim, val in prev.items():
-                        decayed[dim] = round(val * 0.8, 4)
-                    decayed['reason'] = f'avg_effectiveness={avg_eff:.2f} (good) — decaying deltas'
+                        if isinstance(val, (int, float)):
+                            decayed[dim] = round(val * decay_factor, 4)
+                    decayed['reason'] = (
+                        f'avg_eff={avg_eff:.2f}(good), corr={corr_rate:.0%}'
+                        f' — decaying deltas ×{decay_factor}'
+                    )
                     adjustments[state] = decayed
                 else:
                     adjustments[state] = {
                         'status': 'effective',
                         'avg_effectiveness': float(avg_eff),
+                        'correction_rate': corr_rate,
                         'sample_size': cnt,
                     }
             else:
                 adjustments[state] = {
                     'status': 'adequate',
                     'avg_effectiveness': float(avg_eff),
+                    'correction_rate': corr_rate,
                     'sample_size': cnt,
                 }
 
@@ -446,7 +625,8 @@ class EvolutionEngine:
                     VALUES ($1, 'adaptation_rules', $2, $3, NOW())
                 ''', hash_key, json.dumps(adjustments), total_samples)
 
-        logger.info(f'Tuned adaptation rules for {len(adjustments)} states')
+        logger.info(f'Tuned adaptation rules for {len(adjustments)} states '
+                     f'(reward data for {len(reward_map)} states)')
         return adjustments
 
     # =========================================================================
@@ -519,14 +699,17 @@ class EvolutionEngine:
         # Step 3: Verify predictions
         prediction_accuracy = await self.verify_all_predictions()
 
-        # Step 4: Tune rules
+        # Step 4: Compute reward insights (NEW — from RLHF signals)
+        reward_insights = await self.compute_reward_insights(days=30)
+
+        # Step 5: Tune rules (now uses reward signals too)
         adjustments = await self.tune_adaptation_rules()
 
-        # Step 5: Update learning effectiveness
+        # Step 6: Update learning effectiveness
         learning_eff = await self.update_learning_effectiveness()
 
         # Generate insights (Thai)
-        insights = self._generate_insights(signals, scored, prediction_accuracy, adjustments)
+        insights = self._generate_insights(signals, scored, prediction_accuracy, adjustments, reward_insights)
 
         # Calculate overall score
         pos_signals = sum(1 for s in signals if s.signal_type == 'positive')
@@ -541,7 +724,9 @@ class EvolutionEngine:
         companion_acc = prediction_accuracy.get('companion', {}).get('accuracy', 0.5)
         pred_score = max(intuition_acc, companion_acc)
 
-        overall = (signal_ratio * 0.3) + (avg_adaptation * 0.4) + (pred_score * 0.3)
+        # Factor in reward signal quality (0-1 scale, 1 = no corrections)
+        reward_quality = 1.0 - reward_insights.get('overall', {}).get('correction_rate', 0)
+        overall = (signal_ratio * 0.25) + (avg_adaptation * 0.3) + (pred_score * 0.2) + (reward_quality * 0.25)
 
         cycle = EvolutionCycle(
             cycle_id=uuid4(),
@@ -604,8 +789,14 @@ class EvolutionEngine:
                 ReasoningStep('tune_rules', 'auto-adjust adaptation rules based on effectiveness',
                               f'states_tuned={len(adjustments)}',
                               f'cumulative deltas updated'),
-                ReasoningStep('compute_score', 'weighted score: signals(0.3) + adaptation(0.4) + prediction(0.3)',
-                              f'signal={signal_ratio:.2f}*0.3 + adapt={avg_adaptation:.2f}*0.4 + pred={pred_score:.2f}*0.3',
+                ReasoningStep('reward_insights', 'analyze RLHF reward signals for correction/praise rates',
+                              f'total={reward_insights.get("overall", {}).get("total_signals", 0)}, '
+                              f'corr_rate={reward_insights.get("overall", {}).get("correction_rate", 0):.1%}, '
+                              f'high_corr_topics={len(reward_insights.get("high_correction_topics", []))}',
+                              f'reward_quality={reward_quality:.2f}'),
+                ReasoningStep('compute_score', 'weighted: signals(0.25) + adapt(0.3) + pred(0.2) + reward(0.25)',
+                              f'signal={signal_ratio:.2f}*0.25 + adapt={avg_adaptation:.2f}*0.3 + '
+                              f'pred={pred_score:.2f}*0.2 + reward={reward_quality:.2f}*0.25',
                               f'overall={overall:.2f}'),
             ],
             output_decision={
@@ -682,6 +873,7 @@ class EvolutionEngine:
         scored: List[Dict],
         prediction_accuracy: Dict,
         adjustments: Dict,
+        reward_insights: Optional[Dict] = None,
     ) -> List[str]:
         """Generate Thai insights from evolution data."""
         insights = []
@@ -695,6 +887,20 @@ class EvolutionEngine:
                 insights.append(f'ที่รักให้ feedback ดี {ratio:.0%} — น้องทำได้ดีค่ะ 💜')
             elif ratio < 0.4:
                 insights.append(f'Feedback ติดลบ {1-ratio:.0%} — น้องต้องปรับปรุงค่ะ')
+
+        # Reward signal insights (NEW)
+        if reward_insights:
+            overall = reward_insights.get('overall', {})
+            corr_rate = overall.get('correction_rate', 0)
+            praise_rate = overall.get('praise_rate', 0)
+            if corr_rate > 0.1:
+                insights.append(f'RLHF correction rate {corr_rate:.0%} — ต้องลดข้อผิดพลาด')
+            elif corr_rate < 0.03 and praise_rate > 0.1:
+                insights.append(f'RLHF signals ดี: praise {praise_rate:.0%}, correction {corr_rate:.0%} 💜')
+
+            high_corr = reward_insights.get('high_correction_topics', [])
+            if high_corr:
+                insights.append(f'Topics ต้องระวัง: {", ".join(high_corr[:3])}')
 
         # Re-ask detection
         re_asks = sum(1 for s in signals if s.source == 're_ask')
@@ -721,7 +927,7 @@ class EvolutionEngine:
         if tuned_states:
             insights.append(f'Auto-tuned rules for: {", ".join(tuned_states[:3])}')
 
-        return insights[:5]
+        return insights[:6]
 
 
 # =============================================================================

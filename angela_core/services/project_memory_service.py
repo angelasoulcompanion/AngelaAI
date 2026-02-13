@@ -53,8 +53,7 @@ class ProjectMemoryService(BaseDBService):
     def __init__(self, db: AngelaDatabase = None):
         """Initialize with optional database connection."""
         if db is None:
-            local_url = "postgresql://postgres@localhost:5432/angela"
-            db = AngelaDatabase(connection_url=local_url)
+            db = AngelaDatabase()  # Uses Neon Cloud (config.DATABASE_URL)
         super().__init__(db)
 
     async def _ensure_connected(self):

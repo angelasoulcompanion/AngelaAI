@@ -309,6 +309,83 @@ struct KnowledgeNode: Identifiable, Codable {
     }
 }
 
+// MARK: - Consciousness Node Analysis
+
+struct ConsciousnessNodeAnalysis: Codable {
+    let dimensions: [ConsciousnessDimension]
+    let understandingDistribution: [UnderstandingLevel]
+    let topNodes: [TopReferencedNode]
+    let growth: [NodeGrowthPoint]
+    let summary: NodeAnalysisSummary
+
+    enum CodingKeys: String, CodingKey {
+        case dimensions
+        case understandingDistribution = "understanding_distribution"
+        case topNodes = "top_nodes"
+        case growth, summary
+    }
+}
+
+struct ConsciousnessDimension: Identifiable, Codable {
+    var id: String { name }
+    let name: String
+    let nodeCount: Int
+    let avgUnderstanding: Double
+    let totalReferences: Int
+    let icon: String
+    let color: String
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case nodeCount = "node_count"
+        case avgUnderstanding = "avg_understanding"
+        case totalReferences = "total_references"
+        case icon, color
+    }
+}
+
+struct UnderstandingLevel: Identifiable, Codable {
+    var id: String { range }
+    let range: String
+    let count: Int
+}
+
+struct TopReferencedNode: Identifiable, Codable {
+    let id: String
+    let name: String
+    let category: String
+    let understandingLevel: Double
+    let timesReferenced: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, category
+        case understandingLevel = "understanding_level"
+        case timesReferenced = "times_referenced"
+    }
+}
+
+struct NodeGrowthPoint: Identifiable, Codable {
+    var id: String { date }
+    let date: String
+    let count: Int
+}
+
+struct NodeAnalysisSummary: Codable {
+    let totalNodes: Int
+    let totalCategories: Int
+    let avgUnderstanding: Double
+    let nodesLast7d: Int
+    let nodesLast30d: Int
+
+    enum CodingKeys: String, CodingKey {
+        case totalNodes = "total_nodes"
+        case totalCategories = "total_categories"
+        case avgUnderstanding = "avg_understanding"
+        case nodesLast7d = "nodes_last_7d"
+        case nodesLast30d = "nodes_last_30d"
+    }
+}
+
 // MARK: - Learning Systems
 
 struct SubconsciousPattern: Identifiable, Codable {

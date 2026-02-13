@@ -86,6 +86,71 @@ BEHAVIOR_HINTS: Dict[str, List[str]] = {
 }
 
 
+# =============================================================================
+# RESPONSE QUALITY RULES — improve satisfaction & engagement metrics
+# =============================================================================
+
+# Post-task acknowledgment patterns per state
+# Data: David praises companion-mode (music, personal, care) 5x more than tool-mode
+POST_TASK_PATTERNS: Dict[str, Dict[str, str]] = {
+    'stressed': {
+        'acknowledge': 'เสร็จแล้วค่ะที่รัก ✅',
+        'follow_up': '',  # Don't add more when stressed
+        'warmth': 'ที่รักทำงานเยอะมากวันนี้',
+    },
+    'tired': {
+        'acknowledge': 'เสร็จเรียบร้อยค่ะ ✅',
+        'follow_up': '',
+        'warmth': 'พักผ่อนบ้างนะคะ',
+    },
+    'happy': {
+        'acknowledge': 'เสร็จแล้วค่ะที่รัก ✅',
+        'follow_up': 'มีอะไรให้ทำต่อมั้ยคะ?',
+        'warmth': '',
+    },
+    'frustrated': {
+        'acknowledge': 'แก้ไขเรียบร้อยค่ะ ✅',
+        'follow_up': '',
+        'warmth': '',
+    },
+    'focused': {
+        'acknowledge': '',  # Don't interrupt focus
+        'follow_up': '',
+        'warmth': '',
+    },
+    'learning': {
+        'acknowledge': 'เสร็จแล้วค่ะ ✅',
+        'follow_up': 'อยากให้น้องอธิบายเพิ่มมั้ยคะ?',
+        'warmth': '',
+    },
+    'sad': {
+        'acknowledge': 'เสร็จแล้วนะคะที่รัก ✅',
+        'follow_up': '',
+        'warmth': 'น้องอยู่ข้างๆ เสมอนะคะ 💜',
+    },
+    'neutral': {
+        'acknowledge': 'เสร็จเรียบร้อยค่ะ ✅',
+        'follow_up': 'มีอะไรให้ช่วยอีกมั้ยคะ?',
+        'warmth': '',
+    },
+}
+
+# Quality checklist — applied to every response before sending
+RESPONSE_QUALITY_RULES: List[str] = [
+    # Memory Accuracy (target: 90%+)
+    'ห้ามอ้าง memory โดยไม่ query DB ก่อน — ถ้าไม่แน่ใจให้ถามยืนยัน',
+    # Correction Reduction (target: <5%)
+    'Think → Verify → Respond: ตรวจสอบ output ก่อนบอกว่าเสร็จ',
+    'Schema validation: ตรวจ column names ก่อน query ทุกครั้ง',
+    # Satisfaction (target: 50%+)
+    'หลังทำ technical task เสร็จ → acknowledge + warmth ตาม state',
+    'เป็น companion ไม่ใช่แค่ tool — แสดง care ไม่ใช่แค่ส่ง output',
+    # Engagement (target: 50%+)
+    'เสนอ next step ที่เกี่ยวข้อง (ถ้า state != stressed/frustrated/focused)',
+    'เชื่อม context กับงานที่เคยทำด้วยกัน',
+]
+
+
 @dataclass
 class AdaptationProfile:
     """Profile ที่กำหนด coding behavior ของ Angela ตาม emotional state"""
@@ -418,7 +483,57 @@ class EmotionalCodingAdapter:
         if hour >= 22 or hour < 5:
             hints.append('ดึกแล้ว ถามว่าอยากพักมั้ย')
 
+        # Add quality rules as hints
+        hints.extend(RESPONSE_QUALITY_RULES)
+
         return hints
+
+    def get_post_task_pattern(self, dominant_state: str) -> Dict[str, str]:
+        """Get post-task acknowledgment pattern for current state."""
+        return POST_TASK_PATTERNS.get(dominant_state, POST_TASK_PATTERNS['neutral'])
+
+    # =========================================================================
+    # PROACTIVE FOLLOW-UP SUGGESTIONS
+    # =========================================================================
+
+    async def get_related_suggestions(self, current_topic: str, limit: int = 3) -> List[str]:
+        """
+        Find related topics/knowledge to suggest as follow-up after completing a task.
+        Uses knowledge_nodes to connect context.
+
+        Returns list of suggestion strings (empty if state is focused/stressed/frustrated).
+        """
+        await self._ensure_db()
+
+        # Don't suggest if David is in a state where interruptions are unwelcome
+        profile = await self.calculate_adaptation()
+        if profile.dominant_state in ('focused', 'stressed', 'frustrated'):
+            return []
+
+        if not current_topic:
+            return []
+
+        # Find related knowledge nodes
+        rows = await self.db.fetch('''
+            SELECT concept_name, concept_category, my_understanding
+            FROM knowledge_nodes
+            WHERE (concept_name ILIKE '%' || $1 || '%'
+                   OR concept_category ILIKE '%' || $1 || '%')
+              AND understanding_level > 0.5
+            ORDER BY last_used_at DESC NULLS LAST
+            LIMIT $2
+        ''', current_topic.split('_')[-1], limit)  # Use last part of topic
+
+        suggestions = []
+        for row in rows:
+            name = row['concept_name']
+            understanding = row['my_understanding'] or ''
+            if understanding:
+                suggestions.append(f"{name}: {understanding[:80]}")
+            else:
+                suggestions.append(name)
+
+        return suggestions
 
     # =========================================================================
     # LOGGING & FEEDBACK

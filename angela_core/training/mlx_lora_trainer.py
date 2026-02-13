@@ -233,7 +233,9 @@ lora_parameters:
             # - --fine-tune-type lora or qlora
             # - --grad-checkpoint to reduce memory usage
             # - --max-seq-length to cap sequence length
-            fine_tune_type = "qlora" if self.config.use_qlora else "lora"
+            # mlx_lm supports: lora, dora, full
+            # For QLoRA, use a 4-bit quantized model + lora fine-tune type
+            fine_tune_type = "lora"
 
             cmd = [
                 sys.executable, "-m", "mlx_lm", "lora",
@@ -256,7 +258,7 @@ lora_parameters:
 
             # Gradient accumulation for larger effective batch size
             if self.config.grad_accumulation > 1:
-                cmd.extend(["--grad-accumulation", str(self.config.grad_accumulation)])
+                cmd.extend(["--grad-accumulation-steps", str(self.config.grad_accumulation)])
 
             print(f"🚀 Starting training...")
             print(f"   Command: {' '.join(cmd)}")

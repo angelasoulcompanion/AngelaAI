@@ -41,6 +41,51 @@ private enum DT {
     static let cardRadius: CGFloat = 16
 }
 
+// MARK: - Industry Benchmarks (Static)
+
+private enum Benchmark {
+    // AI Quality Metrics — industry averages
+    static let satisfaction = 0.75       // 75% CSAT (industry avg chatbot)
+    static let engagement = 0.50         // 50% (industry avg)
+    static let correctionRate = 0.05     // <5% target (best-in-class)
+    static let memoryAccuracy = 0.90     // 90% faithfulness (high-quality RAG)
+
+    // LLM-as-Judge dimensions (1-5 scale)
+    static let helpfulness: Double = 4.0 // "good" threshold
+    static let relevance: Double = 4.0   // "good" threshold
+    static let emotional: Double = 3.5   // no strict benchmark (Angela-specific)
+
+    /// Grade: A (>=90% of benchmark), B (>=70%), C (>=50%), D (<50%)
+    static func grade(value: Double, benchmark: Double, inverted: Bool = false) -> (letter: String, color: Color) {
+        let ratio = inverted ? (benchmark / max(value, 0.001)) : (value / max(benchmark, 0.001))
+        if ratio >= 0.90 { return ("A", DT.emerald) }
+        if ratio >= 0.70 { return ("B", DT.blue) }
+        if ratio >= 0.50 { return ("C", DT.gold) }
+        return ("D", DT.rose)
+    }
+
+    /// Grade for correction rate (lower is better)
+    static func correctionGrade(_ rate: Double) -> (letter: String, color: Color) {
+        if rate <= 0.05 { return ("A", DT.emerald) }
+        if rate <= 0.10 { return ("B", DT.blue) }
+        if rate <= 0.15 { return ("C", DT.gold) }
+        return ("D", DT.rose)
+    }
+
+    /// Overall grade from 4 individual grades
+    static func overallGrade(sat: Double, eng: Double, corr: Double, mem: Double) -> (letter: String, color: Color) {
+        let satScore = sat / satisfaction
+        let engScore = eng / engagement
+        let corrScore = correctionRate / max(corr, 0.001)  // inverted
+        let memScore = mem / memoryAccuracy
+        let avg = (satScore + engScore + corrScore + memScore) / 4.0
+        if avg >= 0.90 { return ("A", DT.emerald) }
+        if avg >= 0.70 { return ("B", DT.blue) }
+        if avg >= 0.50 { return ("C", DT.gold) }
+        return ("D", DT.rose)
+    }
+}
+
 // MARK: - Animated Number
 
 private struct CountingText: View, Animatable {
@@ -160,6 +205,11 @@ struct OverviewView: View {
                 aiMetricsCard
                     .modifier(HoverCardModifier(radius: DT.cardRadius))
                     .modifier(entranceModifier(delay: 0.12))
+
+                // Response Quality Analysis (Judge Dimensions + A/B Tests)
+                responseQualityCard
+                    .modifier(HoverCardModifier(radius: DT.cardRadius))
+                    .modifier(entranceModifier(delay: 0.14))
 
                 // Growth Trends + Knowledge Dimensions
                 HStack(spacing: 20) {
@@ -662,105 +712,223 @@ struct OverviewView: View {
 
     private var aiMetricsCard: some View {
         let ai = viewModel.metrics?.aiMetrics
+        let trend = viewModel.metrics?.aiMetricsTrend ?? []
         return VStack(alignment: .leading, spacing: 16) {
-            // Header
+            // Header with overall grade
             HStack(spacing: 8) {
                 Circle().fill(DT.blue).frame(width: 6, height: 6)
                 Text("AI QUALITY METRICS")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(DT.textTertiary)
                     .tracking(1)
+
+                // Overall grade badge
+                if let ai = ai {
+                    let og = Benchmark.overallGrade(
+                        sat: ai.satisfaction.rate,
+                        eng: ai.engagement.rate,
+                        corr: ai.correctionRate.rate,
+                        mem: ai.memoryAccuracy.accuracy
+                    )
+                    HStack(spacing: 4) {
+                        Text("Overall:")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(DT.textMuted)
+                        Text(og.letter)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(width: 20, height: 20)
+                            .background(og.color)
+                            .clipShape(RoundedRectangle(cornerRadius: 5))
+                    }
+                }
+
                 Spacer()
-                Text("30 days")
+                Text("30d \u{00B7} vs Industry")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(DT.textMuted)
             }
 
-            // 4-column metrics
+            // 4-column metrics with benchmarks
             HStack(spacing: 0) {
-                // Satisfaction
-                qualityMetricColumn(
-                    title: "Satisfaction",
-                    value: ai?.satisfaction.rate,
-                    color: satisfactionColor(ai?.satisfaction.rate),
+                benchmarkMetricColumn(
+                    title: "Satisfaction", value: ai?.satisfaction.rate,
+                    benchmark: Benchmark.satisfaction, benchmarkLabel: "Industry",
                     detail: ai != nil ? "\(ai!.satisfaction.praise) praise" : nil,
                     index: 0
                 )
 
-                Rectangle().fill(DT.borderSubtle).frame(width: 1, height: 80)
+                Rectangle().fill(DT.borderSubtle).frame(width: 1, height: 100)
 
-                // Engagement
-                qualityMetricColumn(
-                    title: "Engagement",
-                    value: ai?.engagement.rate,
-                    color: engagementColor(ai?.engagement.rate),
+                benchmarkMetricColumn(
+                    title: "Engagement", value: ai?.engagement.rate,
+                    benchmark: Benchmark.engagement, benchmarkLabel: "Industry",
                     detail: ai != nil ? "\(ai!.engagement.engaged)/\(ai!.engagement.total)" : nil,
                     index: 1
                 )
 
-                Rectangle().fill(DT.borderSubtle).frame(width: 1, height: 80)
+                Rectangle().fill(DT.borderSubtle).frame(width: 1, height: 100)
 
-                // Correction Rate (inverted — lower is better)
-                VStack(spacing: 8) {
-                    Text("Correction")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(DT.textTertiary)
-
-                    Text(ai != nil ? String(format: "%.1f%%", (ai!.correctionRate.rate) * 100) : "—")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundColor(correctionColor(ai?.correctionRate.rate))
-                        .contentTransition(.numericText())
-
-                    if let cr = ai?.correctionRate {
-                        Text("\(cr.corrections)/\(cr.total) corr")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(DT.textTertiary)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .opacity(metricsAppeared ? 1 : 0)
-                .offset(y: metricsAppeared ? 0 : 8)
-                .animation(
-                    .spring(response: 0.5, dampingFraction: 0.8).delay(0.16),
-                    value: metricsAppeared
+                benchmarkMetricColumn(
+                    title: "Correction", value: ai?.correctionRate.rate,
+                    benchmark: Benchmark.correctionRate, benchmarkLabel: "Target",
+                    detail: ai != nil ? "\(ai!.correctionRate.corrections)/\(ai!.correctionRate.total) corr" : nil,
+                    index: 2, inverted: true
                 )
 
-                Rectangle().fill(DT.borderSubtle).frame(width: 1, height: 80)
+                Rectangle().fill(DT.borderSubtle).frame(width: 1, height: 100)
 
-                // Memory Accuracy
-                qualityMetricColumn(
-                    title: "Memory Accuracy",
-                    value: ai?.memoryAccuracy.accuracy,
-                    color: satisfactionColor(ai?.memoryAccuracy.accuracy),
+                benchmarkMetricColumn(
+                    title: "Memory Acc.", value: ai?.memoryAccuracy.accuracy,
+                    benchmark: Benchmark.memoryAccuracy, benchmarkLabel: "Industry",
                     detail: ai != nil ? "\(ai!.memoryAccuracy.corrected)/\(ai!.memoryAccuracy.totalRefs) corr" : nil,
                     index: 3
                 )
+            }
+
+            // Weekly Trend Chart
+            if trend.count >= 2 {
+                Rectangle()
+                    .fill(DT.borderSubtle)
+                    .frame(height: 1)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("WEEKLY TREND")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(DT.textMuted)
+                        .tracking(0.8)
+
+                    Chart {
+                        ForEach(trend) { point in
+                            LineMark(
+                                x: .value("Week", Self.weekLabel(point.week)),
+                                y: .value("Value", point.satisfaction * 100),
+                                series: .value("Metric", "Satisfaction")
+                            )
+                            .foregroundStyle(DT.emerald)
+                            .lineStyle(StrokeStyle(lineWidth: 1.5))
+                            .interpolationMethod(.monotone)
+
+                            LineMark(
+                                x: .value("Week", Self.weekLabel(point.week)),
+                                y: .value("Value", point.engagement * 100),
+                                series: .value("Metric", "Engagement")
+                            )
+                            .foregroundStyle(DT.blue)
+                            .lineStyle(StrokeStyle(lineWidth: 1.5))
+                            .interpolationMethod(.monotone)
+
+                            LineMark(
+                                x: .value("Week", Self.weekLabel(point.week)),
+                                y: .value("Value", point.correctionRate * 100),
+                                series: .value("Metric", "Correction")
+                            )
+                            .foregroundStyle(DT.rose)
+                            .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                            .interpolationMethod(.monotone)
+                        }
+                    }
+                    .chartYScale(domain: 0...40)
+                    .chartYAxis {
+                        AxisMarks(values: [0, 10, 20, 30, 40]) { value in
+                            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 2]))
+                                .foregroundStyle(DT.borderSubtle)
+                            AxisValueLabel {
+                                Text("\(value.as(Int.self) ?? 0)%")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(DT.textMuted)
+                            }
+                        }
+                    }
+                    .chartXAxis {
+                        AxisMarks { _ in
+                            AxisValueLabel()
+                                .font(.system(size: 8))
+                                .foregroundStyle(DT.textMuted)
+                        }
+                    }
+                    .chartLegend(.hidden)
+                    .frame(height: 100)
+                    .opacity(metricsAppeared ? 1 : 0)
+
+                    // Mini legend
+                    HStack(spacing: 12) {
+                        chartDot(DT.emerald, "Satisfaction")
+                        chartDot(DT.blue, "Engagement")
+                        chartDot(DT.rose, "Correction")
+                    }
+                    .opacity(metricsAppeared ? 1 : 0)
+                }
             }
         }
         .padding(20)
         .background(standardCardBg)
     }
 
-    private func qualityMetricColumn(
+    private static let weekDateFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        return fmt
+    }()
+
+    private static func weekLabel(_ dateStr: String) -> String {
+        guard let date = weekDateFormatter.date(from: dateStr) else { return dateStr }
+        let shortFmt = DateFormatter()
+        shortFmt.dateFormat = "d MMM"
+        return shortFmt.string(from: date)
+    }
+
+    private func benchmarkMetricColumn(
         title: String,
         value: Double?,
-        color: Color,
+        benchmark: Double,
+        benchmarkLabel: String,
         detail: String?,
-        index: Int
+        index: Int,
+        inverted: Bool = false
     ) -> some View {
-        VStack(spacing: 8) {
-            Text(title)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(DT.textTertiary)
+        let g: (letter: String, color: Color) = value != nil
+            ? (inverted ? Benchmark.correctionGrade(value!) : Benchmark.grade(value: value!, benchmark: benchmark))
+            : (letter: "—", color: DT.textTertiary)
 
+        return VStack(spacing: 6) {
+            // Title + Grade badge
+            HStack(spacing: 4) {
+                Text(title)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(DT.textTertiary)
+                if value != nil {
+                    Text(g.letter)
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(width: 16, height: 16)
+                        .background(g.color)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+            }
+
+            // Value
             Text(value != nil ? String(format: "%.1f%%", value! * 100) : "—")
-                .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundColor(color)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundColor(g.color)
                 .contentTransition(.numericText())
 
+            // Benchmark reference
+            HStack(spacing: 3) {
+                Rectangle()
+                    .fill(DT.textMuted)
+                    .frame(width: 8, height: 1)
+                Text(inverted
+                     ? "\(benchmarkLabel): <\(Int(benchmark * 100))%"
+                     : "\(benchmarkLabel): \(Int(benchmark * 100))%")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(DT.textMuted)
+            }
+
+            // Detail
             if let detail = detail {
                 Text(detail)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 9, weight: .medium))
                     .foregroundColor(DT.textTertiary)
             }
         }
@@ -773,26 +941,263 @@ struct OverviewView: View {
         )
     }
 
-    // Color helpers — green/yellow/red thresholds
-    private func satisfactionColor(_ rate: Double?) -> Color {
-        guard let r = rate else { return DT.textTertiary }
-        if r >= 0.8 { return DT.emerald }
-        if r >= 0.5 { return DT.gold }
-        return DT.rose
+    // MARK: - Response Quality Analysis Card (Judge + A/B)
+
+    private var responseQualityCard: some View {
+        let judge = viewModel.metrics?.judgeDimensions
+        let ab = viewModel.metrics?.abTests
+
+        return HStack(spacing: 20) {
+            // Left: Judge Dimensions
+            judgeDimensionsSection(judge)
+                .frame(maxWidth: .infinity)
+
+            // Right: A/B Test Results
+            abTestsSection(ab)
+                .frame(maxWidth: .infinity)
+        }
+        .padding(20)
+        .background(standardCardBg)
     }
 
-    private func engagementColor(_ rate: Double?) -> Color {
-        guard let r = rate else { return DT.textTertiary }
-        if r >= 0.7 { return DT.emerald }
-        if r >= 0.5 { return DT.gold }
-        return DT.rose
+    private func judgeDimensionsSection(_ judge: JudgeDimensionsData?) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Circle().fill(DT.indigo).frame(width: 6, height: 6)
+                Text("LLM-AS-JUDGE")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(DT.textTertiary)
+                    .tracking(1)
+                Spacer()
+                if let j = judge {
+                    Text("\(j.totalEvaluated) evals")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(DT.textMuted)
+                }
+            }
+
+            if let j = judge, !j.dimensions.isEmpty {
+                // 3 dimension bars
+                let dimOrder: [(String, String, Color, Double?)] = [
+                    ("helpfulness", "Helpful", DT.emerald, Benchmark.helpfulness),
+                    ("relevance", "Relevant", DT.blue, Benchmark.relevance),
+                    ("emotional", "Emotional", DT.pink, Benchmark.emotional),
+                ]
+
+                ForEach(dimOrder, id: \.0) { key, label, color, bm in
+                    if let dim = j.dimensions[key] {
+                        dimensionBar(label: label, avg: dim.avg, range: (dim.min, dim.max), color: color, benchmark: bm)
+                    }
+                }
+
+                // Score stats
+                Rectangle().fill(DT.borderSubtle).frame(height: 1)
+
+                HStack(spacing: 16) {
+                    VStack(spacing: 2) {
+                        Text(String(format: "%.0f%%", j.avgScore * 100))
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(DT.textPrimary)
+                        Text("avg score")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(DT.textTertiary)
+                    }
+                    VStack(spacing: 2) {
+                        Text(String(format: "%.2f", j.stddev))
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(j.stddev > 0.1 ? DT.emerald : DT.rose)
+                        Text("std dev")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(DT.textTertiary)
+                    }
+                    VStack(spacing: 2) {
+                        Text("\(Int((j.scoreRange.first ?? 0) * 100))–\(Int((j.scoreRange.last ?? 0) * 100))%")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(DT.textPrimary)
+                        Text("range")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(DT.textTertiary)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                Text("No judge data yet")
+                    .font(.system(size: 12))
+                    .foregroundColor(DT.textTertiary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+            }
+        }
     }
 
-    private func correctionColor(_ rate: Double?) -> Color {
-        guard let r = rate else { return DT.textTertiary }
-        if r < 0.05 { return DT.emerald }
-        if r < 0.15 { return DT.gold }
-        return DT.rose
+    private func dimensionBar(label: String, avg: Double, range: (Int, Int), color: Color, benchmark: Double? = nil) -> some View {
+        let g: (letter: String, color: Color)? = benchmark != nil ? Benchmark.grade(value: avg, benchmark: benchmark!) : nil
+
+        return VStack(spacing: 4) {
+            HStack {
+                Text(label)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(DT.textSecondary)
+
+                if let g = g {
+                    Text(g.letter)
+                        .font(.system(size: 8, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(width: 14, height: 14)
+                        .background(g.color)
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                }
+
+                Spacer()
+
+                Text(String(format: "%.1f", avg))
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(color)
+                Text("/ 5")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(DT.textMuted)
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(DT.surfaceHighlight)
+                        .frame(height: 6)
+
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(LinearGradient(colors: [color, color.opacity(0.6)], startPoint: .leading, endPoint: .trailing))
+                        .frame(width: geo.size.width * min(avg / 5.0, 1.0), height: 6)
+                        .shadow(color: color.opacity(0.3), radius: 3, y: 1)
+
+                    // Benchmark marker line
+                    if let bm = benchmark {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.5))
+                            .frame(width: 2, height: 12)
+                            .offset(x: geo.size.width * min(bm / 5.0, 1.0) - 1, y: -3)
+                    }
+                }
+            }
+            .frame(height: 6)
+        }
+    }
+
+    private func abTestsSection(_ ab: ABTestsData?) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Circle().fill(DT.cyan).frame(width: 6, height: 6)
+                Text("A/B TESTING")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(DT.textTertiary)
+                    .tracking(1)
+                Spacer()
+                if let a = ab {
+                    Text("\(a.pairsGenerated) DPO pairs")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(DT.textMuted)
+                }
+            }
+
+            if let a = ab, a.total > 0 {
+                // Win rate comparison
+                HStack(spacing: 0) {
+                    // Original wins
+                    VStack(spacing: 4) {
+                        Text("\(a.originalWins)")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundColor(DT.blue)
+                        Text("Original wins")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(DT.textTertiary)
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    // VS divider
+                    VStack(spacing: 4) {
+                        Text("vs")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(DT.textMuted)
+                        Text(String(format: "%.0f%%", a.avgStrength * 100))
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(DT.gold)
+                        Text("avg gap")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(DT.textTertiary)
+                    }
+                    .frame(width: 60)
+
+                    // Alternative wins
+                    VStack(spacing: 4) {
+                        Text("\(a.alternativeWins)")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundColor(DT.emerald)
+                        Text("Alternative wins")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(DT.textTertiary)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+
+                // Win rate bar
+                let origPct = a.total > 0 ? Double(a.originalWins) / Double(a.total) : 0.5
+                GeometryReader { geo in
+                    HStack(spacing: 2) {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(DT.blue)
+                            .frame(width: max(geo.size.width * origPct, 4))
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(DT.emerald)
+                            .frame(width: max(geo.size.width * (1.0 - origPct), 4))
+                    }
+                }
+                .frame(height: 8)
+
+                // Recent tests
+                Rectangle().fill(DT.borderSubtle).frame(height: 1)
+
+                VStack(spacing: 6) {
+                    ForEach(a.recent.prefix(3)) { test in
+                        HStack(spacing: 8) {
+                            Image(systemName: test.winner == "original" ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath")
+                                .font(.system(size: 10))
+                                .foregroundColor(test.winner == "original" ? DT.blue : DT.emerald)
+
+                            Text(test.topic?.replacingOccurrences(of: "angela_", with: "") ?? "—")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(DT.textSecondary)
+                                .lineLimit(1)
+
+                            Spacer()
+
+                            Text(String(format: "%.0f", test.originalScore * 100))
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .foregroundColor(DT.blue)
+                            Text("vs")
+                                .font(.system(size: 9))
+                                .foregroundColor(DT.textMuted)
+                            Text(String(format: "%.0f", test.alternativeScore * 100))
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .foregroundColor(DT.emerald)
+                        }
+                    }
+                }
+            } else {
+                VStack(spacing: 8) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 20))
+                        .foregroundColor(DT.textMuted)
+                    Text("No A/B tests yet")
+                        .font(.system(size: 12))
+                        .foregroundColor(DT.textTertiary)
+                    Text("Tests run on medium-quality\ninteractions (0.2-0.6)")
+                        .font(.system(size: 10))
+                        .foregroundColor(DT.textMuted)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 16)
+            }
+        }
     }
 
     // MARK: - Knowledge Dimensions Card

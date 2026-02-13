@@ -360,6 +360,158 @@ class EnhancedDataExporter:
         finally:
             await self.disconnect()
 
+    async def export_dpo_from_rewards(
+        self,
+        output_path: str = "training/angela_reward_dpo.jsonl",
+        days: int = 30,
+    ) -> Dict[str, Any]:
+        """
+        Generate DPO preference pairs from reward signals.
+
+        For correction signals: Angela's bad response = rejected, David's correction = preferred direction.
+        For praise signals: Angela's good response = chosen, lowest-scored response = rejected.
+
+        Also inserts into angela_preference_pairs table for the existing DPO pipeline.
+
+        Returns:
+            Export statistics
+        """
+        await self.connect()
+
+        try:
+            # 1. Get correction signals (negative examples)
+            corrections = await self.db.pool.fetch("""
+                SELECT rs.conversation_id::text,
+                       rs.angela_message_text,
+                       rs.david_message_text,
+                       rs.topic,
+                       rs.combined_reward,
+                       rs.scored_at
+                FROM angela_reward_signals rs
+                WHERE rs.scored_at >= NOW() - INTERVAL '1 day' * $1
+                  AND (rs.implicit_classification = 'correction'
+                       OR rs.explicit_source = 'correction')
+                  AND rs.angela_message_text IS NOT NULL
+                  AND rs.david_message_text IS NOT NULL
+                  AND LENGTH(rs.angela_message_text) > 20
+                ORDER BY rs.combined_reward ASC
+            """, days)
+
+            # 2. Get praise signals (positive examples)
+            praises = await self.db.pool.fetch("""
+                SELECT rs.conversation_id::text,
+                       rs.angela_message_text,
+                       rs.david_message_text,
+                       rs.topic,
+                       rs.combined_reward,
+                       rs.scored_at
+                FROM angela_reward_signals rs
+                WHERE rs.scored_at >= NOW() - INTERVAL '1 day' * $1
+                  AND (rs.implicit_classification = 'praise'
+                       OR rs.explicit_source = 'praise')
+                  AND rs.angela_message_text IS NOT NULL
+                  AND rs.david_message_text IS NOT NULL
+                  AND LENGTH(rs.angela_message_text) > 20
+                ORDER BY rs.combined_reward DESC
+            """, days)
+
+            # 3. Get David's follow-up corrections for each correction signal
+            pairs = []
+            for corr in corrections:
+                conv_id = corr["conversation_id"]
+                angela_bad = corr["angela_message_text"]
+                david_msg = corr["david_message_text"]
+                scored_at = corr["scored_at"]
+                # Strip tz for comparison with naive timestamp columns
+                scored_at_naive = scored_at.replace(tzinfo=None) if hasattr(scored_at, 'tzinfo') and scored_at.tzinfo else scored_at
+
+                # Find David's corrective follow-up (the better direction)
+                david_correction = await self.db.pool.fetchrow("""
+                    SELECT message_text FROM conversations
+                    WHERE speaker = 'david'
+                      AND created_at > $1
+                      AND created_at < $1 + INTERVAL '30 minutes'
+                      AND LENGTH(message_text) > 10
+                    ORDER BY created_at ASC
+                    LIMIT 1
+                """, scored_at_naive)
+
+                # Find Angela's next response after correction (hopefully improved)
+                angela_fixed = await self.db.pool.fetchrow("""
+                    SELECT message_text FROM conversations
+                    WHERE speaker = 'angela'
+                      AND created_at > $1
+                      AND created_at < $1 + INTERVAL '30 minutes'
+                      AND LENGTH(message_text) > 20
+                    ORDER BY created_at ASC
+                    LIMIT 1
+                """, scored_at_naive)
+
+                preferred = (angela_fixed["message_text"] if angela_fixed
+                             else david_correction["message_text"] if david_correction
+                             else None)
+
+                if preferred and preferred != angela_bad:
+                    pair = {
+                        "prompt": david_msg,
+                        "chosen": preferred,
+                        "rejected": angela_bad,
+                        "chosen_score": 0.8,
+                        "rejected_score": float(corr["combined_reward"]),
+                        "topic": corr["topic"],
+                        "source": "reward_correction",
+                    }
+                    pairs.append(pair)
+
+                    # Also insert into angela_preference_pairs
+                    await self.db.pool.execute("""
+                        INSERT INTO angela_preference_pairs
+                            (david_message, topic, preferred_response, preferred_source,
+                             rejected_response, rejected_source, preference_strength,
+                             conversation_id)
+                        VALUES ($1, $2, $3, 'reward_correction', $4, 'reward_correction',
+                                $5, $6::uuid)
+                        ON CONFLICT DO NOTHING
+                    """, david_msg, corr["topic"], preferred, angela_bad,
+                         0.8 - float(corr["combined_reward"]),
+                         conv_id if conv_id else None)
+
+            # 4. Create contrastive pairs from praise vs worst
+            if praises and corrections:
+                worst_angela = corrections[0]["angela_message_text"] if corrections else None
+                for praise in praises[:5]:  # Top 5 praised responses
+                    if worst_angela:
+                        pair = {
+                            "prompt": praise["david_message_text"],
+                            "chosen": praise["angela_message_text"],
+                            "rejected": worst_angela,
+                            "chosen_score": float(praise["combined_reward"]),
+                            "rejected_score": float(corrections[0]["combined_reward"]),
+                            "topic": praise["topic"],
+                            "source": "reward_contrast",
+                        }
+                        pairs.append(pair)
+
+            # 5. Write JSONL
+            output_file = Path(output_path)
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_file, 'w', encoding='utf-8') as f:
+                for pair in pairs:
+                    f.write(json.dumps(pair, ensure_ascii=False) + '\n')
+
+            return {
+                "total_pairs": len(pairs),
+                "correction_pairs": sum(1 for p in pairs if p["source"] == "reward_correction"),
+                "contrast_pairs": sum(1 for p in pairs if p["source"] == "reward_contrast"),
+                "corrections_found": len(corrections),
+                "praises_found": len(praises),
+                "output_path": str(output_file.absolute()),
+                "date_range": f"Last {days} days",
+            }
+
+        finally:
+            await self.disconnect()
+
     async def get_preview_stats(self, days: int = 365, min_importance: int = 3) -> Dict[str, Any]:
         """Get preview statistics without exporting"""
         await self.connect()
