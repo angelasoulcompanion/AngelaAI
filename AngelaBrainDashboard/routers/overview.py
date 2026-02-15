@@ -419,111 +419,6 @@ async def _fetch_ai_metrics_trend(pool, weeks: int = 8) -> list[dict]:
     ]
 
 
-async def _fetch_judge_dimensions(pool) -> dict:
-    """LLM-as-Judge dimension breakdown (7 days)."""
-    async with pool.acquire() as conn:
-        # Parse dimension scores from self_eval_principles TEXT[]
-        dim_rows = await conn.fetch("""
-            WITH parsed AS (
-                SELECT
-                    SPLIT_PART(elem, ':', 1) AS dimension,
-                    SPLIT_PART(elem, ':', 2)::float AS score
-                FROM angela_reward_signals,
-                     LATERAL unnest(self_eval_principles) AS elem
-                WHERE scored_at >= NOW() - INTERVAL '7 days'
-                  AND self_eval_principles IS NOT NULL
-                  AND elem ~ '^(helpfulness|relevance|emotional):[1-5]$'
-            )
-            SELECT dimension,
-                   ROUND(AVG(score)::numeric, 2) AS avg_score,
-                   MIN(score::int) AS min_score,
-                   MAX(score::int) AS max_score,
-                   COUNT(*) AS count
-            FROM parsed
-            GROUP BY dimension
-            ORDER BY dimension
-        """)
-
-        dimensions = {}
-        for r in dim_rows:
-            dimensions[r["dimension"]] = {
-                "avg": float(r["avg_score"]),
-                "min": r["min_score"],
-                "max": r["max_score"],
-                "count": r["count"],
-            }
-
-        # Score distribution (for variance visualization)
-        dist_row = await conn.fetchrow("""
-            SELECT
-                COUNT(*) AS total,
-                ROUND(AVG(self_eval_score)::numeric, 3) AS avg_score,
-                ROUND(STDDEV(self_eval_score)::numeric, 3) AS stddev,
-                ROUND(MIN(self_eval_score)::numeric, 2) AS min_score,
-                ROUND(MAX(self_eval_score)::numeric, 2) AS max_score
-            FROM angela_reward_signals
-            WHERE scored_at >= NOW() - INTERVAL '7 days'
-              AND self_eval_score IS NOT NULL
-        """)
-
-    return {
-        "dimensions": dimensions,
-        "total_evaluated": dist_row["total"] if dist_row else 0,
-        "avg_score": float(dist_row["avg_score"] or 0) if dist_row else 0.0,
-        "stddev": float(dist_row["stddev"] or 0) if dist_row else 0.0,
-        "score_range": [
-            float(dist_row["min_score"] or 0) if dist_row else 0.0,
-            float(dist_row["max_score"] or 0) if dist_row else 0.0,
-        ],
-    }
-
-
-async def _fetch_ab_tests(pool) -> dict:
-    """A/B response quality test results (7 days)."""
-    async with pool.acquire() as conn:
-        stats_row = await conn.fetchrow("""
-            SELECT
-                COUNT(*) AS total,
-                COUNT(*) FILTER (WHERE winner = 'original') AS original_wins,
-                COUNT(*) FILTER (WHERE winner = 'alternative') AS alternative_wins,
-                ROUND(AVG(preference_strength)::numeric, 3) AS avg_strength,
-                COUNT(preference_pair_id) AS pairs_generated
-            FROM angela_ab_tests
-            WHERE tested_at >= NOW() - INTERVAL '7 days'
-        """)
-
-        recent_rows = await conn.fetch("""
-            SELECT winner, original_score, alternative_score,
-                   preference_strength, topic,
-                   judge_reasoning, tested_at
-            FROM angela_ab_tests
-            WHERE tested_at >= NOW() - INTERVAL '7 days'
-            ORDER BY tested_at DESC
-            LIMIT 5
-        """)
-
-    recent = [
-        {
-            "winner": r["winner"],
-            "original_score": round(float(r["original_score"] or 0), 3),
-            "alternative_score": round(float(r["alternative_score"] or 0), 3),
-            "strength": round(float(r["preference_strength"] or 0), 3),
-            "topic": r["topic"],
-            "reasoning": r["judge_reasoning"],
-        }
-        for r in recent_rows
-    ]
-
-    return {
-        "total": stats_row["total"] if stats_row else 0,
-        "original_wins": stats_row["original_wins"] if stats_row else 0,
-        "alternative_wins": stats_row["alternative_wins"] if stats_row else 0,
-        "avg_strength": float(stats_row["avg_strength"] or 0) if stats_row else 0.0,
-        "pairs_generated": stats_row["pairs_generated"] if stats_row else 0,
-        "recent": recent,
-    }
-
-
 async def _fetch_recent_emotions(pool, limit: int = 10) -> list[dict]:
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
@@ -540,7 +435,7 @@ async def get_overview_metrics():
     """Unified endpoint — returns ALL overview dashboard data in one call."""
     pool = get_pool()
 
-    # Run all 10 fetches in parallel — each acquires its own connection
+    # Run all 8 fetches in parallel — each acquires its own connection
     (
         consciousness,
         stats,
@@ -550,8 +445,6 @@ async def get_overview_metrics():
         emotions,
         ai_metrics,
         ai_trend,
-        judge_dims,
-        ab_tests,
     ) = await asyncio.gather(
         _fetch_consciousness(pool),
         _fetch_stats(pool),
@@ -561,8 +454,6 @@ async def get_overview_metrics():
         _fetch_recent_emotions(pool),
         _fetch_ai_metrics(pool),
         _fetch_ai_metrics_trend(pool),
-        _fetch_judge_dimensions(pool),
-        _fetch_ab_tests(pool),
     )
 
     return {
@@ -574,6 +465,4 @@ async def get_overview_metrics():
         "recent_emotions": emotions,
         "ai_metrics": ai_metrics,
         "ai_metrics_trend": ai_trend,
-        "judge_dimensions": judge_dims,
-        "ab_tests": ab_tests,
     }

@@ -18,8 +18,6 @@ struct OverviewMetrics: Codable {
     let recentEmotions: [Emotion]
     let aiMetrics: AIMetricsData?
     let aiMetricsTrend: [AIMetricsTrendPoint]?
-    let judgeDimensions: JudgeDimensionsData?
-    let abTests: ABTestsData?
 
     enum CodingKeys: String, CodingKey {
         case consciousness, stats, rlhf
@@ -28,8 +26,6 @@ struct OverviewMetrics: Codable {
         case recentEmotions = "recent_emotions"
         case aiMetrics = "ai_metrics"
         case aiMetricsTrend = "ai_metrics_trend"
-        case judgeDimensions = "judge_dimensions"
-        case abTests = "ab_tests"
     }
 }
 
@@ -76,68 +72,6 @@ struct MemoryAccuracyData: Codable {
         case accuracy
         case totalRefs = "total_refs"
         case corrected
-    }
-}
-
-// MARK: - LLM Judge Dimensions
-
-struct JudgeDimensionsData: Codable {
-    let dimensions: [String: DimensionStats]
-    let totalEvaluated: Int
-    let avgScore: Double
-    let stddev: Double
-    let scoreRange: [Double]
-
-    enum CodingKeys: String, CodingKey {
-        case dimensions
-        case totalEvaluated = "total_evaluated"
-        case avgScore = "avg_score"
-        case stddev
-        case scoreRange = "score_range"
-    }
-}
-
-struct DimensionStats: Codable {
-    let avg: Double
-    let min: Int
-    let max: Int
-    let count: Int
-}
-
-// MARK: - A/B Test Results
-
-struct ABTestsData: Codable {
-    let total: Int
-    let originalWins: Int
-    let alternativeWins: Int
-    let avgStrength: Double
-    let pairsGenerated: Int
-    let recent: [ABTestSummary]
-
-    enum CodingKeys: String, CodingKey {
-        case total
-        case originalWins = "original_wins"
-        case alternativeWins = "alternative_wins"
-        case avgStrength = "avg_strength"
-        case pairsGenerated = "pairs_generated"
-        case recent
-    }
-}
-
-struct ABTestSummary: Codable, Identifiable {
-    var id: String { "\(topic ?? "?")-\(originalScore)-\(alternativeScore)" }
-    let winner: String
-    let originalScore: Double
-    let alternativeScore: Double
-    let strength: Double
-    let topic: String?
-    let reasoning: String?
-
-    enum CodingKeys: String, CodingKey {
-        case winner
-        case originalScore = "original_score"
-        case alternativeScore = "alternative_score"
-        case strength, topic, reasoning
     }
 }
 
@@ -242,7 +176,7 @@ struct TopicReward: Codable, Identifiable {
     }
 }
 
-// MARK: - Consciousness Loop (SENSE → PREDICT → ACT → LEARN)
+// MARK: - Consciousness Loop (SENSE -> PREDICT -> ACT -> LEARN)
 
 struct ConsciousnessLoopMetrics: Codable {
     let sense: SenseMetrics
