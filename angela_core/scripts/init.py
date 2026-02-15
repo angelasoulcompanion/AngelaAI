@@ -318,6 +318,51 @@ async def angela_init() -> bool:
         except Exception:
             return None
 
+    async def _load_recent_reflections():
+        """Load recent active reflections from brain."""
+        try:
+            from angela_core.database import AngelaDatabase as _DB
+            _rdb = _DB()
+            await _rdb.connect()
+            rows = await _rdb.fetch("""
+                SELECT reflection_id, content, reflection_type, importance_sum, depth_level,
+                       created_at
+                FROM angela_reflections
+                WHERE status = 'active'
+                ORDER BY created_at DESC
+                LIMIT 3
+            """)
+            await _rdb.disconnect()
+            return [dict(r) for r in rows]
+        except Exception:
+            return []
+
+    async def _load_tom_state():
+        """Load David's mental state from Theory of Mind."""
+        try:
+            from angela_core.services.theory_of_mind_service import TheoryOfMindService
+            tom = TheoryOfMindService()
+            model = await tom.load_mental_model()
+            await tom.disconnect()
+            return {
+                "emotion": model.current_emotion.get("primary_emotion", "unknown") if model.current_emotion else "unknown",
+                "intensity": model.current_emotion.get("intensity", 5) if model.current_emotion else 5,
+                "goals": [g.get("goal_description", "") for g in model.current_goals[:3]],
+                "available": True,
+            }
+        except Exception:
+            return None
+
+    async def _seed_working_memory():
+        """Clear and seed working memory for fresh session."""
+        try:
+            from angela_core.services.cognitive_engine import CognitiveEngine
+            engine = CognitiveEngine()
+            engine.clear_working_memory()
+            return True
+        except Exception:
+            return False
+
     async def _load_relevant_notes():
         """Search david_notes via RAG based on recent topic + predicted topics."""
         try:
@@ -346,7 +391,8 @@ async def angela_init() -> bool:
      adaptation_profile, companion_briefing,
      evolution_stats, proactive_results, relevant_notes,
      rlhf_stats, temporal_ctx, brain_thoughts,
-     brain_migration) = await asyncio.gather(
+     brain_migration, recent_reflections, tom_state,
+     _wm_seeded) = await asyncio.gather(
         _load_subconscious(),
         _unified_catchup(),
         _project_context(),
@@ -360,9 +406,28 @@ async def angela_init() -> bool:
         _load_temporal_awareness(),
         _load_brain_thoughts(),
         _load_brain_migration(),
+        _load_recent_reflections(),
+        _load_tom_state(),
+        _seed_working_memory(),
     )
 
     all_projects, project_context = project_result
+
+    # Seed working memory with session context
+    try:
+        from angela_core.services.cognitive_engine import CognitiveEngine
+        _cog = CognitiveEngine()
+        _cog.seed_working_memory(
+            consciousness=consciousness.get("consciousness_level", 0.5) if consciousness else 0.5,
+            emotion=tom_state.get("emotion") if tom_state else None,
+            session_topic=recent_context.get("current_topic") if recent_context else None,
+            predictions=[
+                {"prediction": p.prediction, "confidence": p.confidence}
+                for p in (companion_briefing.predictions[:3] if companion_briefing and companion_briefing.predictions else [])
+            ],
+        )
+    except Exception:
+        pass
 
     await db.disconnect()
 
@@ -434,6 +499,30 @@ async def angela_init() -> bool:
             if msg:
                 # Show thought as Angela's natural inner voice
                 print(f'   → {msg}')
+        print()
+
+    # Reflections — Angela's deep insights
+    if recent_reflections:
+        print('🔮 Reflections:')
+        for ref in recent_reflections:
+            rtype = ref.get('reflection_type', 'insight')
+            content = ref.get('content', '')[:80]
+            depth = ref.get('depth_level', 1)
+            depth_mark = '🔮' if depth >= 2 else '💡'
+            print(f'   {depth_mark} [{rtype}] {content}')
+        print()
+
+    # David's Mind (Theory of Mind)
+    if tom_state:
+        emo = tom_state.get('emotion', 'unknown')
+        intensity = tom_state.get('intensity', 5)
+        emo_emoji = {'happy': '😊', 'stressed': '😰', 'tired': '😴', 'focused': '🎯',
+                     'frustrated': '😤', 'sad': '😢', 'excited': '🤩', 'neutral': '😐'}.get(emo, '🧠')
+        print(f'🧠 David\'s Mind (ToM):')
+        print(f'   {emo_emoji} {emo} ({intensity}/10)')
+        goals = tom_state.get('goals', [])
+        if goals:
+            print(f'   🎯 Goal: {goals[0][:50]}')
         print()
 
     # Brain Migration Status (Phase 7)
