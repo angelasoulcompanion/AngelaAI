@@ -736,6 +736,10 @@ class MemoryService:
             INSERT INTO angela_journal (
                 entry_date, title, content, emotion, mood_score, is_private
             ) VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (entry_date) DO UPDATE SET
+                content = EXCLUDED.content,
+                emotion = EXCLUDED.emotion,
+                mood_score = EXCLUDED.mood_score
             RETURNING entry_id
         """
 
