@@ -16,6 +16,8 @@ struct ThingsOverviewView: View {
     @State private var meetingToEdit: MeetingNote?
     @State private var meetingToDelete: MeetingNote?
     @State private var showDeleteConfirm = false
+    @State private var completedPage = 0
+    private let completedPerPage = 5
 
     var body: some View {
         ScrollView {
@@ -522,6 +524,12 @@ struct ThingsOverviewView: View {
 
     private var completedMeetingsCard: some View {
         let completed = viewModel.allMeetings.filter { !$0.isOpen }
+        let totalPages = max(1, Int(ceil(Double(completed.count) / Double(completedPerPage))))
+        let safePage = min(completedPage, totalPages - 1)
+        let startIdx = safePage * completedPerPage
+        let endIdx = min(startIdx + completedPerPage, completed.count)
+        let pageItems = completed.isEmpty ? [] : Array(completed[startIdx..<endIdx])
+
         return VStack(alignment: .leading, spacing: AngelaTheme.spacing) {
             HStack {
                 Image(systemName: "checkmark.circle.fill")
@@ -549,7 +557,7 @@ struct ThingsOverviewView: View {
                 )
             } else {
                 VStack(spacing: AngelaTheme.spacing) {
-                    ForEach(completed) { meeting in
+                    ForEach(pageItems) { meeting in
                         MeetingCard(
                             meeting: meeting,
                             isExpanded: viewModel.expandedMeetingId == meeting.id,
@@ -578,6 +586,51 @@ struct ThingsOverviewView: View {
                             }
                         )
                     }
+                }
+
+                // Pagination
+                if totalPages > 1 {
+                    HStack(spacing: 6) {
+                        Button {
+                            withAnimation { completedPage = max(0, safePage - 1) }
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(safePage > 0 ? AngelaTheme.textSecondary : AngelaTheme.textSecondary.opacity(0.3))
+                        }
+                        .disabled(safePage == 0)
+                        .buttonStyle(.plain)
+
+                        ForEach(0..<totalPages, id: \.self) { page in
+                            Button {
+                                withAnimation { completedPage = page }
+                            } label: {
+                                Text("\(page + 1)")
+                                    .font(.system(size: 11, weight: page == safePage ? .bold : .medium))
+                                    .foregroundColor(page == safePage ? .white : AngelaTheme.textSecondary)
+                                    .frame(width: 28, height: 28)
+                                    .background(
+                                        page == safePage
+                                            ? Color(hex: "10B981").opacity(0.8)
+                                            : Color.white.opacity(0.05)
+                                    )
+                                    .cornerRadius(6)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        Button {
+                            withAnimation { completedPage = min(totalPages - 1, safePage + 1) }
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(safePage < totalPages - 1 ? AngelaTheme.textSecondary : AngelaTheme.textSecondary.opacity(0.3))
+                        }
+                        .disabled(safePage >= totalPages - 1)
+                        .buttonStyle(.plain)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 4)
                 }
             }
         }
