@@ -21,6 +21,8 @@ Services integrated:
 14. Memory Consolidation - Brain-based episodic → semantic consolidation 📚
 15. Reflection Engine - Brain-based high-level reflections 🪞
 16. Thought Expression - Brain-based thought → action bridge 💬
+17. Plan Generation - Agentic multi-step planning every 4 hours 📋
+18. Plan Execution - Execute plan steps every 30 minutes 📋
 
 Schedule:
 - Every 30 minutes: Proactive care check (wellness, interventions, milestones)
@@ -285,14 +287,17 @@ class ConsciousnessDaemon(
                 results[name] = result
 
         # =====================================================================
-        # SEQUENTIAL: Thought expression → brain comparison → proactive care → proactive actions
+        # SEQUENTIAL: Thought expression → brain comparison → proactive care → proactive actions → planning
         # Thought expression runs first (brain-preferred over rule-based actions)
         # Brain comparison logs brain vs rule for migration tracking (Phase 7)
+        # Planning: generate plans (every 4h) then execute steps (every 30m)
         # =====================================================================
         results['thought_expression'] = await self.run_thought_expression()
         results['brain_comparison'] = await self.run_brain_comparison()
         results['proactive_care'] = await self.run_proactive_care()
         results['proactive_actions'] = await self.run_proactive_actions()
+        results['plan_generation'] = await self.run_plan_generation()
+        results['plan_execution'] = await self.run_plan_execution()
 
         logger.info("\n" + "=" * 60)
         logger.info("✅ All tasks complete!")
@@ -332,6 +337,8 @@ class ConsciousnessDaemon(
             'brain_reflection': self.run_brain_reflection,
             'thought_expression': self.run_thought_expression,
             'brain_comparison': self.run_brain_comparison,
+            'plan_generation': self.run_plan_generation,
+            'plan_execution': self.run_plan_execution,
         }
 
         if task_name not in task_map:
@@ -356,7 +363,8 @@ async def main():
                  'unified_conversation_analysis', 'salience_scan',
                  'thought_generation', 'memory_consolidation',
                  'brain_reflection', 'thought_expression',
-                 'brain_comparison'],
+                 'brain_comparison', 'plan_generation',
+                 'plan_execution'],
         default='all',
         help='Task to run (default: all)'
     )

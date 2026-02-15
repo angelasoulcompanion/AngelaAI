@@ -507,72 +507,85 @@ class EnhancedRAGService:
         top_k: int
     ) -> List[RetrievedDocument]:
         """
-        Rerank candidates using a simple cross-encoder simulation.
+        Rerank candidates using intent-aware RerankerService.
 
-        Note: For production, use a real cross-encoder model like:
-        - sentence-transformers/ms-marco-MiniLM-L-6-v2
-        - BAAI/bge-reranker-base
+        Features (via RerankerService):
+        - Query intent classification (temporal/recall/factual/emotional)
+        - Intent-based source priority boosting
+        - Temporal recency weighting
+        - Near-duplicate removal
+        - Quality logging
 
-        This implementation uses heuristics as a placeholder.
+        Falls back to simple heuristic if RerankerService fails.
         """
-        for doc in candidates:
-            rerank_score = self._calculate_rerank_score(query, doc)
-            doc.rerank_score = rerank_score
-            # Update combined score with rerank
-            doc.combined_score = (doc.combined_score * 0.6) + (rerank_score * 0.4)
+        try:
+            from angela_core.services.reranker_service import get_reranker_service
 
-        # Sort by new combined score
-        candidates.sort(key=lambda x: x.combined_score, reverse=True)
+            reranker = get_reranker_service()
+            reranked, result = reranker.rerank(query, candidates, top_k)
 
-        return candidates[:top_k]
+            # Log quality metrics (async, non-blocking)
+            if self.db:
+                top_scores = [round(d.combined_score, 3) for d in reranked[:5]]
+                try:
+                    await reranker.log_quality(
+                        self.db, query, result.intent,
+                        result.candidates_in, result.candidates_out,
+                        top_scores, 0.0, result.rerank_time_ms,
+                    )
+                except Exception:
+                    pass  # Non-critical
 
-    def _calculate_rerank_score(
+            return reranked
+
+        except Exception as e:
+            logger.warning("RerankerService failed, using heuristic fallback: %s", e)
+            return self._rerank_heuristic(query, candidates, top_k)
+
+    def _rerank_heuristic(
         self,
         query: str,
-        doc: RetrievedDocument
-    ) -> float:
+        candidates: List[RetrievedDocument],
+        top_k: int
+    ) -> List[RetrievedDocument]:
         """
-        Calculate rerank score based on query-document relevance.
-
-        Heuristics:
-        - Exact phrase match
-        - Query term coverage
-        - Document length penalty
-        - Source priority
+        Heuristic fallback reranking (original implementation).
+        Used when RerankerService is unavailable.
         """
-        score = 0.5  # Base score
-        content_lower = doc.content.lower()
-        query_lower = query.lower()
+        for doc in candidates:
+            score = 0.5
+            content_lower = doc.content.lower()
+            query_lower = query.lower()
 
-        # Exact phrase match bonus
-        if query_lower in content_lower:
-            score += 0.3
+            if query_lower in content_lower:
+                score += 0.3
 
-        # Query term coverage
-        query_terms = set(query_lower.split())
-        content_terms = set(content_lower.split())
-        coverage = len(query_terms & content_terms) / len(query_terms) if query_terms else 0
-        score += coverage * 0.2
+            query_terms = set(query_lower.split())
+            content_terms = set(content_lower.split())
+            coverage = len(query_terms & content_terms) / len(query_terms) if query_terms else 0
+            score += coverage * 0.2
 
-        # Length penalty (prefer medium-length documents)
-        length = len(doc.content)
-        if 100 <= length <= 500:
-            score += 0.1
-        elif length > 1000:
-            score -= 0.1
+            length = len(doc.content)
+            if 100 <= length <= 500:
+                score += 0.1
+            elif length > 1000:
+                score -= 0.1
 
-        # Source priority
-        source_weights = {
-            'core_memories': 0.15,
-            'david_notes': 0.12,
-            'document_chunks': 0.12,
-            'knowledge_nodes': 0.1,
-            'learnings': 0.1,
-            'conversations': 0.05,
-        }
-        score += source_weights.get(doc.source_table, 0)
+            source_weights = {
+                'core_memories': 0.15,
+                'david_notes': 0.12,
+                'document_chunks': 0.12,
+                'knowledge_nodes': 0.1,
+                'learnings': 0.1,
+                'conversations': 0.05,
+            }
+            score += source_weights.get(doc.source_table, 0)
 
-        return min(max(score, 0.0), 1.0)
+            doc.rerank_score = min(max(score, 0.0), 1.0)
+            doc.combined_score = (doc.combined_score * 0.6) + (doc.rerank_score * 0.4)
+
+        candidates.sort(key=lambda x: x.combined_score, reverse=True)
+        return candidates[:top_k]
 
     # =========================================================
     # RESULT COMBINATION

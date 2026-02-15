@@ -238,6 +238,80 @@ class ProactiveTasksMixin:
             logger.error(f"   ❌ Brain comparison failed: {e}")
             return {'success': False, 'error': str(e)}
 
+    async def run_plan_generation(self) -> Dict[str, Any]:
+        """
+        Detect stale goals and generate multi-step plans (Phase 3).
+
+        Runs every 4 hours. Finds goals with no recent activity
+        and creates actionable plans via Ollama.
+        """
+        logger.info("📋 Running plan generation...")
+
+        try:
+            from angela_core.services.planning_engine import PlanningEngine
+
+            engine = PlanningEngine()
+            goals = await engine.detect_plannable_goals(days_threshold=7)
+
+            plans_created = 0
+            for goal in goals[:2]:  # Max 2 plans per cycle
+                plan = await engine.generate_plan(goal)
+                if plan:
+                    plan_id = await engine.save_plan(plan)
+                    if plan_id:
+                        plans_created += 1
+                        logger.info("   📋 Created plan: %s (%d steps)",
+                                    plan.plan_name, len(plan.steps))
+
+            await engine.disconnect()
+
+            logger.info("   ✅ Plan generation: %d goals found, %d plans created",
+                        len(goals), plans_created)
+
+            await self._log_daemon_activity('plan_generation', {
+                'stale_goals': len(goals),
+                'plans_created': plans_created,
+            })
+
+            return {
+                'success': True,
+                'stale_goals': len(goals),
+                'plans_created': plans_created,
+            }
+
+        except Exception as e:
+            logger.error("   ❌ Plan generation failed: %s", e)
+            return {'success': False, 'error': str(e)}
+
+    async def run_plan_execution(self) -> Dict[str, Any]:
+        """
+        Execute ready steps in active plans (Phase 3).
+
+        Runs every 30 minutes. Picks up active plans and
+        executes their next ready steps.
+        """
+        logger.info("📋 Running plan execution...")
+
+        try:
+            from angela_core.services.plan_execution_engine import PlanExecutionEngine
+
+            engine = PlanExecutionEngine()
+            result = await engine.execute_active_plans()
+            await engine.disconnect()
+
+            logger.info("   ✅ Plan execution: %d active, %d steps, %d completed",
+                        result.get('plans_active', 0),
+                        result.get('steps_executed', 0),
+                        result.get('plans_completed', 0))
+
+            await self._log_daemon_activity('plan_execution', result)
+
+            return result
+
+        except Exception as e:
+            logger.error("   ❌ Plan execution failed: %s", e)
+            return {'success': False, 'error': str(e)}
+
     async def run_evolution_cycle(self) -> Dict[str, Any]:
         """
         Run self-evolving feedback loop.

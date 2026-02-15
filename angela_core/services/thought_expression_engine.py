@@ -139,13 +139,57 @@ class ThoughtExpressionEngine(BaseDBService):
                 cycle_duration_ms=round(duration, 1),
             )
 
-        # 3. Decide channel + compose + route
+        # 3. Decide channel + compose + VERIFY + route
         telegram_count = 0
         chat_count = 0
+
+        # Self-critique gate (Phase 2)
+        critique_svc = None
+        try:
+            from angela_core.services.self_critique_service import SelfCritiqueService
+            critique_svc = SelfCritiqueService()
+        except Exception as e:
+            logger.debug("SelfCritiqueService unavailable: %s", e)
 
         for thought in filtered:
             channel = self._decide_channel(thought)
             message = await self._compose_message(thought)
+
+            # ── Self-Critique Gate ──
+            if critique_svc:
+                try:
+                    david_state = await self._get_david_state()
+                    verification = await critique_svc.verify_before_express(
+                        thought=thought,
+                        composed_message=message,
+                        david_state=david_state,
+                    )
+
+                    # Log critique result
+                    await critique_svc.log_critique(
+                        self.db,
+                        str(thought["thought_id"]),
+                        message,
+                        verification,
+                    )
+
+                    if not verification.passed:
+                        # Suppress this thought
+                        await self._log_expression(
+                            thought_id=str(thought["thought_id"]),
+                            channel="suppressed",
+                            message=message[:200],
+                            success=False,
+                            suppress_reason=f"critique:{verification.suppress_reason}",
+                            motivation=thought.get("motivation_score", 0),
+                        )
+                        suppressed_list.append((thought, f"critique:{verification.suppress_reason}"))
+                        continue
+
+                    # Use suggested (possibly hedged) message
+                    message = verification.suggested_message
+                except Exception as e:
+                    logger.debug("Self-critique check failed (permissive): %s", e)
 
             if channel == "telegram":
                 result = await self._express_via_telegram(thought, message)
