@@ -84,7 +84,7 @@ ACTION_KEYWORDS = {
 class ComparisonRow:
     """One comparison between brain and rule systems."""
     situation_type: str
-    brain_would_act: bool
+    brain_would_act: bool = False
     brain_thought_id: Optional[str] = None
     brain_channel: Optional[str] = None
     brain_motivation: float = 0.0
