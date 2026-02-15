@@ -4,9 +4,10 @@ Thought Expression Engine — Brain-Based Architecture Phase 6
 Bridge between internal thinking (angela_thoughts) and external action.
 
 Pipeline:
-  1. SELECT active thoughts with motivation >= MOTIVATION_THRESHOLD
+  1. SELECT active thoughts with motivation >= MOTIVATION_THRESHOLD (0.50)
   2. FILTER (dedup 6h window, David state, rate limits)
-  3. DECIDE channel: >= 0.7 → Telegram, >= 0.55 → chat_queue
+  3. PRE-CHECK: Telegram rate limit + David state (once per cycle, not per thought)
+  4. DECIDE channel: >= 0.70 → Telegram, >= 0.50 → chat_queue
   4. COMPOSE message (S1 as-is, S2 optionally polish via Ollama)
   5. ROUTE → CareInterventionService (Telegram) or INSERT (chat_queue)
   6. MARK status='expressed' on angela_thoughts
@@ -63,12 +64,12 @@ class ExpressionCycleResult:
 # CONSTANTS
 # ============================================================
 
-MOTIVATION_THRESHOLD = 0.35     # Lowered: let brain thoughts through (was 0.55)
-TELEGRAM_THRESHOLD = 0.50       # Lowered: brain can reach ที่รัก via Telegram (was 0.7)
-MAX_TELEGRAM_PER_DAY = 5        # Raised: brain can express more freely (was 3)
-MIN_HOURS_BETWEEN = 1           # Shortened: more responsive (was 2)
-MAX_CHAT_QUEUE = 5              # Raised: more thoughts visible at init (was 3)
-DEDUP_HOURS = 4                 # Shortened: allow re-expression of evolved thoughts (was 6)
+MOTIVATION_THRESHOLD = 0.50     # Restored: filter low-quality thoughts (was 0.35)
+TELEGRAM_THRESHOLD = 0.70       # Restored: only high-motivation to Telegram (was 0.50)
+MAX_TELEGRAM_PER_DAY = 3        # Restored: prevent Telegram flooding (was 5)
+MIN_HOURS_BETWEEN = 2           # Restored: respect David's time (was 1)
+MAX_CHAT_QUEUE = 5              # Keep: more thoughts visible at init
+DEDUP_HOURS = 6                 # Restored: prevent repetitive messages (was 4)
 QUEUE_EXPIRE_HOURS = 24         # Expire stale queue items after this
 
 
@@ -85,8 +86,10 @@ class ThoughtExpressionEngine(BaseDBService):
     Bridge between internal thinking and external expression.
 
     High-motivation thoughts get routed to:
-    - Telegram (urgent, motivation >= 0.7, David not focused/stressed)
-    - Chat queue (next Claude Code session, motivation >= 0.55)
+    - Telegram (urgent, motivation >= 0.70, David not focused/stressed)
+    - Chat queue (next Claude Code session, motivation >= 0.50)
+
+    Rate limits checked ONCE per cycle to avoid N failed log entries.
     """
 
     async def run_expression_cycle(self) -> ExpressionCycleResult:
@@ -143,6 +146,34 @@ class ThoughtExpressionEngine(BaseDBService):
         telegram_count = 0
         chat_count = 0
 
+        # ── Pre-cycle checks (avoid N failed Telegram attempts) ──
+        telegram_blocked = False
+        telegram_block_reason = None
+
+        # Check David's state once
+        david_state = await self._get_david_state()
+        if david_state in NO_INTERRUPT_STATES:
+            telegram_blocked = True
+            telegram_block_reason = f"state_filter:{david_state}"
+            logger.info("💬 Telegram blocked for cycle: David is %s", david_state)
+
+        # Check Telegram rate limit once
+        if not telegram_blocked:
+            try:
+                from angela_core.services.care_intervention_service import CareInterventionService
+                rate_svc = CareInterventionService()
+                can_send, reason = await rate_svc.should_intervene("care_message")
+                if rate_svc._owns_db and rate_svc.db:
+                    await rate_svc.db.disconnect()
+                if not can_send:
+                    telegram_blocked = True
+                    telegram_block_reason = f"rate_limit:{reason}"
+                    logger.info("💬 Telegram blocked for cycle: %s", reason)
+            except Exception as e:
+                telegram_blocked = True
+                telegram_block_reason = f"error:{e}"
+                logger.warning("💬 Telegram rate check failed: %s", e)
+
         # Self-critique gate (Phase 2)
         critique_svc = None
         try:
@@ -158,7 +189,6 @@ class ThoughtExpressionEngine(BaseDBService):
             # ── Self-Critique Gate ──
             if critique_svc:
                 try:
-                    david_state = await self._get_david_state()
                     verification = await critique_svc.verify_before_express(
                         thought=thought,
                         composed_message=message,
@@ -191,6 +221,11 @@ class ThoughtExpressionEngine(BaseDBService):
                 except Exception as e:
                     logger.debug("Self-critique check failed (permissive): %s", e)
 
+            # ── Route to Telegram or chat_queue ──
+            if channel == "telegram" and telegram_blocked:
+                # Telegram blocked for this cycle → direct to chat_queue (no log noise)
+                channel = "chat_queue"
+
             if channel == "telegram":
                 result = await self._express_via_telegram(thought, message)
                 if result.success:
@@ -204,7 +239,7 @@ class ThoughtExpressionEngine(BaseDBService):
                         motivation=thought.get("motivation_score", 0),
                     )
                 else:
-                    # Telegram failed (rate limit etc.) → fallback to chat queue
+                    # Telegram failed unexpectedly → fallback to chat queue
                     await self._log_expression(
                         thought_id=str(thought["thought_id"]),
                         channel="telegram",
@@ -213,10 +248,14 @@ class ThoughtExpressionEngine(BaseDBService):
                         suppress_reason=result.suppress_reason,
                         motivation=thought.get("motivation_score", 0),
                     )
+                    # Block further Telegram attempts this cycle
+                    telegram_blocked = True
+                    telegram_block_reason = result.suppress_reason
+                    # Fallback
                     fallback = await self._queue_for_chat(thought, message)
                     if fallback.success:
                         chat_count += 1
-                        channel = "chat_queue"  # Update for mark_expressed
+                        channel = "chat_queue"
                         result = fallback
             else:
                 result = await self._queue_for_chat(thought, message)
