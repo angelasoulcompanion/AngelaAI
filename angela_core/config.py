@@ -54,8 +54,8 @@ class AngelaConfig:
     )
 
     # Model Configuration
-    EMBEDDING_MODEL: str = "nomic-embed-text"
-    EMBEDDING_DIMENSIONS: int = 768
+    EMBEDDING_MODEL: str = "qllama/multilingual-e5-small"
+    EMBEDDING_DIMENSIONS: int = 384
     ANGELA_MODEL: str = "angela:latest"
     ANGIE_MODEL: str = "angie:v2"
 

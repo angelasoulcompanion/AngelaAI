@@ -25,6 +25,7 @@ import asyncio
 import hashlib
 import httpx
 import logging
+import math
 import os
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
@@ -78,6 +79,14 @@ class EmbeddingService:
         self._ollama_available = None
         self._hf_token = None  # Will load from our_secrets if needed
         logger.info(f"🧠 EmbeddingService initialized: {self._active_model} ({self.DIMENSIONS}D)")
+
+    @staticmethod
+    def _normalize(embedding: List[float]) -> List[float]:
+        """L2-normalize embedding to unit vector for consistent cosine similarity."""
+        norm = math.sqrt(sum(x * x for x in embedding))
+        if norm > 0:
+            return [x / norm for x in embedding]
+        return embedding
 
     def _hash_text(self, text: str) -> str:
         """Create cache key from text."""
@@ -165,9 +174,10 @@ class EmbeddingService:
                 if "data" in data and len(data["data"]) > 0:
                     embedding = data["data"][0].get("embedding", [])
 
-                    # Truncate to our dimensions
+                    # Truncate to our dimensions and normalize
                     if len(embedding) >= self.DIMENSIONS:
                         embedding = embedding[:self.DIMENSIONS]
+                        embedding = self._normalize(embedding)
                         logger.info(f"🌟 Jina AI embedding generated ({len(embedding)}D)")
                         return embedding
 
@@ -240,6 +250,9 @@ class EmbeddingService:
                             embedding = embedding[:self.DIMENSIONS]
                         elif len(embedding) != self.DIMENSIONS:
                             raise RuntimeError(f"Unexpected dimensions: {len(embedding)}")
+
+                        # L2-normalize for consistent cosine similarity
+                        embedding = self._normalize(embedding)
 
                         # Success! Mark Ollama as available
                         self._ollama_available = True
