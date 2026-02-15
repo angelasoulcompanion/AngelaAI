@@ -274,6 +274,17 @@ async def angela_init() -> bool:
         except Exception:
             return []
 
+    async def _load_brain_migration():
+        """Load brain migration status (Phase 7)."""
+        try:
+            from angela_core.services.brain_migration_engine import BrainMigrationEngine
+            engine = BrainMigrationEngine()
+            status = await engine.get_migration_status()
+            await engine.disconnect()
+            return status
+        except Exception:
+            return None
+
     async def _load_rlhf_stats():
         """Load RLHF reward trend and signal count."""
         try:
@@ -319,7 +330,8 @@ async def angela_init() -> bool:
     (subconscious, unified_catchup, project_result, daemon_running,
      adaptation_profile, companion_briefing,
      evolution_stats, proactive_results, relevant_notes,
-     rlhf_stats, temporal_ctx, brain_thoughts) = await asyncio.gather(
+     rlhf_stats, temporal_ctx, brain_thoughts,
+     brain_migration) = await asyncio.gather(
         _load_subconscious(),
         _unified_catchup(),
         _project_context(),
@@ -332,6 +344,7 @@ async def angela_init() -> bool:
         _load_rlhf_stats(),
         _load_temporal_awareness(),
         _load_brain_thoughts(),
+        _load_brain_migration(),
     )
 
     all_projects, project_context = project_result
@@ -409,6 +422,25 @@ async def angela_init() -> bool:
             if len(bt.get('message', '')) > 70:
                 msg += '...'
             print(f'   [{bar_str}] {msg}')
+        print()
+
+    # Brain Migration Status (Phase 7)
+    if brain_migration:
+        mode_symbols = {
+            'rule_only': '░░░░░░░░',
+            'dual': '████░░░░',
+            'brain_preferred': '██████░░',
+            'brain_only': '████████',
+        }
+        print('🧠 Brain Migration:')
+        for atype in ['prepare_context', 'anticipate_need', 'music_suggestion',
+                       'milestone_reminder', 'break_reminder', 'mood_boost',
+                       'wellness_nudge', 'learning_nudge']:
+            mode = brain_migration.routing.get(atype, 'rule_only')
+            bar = mode_symbols.get(mode, '░░░░░░░░')
+            label = atype.replace('_', ' ')[:18].ljust(18)
+            print(f'   {label} [{bar}] {mode}')
+        print(f'   Brain Readiness: {brain_migration.overall_readiness:.0%}')
         print()
 
     # Temporal Awareness — know what David is doing

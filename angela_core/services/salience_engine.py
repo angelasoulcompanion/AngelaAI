@@ -104,6 +104,29 @@ class SalienceEngine(BaseDBService):
             self._weights = {k: v / total for k, v in self._weights.items()}
 
     # ============================================================
+    # TUNED WEIGHT LOADING (Phase 7D)
+    # ============================================================
+
+    async def _load_tuned_weights(self) -> None:
+        """Load tuned salience weights from companion_patterns (if any)."""
+        try:
+            row = await self.db.fetchrow("""
+                SELECT pattern_data FROM companion_patterns
+                WHERE pattern_category = 'brain_salience_weights'
+                ORDER BY last_observed DESC LIMIT 1
+            """)
+            if row and row['pattern_data']:
+                import json
+                data = row['pattern_data']
+                if isinstance(data, str):
+                    data = json.loads(data)
+                if isinstance(data, dict):
+                    self.set_salience_weights(data)
+                    logger.debug("Loaded tuned salience weights: %s", self._weights)
+        except Exception as e:
+            logger.debug("No tuned weights loaded: %s", e)
+
+    # ============================================================
     # CACHE LOADING — Load reference data once per scan cycle
     # ============================================================
 
@@ -253,6 +276,11 @@ class SalienceEngine(BaseDBService):
         if raw.get('type') == 'goal_achieved':
             max_score = max(max_score, 0.7)
 
+        # Prediction-type stimuli: relevance based on confidence
+        if stimulus.stimulus_type == "prediction":
+            pred_confidence = raw.get('confidence', 0.5)
+            max_score = max(max_score, min(1.0, pred_confidence))
+
         return min(1.0, max_score)
 
     def _score_temporal_urgency(self, stimulus: Stimulus) -> float:
@@ -304,6 +332,11 @@ class SalienceEngine(BaseDBService):
                 return 0.6
             elif hours_since >= 12:
                 return 0.4
+
+        # Predictions — time-sensitive by confidence
+        if stimulus.stimulus_type == "prediction":
+            pred_confidence = raw.get('confidence', 0.5)
+            return min(0.9, 0.4 + pred_confidence * 0.5)
 
         # Default: moderate
         return 0.3
@@ -459,6 +492,9 @@ class SalienceEngine(BaseDBService):
         """
         start_time = now_bangkok()
         await self.connect()
+
+        # 0. Load tuned salience weights from DB (Phase 7D)
+        await self._load_tuned_weights()
 
         # 1. Load reference data caches
         await self._load_caches()

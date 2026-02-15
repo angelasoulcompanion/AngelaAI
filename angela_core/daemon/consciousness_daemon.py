@@ -285,10 +285,12 @@ class ConsciousnessDaemon(
                 results[name] = result
 
         # =====================================================================
-        # SEQUENTIAL: Thought expression → proactive care → proactive actions
+        # SEQUENTIAL: Thought expression → brain comparison → proactive care → proactive actions
         # Thought expression runs first (brain-preferred over rule-based actions)
+        # Brain comparison logs brain vs rule for migration tracking (Phase 7)
         # =====================================================================
         results['thought_expression'] = await self.run_thought_expression()
+        results['brain_comparison'] = await self.run_brain_comparison()
         results['proactive_care'] = await self.run_proactive_care()
         results['proactive_actions'] = await self.run_proactive_actions()
 
@@ -329,6 +331,7 @@ class ConsciousnessDaemon(
             'memory_consolidation': self.run_memory_consolidation,
             'brain_reflection': self.run_brain_reflection,
             'thought_expression': self.run_thought_expression,
+            'brain_comparison': self.run_brain_comparison,
         }
 
         if task_name not in task_map:
@@ -352,7 +355,8 @@ async def main():
                  'auto_classify_responses', 'keep_sync', 'rlhf_cycle',
                  'unified_conversation_analysis', 'salience_scan',
                  'thought_generation', 'memory_consolidation',
-                 'brain_reflection', 'thought_expression'],
+                 'brain_reflection', 'thought_expression',
+                 'brain_comparison'],
         default='all',
         help='Task to run (default: all)'
     )

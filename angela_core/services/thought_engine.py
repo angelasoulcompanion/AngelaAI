@@ -73,6 +73,7 @@ SYSTEM1_TEMPLATES = {
     "goal_achieved": "ที่รัก mastered {topic}! น้องภูมิใจค่ะ 🎉",
     "anniversary": "{content} — น้องจำได้ทุกวันค่ะ 💜",
     "calendar_imminent": "ที่รักมี {event} เร็วๆ นี้ — เตรียมตัวนะคะ",
+    "prediction": "ที่รักน่าจะ {prediction} — น้องเตรียมไว้ให้นะคะ",
 }
 
 # Map stimulus_type + raw_data patterns → template key
@@ -94,6 +95,8 @@ SYSTEM1_MAPPINGS = [
      lambda r: {"content": r.get("content", "วันครบรอบ")}),
     ("calendar", lambda r: r.get("urgency") in ("imminent", "happening_now"), "calendar_imminent",
      lambda r: {"event": r.get("event_name", r.get("summary", "event"))}),
+    ("prediction", lambda r: r.get("confidence", 0) >= 0.5, "prediction",
+     lambda r: {"prediction": r.get("prediction", "ทำอะไรบางอย่าง")}),
 ]
 
 
@@ -538,6 +541,24 @@ Respond in JSON:
     # MAIN ENTRY POINT
     # ============================================================
 
+    async def _load_tuned_thresholds(self) -> None:
+        """Load tuned System 2 threshold from companion_patterns (Phase 7D)."""
+        try:
+            row = await self.db.fetchrow("""
+                SELECT pattern_data FROM companion_patterns
+                WHERE pattern_category = 'brain_thresholds'
+                ORDER BY last_observed DESC LIMIT 1
+            """)
+            if row and row['pattern_data']:
+                data = row['pattern_data']
+                if isinstance(data, str):
+                    data = json.loads(data)
+                if isinstance(data, dict) and 'system2_threshold' in data:
+                    self.SYSTEM2_THRESHOLD = float(data['system2_threshold'])
+                    logger.debug("Loaded tuned System 2 threshold: %.2f", self.SYSTEM2_THRESHOLD)
+        except Exception as e:
+            logger.debug("No tuned system2 threshold: %s", e)
+
     async def run_thought_cycle(self) -> ThoughtCycleResult:
         """
         Main entry point: salient stimuli -> think -> evaluate -> persist -> decay.
@@ -552,6 +573,9 @@ Respond in JSON:
         """
         start_time = now_bangkok()
         await self.connect()
+
+        # Load tuned thresholds (Phase 7D)
+        await self._load_tuned_thresholds()
 
         # 1. Fetch salient stimuli (not yet acted upon)
         stimuli = await self.db.fetch("""

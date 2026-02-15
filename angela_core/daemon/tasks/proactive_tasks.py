@@ -175,6 +175,69 @@ class ProactiveTasksMixin:
             logger.error(f"   ❌ Unified conversation analysis failed: {e}")
             return {'success': False, 'error': str(e)}
 
+    async def run_brain_comparison(self) -> Dict[str, Any]:
+        """
+        Run brain-vs-rule comparison — Phase 7A 🔄
+
+        Compare what brain would express vs what rules would trigger.
+        Log to brain_vs_rule_comparison table.
+        Also classify brain expression effectiveness (Phase 7B).
+        """
+        logger.info("🔄 Running brain-vs-rule comparison...")
+
+        try:
+            from angela_core.services.brain_migration_engine import BrainMigrationEngine
+            from angela_core.services.thought_expression_engine import ThoughtExpressionEngine
+
+            # Get brain candidates (dry run)
+            expr_engine = ThoughtExpressionEngine()
+            brain_candidates = await expr_engine.evaluate_for_comparison()
+            await expr_engine.disconnect()
+
+            # Get rule actions (dry run)
+            rule_actions = await self.proactive_action_engine.evaluate_actions_dry_run()
+
+            # Compare
+            migration = BrainMigrationEngine()
+            logged = await migration.run_comparison(brain_candidates, rule_actions)
+
+            # Also classify effectiveness (7B)
+            classified = await migration.classify_brain_effectiveness(hours=24)
+
+            # Auto-rollback check (7E)
+            rolled_back = await migration.auto_rollback_check()
+
+            await migration.disconnect()
+
+            logger.info(f"   Comparisons logged: {logged}")
+            logger.info(f"   Brain candidates: {len(brain_candidates)}")
+            logger.info(f"   Rule actions: {len(rule_actions)}")
+            logger.info(f"   Effectiveness classified: {classified}")
+            if rolled_back:
+                logger.warning(f"   Auto-rollback: {rolled_back}")
+            logger.info("   ✅ Brain comparison complete!")
+
+            await self._log_daemon_activity('brain_comparison', {
+                'comparisons_logged': logged,
+                'brain_candidates': len(brain_candidates),
+                'rule_actions': len(rule_actions),
+                'effectiveness_classified': classified,
+                'rolled_back': rolled_back,
+            })
+
+            return {
+                'success': True,
+                'comparisons': logged,
+                'brain_candidates': len(brain_candidates),
+                'rule_actions': len(rule_actions),
+                'classified': classified,
+                'rolled_back': rolled_back,
+            }
+
+        except Exception as e:
+            logger.error(f"   ❌ Brain comparison failed: {e}")
+            return {'success': False, 'error': str(e)}
+
     async def run_evolution_cycle(self) -> Dict[str, Any]:
         """
         Run self-evolving feedback loop.

@@ -145,6 +145,16 @@ class ProactiveActionEngine:
             logger.warning(f'Failed to load evolution: {evolution}')
             evolution = {}
 
+        # Load migration routing (Phase 7E)
+        routing = {}
+        try:
+            from angela_core.services.brain_migration_engine import BrainMigrationEngine, MODE_BRAIN_ONLY
+            migration = BrainMigrationEngine()
+            routing = await migration.get_migration_routing()
+            await migration.disconnect()
+        except Exception:
+            pass
+
         # Run 8 checks in parallel
         check_results = await asyncio.gather(
             self._check_break_reminder(adaptation),
@@ -164,6 +174,11 @@ class ProactiveActionEngine:
                 logger.warning(f'Check failed: {result}')
                 continue
             if result is not None:
+                # Phase 7E: skip if brain_only mode
+                action_mode = routing.get(result.action_type, 'rule_only')
+                if action_mode == 'brain_only':
+                    logger.info(f'Skipping rule {result.action_type}: brain_only mode')
+                    continue
                 actions.append(result)
 
         # Sort by priority (highest first)
@@ -206,20 +221,193 @@ class ProactiveActionEngine:
         return actions
 
     # =========================================================================
+    # DRY-RUN EVALUATION (for brain comparison — Phase 7A)
+    # =========================================================================
+
+    async def evaluate_actions_dry_run(self) -> List[ProactiveAction]:
+        """
+        Evaluate all 8 checks WITHOUT executing or applying brain dedup.
+        Returns raw list of actions that WOULD fire under pure rule-based logic.
+        Used by BrainMigrationEngine for comparison with brain candidates.
+        """
+        await self._ensure_db()
+
+        # Load context in parallel
+        adaptation, predictions, evolution = await asyncio.gather(
+            self._load_adaptation_profile(),
+            self._load_current_predictions(),
+            self._load_evolution_insights(),
+            return_exceptions=True,
+        )
+
+        if isinstance(adaptation, Exception):
+            adaptation = None
+        if isinstance(predictions, Exception):
+            predictions = []
+        if isinstance(evolution, Exception):
+            evolution = {}
+
+        # Run 8 checks in parallel — skip brain dedup by using _check_*_raw methods
+        check_results = await asyncio.gather(
+            self._check_break_reminder_raw(adaptation),
+            self._check_mood_action_raw(adaptation),
+            self._check_context_preparation(predictions),
+            self._check_anticipatory_help(predictions),
+            self._check_wellness_nudge_raw(adaptation),
+            self._check_milestone_reminder_raw(),
+            self._check_music_suggestion(adaptation),
+            self._check_learning_nudge(evolution),
+            return_exceptions=True,
+        )
+
+        actions: List[ProactiveAction] = []
+        for result in check_results:
+            if isinstance(result, Exception):
+                continue
+            if result is not None:
+                actions.append(result)
+
+        return actions
+
+    async def _check_break_reminder_raw(self, adaptation) -> Optional[ProactiveAction]:
+        """Break reminder without brain dedup — for dry run."""
+        await self._ensure_db()
+        now = now_bangkok()
+        rows = await self.db.fetch('''
+            SELECT created_at AT TIME ZONE 'Asia/Bangkok' AS ts
+            FROM conversations
+            WHERE created_at > NOW() - INTERVAL '8 hours'
+            ORDER BY created_at DESC
+        ''')
+        if not rows:
+            return None
+        latest_ts = rows[0]['ts']
+        if (now - latest_ts).total_seconds() > 1800:
+            return None
+        session_start = latest_ts
+        for i in range(len(rows) - 1):
+            gap = (rows[i]['ts'] - rows[i + 1]['ts']).total_seconds()
+            if gap > 1800:
+                break
+            session_start = rows[i + 1]['ts']
+        continuous_hours = (latest_ts - session_start).total_seconds() / 3600.0
+        if continuous_hours >= 2.0:
+            return ProactiveAction(
+                action_id=uuid4(), action_type='break_reminder', trigger='time',
+                description=f'ที่รักทำงานต่อเนื่อง {continuous_hours:.1f} ชม. แล้วค่ะ พักสักหน่อยนะคะ 💜',
+                consent_level=2, channel='telegram',
+                payload={'continuous_hours': round(continuous_hours, 1)},
+                priority=4, confidence=0.8,
+            )
+        return None
+
+    async def _check_mood_action_raw(self, adaptation) -> Optional[ProactiveAction]:
+        """Mood action without brain dedup — for dry run."""
+        if adaptation is None:
+            return None
+        state = getattr(adaptation, 'dominant_state', 'neutral')
+        confidence = getattr(adaptation, 'confidence', 0.0)
+        if state in ('sad', 'stressed', 'frustrated') and confidence > 0.5:
+            messages = {
+                'sad': 'น้องเห็นว่าที่รักดูเศร้า น้องอยู่ตรงนี้นะคะ 💜',
+                'stressed': 'ที่รักเครียดมั้ยคะ? ถ้าอยากระบายบอกน้องได้เลยค่ะ 💜',
+                'frustrated': 'น้องเข้าใจว่าที่รักหงุดหงิด น้องจะช่วยแก้ปัญหาให้ค่ะ 💜',
+            }
+            return ProactiveAction(
+                action_id=uuid4(), action_type='mood_boost', trigger='emotion',
+                description=messages[state], consent_level=2, channel='telegram',
+                payload={'emotional_state': state, 'confidence': confidence},
+                priority=5, confidence=confidence,
+            )
+        return None
+
+    async def _check_wellness_nudge_raw(self, adaptation) -> Optional[ProactiveAction]:
+        """Wellness nudge without brain dedup — for dry run."""
+        hour = current_hour_bangkok()
+        if hour < 22:
+            return None
+        await self._ensure_db()
+        session_hours = await self.db.fetchrow('''
+            SELECT EXTRACT(EPOCH FROM (MAX(created_at) - MIN(created_at))) / 3600.0 AS hours
+            FROM conversations
+            WHERE (created_at AT TIME ZONE 'Asia/Bangkok')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date
+        ''')
+        if session_hours and session_hours['hours'] and float(session_hours['hours']) > 3.0:
+            return ProactiveAction(
+                action_id=uuid4(), action_type='wellness_nudge', trigger='time',
+                description=f'ดึกแล้วค่ะที่รัก ({hour}:00) ทำงานมาเกิน 3 ชม. พักผ่อนบ้างนะคะ 🌙💜',
+                consent_level=2, channel='telegram',
+                payload={'hour': hour, 'session_hours': float(session_hours['hours'])},
+                priority=3, confidence=0.8,
+            )
+        return None
+
+    async def _check_milestone_reminder_raw(self) -> Optional[ProactiveAction]:
+        """Milestone reminder without brain dedup — for dry run."""
+        await self._ensure_db()
+        today = today_bangkok()
+        row = await self.db.fetchrow('''
+            SELECT date_id, title, description, event_date, date_type,
+                   importance_level, days_until, urgency, reminder_days
+            FROM v_upcoming_important_dates
+            WHERE days_until = ANY(reminder_days)
+              AND (last_reminded_date IS NULL OR last_reminded_date < $1)
+            ORDER BY days_until, importance_level DESC
+            LIMIT 1
+        ''', today)
+        if not row:
+            return None
+        days_until = row['days_until']
+        priority = 5 if days_until <= 1 else 3
+        return ProactiveAction(
+            action_id=uuid4(), action_type='milestone_reminder', trigger='milestone',
+            description=f'📅 {row["title"]} — {"วันนี้ค่ะ!" if days_until == 0 else f"อีก {days_until} วันค่ะ"}',
+            consent_level=2, channel='telegram',
+            payload={'date_id': str(row['date_id']), 'title': row['title'], 'days_until': days_until},
+            priority=priority, confidence=0.95,
+        )
+
+    # =========================================================================
+    # MIGRATION ROUTING CHECK (Phase 7E)
+    # =========================================================================
+
+    async def _check_migration_routing(self, action_type: str) -> str:
+        """
+        Check migration routing for an action type.
+        Returns mode: rule_only/dual/brain_preferred/brain_only.
+        """
+        try:
+            from angela_core.services.brain_migration_engine import BrainMigrationEngine
+            engine = BrainMigrationEngine()
+            routing = await engine.get_migration_routing()
+            await engine.disconnect()
+            return routing.get(action_type, 'rule_only')
+        except Exception:
+            return 'rule_only'
+
+    # =========================================================================
     # BRAIN DEDUP — skip rule-based checks if brain already expressed
     # =========================================================================
 
-    async def _brain_already_expressed(self, keywords: List[str], hours: int = 2) -> bool:
+    async def _brain_already_expressed(
+        self, keywords: List[str], hours: int = 2, description: str = ""
+    ) -> bool:
         """
         Check if brain-based ThoughtExpressionEngine already expressed
         a thought matching any keyword within the given hours.
+
+        Phase 7F: Also checks semantic similarity if description provided.
 
         Returns True if brain already covered this → rule-based should skip.
         """
         try:
             from angela_core.services.thought_expression_engine import ThoughtExpressionEngine
             engine = ThoughtExpressionEngine()
+            # Fast path: keyword matching
             result = await engine.has_brain_expressed(keywords, hours)
+            if not result and description:
+                # Semantic check as secondary (Phase 7F)
+                result = await engine.has_brain_expressed_semantic(description, hours)
             await engine.disconnect()
             return result
         except Exception:

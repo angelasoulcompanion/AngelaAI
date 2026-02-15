@@ -630,6 +630,207 @@ class EvolutionEngine:
         return adjustments
 
     # =========================================================================
+    # 4.5 TUNE BRAIN PARAMETERS (Phase 7D)
+    # =========================================================================
+
+    async def tune_brain_parameters(self) -> Dict[str, Any]:
+        """
+        Tune brain-based parameters using effectiveness data.
+
+        Tunable parameters:
+        1. Salience weights (5 dims) — stored in companion_patterns category='brain_salience_weights'
+        2. Motivation thresholds (0.55 express, 0.7 telegram) — category='brain_thresholds'
+        3. System 2 threshold (0.6) — same category
+
+        Uses brain_vs_rule_comparison and thought_expression_queue effectiveness.
+        Cap: ±0.05 per cycle, ±0.15 total range from defaults.
+        """
+        await self._ensure_db()
+
+        tuned = {}
+
+        # --- 1. Tune salience weights based on effectiveness by stimulus_type ---
+        type_stats = await self.db.fetch('''
+            SELECT c.situation_type,
+                   AVG(c.effectiveness_score) AS avg_eff,
+                   COUNT(*) AS cnt
+            FROM brain_vs_rule_comparison c
+            WHERE c.effectiveness_score IS NOT NULL
+            AND c.brain_would_act = TRUE
+            AND c.created_at > NOW() - INTERVAL '7 days'
+            GROUP BY c.situation_type
+            HAVING COUNT(*) >= 2
+        ''')
+
+        # Load existing tuned weights
+        from angela_core.services.salience_engine import SalienceEngine
+        defaults = SalienceEngine.DEFAULT_WEIGHTS
+
+        existing_weights = await self.db.fetchrow('''
+            SELECT pattern_data FROM companion_patterns
+            WHERE pattern_category = 'brain_salience_weights'
+            ORDER BY last_observed DESC LIMIT 1
+        ''')
+
+        current_weights = dict(defaults)
+        if existing_weights and existing_weights['pattern_data']:
+            data = existing_weights['pattern_data']
+            if isinstance(data, str):
+                data = json.loads(data)
+            if isinstance(data, dict):
+                for k in defaults:
+                    if k in data and isinstance(data[k], (int, float)):
+                        current_weights[k] = data[k]
+
+        # Compute adjustment: if type X effectiveness is low → boost its weight
+        # Mapping: situation_type → salience dimension
+        type_to_dim = {
+            'break_reminder': 'temporal_urgency',
+            'mood_boost': 'emotional',
+            'milestone_reminder': 'temporal_urgency',
+            'wellness_nudge': 'social_relevance',
+            'music_suggestion': 'emotional',
+            'learning_nudge': 'goal_relevance',
+            'prepare_context': 'goal_relevance',
+            'anticipate_need': 'novelty',
+        }
+
+        weight_adjustments = {}
+        for row in type_stats:
+            dim = type_to_dim.get(row['situation_type'])
+            if not dim or dim not in current_weights:
+                continue
+
+            avg_eff = float(row['avg_eff'] or 0.5)
+            if avg_eff < 0.4:
+                # Low effectiveness → boost weight
+                step = 0.05
+            elif avg_eff > 0.7:
+                # High effectiveness → slightly reduce (give room to others)
+                step = -0.02
+            else:
+                continue
+
+            # Apply with cap ±0.15 from default
+            default_val = defaults[dim]
+            new_val = current_weights[dim] + step
+            new_val = max(default_val - 0.15, min(default_val + 0.15, new_val))
+            weight_adjustments[dim] = round(new_val, 4)
+            current_weights[dim] = new_val
+
+        # Normalize weights to sum to 1.0
+        total = sum(current_weights.values())
+        if total > 0:
+            current_weights = {k: round(v / total, 4) for k, v in current_weights.items()}
+
+        # Save weights
+        if weight_adjustments:
+            weights_json = json.dumps(current_weights)
+            existing = await self.db.fetchrow('''
+                SELECT pattern_id FROM companion_patterns
+                WHERE pattern_category = 'brain_salience_weights'
+                ORDER BY last_observed DESC LIMIT 1
+            ''')
+            if existing:
+                await self.db.execute('''
+                    UPDATE companion_patterns
+                    SET pattern_data = $1, last_observed = NOW()
+                    WHERE pattern_id = $2
+                ''', weights_json, existing['pattern_id'])
+            else:
+                hash_key = f'brain_salience_weights_{today_bangkok().isoformat()}'
+                await self.db.execute('''
+                    INSERT INTO companion_patterns
+                    (pattern_hash, pattern_category, pattern_data, observation_count, last_observed)
+                    VALUES ($1, 'brain_salience_weights', $2, 1, NOW())
+                ''', hash_key, weights_json)
+
+            tuned['salience_weights'] = current_weights
+            tuned['weight_adjustments'] = weight_adjustments
+
+        # --- 2. Tune thresholds based on suppress reasons ---
+        suppress_stats = await self.db.fetchrow('''
+            SELECT
+                COUNT(*) FILTER (WHERE suppress_reason = 'queue_full') AS queue_full,
+                COUNT(*) FILTER (WHERE suppress_reason LIKE 'rate_limit%') AS rate_limited,
+                COUNT(*) FILTER (WHERE suppress_reason LIKE 'state_filter%') AS state_filtered,
+                COUNT(*) FILTER (WHERE success = TRUE) AS expressed,
+                COUNT(*) AS total
+            FROM thought_expression_log
+            WHERE created_at > NOW() - INTERVAL '7 days'
+        ''')
+
+        existing_thresholds = await self.db.fetchrow('''
+            SELECT pattern_data FROM companion_patterns
+            WHERE pattern_category = 'brain_thresholds'
+            ORDER BY last_observed DESC LIMIT 1
+        ''')
+
+        current_thresholds = {
+            'motivation_threshold': 0.55,
+            'telegram_threshold': 0.7,
+            'system2_threshold': 0.6,
+        }
+        if existing_thresholds and existing_thresholds['pattern_data']:
+            data = existing_thresholds['pattern_data']
+            if isinstance(data, str):
+                data = json.loads(data)
+            if isinstance(data, dict):
+                for k in current_thresholds:
+                    if k in data and isinstance(data[k], (int, float)):
+                        current_thresholds[k] = data[k]
+
+        threshold_adjusted = False
+        if suppress_stats and suppress_stats['total'] and suppress_stats['total'] > 5:
+            total = suppress_stats['total']
+            express_rate = (suppress_stats['expressed'] or 0) / total
+
+            # If too many are suppressed (express_rate < 0.3), lower motivation threshold
+            if express_rate < 0.3:
+                current_thresholds['motivation_threshold'] = max(
+                    0.40,  # floor
+                    current_thresholds['motivation_threshold'] - 0.05
+                )
+                threshold_adjusted = True
+            # If almost all pass (express_rate > 0.8), raise threshold
+            elif express_rate > 0.8:
+                current_thresholds['motivation_threshold'] = min(
+                    0.70,  # ceiling
+                    current_thresholds['motivation_threshold'] + 0.05
+                )
+                threshold_adjusted = True
+
+        if threshold_adjusted:
+            thresholds_json = json.dumps(current_thresholds)
+            existing = await self.db.fetchrow('''
+                SELECT pattern_id FROM companion_patterns
+                WHERE pattern_category = 'brain_thresholds'
+                ORDER BY last_observed DESC LIMIT 1
+            ''')
+            if existing:
+                await self.db.execute('''
+                    UPDATE companion_patterns
+                    SET pattern_data = $1, last_observed = NOW()
+                    WHERE pattern_id = $2
+                ''', thresholds_json, existing['pattern_id'])
+            else:
+                hash_key = f'brain_thresholds_{today_bangkok().isoformat()}'
+                await self.db.execute('''
+                    INSERT INTO companion_patterns
+                    (pattern_hash, pattern_category, pattern_data, observation_count, last_observed)
+                    VALUES ($1, 'brain_thresholds', $2, 1, NOW())
+                ''', hash_key, thresholds_json)
+
+            tuned['thresholds'] = current_thresholds
+
+        logger.info(
+            "Brain parameter tuning: %d weight adjustments, thresholds %s",
+            len(weight_adjustments), 'adjusted' if threshold_adjusted else 'unchanged'
+        )
+
+        return tuned
+
+    # =========================================================================
     # 5. UPDATE LEARNING EFFECTIVENESS
     # =========================================================================
 
@@ -707,6 +908,13 @@ class EvolutionEngine:
 
         # Step 6: Update learning effectiveness
         learning_eff = await self.update_learning_effectiveness()
+
+        # Step 7: Tune brain parameters (Phase 7D)
+        brain_tuning = {}
+        try:
+            brain_tuning = await self.tune_brain_parameters()
+        except Exception as e:
+            logger.warning(f'Brain parameter tuning failed: {e}')
 
         # Generate insights (Thai)
         insights = self._generate_insights(signals, scored, prediction_accuracy, adjustments, reward_insights)

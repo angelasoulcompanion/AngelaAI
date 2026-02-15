@@ -654,6 +654,86 @@ class GoalCodelet(BaseCodelet):
 
 
 # ============================================================
+# 8. PREDICTION CODELET — Brain absorbs rule-based predictions (Phase 7C)
+# ============================================================
+
+class PredictionCodelet(BaseCodelet):
+    """
+    Perceives predictions from PredictiveCompanionService (daily_companion_briefings).
+    Converts high-confidence predictions matching current time window to stimuli.
+    This allows the brain pipeline to "see" what the rule-based PREDICT system sees.
+    """
+
+    codelet_name = "PredictionCodelet"
+
+    # Time windows
+    WINDOWS = {
+        range(5, 12): 'morning',
+        range(12, 17): 'afternoon',
+        range(17, 21): 'evening',
+        range(21, 24): 'night',
+        range(0, 5): 'night',
+    }
+
+    async def scan(self) -> List[Stimulus]:
+        stimuli = []
+        hour = current_hour_bangkok()
+
+        # Determine current time window
+        current_window = 'morning'
+        for hour_range, window in self.WINDOWS.items():
+            if hour in hour_range:
+                current_window = window
+                break
+
+        # Load today's predictions from daily_companion_briefings
+        try:
+            row = await self.db.fetchrow("""
+                SELECT predictions
+                FROM daily_companion_briefings
+                WHERE briefing_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date
+            """)
+        except Exception:
+            return stimuli
+
+        if not row or not row['predictions']:
+            return stimuli
+
+        predictions = row['predictions']
+        if isinstance(predictions, str):
+            import json
+            try:
+                predictions = json.loads(predictions)
+            except (ValueError, TypeError):
+                return stimuli
+
+        if not isinstance(predictions, list):
+            return stimuli
+
+        for pred in predictions:
+            confidence = pred.get('confidence', 0)
+            time_window = pred.get('time_window', '')
+            prediction_text = pred.get('prediction', '')
+
+            # Only consider high-confidence predictions for current time window
+            if confidence >= 0.5 and time_window == current_window:
+                stimuli.append(Stimulus(
+                    stimulus_type="prediction",
+                    content=f"ที่รักน่าจะ {prediction_text} ช่วง{current_window}",
+                    source=self.codelet_name,
+                    raw_data={
+                        "prediction": prediction_text,
+                        "confidence": confidence,
+                        "time_window": time_window,
+                        "category": pred.get('category', 'general'),
+                        "proactive_action": pred.get('proactive_action', ''),
+                    },
+                ))
+
+        return stimuli
+
+
+# ============================================================
 # CODELET REGISTRY
 # ============================================================
 
@@ -665,4 +745,5 @@ ALL_CODELETS = [
     CalendarCodelet,
     SocialCodelet,
     GoalCodelet,
+    PredictionCodelet,
 ]

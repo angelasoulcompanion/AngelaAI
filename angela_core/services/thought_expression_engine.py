@@ -98,6 +98,9 @@ class ThoughtExpressionEngine(BaseDBService):
         start = now_bangkok()
         await self.connect()
 
+        # Load tuned thresholds (Phase 7D)
+        await self._load_tuned_thresholds()
+
         # 1. Select expressible thoughts
         candidates = await self._select_expressible_thoughts()
         if not candidates:
@@ -519,6 +522,68 @@ class ThoughtExpressionEngine(BaseDBService):
         except Exception as e:
             logger.warning("Failed to log expression: %s", e)
 
+    # ============================================================
+    # TUNED THRESHOLD LOADING (Phase 7D)
+    # ============================================================
+
+    async def _load_tuned_thresholds(self) -> None:
+        """Load tuned thresholds from companion_patterns (if any)."""
+        global MOTIVATION_THRESHOLD, TELEGRAM_THRESHOLD
+        try:
+            await self.connect()
+            row = await self.db.fetchrow("""
+                SELECT pattern_data FROM companion_patterns
+                WHERE pattern_category = 'brain_thresholds'
+                ORDER BY last_observed DESC LIMIT 1
+            """)
+            if row and row['pattern_data']:
+                import json
+                data = row['pattern_data']
+                if isinstance(data, str):
+                    data = json.loads(data)
+                if isinstance(data, dict):
+                    if 'motivation_threshold' in data:
+                        MOTIVATION_THRESHOLD = float(data['motivation_threshold'])
+                    if 'telegram_threshold' in data:
+                        TELEGRAM_THRESHOLD = float(data['telegram_threshold'])
+                    logger.debug("Loaded tuned thresholds: motivation=%.2f, telegram=%.2f",
+                                 MOTIVATION_THRESHOLD, TELEGRAM_THRESHOLD)
+        except Exception as e:
+            logger.debug("No tuned thresholds loaded: %s", e)
+
+    # ============================================================
+    # COMPARISON EVALUATION (Phase 7A — dry run without expressing)
+    # ============================================================
+
+    async def evaluate_for_comparison(self) -> List[Dict[str, Any]]:
+        """
+        Return candidate thoughts that WOULD be expressed,
+        without actually expressing them. Used by BrainMigrationEngine
+        for comparison with rule-based actions.
+        """
+        await self.connect()
+
+        candidates = await self._select_expressible_thoughts()
+        if not candidates:
+            return []
+
+        filtered, _ = await self._filter_thoughts(candidates)
+
+        result = []
+        for thought in filtered:
+            channel = self._decide_channel(thought)
+            message = await self._compose_message(thought)
+            result.append({
+                'thought_id': str(thought.get('thought_id', '')),
+                'content': thought.get('content', ''),
+                'message': message,
+                'channel': channel,
+                'motivation_score': thought.get('motivation_score', 0),
+                'thought_type': thought.get('thought_type', ''),
+            })
+
+        return result
+
     async def has_brain_expressed(
         self, keywords: List[str], hours: int = 2
     ) -> bool:
@@ -539,4 +604,75 @@ class ThoughtExpressionEngine(BaseDBService):
             """, f"%{kw}%", hours)
             if row:
                 return True
+        return False
+
+    # ============================================================
+    # SEMANTIC DEDUP (Phase 7F)
+    # ============================================================
+
+    async def has_brain_expressed_semantic(
+        self, candidate_msg: str, hours: int = 2, threshold: float = 0.75
+    ) -> bool:
+        """
+        Check if a semantically similar thought was expressed recently.
+
+        Uses local embedding model — fast (~0.5s), $0.
+        Fast-path: keyword check first, semantic as secondary.
+
+        Args:
+            candidate_msg: The message to check for duplicates
+            hours: Window to check for recent expressions
+            threshold: Cosine similarity threshold (0.75 = quite similar)
+
+        Returns: True if a semantically similar expression exists
+        """
+        if not candidate_msg or len(candidate_msg.strip()) < 10:
+            return False
+
+        await self.connect()
+
+        # Get recent successful expressions
+        recent = await self.db.fetch("""
+            SELECT message_sent FROM thought_expression_log
+            WHERE success = TRUE
+            AND created_at > NOW() - INTERVAL '1 hour' * $1
+            ORDER BY created_at DESC
+            LIMIT 10
+        """, hours)
+
+        if not recent:
+            return False
+
+        try:
+            from angela_core.services.embedding_service import get_embedding_service
+            from angela_core.services.feedback_classifier import cosine_similarity
+
+            svc = get_embedding_service()
+
+            # Generate embedding for candidate
+            candidate_emb = await svc.generate_embedding(candidate_msg)
+            if not candidate_emb:
+                return False
+
+            # Compare with each recent expression
+            for row in recent:
+                msg = row['message_sent'] or ''
+                if not msg:
+                    continue
+
+                msg_emb = await svc.generate_embedding(msg)
+                if not msg_emb:
+                    continue
+
+                sim = cosine_similarity(candidate_emb, msg_emb)
+                if sim >= threshold:
+                    logger.debug(
+                        "Semantic dedup: %.2f similarity (threshold %.2f)\n  '%s'\n  '%s'",
+                        sim, threshold, candidate_msg[:60], msg[:60]
+                    )
+                    return True
+
+        except Exception as e:
+            logger.debug("Semantic dedup failed (falling back): %s", e)
+
         return False
