@@ -49,7 +49,7 @@ class EmotionRepository(BaseRepository[Emotion], IEmotionRepository):
     - shared_with (VARCHAR)
     - tags (TEXT[])
     - related_goal_id (UUID, nullable)
-    - embedding (VECTOR(768), nullable)
+    - embedding (VECTOR(384), nullable)
     - created_at (TIMESTAMP)
     - last_reflected_on (TIMESTAMP, nullable)
     - reflection_count (INTEGER, default 0)

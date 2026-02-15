@@ -43,7 +43,7 @@ class DocumentRepository(BaseRepository[Document], IDocumentRepository):
     - document_id (UUID, FK)
     - chunk_index (INTEGER)
     - content (TEXT)
-    - embedding (VECTOR(768))
+    - embedding (VECTOR(384))
     - page_number (INTEGER)
     - section_title (VARCHAR)
     - importance_score (DOUBLE PRECISION)
@@ -218,7 +218,7 @@ class DocumentRepository(BaseRepository[Document], IDocumentRepository):
         Vector similarity search (searches chunks, returns documents).
 
         Args:
-            embedding: Query embedding vector (768 dimensions)
+            embedding: Query embedding vector (384 dimensions)
             top_k: Number of top results to return
             filters: Optional filters (category, status, etc.)
 

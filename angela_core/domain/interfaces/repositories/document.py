@@ -24,7 +24,7 @@ class IDocumentRepository(IRepository):
         Vector similarity search.
 
         Args:
-            embedding: Query embedding vector (768 dimensions)
+            embedding: Query embedding vector (384 dimensions)
             top_k: Number of top results to return
             filters: Optional filters (e.g., category, source)
 

@@ -32,7 +32,7 @@ class KnowledgeRepository(BaseRepository[KnowledgeNode], IKnowledgeRepository):
     - understanding_level (DOUBLE PRECISION)
     - last_used_at (TIMESTAMP, nullable)
     - times_referenced (INTEGER)
-    - embedding (VECTOR(768), nullable)
+    - embedding (VECTOR(384), nullable)
     - created_at (TIMESTAMP)
 
     Note: Some entity fields (confidence, source_file, topic, # content_json)  # REMOVED: Migration 010
@@ -115,7 +115,7 @@ class KnowledgeRepository(BaseRepository[KnowledgeNode], IKnowledgeRepository):
         Vector similarity search for knowledge.
 
         Args:
-            embedding: Query embedding vector (768 dimensions)
+            embedding: Query embedding vector (384 dimensions)
             top_k: Number of top results to return
             category: Optional category filter
 

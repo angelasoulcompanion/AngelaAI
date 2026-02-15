@@ -35,7 +35,7 @@ class TrainingExampleRepository(BaseRepository[TrainingExample], ITrainingExampl
     - source_type (VARCHAR 50) - enum value
     - source_conversation_id (UUID, nullable)
     - metadata (JSONB) - additional info dict
-    - embedding (VECTOR 768, nullable)
+    - embedding (VECTOR 384, nullable)
     - created_at (TIMESTAMP)
     - used_in_training (BOOLEAN, default false)
     - training_date (TIMESTAMP, nullable)

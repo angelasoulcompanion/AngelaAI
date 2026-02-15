@@ -49,7 +49,7 @@ class ILearningPatternRepository(IRepository):
         Find similar patterns using vector similarity search.
 
         Args:
-            embedding: Query embedding (768 dimensions)
+            embedding: Query embedding (384 dimensions)
             top_k: Number of results
             pattern_type: Optional pattern type filter
             min_confidence: Minimum confidence score

@@ -84,7 +84,7 @@ class TopicExtracted(DomainEvent):
 class EmbeddingGenerated(DomainEvent):
     """Event raised when embedding is generated for any entity."""
     event_type: str = "EmbeddingGenerated"
-    embedding_dimensions: int = 768
+    embedding_dimensions: int = 384
     entity_type: str = ""  # "conversation", "memory", "knowledge", etc.
 
 

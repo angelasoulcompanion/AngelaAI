@@ -552,7 +552,7 @@ class MemoryService:
         Search memories by vector similarity.
 
         Args:
-            embedding: Query embedding (768 dims)
+            embedding: Query embedding (384 dims)
             top_k: Number of results
             phase: Optional phase filter
 

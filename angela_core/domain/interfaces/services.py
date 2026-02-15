@@ -34,7 +34,7 @@ class IEmbeddingService(Protocol):
             text: Input text to embed
 
         Returns:
-            Embedding vector (768 dimensions for nomic-embed-text)
+            Embedding vector (384 dimensions for multilingual-e5-small)
 
         Raises:
             EmbeddingServiceError: If embedding generation fails
@@ -68,7 +68,7 @@ class IEmbeddingService(Protocol):
         Get embedding vector dimension.
 
         Returns:
-            Dimension size (768 for nomic-embed-text)
+            Dimension size (384 for multilingual-e5-small)
         """
         ...
 

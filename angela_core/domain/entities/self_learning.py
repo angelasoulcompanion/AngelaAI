@@ -52,7 +52,7 @@ class LearningPattern:
     last_observed: datetime = field(default_factory=datetime.now)
     context: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
-    embedding: Optional[List[float]] = None  # 768-dim vector for similarity search
+    embedding: Optional[List[float]] = None  # 384-dim vector for similarity search
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 
@@ -174,7 +174,7 @@ class TrainingExample:
     source_type: SourceType = SourceType.REAL_CONVERSATION
     source_conversation_id: Optional[UUID] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
-    embedding: Optional[List[float]] = None  # 768-dim vector
+    embedding: Optional[List[float]] = None  # 384-dim vector
     created_at: datetime = field(default_factory=datetime.now)
     used_in_training: bool = False
     training_date: Optional[datetime] = None

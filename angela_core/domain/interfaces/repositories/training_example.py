@@ -143,7 +143,7 @@ class ITrainingExampleRepository(IRepository):
         Find similar training examples using vector search.
 
         Args:
-            embedding: Query embedding (768 dimensions)
+            embedding: Query embedding (384 dimensions)
             top_k: Number of results
             min_quality: Minimum quality score
 

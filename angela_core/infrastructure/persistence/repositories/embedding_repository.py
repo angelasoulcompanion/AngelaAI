@@ -28,11 +28,11 @@ class EmbeddingRepository(IEmbeddingRepository):
     Unified repository for vector embedding operations.
 
     Provides semantic search capabilities across all tables with embeddings:
-    - conversations (768-dim vectors)
-    - angela_emotions (768-dim vectors)
-    - long_term_memory (768-dim vectors)
-    - knowledge_nodes (768-dim vectors)
-    - document_chunks (768-dim vectors)
+    - conversations (384-dim vectors)
+    - angela_emotions (384-dim vectors)
+    - long_term_memory (384-dim vectors)
+    - knowledge_nodes (384-dim vectors)
+    - document_chunks (384-dim vectors)
 
     Uses pgvector <=> operator for cosine distance similarity search.
     """
@@ -96,7 +96,7 @@ class EmbeddingRepository(IEmbeddingRepository):
         Search conversations by vector similarity.
 
         Args:
-            embedding: Query embedding (768 dimensions)
+            embedding: Query embedding (384 dimensions)
             top_k: Number of results
             filters: Optional filters (speaker, importance, date_range, etc.)
 
@@ -343,7 +343,7 @@ class EmbeddingRepository(IEmbeddingRepository):
         across Angela's entire knowledge base in one call.
 
         Args:
-            embedding: Query embedding (768 dimensions)
+            embedding: Query embedding (384 dimensions)
             top_k_per_table: Number of results per table
 
         Returns:

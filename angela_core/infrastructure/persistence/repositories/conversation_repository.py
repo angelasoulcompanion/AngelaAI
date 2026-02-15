@@ -35,7 +35,7 @@ class ConversationRepository(BaseRepository[Conversation], IConversationReposito
     - sentiment_label (VARCHAR, nullable)
     - emotion_detected (VARCHAR, nullable)
     - importance_level (INTEGER, default 5)
-    # - embedding (VECTOR(768), nullable)  # REMOVED: Migration 009
+    # - embedding (VECTOR(384), nullable)  # REMOVED: Migration 009
     # - content_json (JSONB)  # REMOVED: Migration 010
     - created_at (TIMESTAMP)
     """

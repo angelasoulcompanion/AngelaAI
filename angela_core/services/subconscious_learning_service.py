@@ -38,7 +38,7 @@ async def generate_embedding(text: str) -> List[float]:
     import hashlib
     # Simple hash-based embedding for now
     hash_val = int(hashlib.md5(text.encode()).hexdigest(), 16)
-    return [(hash_val >> i) % 256 / 255.0 for i in range(768)]
+    return [(hash_val >> i) % 256 / 255.0 for i in range(384)]
 
 
 class SubConsciousLearningService:

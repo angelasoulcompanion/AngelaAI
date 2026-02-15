@@ -40,7 +40,7 @@ class MessageRepository(BaseRepository[AngelaMessage], IMessageRepository):
     - is_important (BOOLEAN, default: false)
     - is_pinned (BOOLEAN, default: false)
     - created_at (TIMESTAMP, default: CURRENT_TIMESTAMP)
-    - embedding (VECTOR(768), nullable)
+    - embedding (VECTOR(384), nullable)
     """
 
     def __init__(self, db):

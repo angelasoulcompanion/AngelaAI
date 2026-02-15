@@ -36,7 +36,7 @@ class MemoryRepository(BaseRepository[Memory], IMemoryRepository):
     - token_count (INTEGER)
     - promoted_from (VARCHAR, nullable)
     - source_event_id (UUID, nullable)
-    - embedding (VECTOR(768), nullable)
+    - embedding (VECTOR(384), nullable)
     - created_at (TIMESTAMP)
     """
 
@@ -121,7 +121,7 @@ class MemoryRepository(BaseRepository[Memory], IMemoryRepository):
         Vector similarity search for memories.
 
         Args:
-            embedding: Query embedding vector (768 dimensions)
+            embedding: Query embedding vector (384 dimensions)
             top_k: Number of top results to return
             memory_type: Optional memory phase filter
 

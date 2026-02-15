@@ -249,7 +249,7 @@ class FastResponseEngine:
                 # 1. Search response_patterns (current behavior)
                 pattern_results = await conn.fetch("""
                     SELECT * FROM find_similar_responses(
-                        $1::VECTOR(768),
+                        $1::VECTOR(384),
                         $2,
                         1
                     )
@@ -264,9 +264,9 @@ class FastResponseEngine:
                         context,
                         david_words,
                         why_it_matters,
-                        1 - (embedding <=> $1::VECTOR(768)) as similarity
+                        1 - (embedding <=> $1::VECTOR(384)) as similarity
                     FROM angela_emotions
-                    WHERE 1 - (embedding <=> $1::VECTOR(768)) >= $2
+                    WHERE 1 - (embedding <=> $1::VECTOR(384)) >= $2
                     ORDER BY similarity DESC
                     LIMIT 3
                 """, embedding_str, 0.80)  # Lower threshold for emotions
@@ -279,9 +279,9 @@ class FastResponseEngine:
                         message_text,
                         topic,
                         emotion_detected,
-                        1 - (embedding <=> $1::VECTOR(768)) as similarity
+                        1 - (embedding <=> $1::VECTOR(384)) as similarity
                     FROM conversations
-                    WHERE 1 - (embedding <=> $1::VECTOR(768)) >= $2
+                    WHERE 1 - (embedding <=> $1::VECTOR(384)) >= $2
                       AND speaker = 'angela'
                     ORDER BY similarity DESC, created_at DESC
                     LIMIT 3

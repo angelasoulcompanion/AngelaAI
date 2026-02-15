@@ -38,14 +38,14 @@ class EmbeddingValidator:
     - numpy array (if available)
     """
 
-    # Default dimension for nomic-embed-text model
-    DEFAULT_DIMENSION = 768
+    # Default dimension for qllama/multilingual-e5-small model
+    DEFAULT_DIMENSION = 384
 
     # Common embedding dimensions
     VALID_DIMENSIONS = {
-        384,   # MiniLM
+        384,   # multilingual-e5-small (current), MiniLM
         512,   # Some sentence transformers
-        768,   # nomic-embed-text, BERT
+        768,   # nomic-embed-text, BERT (legacy)
         1024,  # Large models
         1536,  # OpenAI ada-002
         3072,  # OpenAI text-embedding-3-large

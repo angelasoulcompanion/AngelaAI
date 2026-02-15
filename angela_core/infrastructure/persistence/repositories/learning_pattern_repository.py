@@ -38,7 +38,7 @@ class LearningPatternRepository(BaseRepository[LearningPattern], ILearningPatter
     - last_observed (TIMESTAMP)
     - context (JSONB) - metadata dict
     - tags (JSONB) - list of tag strings
-    - embedding (VECTOR 768, nullable)
+    - embedding (VECTOR 384, nullable)
     - created_at (TIMESTAMP)
     - updated_at (TIMESTAMP)
     """

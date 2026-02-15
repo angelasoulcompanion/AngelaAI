@@ -97,7 +97,7 @@ class Emotion:
     - emotion must be a valid EmotionType
     - intensity must be 1-10
     - memory_strength must be 1-10
-    - embedding must be 768 dimensions if provided
+    - embedding must be 384 dimensions if provided
 
     Business Rules:
     - Emotions tied to David typically have higher memory_strength
@@ -204,11 +204,11 @@ class Emotion:
                 "Context cannot be empty"
             )
 
-        # Embedding must be 768 dimensions
+        # Embedding must be 384 dimensions
         if self.embedding is not None:
-            if len(self.embedding) != 768:
+            if len(self.embedding) != 384:
                 raise BusinessRuleViolationError(
-                    "Embedding dimension must be 768",
+                    "Embedding dimension must be 384",
                     details=f"Got {len(self.embedding)} dimensions"
                 )
 
@@ -348,14 +348,14 @@ class Emotion:
         Add vector embedding.
 
         Args:
-            embedding: 768-dim vector
+            embedding: 384-dim vector
 
         Returns:
             Updated emotion
         """
-        if len(embedding) != 768:
+        if len(embedding) != 384:
             raise BusinessRuleViolationError(
-                "Embedding dimension must be 768",
+                "Embedding dimension must be 384",
                 details=f"Got {len(embedding)} dimensions"
             )
 
@@ -494,7 +494,7 @@ class Emotion:
 
     def has_embedding(self) -> bool:
         """Check if emotion has embedding."""
-        return self.embedding is not None and len(self.embedding) == 768
+        return self.embedding is not None and len(self.embedding) == 384
 
     def days_since_felt(self) -> int:
         """Calculate days since emotion was felt."""

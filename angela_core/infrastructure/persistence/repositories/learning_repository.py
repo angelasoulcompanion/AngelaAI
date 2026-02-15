@@ -36,7 +36,7 @@ class LearningRepository(BaseRepository[Learning], ILearningRepository):
     - application_note (TEXT, nullable)
     - created_at (TIMESTAMP)
     - last_reinforced_at (TIMESTAMP, nullable)
-    - embedding (VECTOR 768, nullable)
+    - embedding (VECTOR 384, nullable)
     - learning_json (JSONB, nullable)
     - # content_json (JSONB, nullable)  # REMOVED: Migration 010
     """

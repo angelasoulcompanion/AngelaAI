@@ -93,7 +93,7 @@ class KnowledgeNode:
     Invariants:
     - concept_name must not be empty and should be unique
     - understanding_level must be 0.0-1.0
-    - embedding must be 768 dimensions if provided
+    - embedding must be 384 dimensions if provided
 
     Business Rules:
     - Frequently used concepts strengthen understanding
@@ -181,11 +181,11 @@ class KnowledgeNode:
                 max_value=1.0
             )
 
-        # Embedding must be 768 dimensions
+        # Embedding must be 384 dimensions
         if self.embedding is not None:
-            if len(self.embedding) != 768:
+            if len(self.embedding) != 384:
                 raise BusinessRuleViolationError(
-                    "Embedding dimension must be 768",
+                    "Embedding dimension must be 384",
                     details=f"Got {len(self.embedding)} dimensions"
                 )
 
@@ -365,14 +365,14 @@ class KnowledgeNode:
         Add vector embedding to knowledge.
 
         Args:
-            embedding: 768-dim vector
+            embedding: 384-dim vector
 
         Returns:
             Updated knowledge node
         """
-        if len(embedding) != 768:
+        if len(embedding) != 384:
             raise BusinessRuleViolationError(
-                "Embedding dimension must be 768",
+                "Embedding dimension must be 384",
                 details=f"Got {len(embedding)} dimensions"
             )
 
@@ -440,7 +440,7 @@ class KnowledgeNode:
 
     def has_embedding(self) -> bool:
         """Check if knowledge has embedding."""
-        return self.embedding is not None and len(self.embedding) == 768
+        return self.embedding is not None and len(self.embedding) == 384
 
     def days_since_used(self) -> Optional[int]:
         """Calculate days since last use."""

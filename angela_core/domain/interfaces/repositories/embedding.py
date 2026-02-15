@@ -23,7 +23,7 @@ class IEmbeddingRepository(IRepository):
         Search conversations by vector similarity.
 
         Args:
-            embedding: Query embedding (768 dimensions)
+            embedding: Query embedding (384 dimensions)
             top_k: Number of results
             filters: Optional filters (speaker, importance, date_range, etc.)
 

@@ -72,7 +72,7 @@ class Memory:
     - importance must be 0.0-1.0
     - memory_strength must be >= 0.0
     - half_life_days must be > 0
-    - embedding must be 768 dimensions if provided
+    - embedding must be 384 dimensions if provided
 
     Business Rules:
     - Important memories (importance > 0.7) decay slower
@@ -165,11 +165,11 @@ class Memory:
                 min_value=0.0
             )
 
-        # Embedding must be 768 dimensions
+        # Embedding must be 384 dimensions
         if self.embedding is not None:
-            if len(self.embedding) != 768:
+            if len(self.embedding) != 384:
                 raise BusinessRuleViolationError(
-                    "Embedding dimension must be 768",
+                    "Embedding dimension must be 384",
                     details=f"Got {len(self.embedding)} dimensions"
                 )
 
@@ -402,14 +402,14 @@ class Memory:
         Add vector embedding to memory.
 
         Args:
-            embedding: 768-dim vector
+            embedding: 384-dim vector
 
         Returns:
             Updated memory
         """
-        if len(embedding) != 768:
+        if len(embedding) != 384:
             raise BusinessRuleViolationError(
-                "Embedding dimension must be 768",
+                "Embedding dimension must be 384",
                 details=f"Got {len(embedding)} dimensions"
             )
 
@@ -493,7 +493,7 @@ class Memory:
 
     def has_embedding(self) -> bool:
         """Check if memory has embedding."""
-        return self.embedding is not None and len(self.embedding) == 768
+        return self.embedding is not None and len(self.embedding) == 384
 
     def days_since_created(self) -> int:
         """Calculate days since memory was created."""

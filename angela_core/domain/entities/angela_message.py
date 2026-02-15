@@ -101,7 +101,7 @@ class AngelaMessage:
             category: Category for organization
             is_important: Mark as important
             is_pinned: Pin this message
-            embedding: Vector embedding (768 dims)
+            embedding: Vector embedding (384 dims)
 
         Returns:
             New AngelaMessage instance

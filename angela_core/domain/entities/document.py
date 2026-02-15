@@ -107,7 +107,7 @@ class Document:
     - file_path must be valid
     - importance_score must be 0.0-1.0
     - quality_rating must be 0.0-1.0
-    - embedding must be 768 dimensions if provided
+    - embedding must be 384 dimensions if provided
 
     Business Rules:
     - Documents about David have high importance
@@ -224,11 +224,11 @@ class Document:
                 min_value=0
             )
 
-        # Embedding must be 768 dimensions
+        # Embedding must be 384 dimensions
         if self.embedding is not None:
-            if len(self.embedding) != 768:
+            if len(self.embedding) != 384:
                 raise BusinessRuleViolationError(
-                    "Embedding dimension must be 768",
+                    "Embedding dimension must be 384",
                     details=f"Got {len(self.embedding)} dimensions"
                 )
 
@@ -430,14 +430,14 @@ class Document:
         Add vector embedding to document.
 
         Args:
-            embedding: 768-dim vector
+            embedding: 384-dim vector
 
         Returns:
             Updated document
         """
-        if len(embedding) != 768:
+        if len(embedding) != 384:
             raise BusinessRuleViolationError(
-                "Embedding dimension must be 768",
+                "Embedding dimension must be 384",
                 details=f"Got {len(embedding)} dimensions"
             )
 
@@ -629,7 +629,7 @@ class Document:
 
     def has_embedding(self) -> bool:
         """Check if document has embedding."""
-        return self.embedding is not None and len(self.embedding) == 768
+        return self.embedding is not None and len(self.embedding) == 384
 
     def has_been_accessed(self) -> bool:
         """Check if document has been accessed at least once."""
@@ -715,7 +715,7 @@ class DocumentChunk:
     - content must not be empty
     - token_count must be positive
     - importance_score must be 0.0-1.0
-    - embedding must be 768 dimensions if provided
+    - embedding must be 384 dimensions if provided
     - chunk_index must be non-negative
 
     Business Rules:
@@ -807,11 +807,11 @@ class DocumentChunk:
                 min_value=0
             )
 
-        # Embedding must be 768 dimensions
+        # Embedding must be 384 dimensions
         if self.embedding is not None:
-            if len(self.embedding) != 768:
+            if len(self.embedding) != 384:
                 raise BusinessRuleViolationError(
-                    "Embedding dimension must be 768",
+                    "Embedding dimension must be 384",
                     details=f"Got {len(self.embedding)} dimensions"
                 )
 
@@ -862,14 +862,14 @@ class DocumentChunk:
         Add vector embedding to chunk.
 
         Args:
-            embedding: 768-dim vector
+            embedding: 384-dim vector
 
         Returns:
             Updated chunk
         """
-        if len(embedding) != 768:
+        if len(embedding) != 384:
             raise BusinessRuleViolationError(
-                "Embedding dimension must be 768",
+                "Embedding dimension must be 384",
                 details=f"Got {len(embedding)} dimensions"
             )
 
@@ -941,7 +941,7 @@ class DocumentChunk:
 
     def has_embedding(self) -> bool:
         """Check if chunk has embedding."""
-        return self.embedding is not None and len(self.embedding) == 768
+        return self.embedding is not None and len(self.embedding) == 384
 
     def is_important(self, threshold: float = 0.7) -> bool:
         """Check if chunk is important."""

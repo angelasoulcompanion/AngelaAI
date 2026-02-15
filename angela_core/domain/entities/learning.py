@@ -93,7 +93,7 @@ class Learning:
     - insight cannot be empty
     - confidence_level must be 0.0-1.0
     - times_reinforced must be >= 1
-    - embedding must be 768 dimensions if provided
+    - embedding must be 384 dimensions if provided
 
     Business Rules:
     - Confidence increases with reinforcement and application
@@ -128,7 +128,7 @@ class Learning:
     created_at: datetime = field(default_factory=datetime.now)
     last_reinforced_at: Optional[datetime] = None
 
-    # Vector embedding (768 dimensions for nomic-embed-text)
+    # Vector embedding (384 dimensions for multilingual-e5-small)
     embedding: Optional[List[float]] = None
 
     # JSON storage for additional metadata
@@ -178,11 +178,11 @@ class Learning:
 
         # Embedding validation
         if self.embedding is not None:
-            if len(self.embedding) != 768:
+            if len(self.embedding) != 384:
                 raise ValueOutOfRangeError(
                     "embedding",
                     len(self.embedding),
-                    "Embedding must be exactly 768 dimensions"
+                    "Embedding must be exactly 384 dimensions"
                 )
 
     # ========================================================================

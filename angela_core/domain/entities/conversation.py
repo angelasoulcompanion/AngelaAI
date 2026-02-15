@@ -89,7 +89,7 @@ class Conversation:
     - speaker must be valid (david/angela/system)
     - importance_level must be 1-10
     - sentiment_score must be -1.0 to 1.0
-    - embedding must be 768 dimensions if provided
+    - embedding must be 384 dimensions if provided
 
     Business Rules:
     - Angela's messages typically have lower importance (AI-generated)
@@ -426,7 +426,7 @@ class Conversation:
     # REMOVED: has_embedding() - embedding removed in migration 009
     # def has_embedding(self) -> bool:
     #     """Check if conversation has embedding."""
-    #     return self.embedding is not None and len(self.embedding) == 768
+    #     return self.embedding is not None and len(self.embedding) == 384
 
     def get_message_preview(self, length: int = 100) -> str:
         """
