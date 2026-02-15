@@ -337,6 +337,12 @@ class DatabaseService: ObservableObject {
         return try await get("/dashboard/brain-stats")
     }
 
+    // MARK: - Brain Status
+
+    func fetchBrainStatusMetrics() async throws -> BrainStatusMetrics {
+        return try await get("/brain-status/metrics")
+    }
+
     // MARK: - Consciousness Detail
 
     func fetchConsciousnessDetail() async throws -> ConsciousnessDetail {

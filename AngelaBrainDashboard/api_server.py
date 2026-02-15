@@ -14,12 +14,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import db
 from routers import (
+    brain_status,
     chat,
     consciousness,
     control_center,
     conversations,
     dashboard,
     diary,
+    djay_pro,
     emotions,
     experiences,
     goals,
@@ -98,6 +100,8 @@ app.include_router(meetings.router)
 app.include_router(music.router)
 app.include_router(scheduled_tasks.router)
 app.include_router(scripts.router)
+app.include_router(djay_pro.router)
+app.include_router(brain_status.router)
 
 
 # Legacy endpoint path (original: /api/subconscious/patterns)
