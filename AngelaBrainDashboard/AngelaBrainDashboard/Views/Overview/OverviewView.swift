@@ -185,7 +185,7 @@ struct OverviewView: View {
                 }
                 .modifier(entranceModifier(delay: 0.03))
 
-                // Row 2: AI Quality + RLHF
+                // Row 2: AI Quality + RLHF (equal width)
                 HStack(alignment: .top, spacing: 20) {
                     aiQualityCard
                         .modifier(HoverCardModifier(radius: DT.cardRadius))
@@ -193,7 +193,7 @@ struct OverviewView: View {
 
                     rlhfCard
                         .modifier(HoverCardModifier(radius: DT.cardRadius))
-                        .frame(width: 320)
+                        .frame(maxWidth: .infinity)
                 }
                 .modifier(entranceModifier(delay: 0.06))
 
@@ -765,53 +765,131 @@ struct OverviewView: View {
                     .foregroundColor(DT.textMuted)
             }
 
-            // Arc gauge
-            ZStack {
-                ArcShape(progress: 1.0)
-                    .stroke(DT.surfaceHighlight, style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                    .frame(width: 140, height: 80)
+            // Top row: Arc gauge + Distribution
+            HStack(alignment: .top, spacing: 20) {
+                // Arc gauge
+                ZStack {
+                    ArcShape(progress: 1.0)
+                        .stroke(DT.surfaceHighlight, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                        .frame(width: 140, height: 80)
 
-                ArcShape(progress: gaugeProgress)
-                    .stroke(
-                        LinearGradient(colors: [DT.orange, DT.gold], startPoint: .leading, endPoint: .trailing),
-                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                    )
-                    .frame(width: 140, height: 80)
-                    .shadow(color: DT.orange.opacity(0.4), radius: 6)
+                    ArcShape(progress: gaugeProgress)
+                        .stroke(
+                            LinearGradient(colors: [DT.orange, DT.gold], startPoint: .leading, endPoint: .trailing),
+                            style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                        )
+                        .frame(width: 140, height: 80)
+                        .shadow(color: DT.orange.opacity(0.4), radius: 6)
 
-                VStack(spacing: 0) {
-                    Text("\(Int(gaugeProgress * 100))%")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(DT.textPrimary)
-                        .contentTransition(.numericText())
-                    Text("avg reward")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(DT.textTertiary)
+                    VStack(spacing: 0) {
+                        Text("\(Int(gaugeProgress * 100))%")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundColor(DT.textPrimary)
+                            .contentTransition(.numericText())
+                        Text("avg reward")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(DT.textTertiary)
+                    }
+                    .offset(y: 10)
                 }
-                .offset(y: 10)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 100)
+                .frame(width: 160, height: 100)
 
-            // Signal breakdown (horizontal pills)
+                // Reward distribution bars
+                if let dist = rlhf?.rewardDistribution, !dist.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("DISTRIBUTION")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(DT.textTertiary)
+                            .tracking(0.5)
+
+                        let maxCount = dist.map(\.count).max() ?? 1
+                        ForEach(dist) { bucket in
+                            HStack(spacing: 6) {
+                                Text(bucket.bucket)
+                                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                    .foregroundColor(DT.textTertiary)
+                                    .frame(width: 40, alignment: .trailing)
+
+                                GeometryReader { geo in
+                                    let ratio = maxCount > 0 ? CGFloat(bucket.count) / CGFloat(maxCount) : 0
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(rewardBucketColor(bucket.bucket))
+                                        .frame(width: max(2, geo.size.width * ratio))
+                                }
+                                .frame(height: 8)
+
+                                Text("\(bucket.count)")
+                                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                                    .foregroundColor(DT.textSecondary)
+                                    .frame(width: 24, alignment: .trailing)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+
+            // Signal breakdown (wrapping grid)
             if let breakdown = rlhf?.explicitBreakdown, !breakdown.isEmpty {
-                HStack(spacing: 6) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 6)], spacing: 6) {
                     ForEach(Array(breakdown.sorted(by: { $0.value > $1.value })), id: \.key) { key, count in
                         HStack(spacing: 4) {
                             Circle()
                                 .fill(signalColor(key))
                                 .frame(width: 5, height: 5)
-                            Text("\(key)")
+                            Text(signalLabel(key))
                                 .font(.system(size: 9, weight: .medium))
                                 .foregroundColor(DT.textSecondary)
+                                .lineLimit(1)
                             Text("\(count)")
                                 .font(.system(size: 9, weight: .bold, design: .rounded))
                                 .foregroundColor(DT.textPrimary)
                         }
                         .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 5)
+                        .frame(maxWidth: .infinity)
                         .background(DT.surfaceOverlay.opacity(0.6))
                         .clipShape(Capsule())
+                    }
+                }
+            }
+
+            // Top topics by reward
+            if let topics = rlhf?.topTopics, !topics.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("TOP TOPICS")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(DT.textTertiary)
+                        .tracking(0.5)
+
+                    ForEach(topics.prefix(5)) { topic in
+                        HStack(spacing: 8) {
+                            Text(topic.topic)
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(DT.textSecondary)
+                                .lineLimit(1)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            // Reward bar
+                            GeometryReader { geo in
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(LinearGradient(
+                                        colors: [DT.orange.opacity(0.6), DT.gold.opacity(0.8)],
+                                        startPoint: .leading, endPoint: .trailing
+                                    ))
+                                    .frame(width: geo.size.width * CGFloat(topic.avgReward))
+                            }
+                            .frame(width: 60, height: 6)
+
+                            Text(String(format: "%.0f%%", topic.avgReward * 100))
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundColor(DT.textPrimary)
+                                .frame(width: 30, alignment: .trailing)
+
+                            Text("(\(topic.count))")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(DT.textMuted)
+                        }
                     }
                 }
             }
@@ -821,13 +899,32 @@ struct OverviewView: View {
         .background(standardCardBg)
     }
 
+    private func rewardBucketColor(_ bucket: String) -> Color {
+        switch bucket {
+        case "0.0-0.2": return DT.rose
+        case "0.2-0.4": return DT.orange
+        case "0.4-0.6": return DT.gold
+        case "0.6-0.8": return DT.emerald
+        case "0.8-1.0": return DT.cyan
+        default: return DT.textTertiary
+        }
+    }
+
     private func signalColor(_ type: String) -> Color {
         switch type.lowercased() {
         case "praise": return DT.emerald
         case "correction": return DT.rose
         case "neutral": return DT.blue
         case "silence": return DT.textTertiary
+        case "negative": return DT.blue
         default: return DT.purple
+        }
+    }
+
+    private func signalLabel(_ type: String) -> String {
+        switch type.lowercased() {
+        case "follow_up": return "follow-up"
+        default: return type
         }
     }
 
