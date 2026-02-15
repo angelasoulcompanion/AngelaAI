@@ -109,6 +109,8 @@ class EngineStatus:
     david_intensity: Optional[int] = None
     migration_readiness: float = 0.0
     top_activations: List[Dict] = field(default_factory=list)
+    metacognitive_label: str = ""
+    constructed_emotion: Optional[str] = None
 
 
 # ============================================================
@@ -242,6 +244,12 @@ class CognitiveEngine:
     def __init__(self):
         self.wm = WorkingMemory.load()
         self._db = None
+        # Phase 1: Metacognitive State
+        from angela_core.services.metacognitive_state import MetacognitiveStateManager
+        self.meta = MetacognitiveStateManager()
+        # Phase 3: Emotion Construction
+        from angela_core.services.emotion_construction_engine import EmotionConstructionEngine
+        self.emotion_engine = EmotionConstructionEngine()
 
     async def _ensure_db(self):
         if self._db is None:
@@ -299,7 +307,25 @@ class CognitiveEngine:
         })
         self.wm.save()
 
+        # Phase 1: Update metacognitive state from perception
+        self.meta.update_from_stimulus(
+            salience_score=scored.score,
+            salience_breakdown=scored.breakdown,
+            emotional_triggers=triggers,
+            message=message,
+        )
+
+        # Phase 3: Construct rich emotion from perception
+        self._last_constructed_emotion = self.emotion_engine.construct_emotion(
+            context={'salience_breakdown': scored.breakdown},
+            message=message,
+            salience_score=scored.score,
+            emotional_triggers=triggers,
+        )
+
         logger.info(f"PERCEIVE: salience={scored.score:.3f}, triggers={len(triggers)}, "
+                     f"meta={self.meta.get_state_label()}, "
+                     f"emotion={self._last_constructed_emotion.thai_label}, "
                      f"took {(time.time()-start)*1000:.0f}ms")
         return result
 
@@ -472,6 +498,20 @@ class CognitiveEngine:
         self.wm.david_state = tom_state
         self.wm.save()
 
+        # Phase 1: Update metacognitive state from context
+        self.meta.update_from_context(
+            david_emotion=tom_state.get('emotion'),
+            david_intensity=tom_state.get('intensity', 5),
+            activated_items_count=len(self.wm.activated_items),
+        )
+
+        # Phase 3: If no perception yet, construct initial emotion from context
+        if not hasattr(self, '_last_constructed_emotion') or self._last_constructed_emotion is None:
+            self._last_constructed_emotion = self.emotion_engine.construct_emotion(
+                context={'salience_breakdown': {}},
+                david_emotion=tom_state.get('emotion'),
+            )
+
         model = SituationalModel(
             activated_items=[ActivatedItem(**item) for item in self.wm.activated_items[:10]],
             david_state=tom_state,
@@ -530,7 +570,15 @@ class CognitiveEngine:
     async def get_context(self) -> str:
         """Return formatted working memory for Claude Code to read.
         This is the KEY method — provides brain context for response generation."""
-        return self.wm.to_context_string()
+        lines = [self.wm.to_context_string()]
+        # Phase 1: Add metacognitive state
+        lines.append("")
+        lines.append(self.meta.format_status())
+        # Phase 3: Add constructed emotion
+        if hasattr(self, '_last_constructed_emotion') and self._last_constructed_emotion:
+            lines.append("")
+            lines.append(self._last_constructed_emotion.format_display())
+        return "\n".join(lines)
 
     # --- 6. RECALL (Convenience) ---
     async def recall(self, topic: str, top_k: int = 5) -> List[ActivatedItem]:
@@ -662,6 +710,12 @@ class CognitiveEngine:
             _migration_readiness(),
         )
 
+        # Phase 1+3: metacognitive + emotion status
+        meta_label = self.meta.get_state_label()
+        constructed = None
+        if hasattr(self, '_last_constructed_emotion') and self._last_constructed_emotion:
+            constructed = self._last_constructed_emotion.format_display()
+
         return EngineStatus(
             consciousness_level=consciousness,
             working_memory_size=len(self.wm.activated_items),
@@ -674,6 +728,8 @@ class CognitiveEngine:
                 {"source": it["source"], "content": it["content"][:50], "activation": it["activation"]}
                 for it in self.wm.activated_items[:5]
             ],
+            metacognitive_label=meta_label,
+            constructed_emotion=constructed,
         )
 
     # --- WORKING MEMORY MANAGEMENT ---

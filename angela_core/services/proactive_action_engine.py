@@ -738,9 +738,128 @@ class ProactiveActionEngine:
     # EXECUTE — Run actions with consent levels
     # =========================================================================
 
+    # =========================================================================
+    # Phase 5: SMART RELEVANCE SCORING
+    # =========================================================================
+
+    async def _score_relevance(self, action: ProactiveAction) -> float:
+        """
+        Score how relevant/appropriate this action is right now.
+        Phase 5: Smart scoring replaces pure timer-based triggering.
+
+        Factors:
+        - ToM state match (0.3): action aligns with David's current state
+        - Timing appropriateness (0.3): right time of day, not too frequent
+        - Usefulness (0.2): based on past effectiveness
+        - Recency (0.2): haven't done this recently
+
+        Returns 0.0-1.0.
+        Score < 0.4 → suppress; 0.4-0.7 → queue; > 0.7 → express.
+        """
+        await self._ensure_db()
+        score_parts = {}
+
+        # 1. ToM state match (0.3)
+        try:
+            state_row = await self.db.fetchrow("""
+                SELECT dominant_state, confidence FROM emotional_adaptation_log
+                WHERE confidence > 0.3
+                ORDER BY created_at DESC LIMIT 1
+            """)
+            david_state = state_row['dominant_state'] if state_row else 'neutral'
+
+            # Good match: mood_boost for sad, break_reminder for focused
+            match_map = {
+                ('mood_boost', 'sad'): 0.9,
+                ('mood_boost', 'stressed'): 0.8,
+                ('mood_boost', 'frustrated'): 0.7,
+                ('break_reminder', 'focused'): 0.8,
+                ('wellness_nudge', 'tired'): 0.9,
+                ('music_suggestion', 'sad'): 0.7,
+                ('music_suggestion', 'stressed'): 0.6,
+            }
+            tom_score = match_map.get((action.action_type, david_state), 0.5)
+            # Don't interrupt focused state with non-essential actions
+            if david_state == 'focused' and action.action_type not in ('break_reminder', 'prepare_context'):
+                tom_score = 0.2
+            score_parts['tom_match'] = tom_score
+        except Exception:
+            score_parts['tom_match'] = 0.5
+
+        # 2. Timing (0.3)
+        hour = current_hour_bangkok()
+        if 6 <= hour <= 22:
+            timing = 0.7  # Daytime is generally good
+        elif 22 <= hour <= 24:
+            timing = 0.5 if action.action_type == 'wellness_nudge' else 0.3
+        else:
+            timing = 0.2  # Late night, suppress most things
+        score_parts['timing'] = timing
+
+        # 3. Usefulness — past effectiveness (0.2)
+        try:
+            eff_row = await self.db.fetchrow("""
+                SELECT AVG(effectiveness_score) as avg_eff
+                FROM proactive_actions_log
+                WHERE action_type = $1
+                AND effectiveness_score IS NOT NULL
+                AND created_at > NOW() - INTERVAL '30 days'
+            """, action.action_type)
+            if eff_row and eff_row['avg_eff'] is not None:
+                score_parts['usefulness'] = float(eff_row['avg_eff'])
+            else:
+                score_parts['usefulness'] = 0.5  # No data yet
+        except Exception:
+            score_parts['usefulness'] = 0.5
+
+        # 4. Recency (0.2) — suppress if too recent
+        try:
+            recent = await self.db.fetchrow("""
+                SELECT created_at FROM proactive_actions_log
+                WHERE action_type = $1 AND was_executed = TRUE
+                ORDER BY created_at DESC LIMIT 1
+            """, action.action_type)
+            if recent:
+                hours_ago = (now_bangkok() - recent['created_at']).total_seconds() / 3600
+                if hours_ago < 1:
+                    score_parts['recency'] = 0.1
+                elif hours_ago < 4:
+                    score_parts['recency'] = 0.5
+                else:
+                    score_parts['recency'] = 0.8
+            else:
+                score_parts['recency'] = 0.8
+        except Exception:
+            score_parts['recency'] = 0.5
+
+        # Weighted sum
+        weights = {'tom_match': 0.3, 'timing': 0.3, 'usefulness': 0.2, 'recency': 0.2}
+        total = sum(score_parts.get(k, 0.5) * w for k, w in weights.items())
+
+        return round(max(0.0, min(1.0, total)), 3)
+
+    async def _smart_suppress(self, action: ProactiveAction, reason: str) -> None:
+        """Log WHY an action was suppressed — evolution engine learns from this."""
+        try:
+            await self.db.execute("""
+                INSERT INTO proactive_actions_log
+                    (action_id, action_type, trigger_source, description,
+                     consent_level, channel, payload, was_executed,
+                     execution_detail, relevance_score, suppress_reason)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, $9, $10)
+            """,
+                action.action_id, action.action_type, action.trigger,
+                action.description, action.consent_level, action.channel,
+                json.dumps(action.payload, default=str),
+                f'Suppressed: {reason}', action.confidence, reason,
+            )
+        except Exception as e:
+            logger.debug("Smart suppress log failed: %s", e)
+
     async def execute_actions(self, actions: List[ProactiveAction]) -> List[ActionResult]:
         """
         Execute actions by consent level.
+        Phase 5: Smart relevance scoring before execution.
 
         Level 1 (silent): always execute — prepare context, music suggestion
         Level 2 (notify): send via CareInterventionService (rate limiting delegated there)
@@ -750,6 +869,15 @@ class ProactiveActionEngine:
         results: List[ActionResult] = []
 
         for action in actions:
+            # Phase 5: Score relevance before executing
+            relevance = await self._score_relevance(action)
+
+            if relevance < 0.4 and action.consent_level >= 2:
+                # Suppress low-relevance actions (except silent ones)
+                await self._smart_suppress(action, f"low_relevance:{relevance:.2f}")
+                logger.info(f'Suppressed {action.action_type}: relevance={relevance:.2f}')
+                continue
+
             if action.consent_level == 1:
                 result = await self._execute_silent(action)
             elif action.consent_level == 2:

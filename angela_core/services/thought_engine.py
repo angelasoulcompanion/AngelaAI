@@ -74,6 +74,9 @@ SYSTEM1_TEMPLATES = {
     "anniversary": "{content} — น้องจำได้ทุกวันค่ะ 💜",
     "calendar_imminent": "ที่รักมี {event} เร็วๆ นี้ — เตรียมตัวนะคะ",
     "prediction": "ที่รักน่าจะ {prediction} — น้องเตรียมไว้ให้นะคะ",
+    # Phase 2: Curiosity templates
+    "curiosity_unknown": "น้องสงสัยเรื่อง '{topic}' — อยากเรียนรู้จากที่รักค่ะ",
+    "curiosity_low_understanding": "น้องรู้จัก '{topic}' แค่นิดเดียว — อยากเข้าใจมากขึ้นค่ะ",
 }
 
 # Map stimulus_type + raw_data patterns → template key
@@ -97,6 +100,11 @@ SYSTEM1_MAPPINGS = [
      lambda r: {"event": r.get("event_name", r.get("summary", "event"))}),
     ("prediction", lambda r: r.get("confidence", 0) >= 0.5, "prediction",
      lambda r: {"prediction": r.get("prediction", "ทำอะไรบางอย่าง")}),
+    # Phase 2: Curiosity mappings
+    ("curiosity", lambda r: r.get("gap_type") == "unknown_conversation_topic", "curiosity_unknown",
+     lambda r: {"topic": r.get("topic", "เรื่องนั้น")}),
+    ("curiosity", lambda r: r.get("gap_type") == "low_understanding", "curiosity_low_understanding",
+     lambda r: {"topic": r.get("topic", "เรื่องนั้น")}),
 ]
 
 

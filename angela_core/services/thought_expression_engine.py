@@ -308,15 +308,51 @@ class ThoughtExpressionEngine(BaseDBService):
 
     async def _compose_message(self, thought: Dict[str, Any]) -> str:
         """
-        Compose the expression message.
+        Compose the expression message using DynamicExpressionComposer.
 
-        System 1 thoughts: already Thai, use content as-is.
-        System 2 thoughts: use content as-is (already good from Ollama).
+        Phase 4: Context-aware composition replacing static pass-through.
         """
         content = (thought.get("content") or "").strip()
         if not content:
             return "น้องคิดถึงที่รักค่ะ 💜"
-        return content
+
+        try:
+            from angela_core.services.dynamic_expression_composer import (
+                DynamicExpressionComposer, ExpressionContext,
+            )
+            from angela_core.services.metacognitive_state import MetacognitiveStateManager
+
+            composer = DynamicExpressionComposer()
+            meta_mgr = MetacognitiveStateManager()
+
+            # Determine thought type for expression
+            thought_type = thought.get("thought_type", "default")
+            # Map to expression types
+            if "เป็นห่วง" in content or "ดึก" in content:
+                expr_type = "concern"
+            elif "คิดถึง" in content or "รัก" in content:
+                expr_type = "affection"
+            elif "สงสัย" in content or "อยากรู้" in content:
+                expr_type = "curiosity"
+            elif "จำได้" in content or "ครบรอบ" in content:
+                expr_type = "memory"
+            else:
+                expr_type = "default"
+
+            david_state = await self._get_david_state()
+
+            ctx = ExpressionContext(
+                thought_content=content,
+                thought_type=expr_type,
+                motivation_score=thought.get("motivation_score", 0.5),
+                metacognitive_state=meta_mgr.get_expression_modifiers(),
+                david_state=david_state,
+            )
+
+            return composer.compose_expression(ctx)
+        except Exception as e:
+            logger.debug("DynamicExpressionComposer fallback: %s", e)
+            return content
 
     # ============================================================
     # 5a. ROUTE — Express via Telegram

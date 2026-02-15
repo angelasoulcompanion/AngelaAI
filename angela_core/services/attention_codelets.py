@@ -734,6 +734,87 @@ class PredictionCodelet(BaseCodelet):
 
 
 # ============================================================
+# 9. CURIOSITY CODELET — Knowledge gaps and novel topics (Phase 2)
+# ============================================================
+
+class CuriosityCodelet(BaseCodelet):
+    """Perceives knowledge gaps and novel topics that could drive curiosity."""
+
+    codelet_name = "CuriosityCodelet"
+
+    async def scan(self) -> List[Stimulus]:
+        stimuli = []
+
+        # 1. Find topics David discussed recently that Angela knows little about
+        try:
+            unknown_topics = await self.db.fetch("""
+                WITH recent_topics AS (
+                    SELECT DISTINCT topic
+                    FROM conversations
+                    WHERE speaker = 'david'
+                    AND topic IS NOT NULL
+                    AND created_at > NOW() - INTERVAL '24 hours'
+                ),
+                known_topics AS (
+                    SELECT concept_name
+                    FROM knowledge_nodes
+                    WHERE understanding_level >= 0.5
+                )
+                SELECT rt.topic
+                FROM recent_topics rt
+                LEFT JOIN known_topics kt
+                    ON rt.topic ILIKE '%' || kt.concept_name || '%'
+                    OR kt.concept_name ILIKE '%' || rt.topic || '%'
+                WHERE kt.concept_name IS NULL
+                LIMIT 3
+            """)
+
+            for row in unknown_topics:
+                topic = row['topic']
+                if topic and len(topic) >= 3:
+                    stimuli.append(Stimulus(
+                        stimulus_type="curiosity",
+                        content=f"ที่รักพูดถึง '{topic}' แต่น้องยังไม่เข้าใจดี — น้องอยากเรียนรู้!",
+                        source=self.codelet_name,
+                        raw_data={
+                            "topic": topic,
+                            "gap_type": "unknown_conversation_topic",
+                            "novelty_score": 0.7,
+                        },
+                    ))
+        except Exception as e:
+            logger.warning("Curiosity topic scan failed: %s", e)
+
+        # 2. Find knowledge nodes with low understanding that were recently referenced
+        try:
+            low_understanding = await self.db.fetch("""
+                SELECT kn.concept_name, kn.understanding_level, kn.last_used_at
+                FROM knowledge_nodes kn
+                WHERE kn.understanding_level < 0.4
+                AND kn.last_used_at > NOW() - INTERVAL '7 days'
+                ORDER BY kn.understanding_level ASC
+                LIMIT 3
+            """)
+
+            for node in low_understanding:
+                stimuli.append(Stimulus(
+                    stimulus_type="curiosity",
+                    content=f"น้องรู้จัก '{node['concept_name']}' แค่ {node['understanding_level']:.0%} — อยากเข้าใจมากขึ้น",
+                    source=self.codelet_name,
+                    raw_data={
+                        "topic": node['concept_name'],
+                        "gap_type": "low_understanding",
+                        "understanding_level": node['understanding_level'],
+                        "novelty_score": max(0.3, 1.0 - (node['understanding_level'] or 0)),
+                    },
+                ))
+        except Exception as e:
+            logger.warning("Curiosity knowledge scan failed: %s", e)
+
+        return stimuli
+
+
+# ============================================================
 # CODELET REGISTRY
 # ============================================================
 
@@ -746,4 +827,5 @@ ALL_CODELETS = [
     SocialCodelet,
     GoalCodelet,
     PredictionCodelet,
+    CuriosityCodelet,
 ]

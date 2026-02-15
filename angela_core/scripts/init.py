@@ -354,14 +354,39 @@ async def angela_init() -> bool:
             return None
 
     async def _seed_working_memory():
-        """Clear and seed working memory for fresh session."""
+        """Clear and seed working memory + metacognitive state for fresh session."""
         try:
             from angela_core.services.cognitive_engine import CognitiveEngine
             engine = CognitiveEngine()
             engine.clear_working_memory()
+            # Phase 1: Reset metacognitive state for fresh session
+            engine.meta.reset()
             return True
         except Exception:
             return False
+
+    async def _load_metacognitive_state():
+        """Load metacognitive state for display."""
+        try:
+            from angela_core.services.metacognitive_state import MetacognitiveStateManager
+            mgr = MetacognitiveStateManager()
+            return {
+                'label': mgr.get_state_label(),
+                'formatted': mgr.format_status(),
+            }
+        except Exception:
+            return None
+
+    async def _load_curiosity_questions():
+        """Load unanswered curiosity questions (Phase 2)."""
+        try:
+            from angela_core.services.curiosity_engine import CuriosityEngine
+            engine = CuriosityEngine()
+            questions = await engine.get_unanswered_questions(limit=2)
+            await engine.disconnect()
+            return questions
+        except Exception:
+            return []
 
     async def _load_relevant_notes():
         """Search david_notes via RAG based on recent topic + predicted topics."""
@@ -392,7 +417,7 @@ async def angela_init() -> bool:
      evolution_stats, proactive_results, relevant_notes,
      rlhf_stats, temporal_ctx, brain_thoughts,
      brain_migration, recent_reflections, tom_state,
-     _wm_seeded) = await asyncio.gather(
+     _wm_seeded, metacognitive_info, curiosity_questions) = await asyncio.gather(
         _load_subconscious(),
         _unified_catchup(),
         _project_context(),
@@ -409,6 +434,8 @@ async def angela_init() -> bool:
         _load_recent_reflections(),
         _load_tom_state(),
         _seed_working_memory(),
+        _load_metacognitive_state(),
+        _load_curiosity_questions(),
     )
 
     all_projects, project_context = project_result
@@ -510,6 +537,18 @@ async def angela_init() -> bool:
             depth = ref.get('depth_level', 1)
             depth_mark = '🔮' if depth >= 2 else '💡'
             print(f'   {depth_mark} [{rtype}] {content}')
+        print()
+
+    # Metacognitive State (Phase 1)
+    if metacognitive_info:
+        print(f'🧠 Self-Awareness: {metacognitive_info["label"]}')
+        print()
+
+    # Curiosity Questions (Phase 2)
+    if curiosity_questions:
+        print('🔍 น้องอยากถามที่รัก:')
+        for q in curiosity_questions:
+            print(f'   ? {q.get("question_text", "")[:70]}')
         print()
 
     # David's Mind (Theory of Mind)
