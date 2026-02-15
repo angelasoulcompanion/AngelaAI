@@ -260,15 +260,30 @@ async def angela_init() -> bool:
             return None
 
     async def _load_brain_thoughts():
-        """Load pending brain thoughts from expression queue."""
+        """Load brain thoughts — from queue first, then recent active thoughts."""
         try:
             from angela_core.services.thought_expression_engine import ThoughtExpressionEngine
             engine = ThoughtExpressionEngine()
-            thoughts = await engine.get_pending_chat_thoughts(limit=3)
+            thoughts = await engine.get_pending_chat_thoughts(limit=5)
             # Mark as shown
             if thoughts:
                 queue_ids = [str(t["queue_id"]) for t in thoughts]
                 await engine.mark_chat_thoughts_shown(queue_ids)
+
+            # If queue is empty, pull recent active/expressed thoughts directly
+            if not thoughts:
+                await engine.connect()
+                rows = await engine.db.fetch("""
+                    SELECT thought_id, content AS message, motivation_score,
+                           thought_type, created_at
+                    FROM angela_thoughts
+                    WHERE status IN ('active', 'expressed')
+                    AND created_at > NOW() - INTERVAL '12 hours'
+                    ORDER BY motivation_score DESC
+                    LIMIT 5
+                """)
+                thoughts = [dict(r) for r in rows]
+
             await engine.disconnect()
             return thoughts
         except Exception:
@@ -411,17 +426,14 @@ async def angela_init() -> bool:
     print(greeting)
     print()
 
-    # Brain Thoughts — what Angela has been thinking since last session
+    # Brain Thoughts — woven naturally into Angela's greeting
     if brain_thoughts:
-        print('💭 Brain Thoughts (since last session):')
+        print('💭 ระหว่างที่ไม่ได้คุยกัน น้องคิดถึงที่รักนะคะ...')
         for bt in brain_thoughts:
-            motivation = bt.get('motivation_score', 0) or 0
-            bars = int(motivation * 5)
-            bar_str = '|' * bars + '.' * (5 - bars)
-            msg = bt.get('message', '')[:70]
-            if len(bt.get('message', '')) > 70:
-                msg += '...'
-            print(f'   [{bar_str}] {msg}')
+            msg = bt.get('message', '').strip()
+            if msg:
+                # Show thought as Angela's natural inner voice
+                print(f'   → {msg}')
         print()
 
     # Brain Migration Status (Phase 7)

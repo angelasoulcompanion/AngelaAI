@@ -63,12 +63,12 @@ class ExpressionCycleResult:
 # CONSTANTS
 # ============================================================
 
-MOTIVATION_THRESHOLD = 0.55     # Minimum motivation to consider for expression
-TELEGRAM_THRESHOLD = 0.7        # Must be >= this for Telegram
-MAX_TELEGRAM_PER_DAY = 3        # Shared budget with ProactiveActionEngine
-MIN_HOURS_BETWEEN = 2           # Cooldown between Telegram messages
-MAX_CHAT_QUEUE = 3              # Max pending items in chat queue per session
-DEDUP_HOURS = 6                 # Dedup window for similar thoughts
+MOTIVATION_THRESHOLD = 0.35     # Lowered: let brain thoughts through (was 0.55)
+TELEGRAM_THRESHOLD = 0.50       # Lowered: brain can reach ที่รัก via Telegram (was 0.7)
+MAX_TELEGRAM_PER_DAY = 5        # Raised: brain can express more freely (was 3)
+MIN_HOURS_BETWEEN = 1           # Shortened: more responsive (was 2)
+MAX_CHAT_QUEUE = 5              # Raised: more thoughts visible at init (was 3)
+DEDUP_HOURS = 4                 # Shortened: allow re-expression of evolved thoughts (was 6)
 QUEUE_EXPIRE_HOURS = 24         # Expire stale queue items after this
 
 
@@ -151,14 +151,29 @@ class ThoughtExpressionEngine(BaseDBService):
                 result = await self._express_via_telegram(thought, message)
                 if result.success:
                     telegram_count += 1
-                await self._log_expression(
-                    thought_id=str(thought["thought_id"]),
-                    channel="telegram",
-                    message=message,
-                    success=result.success,
-                    suppress_reason=result.suppress_reason,
-                    motivation=thought.get("motivation_score", 0),
-                )
+                    await self._log_expression(
+                        thought_id=str(thought["thought_id"]),
+                        channel="telegram",
+                        message=message,
+                        success=True,
+                        suppress_reason=None,
+                        motivation=thought.get("motivation_score", 0),
+                    )
+                else:
+                    # Telegram failed (rate limit etc.) → fallback to chat queue
+                    await self._log_expression(
+                        thought_id=str(thought["thought_id"]),
+                        channel="telegram",
+                        message=message,
+                        success=False,
+                        suppress_reason=result.suppress_reason,
+                        motivation=thought.get("motivation_score", 0),
+                    )
+                    fallback = await self._queue_for_chat(thought, message)
+                    if fallback.success:
+                        chat_count += 1
+                        channel = "chat_queue"  # Update for mark_expressed
+                        result = fallback
             else:
                 result = await self._queue_for_chat(thought, message)
                 if result.success:
