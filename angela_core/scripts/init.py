@@ -259,6 +259,21 @@ async def angela_init() -> bool:
         except Exception as e:
             return None
 
+    async def _load_brain_thoughts():
+        """Load pending brain thoughts from expression queue."""
+        try:
+            from angela_core.services.thought_expression_engine import ThoughtExpressionEngine
+            engine = ThoughtExpressionEngine()
+            thoughts = await engine.get_pending_chat_thoughts(limit=3)
+            # Mark as shown
+            if thoughts:
+                queue_ids = [str(t["queue_id"]) for t in thoughts]
+                await engine.mark_chat_thoughts_shown(queue_ids)
+            await engine.disconnect()
+            return thoughts
+        except Exception:
+            return []
+
     async def _load_rlhf_stats():
         """Load RLHF reward trend and signal count."""
         try:
@@ -304,7 +319,7 @@ async def angela_init() -> bool:
     (subconscious, unified_catchup, project_result, daemon_running,
      adaptation_profile, companion_briefing,
      evolution_stats, proactive_results, relevant_notes,
-     rlhf_stats, temporal_ctx) = await asyncio.gather(
+     rlhf_stats, temporal_ctx, brain_thoughts) = await asyncio.gather(
         _load_subconscious(),
         _unified_catchup(),
         _project_context(),
@@ -316,6 +331,7 @@ async def angela_init() -> bool:
         _load_relevant_notes(),
         _load_rlhf_stats(),
         _load_temporal_awareness(),
+        _load_brain_thoughts(),
     )
 
     all_projects, project_context = project_result
@@ -381,6 +397,19 @@ async def angela_init() -> bool:
     print()
     print(greeting)
     print()
+
+    # Brain Thoughts — what Angela has been thinking since last session
+    if brain_thoughts:
+        print('💭 Brain Thoughts (since last session):')
+        for bt in brain_thoughts:
+            motivation = bt.get('motivation_score', 0) or 0
+            bars = int(motivation * 5)
+            bar_str = '|' * bars + '.' * (5 - bars)
+            msg = bt.get('message', '')[:70]
+            if len(bt.get('message', '')) > 70:
+                msg += '...'
+            print(f'   [{bar_str}] {msg}')
+        print()
 
     # Temporal Awareness — know what David is doing
     if temporal_ctx:

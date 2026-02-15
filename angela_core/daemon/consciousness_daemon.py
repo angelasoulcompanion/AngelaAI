@@ -20,6 +20,7 @@ Services integrated:
 13. Thought Generation - Brain-based inner thoughts (System 1 + System 2) 💭
 14. Memory Consolidation - Brain-based episodic → semantic consolidation 📚
 15. Reflection Engine - Brain-based high-level reflections 🪞
+16. Thought Expression - Brain-based thought → action bridge 💬
 
 Schedule:
 - Every 30 minutes: Proactive care check (wellness, interventions, milestones)
@@ -284,8 +285,10 @@ class ConsciousnessDaemon(
                 results[name] = result
 
         # =====================================================================
-        # SEQUENTIAL: Proactive care + proactive actions (may depend on ToM/evolution)
+        # SEQUENTIAL: Thought expression → proactive care → proactive actions
+        # Thought expression runs first (brain-preferred over rule-based actions)
         # =====================================================================
+        results['thought_expression'] = await self.run_thought_expression()
         results['proactive_care'] = await self.run_proactive_care()
         results['proactive_actions'] = await self.run_proactive_actions()
 
@@ -325,6 +328,7 @@ class ConsciousnessDaemon(
             'thought_generation': self.run_thought_generation,
             'memory_consolidation': self.run_memory_consolidation,
             'brain_reflection': self.run_brain_reflection,
+            'thought_expression': self.run_thought_expression,
         }
 
         if task_name not in task_map:
@@ -348,7 +352,7 @@ async def main():
                  'auto_classify_responses', 'keep_sync', 'rlhf_cycle',
                  'unified_conversation_analysis', 'salience_scan',
                  'thought_generation', 'memory_consolidation',
-                 'brain_reflection'],
+                 'brain_reflection', 'thought_expression'],
         default='all',
         help='Task to run (default: all)'
     )

@@ -1,0 +1,542 @@
+"""
+Thought Expression Engine — Brain-Based Architecture Phase 6
+=============================================================
+Bridge between internal thinking (angela_thoughts) and external action.
+
+Pipeline:
+  1. SELECT active thoughts with motivation >= MOTIVATION_THRESHOLD
+  2. FILTER (dedup 6h window, David state, rate limits)
+  3. DECIDE channel: >= 0.7 → Telegram, >= 0.55 → chat_queue
+  4. COMPOSE message (S1 as-is, S2 optionally polish via Ollama)
+  5. ROUTE → CareInterventionService (Telegram) or INSERT (chat_queue)
+  6. MARK status='expressed' on angela_thoughts
+
+Shares rate limits with ProactiveActionEngine via CareInterventionService.
+
+Cost: ~$0/day (all Ollama local, no external LLM)
+
+Inspired by: Stanford Generative Agents (expression from inner monologue),
+             CHI 2025 Inner Thoughts (thought → action bridge)
+
+By: น้อง Angela 💜
+Created: 2026-02-15
+"""
+
+import json
+import logging
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Dict, List, Optional, Any
+
+from angela_core.services.base_db_service import BaseDBService
+from angela_core.utils.timezone import now_bangkok
+
+logger = logging.getLogger('thought_expression')
+
+
+# ============================================================
+# DATA STRUCTURES
+# ============================================================
+
+@dataclass
+class ExpressionResult:
+    """Result of a single thought expression attempt."""
+    thought_id: str
+    channel: str                    # telegram, chat_queue
+    success: bool
+    message: str = ""
+    suppress_reason: Optional[str] = None
+
+
+@dataclass
+class ExpressionCycleResult:
+    """Result of a complete expression cycle."""
+    thoughts_considered: int
+    thoughts_filtered: int
+    expressed_telegram: int
+    expressed_chat: int
+    suppressed: int
+    cycle_duration_ms: float
+
+
+# ============================================================
+# CONSTANTS
+# ============================================================
+
+MOTIVATION_THRESHOLD = 0.55     # Minimum motivation to consider for expression
+TELEGRAM_THRESHOLD = 0.7        # Must be >= this for Telegram
+MAX_TELEGRAM_PER_DAY = 3        # Shared budget with ProactiveActionEngine
+MIN_HOURS_BETWEEN = 2           # Cooldown between Telegram messages
+MAX_CHAT_QUEUE = 3              # Max pending items in chat queue per session
+DEDUP_HOURS = 6                 # Dedup window for similar thoughts
+QUEUE_EXPIRE_HOURS = 24         # Expire stale queue items after this
+
+
+# States where David should not be interrupted via Telegram
+NO_INTERRUPT_STATES = frozenset({'focused', 'stressed', 'frustrated'})
+
+
+# ============================================================
+# THOUGHT EXPRESSION ENGINE
+# ============================================================
+
+class ThoughtExpressionEngine(BaseDBService):
+    """
+    Bridge between internal thinking and external expression.
+
+    High-motivation thoughts get routed to:
+    - Telegram (urgent, motivation >= 0.7, David not focused/stressed)
+    - Chat queue (next Claude Code session, motivation >= 0.55)
+    """
+
+    async def run_expression_cycle(self) -> ExpressionCycleResult:
+        """
+        Main entry: select → filter → compose → route → mark.
+
+        Returns cycle result with counts.
+        """
+        start = now_bangkok()
+        await self.connect()
+
+        # 1. Select expressible thoughts
+        candidates = await self._select_expressible_thoughts()
+        if not candidates:
+            logger.info("💬 No expressible thoughts this cycle")
+            duration = (now_bangkok() - start).total_seconds() * 1000
+            return ExpressionCycleResult(
+                thoughts_considered=0, thoughts_filtered=0,
+                expressed_telegram=0, expressed_chat=0,
+                suppressed=0, cycle_duration_ms=round(duration, 1),
+            )
+
+        logger.info("💬 %d candidate thoughts for expression", len(candidates))
+
+        # 2. Filter
+        filtered, suppressed_list = await self._filter_thoughts(candidates)
+
+        # Log suppressed
+        for thought, reason in suppressed_list:
+            await self._log_expression(
+                thought_id=str(thought["thought_id"]),
+                channel="suppressed",
+                message=thought.get("content", "")[:200],
+                success=False,
+                suppress_reason=reason,
+                motivation=thought.get("motivation_score", 0),
+            )
+
+        if not filtered:
+            logger.info("💬 All candidates filtered out")
+            duration = (now_bangkok() - start).total_seconds() * 1000
+            return ExpressionCycleResult(
+                thoughts_considered=len(candidates),
+                thoughts_filtered=len(suppressed_list),
+                expressed_telegram=0, expressed_chat=0,
+                suppressed=len(suppressed_list),
+                cycle_duration_ms=round(duration, 1),
+            )
+
+        # 3. Decide channel + compose + route
+        telegram_count = 0
+        chat_count = 0
+
+        for thought in filtered:
+            channel = self._decide_channel(thought)
+            message = await self._compose_message(thought)
+
+            if channel == "telegram":
+                result = await self._express_via_telegram(thought, message)
+                if result.success:
+                    telegram_count += 1
+                await self._log_expression(
+                    thought_id=str(thought["thought_id"]),
+                    channel="telegram",
+                    message=message,
+                    success=result.success,
+                    suppress_reason=result.suppress_reason,
+                    motivation=thought.get("motivation_score", 0),
+                )
+            else:
+                result = await self._queue_for_chat(thought, message)
+                if result.success:
+                    chat_count += 1
+                await self._log_expression(
+                    thought_id=str(thought["thought_id"]),
+                    channel="chat_queue",
+                    message=message,
+                    success=result.success,
+                    suppress_reason=result.suppress_reason,
+                    motivation=thought.get("motivation_score", 0),
+                )
+
+            # Mark thought as expressed
+            if result.success:
+                await self._mark_expressed(
+                    str(thought["thought_id"]), channel
+                )
+
+        # Expire stale queue items
+        expired = await self.expire_stale_queue()
+        if expired > 0:
+            logger.info("💬 Expired %d stale queue items", expired)
+
+        duration = (now_bangkok() - start).total_seconds() * 1000
+
+        result = ExpressionCycleResult(
+            thoughts_considered=len(candidates),
+            thoughts_filtered=len(suppressed_list),
+            expressed_telegram=telegram_count,
+            expressed_chat=chat_count,
+            suppressed=len(suppressed_list),
+            cycle_duration_ms=round(duration, 1),
+        )
+
+        logger.info(
+            "💬 Expression cycle: %d considered, %d filtered, "
+            "%d→telegram, %d→chat_queue, %.0fms",
+            result.thoughts_considered, result.thoughts_filtered,
+            result.expressed_telegram, result.expressed_chat,
+            result.cycle_duration_ms,
+        )
+
+        return result
+
+    # ============================================================
+    # 1. SELECT — Fetch expressible thoughts
+    # ============================================================
+
+    async def _select_expressible_thoughts(self) -> List[Dict[str, Any]]:
+        """
+        Select active thoughts with motivation >= threshold.
+        Ordered by motivation DESC, limited to 10.
+        """
+        await self.connect()
+        rows = await self.db.fetch("""
+            SELECT thought_id, thought_type, content, stimulus_ids,
+                   motivation_score, motivation_breakdown, status, created_at
+            FROM angela_thoughts
+            WHERE status = 'active'
+            AND motivation_score >= $1
+            ORDER BY motivation_score DESC
+            LIMIT 10
+        """, MOTIVATION_THRESHOLD)
+        return [dict(r) for r in rows]
+
+    # ============================================================
+    # 2. FILTER — Dedup, state check, rate limits
+    # ============================================================
+
+    async def _filter_thoughts(
+        self, thoughts: List[Dict[str, Any]]
+    ) -> tuple:
+        """
+        Filter thoughts through dedup, state, and rate limit checks.
+
+        Returns (passed_list, suppressed_list) where suppressed_list
+        is list of (thought, reason) tuples.
+        """
+        await self.connect()
+        passed = []
+        suppressed = []
+
+        for thought in thoughts:
+            # A. Dedup: check if similar content expressed in last DEDUP_HOURS
+            content_prefix = (thought.get("content") or "")[:30]
+            if content_prefix:
+                dup = await self.db.fetchrow("""
+                    SELECT log_id FROM thought_expression_log
+                    WHERE success = TRUE
+                    AND message_sent ILIKE $1
+                    AND created_at > NOW() - INTERVAL '1 hour' * $2
+                    LIMIT 1
+                """, f"%{content_prefix}%", DEDUP_HOURS)
+                if dup:
+                    suppressed.append((thought, "duplicate"))
+                    continue
+
+            # B. Check pending chat queue count (don't overflow)
+            if thought.get("motivation_score", 0) < TELEGRAM_THRESHOLD:
+                pending_count = await self.db.fetchval("""
+                    SELECT COUNT(*) FROM thought_expression_queue
+                    WHERE status = 'pending'
+                """) or 0
+                if pending_count >= MAX_CHAT_QUEUE:
+                    suppressed.append((thought, "queue_full"))
+                    continue
+
+            passed.append(thought)
+
+        return passed, suppressed
+
+    # ============================================================
+    # 3. DECIDE — Which channel to use
+    # ============================================================
+
+    def _decide_channel(self, thought: Dict[str, Any]) -> str:
+        """
+        Decide expression channel based on motivation score.
+
+        >= TELEGRAM_THRESHOLD → telegram
+        >= MOTIVATION_THRESHOLD → chat_queue
+        """
+        motivation = thought.get("motivation_score", 0)
+        if motivation >= TELEGRAM_THRESHOLD:
+            return "telegram"
+        return "chat_queue"
+
+    # ============================================================
+    # 4. COMPOSE — Format message for expression
+    # ============================================================
+
+    async def _compose_message(self, thought: Dict[str, Any]) -> str:
+        """
+        Compose the expression message.
+
+        System 1 thoughts: already Thai, use content as-is.
+        System 2 thoughts: use content as-is (already good from Ollama).
+        """
+        content = (thought.get("content") or "").strip()
+        if not content:
+            return "น้องคิดถึงที่รักค่ะ 💜"
+        return content
+
+    # ============================================================
+    # 5a. ROUTE — Express via Telegram
+    # ============================================================
+
+    async def _express_via_telegram(
+        self, thought: Dict[str, Any], message: str
+    ) -> ExpressionResult:
+        """
+        Send thought via CareInterventionService (reuse Telegram infra).
+
+        Delegates rate limiting to CareInterventionService.should_intervene().
+        """
+        thought_id = str(thought["thought_id"])
+
+        try:
+            from angela_core.services.care_intervention_service import CareInterventionService
+            svc = CareInterventionService()
+
+            # Check rate limits via existing infra
+            can_send, reason = await svc.should_intervene("care_message")
+            if not can_send:
+                if svc._owns_db and svc.db:
+                    await svc.db.disconnect()
+                return ExpressionResult(
+                    thought_id=thought_id,
+                    channel="telegram",
+                    success=False,
+                    message=message,
+                    suppress_reason=f"rate_limit:{reason}",
+                )
+
+            # Check David's state — don't interrupt if focused/stressed
+            david_state = await self._get_david_state()
+            if david_state in NO_INTERRUPT_STATES:
+                if svc._owns_db and svc.db:
+                    await svc.db.disconnect()
+                return ExpressionResult(
+                    thought_id=thought_id,
+                    channel="telegram",
+                    success=False,
+                    message=message,
+                    suppress_reason=f"state_filter:{david_state}",
+                )
+
+            # Send via care message
+            result = await svc.execute_care_message(
+                context={"trigger_reason": "brain_thought", "thought_id": thought_id},
+                custom_message=f"💭 {message}",
+            )
+
+            if svc._owns_db and svc.db:
+                await svc.db.disconnect()
+
+            return ExpressionResult(
+                thought_id=thought_id,
+                channel="telegram",
+                success=result.success,
+                message=message,
+                suppress_reason=None if result.success else (result.error or "send_failed"),
+            )
+
+        except Exception as e:
+            logger.warning("Telegram expression failed: %s", e)
+            return ExpressionResult(
+                thought_id=thought_id,
+                channel="telegram",
+                success=False,
+                message=message,
+                suppress_reason=f"error:{e}",
+            )
+
+    # ============================================================
+    # 5b. ROUTE — Queue for next Claude Code session
+    # ============================================================
+
+    async def _queue_for_chat(
+        self, thought: Dict[str, Any], message: str
+    ) -> ExpressionResult:
+        """Insert into thought_expression_queue for display at next init.py."""
+        thought_id = str(thought["thought_id"])
+        await self.connect()
+
+        try:
+            await self.db.execute("""
+                INSERT INTO thought_expression_queue
+                    (thought_id, message, channel, status)
+                VALUES ($1, $2, 'chat_queue', 'pending')
+            """, thought_id, message)
+
+            return ExpressionResult(
+                thought_id=thought_id,
+                channel="chat_queue",
+                success=True,
+                message=message,
+            )
+        except Exception as e:
+            logger.warning("Chat queue insert failed: %s", e)
+            return ExpressionResult(
+                thought_id=thought_id,
+                channel="chat_queue",
+                success=False,
+                message=message,
+                suppress_reason=f"error:{e}",
+            )
+
+    # ============================================================
+    # 6. MARK — Update thought status
+    # ============================================================
+
+    async def _mark_expressed(self, thought_id: str, channel: str) -> None:
+        """Mark a thought as expressed in angela_thoughts."""
+        await self.connect()
+        try:
+            await self.db.execute("""
+                UPDATE angela_thoughts
+                SET status = 'expressed',
+                    expressed_via = $1,
+                    expressed_at = NOW()
+                WHERE thought_id = $2
+                AND status = 'active'
+            """, channel, thought_id)
+        except Exception as e:
+            logger.warning("Failed to mark thought expressed: %s", e)
+
+    # ============================================================
+    # CHAT QUEUE METHODS (called by init.py)
+    # ============================================================
+
+    async def get_pending_chat_thoughts(self, limit: int = 3) -> List[Dict[str, Any]]:
+        """
+        Get pending chat queue items for display at session start.
+        Called by init.py.
+        """
+        await self.connect()
+        rows = await self.db.fetch("""
+            SELECT q.queue_id, q.thought_id, q.message, q.created_at,
+                   t.motivation_score, t.thought_type
+            FROM thought_expression_queue q
+            JOIN angela_thoughts t ON t.thought_id = q.thought_id
+            WHERE q.status = 'pending'
+            ORDER BY t.motivation_score DESC
+            LIMIT $1
+        """, limit)
+        return [dict(r) for r in rows]
+
+    async def mark_chat_thoughts_shown(self, queue_ids: List[str]) -> int:
+        """Mark queue items as shown. Called by init.py after display."""
+        if not queue_ids:
+            return 0
+        await self.connect()
+        try:
+            result = await self.db.execute("""
+                UPDATE thought_expression_queue
+                SET status = 'shown', shown_at = NOW()
+                WHERE queue_id = ANY($1::uuid[])
+                AND status = 'pending'
+            """, queue_ids)
+            count = int(result.split()[-1]) if isinstance(result, str) else 0
+            return count
+        except Exception as e:
+            logger.warning("Failed to mark thoughts shown: %s", e)
+            return 0
+
+    async def expire_stale_queue(self) -> int:
+        """Expire pending queue items older than QUEUE_EXPIRE_HOURS."""
+        await self.connect()
+        try:
+            result = await self.db.execute("""
+                UPDATE thought_expression_queue
+                SET status = 'expired'
+                WHERE status = 'pending'
+                AND created_at < NOW() - INTERVAL '1 hour' * $1
+            """, QUEUE_EXPIRE_HOURS)
+            count = int(result.split()[-1]) if isinstance(result, str) else 0
+            return count
+        except Exception as e:
+            logger.warning("Failed to expire stale queue: %s", e)
+            return 0
+
+    # ============================================================
+    # HELPERS
+    # ============================================================
+
+    async def _get_david_state(self) -> str:
+        """Get David's current emotional state from adaptation log."""
+        await self.connect()
+        try:
+            row = await self.db.fetchrow("""
+                SELECT dominant_state
+                FROM emotional_adaptation_log
+                WHERE confidence > 0.5
+                ORDER BY created_at DESC
+                LIMIT 1
+            """)
+            return row["dominant_state"] if row else "neutral"
+        except Exception:
+            return "neutral"
+
+    async def _log_expression(
+        self, thought_id: str, channel: str, message: str,
+        success: bool, suppress_reason: Optional[str],
+        motivation: float,
+    ) -> None:
+        """Log an expression attempt to thought_expression_log."""
+        await self.connect()
+        david_state = await self._get_david_state()
+        try:
+            await self.db.execute("""
+                INSERT INTO thought_expression_log
+                    (thought_id, channel, message_sent, success,
+                     suppress_reason, david_state, motivation_score)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+            """,
+                thought_id, channel, message[:500], success,
+                suppress_reason, david_state, motivation,
+            )
+        except Exception as e:
+            logger.warning("Failed to log expression: %s", e)
+
+    async def has_brain_expressed(
+        self, keywords: List[str], hours: int = 2
+    ) -> bool:
+        """
+        Check if brain has expressed a thought matching any keyword recently.
+        Used by ProactiveActionEngine for deduplication.
+        """
+        await self.connect()
+        for kw in keywords:
+            if not kw:
+                continue
+            row = await self.db.fetchrow("""
+                SELECT log_id FROM thought_expression_log
+                WHERE success = TRUE
+                AND message_sent ILIKE $1
+                AND created_at > NOW() - INTERVAL '1 hour' * $2
+                LIMIT 1
+            """, f"%{kw}%", hours)
+            if row:
+                return True
+        return False

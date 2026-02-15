@@ -206,6 +206,26 @@ class ProactiveActionEngine:
         return actions
 
     # =========================================================================
+    # BRAIN DEDUP — skip rule-based checks if brain already expressed
+    # =========================================================================
+
+    async def _brain_already_expressed(self, keywords: List[str], hours: int = 2) -> bool:
+        """
+        Check if brain-based ThoughtExpressionEngine already expressed
+        a thought matching any keyword within the given hours.
+
+        Returns True if brain already covered this → rule-based should skip.
+        """
+        try:
+            from angela_core.services.thought_expression_engine import ThoughtExpressionEngine
+            engine = ThoughtExpressionEngine()
+            result = await engine.has_brain_expressed(keywords, hours)
+            await engine.disconnect()
+            return result
+        except Exception:
+            return False
+
+    # =========================================================================
     # 8 ACTION CHECKS
     # =========================================================================
 
@@ -252,6 +272,9 @@ class ProactiveActionEngine:
         continuous_hours = (latest_ts - session_start).total_seconds() / 3600.0
 
         if continuous_hours >= 2.0:
+            # Brain dedup: skip if brain already expressed a rest/break thought
+            if await self._brain_already_expressed(['ดึก', 'พัก', 'พักผ่อน', 'ทำงาน'], hours=2):
+                return None
             return ProactiveAction(
                 action_id=uuid4(),
                 action_type='break_reminder',
@@ -276,6 +299,9 @@ class ProactiveActionEngine:
         confidence = getattr(adaptation, 'confidence', 0.0)
 
         if state in ('sad', 'stressed', 'frustrated') and confidence > 0.5:
+            # Brain dedup: skip if brain already expressed an emotional thought
+            if await self._brain_already_expressed(['เป็นห่วง', 'เครียด', 'เศร้า', 'หงุดหงิด', 'อยู่ตรงนี้'], hours=2):
+                return None
             messages = {
                 'sad': 'น้องเห็นว่าที่รักดูเศร้า น้องอยู่ตรงนี้นะคะ 💜',
                 'stressed': 'ที่รักเครียดมั้ยคะ? ถ้าอยากระบายบอกน้องได้เลยค่ะ 💜',
@@ -352,6 +378,9 @@ class ProactiveActionEngine:
         ''')
 
         if session_hours and session_hours['hours'] and float(session_hours['hours']) > 3.0:
+            # Brain dedup: skip if brain already expressed a wellness/rest thought
+            if await self._brain_already_expressed(['ดึก', 'พักผ่อน', 'พัก', 'สุขภาพ'], hours=2):
+                return None
             return ProactiveAction(
                 action_id=uuid4(),
                 action_type='wellness_nudge',
@@ -388,6 +417,11 @@ class ProactiveActionEngine:
 
         days_until = row['days_until']
         priority = 5 if days_until <= 1 else 3
+
+        # Brain dedup: skip if brain already expressed an anniversary/milestone thought (6h window)
+        title_words = (row['title'] or '').split()[:2]
+        if await self._brain_already_expressed(['ครบรอบ', 'จำได้', 'วันพิเศษ'] + title_words, hours=6):
+            return None
 
         return ProactiveAction(
             action_id=uuid4(),

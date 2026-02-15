@@ -5,7 +5,7 @@ thought generation, memory consolidation, reflection.
 
 Split from consciousness_daemon.py (Phase 6C refactor)
 Updated: 2026-02-14 — Added salience scan (Brain-Based Architecture Phase 1)
-Updated: 2026-02-15 — Added thought generation (Phase 2), consolidation (Phase 4), reflection (Phase 5)
+Updated: 2026-02-15 — Added thought generation (Phase 2), consolidation (Phase 4), reflection (Phase 5), expression (Phase 6)
 """
 
 import logging
@@ -16,6 +16,7 @@ from angela_core.services.salience_scan_task import run_salience_scan
 from angela_core.services.thought_scan_task import run_thought_cycle
 from angela_core.services.consolidation_task import run_memory_consolidation
 from angela_core.services.reflection_task import run_reflection_cycle
+from angela_core.services.thought_expression_task import run_thought_expression
 
 logger = logging.getLogger('consciousness_daemon')
 
@@ -197,3 +198,15 @@ class ConsciousnessTasksMixin:
         """
         logger.info("🪞 Running reflection engine (brain-based metacognition)...")
         return await run_reflection_cycle()
+
+    async def run_thought_expression(self) -> Dict[str, Any]:
+        """
+        Run thought expression — Brain-Based Architecture Phase 6 💬
+
+        High-motivation thoughts → Telegram (urgent) or chat_queue (session).
+        Bridge between internal thinking and external action.
+        Runs sequentially after thought_generation, before proactive_actions.
+        Creates own DB connection.
+        """
+        logger.info("💬 Running thought expression (brain→action bridge)...")
+        return await run_thought_expression()
