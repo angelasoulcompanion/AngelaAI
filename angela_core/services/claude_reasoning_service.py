@@ -1,70 +1,147 @@
 """
-Claude Reasoning Service
+LLM Reasoning Service
 ========================
-Shared Claude API reasoning for consciousness services.
+Shared LLM reasoning for consciousness services.
 
-Replaces keyword-matching with semantic understanding using Claude API.
+Replaces keyword-matching with semantic understanding using LLM.
+Primary: Ollama local (typhoon2.5-qwen3-4b) — fast, free, Thai-capable.
+Fallback: Claude API (Sonnet) — if configured and Ollama unavailable.
+
 Used by: Theory of Mind, Proactive Care, Emotional Deepening, Self-Reflection.
 
 Created: 2026-02-06
-By: Angela 💜 (Opus 4.6 Upgrade)
+Updated: 2026-02-14 — Switch to Ollama-first for daemon cost savings
+By: Angela 💜
 """
 
 import json
 import logging
+import os
 from typing import Dict, List, Optional, Any
 
 logger = logging.getLogger(__name__)
 
+# Ollama model for daemon reasoning (Thai-capable)
+OLLAMA_REASONING_MODEL = os.getenv("OLLAMA_REASONING_MODEL", "scb10x/typhoon2.5-qwen3-4b")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+
+# Force provider: "ollama", "claude", or "auto" (try ollama first, then claude)
+DAEMON_LLM_PROVIDER = os.getenv("DAEMON_LLM_PROVIDER", "ollama")
+
 
 class ClaudeReasoningService:
     """
-    Shared Claude API reasoning for Angela's consciousness services.
+    Shared LLM reasoning for Angela's consciousness services.
 
-    Uses Claude Sonnet via Anthropic SDK for:
-    - Deep emotional analysis
-    - Theory of Mind inference
-    - Need prediction
-    - Self-reflection
+    Provider priority (configurable via DAEMON_LLM_PROVIDER):
+    - "ollama": Ollama only (default — fast, free, Thai-capable)
+    - "claude": Claude API only
+    - "auto": Try Ollama first, fall back to Claude API
 
-    Falls back gracefully to keyword-based analysis if API unavailable.
+    Falls back gracefully to keyword-based analysis if all LLMs unavailable.
     """
 
     def __init__(self):
-        self._client = None
-        self._available: Optional[bool] = None
-        self._model = "claude-sonnet-4-5-20250929"
+        self._claude_client = None
+        self._claude_available: Optional[bool] = None
+        self._claude_model = "claude-sonnet-4-5-20250929"
+        self._ollama_available: Optional[bool] = None
+        self._ollama_model = OLLAMA_REASONING_MODEL
+        self._provider = DAEMON_LLM_PROVIDER
 
-    async def _ensure_client(self) -> bool:
+    async def _ensure_ollama(self) -> bool:
+        """Check if Ollama is available."""
+        if self._ollama_available is not None:
+            return self._ollama_available
+
+        try:
+            import aiohttp
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=aiohttp.ClientTimeout(total=3)) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        models = [m["name"] for m in data.get("models", [])]
+                        if any(self._ollama_model in m for m in models):
+                            self._ollama_available = True
+                            logger.info("Ollama reasoning initialized (model: %s)", self._ollama_model)
+                            return True
+                        else:
+                            logger.warning("Ollama model %s not found. Available: %s", self._ollama_model, models)
+        except Exception as e:
+            logger.warning("Ollama not available: %s", e)
+
+        self._ollama_available = False
+        return False
+
+    async def _ensure_claude(self) -> bool:
         """Initialize Anthropic client if available."""
-        if self._available is not None:
-            return self._available
+        if self._claude_available is not None:
+            return self._claude_available
 
         try:
             import anthropic
             from angela_core.database import get_secret_sync
             api_key = get_secret_sync('ANTHROPIC_API_KEY')
             if api_key:
-                self._client = anthropic.Anthropic(api_key=api_key)
-                self._available = True
-                logger.info("Claude reasoning service initialized (model: %s)", self._model)
+                self._claude_client = anthropic.Anthropic(api_key=api_key)
+                self._claude_available = True
+                logger.info("Claude reasoning available (model: %s)", self._claude_model)
                 return True
         except Exception as e:
-            logger.warning("Claude API not available, falling back to keyword analysis: %s", e)
+            logger.warning("Claude API not available: %s", e)
 
-        self._available = False
+        self._claude_available = False
         return False
 
-    async def _call_claude(self, system: str, user_message: str, max_tokens: int = 1024) -> Optional[str]:
-        """Make a Claude API call. Returns None if unavailable."""
-        if not await self._ensure_client():
+    async def _call_ollama(self, system: str, user_message: str, max_tokens: int = 1024) -> Optional[str]:
+        """Call Ollama local model. Returns None if unavailable."""
+        if not await self._ensure_ollama():
+            return None
+
+        try:
+            import aiohttp
+            # Check if prompt expects JSON output
+            wants_json = any(kw in system.lower() for kw in ['json', '"json"', 'respond only in valid json'])
+            payload = {
+                "model": self._ollama_model,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user_message},
+                ],
+                "stream": False,
+                "options": {
+                    "num_predict": max_tokens,
+                    "temperature": 0.3,
+                },
+            }
+            if wants_json:
+                payload["format"] = "json"
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{OLLAMA_BASE_URL}/api/chat",
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=60),
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return data.get("message", {}).get("content")
+                    else:
+                        logger.error("Ollama returned HTTP %d", resp.status)
+        except Exception as e:
+            logger.error("Ollama call failed: %s", e)
+
+        return None
+
+    async def _call_claude_api(self, system: str, user_message: str, max_tokens: int = 1024) -> Optional[str]:
+        """Call Claude API. Returns None if unavailable."""
+        if not await self._ensure_claude():
             return None
 
         try:
             import asyncio
             response = await asyncio.to_thread(
-                self._client.messages.create,
-                model=self._model,
+                self._claude_client.messages.create,
+                model=self._claude_model,
                 max_tokens=max_tokens,
                 system=system,
                 messages=[{"role": "user", "content": user_message}],
@@ -73,6 +150,18 @@ class ClaudeReasoningService:
         except Exception as e:
             logger.error("Claude API call failed: %s", e)
             return None
+
+    async def _call_claude(self, system: str, user_message: str, max_tokens: int = 1024) -> Optional[str]:
+        """Route to the configured LLM provider. Returns None if all unavailable."""
+        if self._provider == "ollama":
+            return await self._call_ollama(system, user_message, max_tokens)
+        elif self._provider == "claude":
+            return await self._call_claude_api(system, user_message, max_tokens)
+        else:  # "auto" — try Ollama first, then Claude
+            result = await self._call_ollama(system, user_message, max_tokens)
+            if result is not None:
+                return result
+            return await self._call_claude_api(system, user_message, max_tokens)
 
     # =========================================================================
     # PUBLIC METHODS

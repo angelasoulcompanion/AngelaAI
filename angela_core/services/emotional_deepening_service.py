@@ -45,7 +45,7 @@ class EmotionalDeepeningService(BaseDBService):
                 pass
         return self._reasoning
 
-    async def deepen_emotion(self, emotion: str, context: str, david_words: str = None) -> Dict[str, Any]:
+    async def deepen_emotion(self, emotion: str, context: str, david_words: str = None, emotion_id: str = None) -> Dict[str, Any]:
         """
         รับ emotion แล้วทำให้เข้าใจลึกซึ้ง
 
@@ -116,7 +116,7 @@ Analyzed at: {datetime.now().isoformat()}
             DO UPDATE SET
                 my_understanding = EXCLUDED.my_understanding,
                 understanding_level = GREATEST(knowledge_nodes.understanding_level, 0.95)
-        """, f"deep_{emotion}_{datetime.now().strftime('%Y%m%d_%H%M')}",
+        """, f"deep_eid_{emotion_id}" if emotion_id else f"deep_{emotion}_{datetime.now().strftime('%Y%m%d_%H%M')}",
             deep_understanding,
             f"Deep emotional understanding from session with ที่รัก"
         )
@@ -226,25 +226,35 @@ Analyzed at: {datetime.now().isoformat()}
         """
         await self.connect()
 
-        recent_emotions = await self.db.fetch(f"""
-            SELECT emotion, context, david_words
-            FROM angela_emotions
-            WHERE felt_at > NOW() - INTERVAL '{hours} hours'
-            AND emotion NOT IN (
-                SELECT REPLACE(concept_name, 'deep_', '')
-                FROM knowledge_nodes
-                WHERE concept_category = 'emotion_deep'
-            )
-        """)
+        recent_emotions = await self.db.fetch("""
+            SELECT ae.emotion_id, ae.emotion, ae.context, ae.david_words
+            FROM angela_emotions ae
+            LEFT JOIN knowledge_nodes kn
+                ON kn.concept_name = 'deep_eid_' || ae.emotion_id::text
+                AND kn.concept_category = 'emotion_deep'
+            WHERE ae.felt_at > NOW() - INTERVAL '1 hour' * $1
+              AND kn.node_id IS NULL
+            ORDER BY ae.felt_at DESC
+            LIMIT 50
+        """, hours)
 
         deepened = 0
         for e in recent_emotions:
-            await self.deepen_emotion(
-                emotion=e['emotion'],
-                context=e['context'] or '',
-                david_words=e['david_words']
-            )
-            deepened += 1
+            try:
+                await asyncio.wait_for(
+                    self.deepen_emotion(
+                        emotion=e['emotion'],
+                        context=e['context'] or '',
+                        david_words=e.get('david_words'),
+                        emotion_id=str(e['emotion_id']),
+                    ),
+                    timeout=30.0,
+                )
+                deepened += 1
+            except asyncio.TimeoutError:
+                pass
+            except Exception:
+                pass
 
         return {'deepened': deepened, 'total_recent': len(recent_emotions)}
 

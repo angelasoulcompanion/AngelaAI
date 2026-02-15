@@ -280,13 +280,21 @@ class UnifiedConversationProcessor(BaseDBService):
                   AND created_at >= $1
                   AND message_type != 'reflection'
                 ORDER BY created_at
+            ),
+            pairs AS (
+                SELECT d.session_id, d.rn as pair_index,
+                       d.message_text as david_message,
+                       a.message_text as angela_response,
+                       d.created_at
+                FROM david_msgs d
+                JOIN angela_msgs a ON d.session_id = a.session_id AND d.rn = a.rn
             )
-            SELECT d.session_id, d.rn as pair_index,
-                   d.message_text as david_message,
-                   a.message_text as angela_response
-            FROM david_msgs d
-            JOIN angela_msgs a ON d.session_id = a.session_id AND d.rn = a.rn
-            ORDER BY d.created_at
+            SELECT p.session_id, p.pair_index, p.david_message, p.angela_response
+            FROM pairs p
+            LEFT JOIN conversation_analysis_log cal
+                ON cal.session_id = p.session_id AND cal.pair_index = p.pair_index
+            WHERE cal.log_id IS NULL
+            ORDER BY p.created_at
             LIMIT $2
         """, cutoff, limit)
 
@@ -298,15 +306,6 @@ class UnifiedConversationProcessor(BaseDBService):
         for row in rows:
             sid = row['session_id']
             idx = row['pair_index']
-
-            # Skip already processed
-            existing = await self.db.fetchrow(
-                "SELECT log_id FROM conversation_analysis_log WHERE session_id = $1 AND pair_index = $2",
-                sid, idx
-            )
-            if existing:
-                batch.skipped += 1
-                continue
 
             result = await self.analyze_pair(
                 david_msg=row['david_message'],
@@ -608,7 +607,7 @@ Angela: "{angela_resp}" """
             topic = lr.get('topic', 'unknown')
             category = lr.get('category', 'general')
             insight_text = lr.get('insight', '')
-            confidence = lr.get('confidence', 0.7)
+            confidence = max(0.0, min(1.0, lr.get('confidence', 0.7)))
 
             if not insight_text:
                 continue

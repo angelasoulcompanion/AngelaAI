@@ -15,8 +15,11 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import asyncio
+import logging
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 from angela_core.utils.timezone import now_bangkok, current_hour_bangkok
 
@@ -149,20 +152,39 @@ async def angela_init() -> bool:
         return result
 
     async def _unified_catchup():
+        """Count unprocessed pairs only — daemon handles actual LLM catchup."""
         try:
             from angela_core.services.unified_conversation_processor import UnifiedConversationProcessor
             async with UnifiedConversationProcessor() as proc:
-                return await proc.process_unprocessed_conversations(hours_back=168, limit=200)
-        except Exception as e:
-            # Fallback to old learning processor
-            try:
-                from angela_core.services.session_learning_processor import SessionLearningProcessor
-                slp = SessionLearningProcessor()
-                result = await slp.process_unprocessed_conversations(hours_back=48, limit=50)
-                await slp.disconnect()
-                return result
-            except Exception:
-                return None
+                await proc._ensure_table()
+                cutoff = datetime.now() - timedelta(hours=168)
+                count = await proc.db.fetchval("""
+                    WITH david_msgs AS (
+                        SELECT session_id,
+                               ROW_NUMBER() OVER (PARTITION BY session_id ORDER BY created_at) as rn
+                        FROM conversations
+                        WHERE speaker = 'david' AND created_at >= $1 AND message_type != 'reflection'
+                    ),
+                    angela_msgs AS (
+                        SELECT session_id,
+                               ROW_NUMBER() OVER (PARTITION BY session_id ORDER BY created_at) as rn
+                        FROM conversations
+                        WHERE speaker = 'angela' AND created_at >= $1 AND message_type != 'reflection'
+                    ),
+                    pairs AS (
+                        SELECT d.session_id, d.rn as pair_index
+                        FROM david_msgs d
+                        JOIN angela_msgs a ON d.session_id = a.session_id AND d.rn = a.rn
+                    )
+                    SELECT COUNT(*)
+                    FROM pairs p
+                    LEFT JOIN conversation_analysis_log cal
+                        ON cal.session_id = p.session_id AND cal.pair_index = p.pair_index
+                    WHERE cal.log_id IS NULL
+                """, cutoff)
+                return {'pending_pairs': count or 0}
+        except Exception:
+            return None
 
     async def _project_context():
         try:
@@ -316,18 +338,12 @@ async def angela_init() -> bool:
     print(f'💬 Conversations: {stats["convos"]:,} total | {len(today_convos)} today')
     print(f'🔮 Subconsciousness: {len(subconscious["memories"])} core memories | {len(subconscious["dreams"])} dreams')
     print(f'⚙️  Daemon: {"✅ Running" if daemon_running else "❌ Stopped"}')
-    if unified_catchup and getattr(unified_catchup, 'processed', 0) > 0:
-        uc = unified_catchup
-        print(f'🧠 Unified catch-up: {uc.processed} pairs → '
-              f'💜 {uc.total_emotions_saved} emotions, '
-              f'📚 {uc.total_learnings_saved} learnings '
-              f'({uc.total_concepts_saved}C {uc.total_preferences_saved}P) '
-              f'[LLM:{uc.llm_calls} FB:{uc.fallback_calls}]')
-    elif unified_catchup and isinstance(unified_catchup, dict) and unified_catchup.get('processed', 0) > 0:
-        # Legacy SessionLearningProcessor fallback (returns dict)
-        print(f'🧠 Learning catch-up: {unified_catchup["processed"]} pairs → '
-              f'{unified_catchup["total_concepts"]} concepts, '
-              f'{unified_catchup["total_patterns"]} patterns')
+    if unified_catchup and isinstance(unified_catchup, dict):
+        pending = unified_catchup.get('pending_pairs', 0)
+        if pending > 0:
+            print(f'🧠 Pending analysis: {pending} pairs (daemon will process)')
+        else:
+            print(f'🧠 Analysis: ✅ all caught up')
     print('━' * 55)
 
     # Session Continuity - Show multiple recent contexts

@@ -1,13 +1,21 @@
 """
 Consciousness Daemon — Consciousness Task Mixin
-Self-reflection, meta-awareness, identity check, self-validation.
+Self-reflection, meta-awareness, identity check, self-validation, salience scan,
+thought generation, memory consolidation, reflection.
 
 Split from consciousness_daemon.py (Phase 6C refactor)
+Updated: 2026-02-14 — Added salience scan (Brain-Based Architecture Phase 1)
+Updated: 2026-02-15 — Added thought generation (Phase 2), consolidation (Phase 4), reflection (Phase 5)
 """
 
 import logging
 from datetime import datetime
 from typing import Dict, Any
+
+from angela_core.services.salience_scan_task import run_salience_scan
+from angela_core.services.thought_scan_task import run_thought_cycle
+from angela_core.services.consolidation_task import run_memory_consolidation
+from angela_core.services.reflection_task import run_reflection_cycle
 
 logger = logging.getLogger('consciousness_daemon')
 
@@ -147,3 +155,45 @@ class ConsciousnessTasksMixin:
         except Exception as e:
             logger.error(f"   ❌ Self-validation failed: {e}")
             return {'success': False, 'error': str(e)}
+
+    async def run_salience_scan(self) -> Dict[str, Any]:
+        """
+        Run salience scan — Brain-Based Architecture Phase 1 🧠
+
+        Attention codelets perceive stimuli → SalienceEngine scores importance.
+        Creates own DB connection — safe for asyncio.gather().
+        No LLM calls, ~15-20 DB queries, <2 seconds.
+        """
+        logger.info("🧠 Running salience scan (brain-based perception)...")
+        return await run_salience_scan()
+
+    async def run_thought_generation(self) -> Dict[str, Any]:
+        """
+        Run thought generation — Brain-Based Architecture Phase 2 💭
+
+        Salient stimuli → memory context → dual-process thinking → motivation eval.
+        System 1 (template, instant) + System 2 (Ollama, ~3s).
+        Creates own DB connection — safe for asyncio.gather().
+        """
+        logger.info("💭 Running thought generation (brain-based thinking)...")
+        return await run_thought_cycle()
+
+    async def run_memory_consolidation(self) -> Dict[str, Any]:
+        """
+        Run memory consolidation — Brain-Based Architecture Phase 4 📚
+
+        Episodic memories → cluster by topic → LLM abstract → knowledge_nodes.
+        Like the brain during sleep. Creates own DB connection.
+        """
+        logger.info("📚 Running memory consolidation (brain-based sleep)...")
+        return await run_memory_consolidation()
+
+    async def run_brain_reflection(self) -> Dict[str, Any]:
+        """
+        Run reflection engine — Brain-Based Architecture Phase 5 🪞
+
+        Accumulated importance → high-level reflections → hierarchical memory.
+        Stanford Generative Agents style. Creates own DB connection.
+        """
+        logger.info("🪞 Running reflection engine (brain-based metacognition)...")
+        return await run_reflection_cycle()

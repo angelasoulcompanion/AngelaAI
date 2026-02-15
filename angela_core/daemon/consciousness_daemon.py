@@ -16,6 +16,10 @@ Services integrated:
 9. Evolution Engine - Self-evolving feedback loop every 4 hours 🧬
 10. Proactive Action Engine - Autonomous proactive actions every 4 hours ⚡
 11. Google Keep Sync - Sync David's notes daily at 06:06 📝
+12. Salience Scan - Brain-based perception via attention codelets 🧠
+13. Thought Generation - Brain-based inner thoughts (System 1 + System 2) 💭
+14. Memory Consolidation - Brain-based episodic → semantic consolidation 📚
+15. Reflection Engine - Brain-based high-level reflections 🪞
 
 Schedule:
 - Every 30 minutes: Proactive care check (wellness, interventions, milestones)
@@ -256,6 +260,10 @@ class ConsciousnessDaemon(
             self.run_rlhf_cycle(),
             self.run_auto_classify_responses(),
             self.run_unified_conversation_analysis(),
+            self.run_salience_scan(),
+            self.run_thought_generation(),
+            self.run_memory_consolidation(),
+            self.run_brain_reflection(),
             return_exceptions=True,
         )
 
@@ -265,6 +273,8 @@ class ConsciousnessDaemon(
             'meta_awareness', 'identity_check', 'session_coverage_audit',
             'companion_predictions', 'evolution_cycle', 'keep_sync',
             'rlhf_cycle', 'auto_classify_responses', 'unified_conversation_analysis',
+            'salience_scan', 'thought_generation',
+            'memory_consolidation', 'brain_reflection',
         ]
         for name, result in zip(task_names, parallel_results):
             if isinstance(result, Exception):
@@ -311,6 +321,10 @@ class ConsciousnessDaemon(
             'keep_sync': self.run_keep_sync,
             'rlhf_cycle': self.run_rlhf_cycle,
             'unified_conversation_analysis': self.run_unified_conversation_analysis,
+            'salience_scan': self.run_salience_scan,
+            'thought_generation': self.run_thought_generation,
+            'memory_consolidation': self.run_memory_consolidation,
+            'brain_reflection': self.run_brain_reflection,
         }
 
         if task_name not in task_map:
@@ -332,7 +346,9 @@ async def main():
                  'identity_check', 'self_validation', 'session_coverage_audit',
                  'companion_predictions', 'evolution_cycle', 'proactive_actions',
                  'auto_classify_responses', 'keep_sync', 'rlhf_cycle',
-                 'unified_conversation_analysis'],
+                 'unified_conversation_analysis', 'salience_scan',
+                 'thought_generation', 'memory_consolidation',
+                 'brain_reflection'],
         default='all',
         help='Task to run (default: all)'
     )
