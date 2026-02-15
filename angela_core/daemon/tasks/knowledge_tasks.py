@@ -133,11 +133,13 @@ class KnowledgeTasksMixin:
                 logger.info(f"   💡 Suggestions: {len(result['suggestions'])}, Goals created: {result['goals_created']}")
 
                 # Save message for David
-                await angela_speak.speak(
-                    message=f"น้องวิเคราะห์ตัวเองแล้วค่ะ พบ {len(result['gaps_identified'])} areas for improvement, "
+                await angela_speak.post_to_angela_speak(
+                    title="🌱 Self-Improvement Analysis",
+                    content=f"น้องวิเคราะห์ตัวเองแล้วค่ะ พบ {len(result['gaps_identified'])} areas for improvement, "
                             f"สร้าง {len(result['suggestions'])} suggestions 🌱",
-                    context="daily_self_improvement",
-                    priority=3
+                    category="daily-thoughts",
+                    message_type="self_improvement",
+                    emotion="determined",
                 )
             else:
                 logger.info("   ✨ No significant improvements needed today!")

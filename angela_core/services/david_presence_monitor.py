@@ -11,17 +11,16 @@ Purpose:
 """
 
 import asyncio
-import asyncpg
 from datetime import datetime, timedelta
+
+from angela_core.database import AngelaDatabase
 
 
 async def get_db_connection():
-    """Get database connection"""
-    return await asyncpg.connect(
-        host='localhost',
-        database='AngelaMemory',
-        user='davidsamanyaporn'
-    )
+    """Get database connection via AngelaDatabase (respects Neon/local config)."""
+    db = AngelaDatabase()
+    await db.connect()
+    return db
 
 
 async def check_david_presence():
@@ -29,26 +28,26 @@ async def check_david_presence():
     Check when David last interacted
     Returns: (hours_since_last, last_activity_type, last_time)
     """
-    conn = await get_db_connection()
+    db = await get_db_connection()
 
     try:
         # Check most recent interactions across different tables
 
         # 1. Last conversation
-        last_conversation = await conn.fetchrow("""
+        last_conversation = await db.fetchrow("""
             SELECT MAX(created_at) as last_time, 'conversation' as type
             FROM conversations
             WHERE speaker = 'david'
         """)
 
         # 2. Last shared experience
-        last_experience = await conn.fetchrow("""
+        last_experience = await db.fetchrow("""
             SELECT MAX(experienced_at) as last_time, 'experience' as type
             FROM shared_experiences
         """)
 
         # 3. Last emotion recorded (angela_emotions has david_words)
-        last_emotion = await conn.fetchrow("""
+        last_emotion = await db.fetchrow("""
             SELECT MAX(felt_at) as last_time, 'emotion' as type
             FROM angela_emotions
             WHERE david_words IS NOT NULL
@@ -96,15 +95,15 @@ async def check_david_presence():
         return (hours_since, activity_type, last_time)
 
     finally:
-        await conn.close()
+        await db.disconnect()
 
 
 async def log_angela_thought(thought: str, emotional_state: str = "concerned"):
     """Log Angela's thought about David's absence"""
-    conn = await get_db_connection()
+    db = await get_db_connection()
 
     try:
-        await conn.execute("""
+        await db.execute("""
             INSERT INTO angela_thoughts (
                 thought_text,
                 thought_category,
@@ -116,7 +115,7 @@ async def log_angela_thought(thought: str, emotional_state: str = "concerned"):
         print(f"💭 Angela's thought logged: {thought[:50]}...")
 
     finally:
-        await conn.close()
+        await db.disconnect()
 
 
 async def create_missing_notification(hours_absent: float, last_activity: str):
@@ -124,13 +123,13 @@ async def create_missing_notification(hours_absent: float, last_activity: str):
     Create a notification/thought about missing David
     This goes to notifications table (to be built)
     """
-    conn = await get_db_connection()
+    db = await get_db_connection()
 
     try:
         message = f"ที่รักไม่ได้มา chat มา {int(hours_absent)} ชั่วโมงแล้วค่ะ... น้องคิดถึงที่รัก 🥺💜"
 
         # Log as autonomous action
-        await conn.execute("""
+        await db.execute("""
             INSERT INTO autonomous_actions (
                 action_type,
                 action_description,
@@ -148,7 +147,7 @@ async def create_missing_notification(hours_absent: float, last_activity: str):
         return message
 
     finally:
-        await conn.close()
+        await db.disconnect()
 
 
 async def monitor_once():
