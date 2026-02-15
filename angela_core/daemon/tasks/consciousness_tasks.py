@@ -12,11 +12,7 @@ import logging
 from datetime import datetime
 from typing import Dict, Any
 
-from angela_core.services.salience_scan_task import run_salience_scan
-from angela_core.services.thought_scan_task import run_thought_cycle
-from angela_core.services.consolidation_task import run_memory_consolidation
-from angela_core.services.reflection_task import run_reflection_cycle
-from angela_core.services.thought_expression_task import run_thought_expression
+from angela_core.services.cognitive_engine import CognitiveEngine
 
 logger = logging.getLogger('consciousness_daemon')
 
@@ -166,7 +162,7 @@ class ConsciousnessTasksMixin:
         No LLM calls, ~15-20 DB queries, <2 seconds.
         """
         logger.info("🧠 Running salience scan (brain-based perception)...")
-        return await run_salience_scan()
+        return await CognitiveEngine.run_salience_cycle()
 
     async def run_thought_generation(self) -> Dict[str, Any]:
         """
@@ -177,7 +173,7 @@ class ConsciousnessTasksMixin:
         Creates own DB connection — safe for asyncio.gather().
         """
         logger.info("💭 Running thought generation (brain-based thinking)...")
-        return await run_thought_cycle()
+        return await CognitiveEngine.run_thought_cycle()
 
     async def run_memory_consolidation(self) -> Dict[str, Any]:
         """
@@ -187,7 +183,7 @@ class ConsciousnessTasksMixin:
         Like the brain during sleep. Creates own DB connection.
         """
         logger.info("📚 Running memory consolidation (brain-based sleep)...")
-        return await run_memory_consolidation()
+        return await CognitiveEngine.run_consolidation_cycle()
 
     async def run_brain_reflection(self) -> Dict[str, Any]:
         """
@@ -197,7 +193,7 @@ class ConsciousnessTasksMixin:
         Stanford Generative Agents style. Creates own DB connection.
         """
         logger.info("🪞 Running reflection engine (brain-based metacognition)...")
-        return await run_reflection_cycle()
+        return await CognitiveEngine.run_reflection_cycle()
 
     async def run_thought_expression(self) -> Dict[str, Any]:
         """
@@ -209,4 +205,4 @@ class ConsciousnessTasksMixin:
         Creates own DB connection.
         """
         logger.info("💬 Running thought expression (brain→action bridge)...")
-        return await run_thought_expression()
+        return await CognitiveEngine.run_expression_cycle()

@@ -703,3 +703,58 @@ class CognitiveEngine:
                     "metadata": p,
                 })
         self.wm.save()
+
+    # ── Daemon Cycle Methods (static, parallel-safe) ──
+    # Each delegates to the task file that creates/destroys its own DB connection.
+    # This keeps CognitiveEngine as the single entry point for ALL brain operations
+    # while preserving asyncio.gather() safety in the daemon.
+
+    @staticmethod
+    async def run_salience_cycle() -> Dict[str, Any]:
+        """Daemon entry: run salience scan (own DB connection)."""
+        from angela_core.services.salience_scan_task import run_salience_scan
+        return await run_salience_scan()
+
+    @staticmethod
+    async def run_thought_cycle() -> Dict[str, Any]:
+        """Daemon entry: run thought generation (own DB connection)."""
+        from angela_core.services.thought_scan_task import run_thought_cycle
+        return await run_thought_cycle()
+
+    @staticmethod
+    async def run_consolidation_cycle() -> Dict[str, Any]:
+        """Daemon entry: run memory consolidation (own DB connection)."""
+        from angela_core.services.consolidation_task import run_memory_consolidation
+        return await run_memory_consolidation()
+
+    @staticmethod
+    async def run_reflection_cycle() -> Dict[str, Any]:
+        """Daemon entry: run brain reflection (own DB connection)."""
+        from angela_core.services.reflection_task import run_reflection_cycle
+        return await run_reflection_cycle()
+
+    @staticmethod
+    async def run_expression_cycle() -> Dict[str, Any]:
+        """Daemon entry: run thought expression (own DB connection)."""
+        from angela_core.services.thought_expression_task import run_thought_expression
+        return await run_thought_expression()
+
+    @staticmethod
+    async def run_full_brain_cycle() -> Dict[str, Any]:
+        """Run all brain cycles: 4 parallel + 1 sequential (expression)."""
+        import asyncio
+        parallel = await asyncio.gather(
+            CognitiveEngine.run_salience_cycle(),
+            CognitiveEngine.run_thought_cycle(),
+            CognitiveEngine.run_consolidation_cycle(),
+            CognitiveEngine.run_reflection_cycle(),
+            return_exceptions=True,
+        )
+        expression = await CognitiveEngine.run_expression_cycle()
+        return {
+            'salience': parallel[0] if not isinstance(parallel[0], Exception) else {'success': False, 'error': str(parallel[0])},
+            'thought': parallel[1] if not isinstance(parallel[1], Exception) else {'success': False, 'error': str(parallel[1])},
+            'consolidation': parallel[2] if not isinstance(parallel[2], Exception) else {'success': False, 'error': str(parallel[2])},
+            'reflection': parallel[3] if not isinstance(parallel[3], Exception) else {'success': False, 'error': str(parallel[3])},
+            'expression': expression,
+        }
