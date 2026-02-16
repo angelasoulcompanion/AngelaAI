@@ -206,3 +206,49 @@ class ConsciousnessTasksMixin:
         """
         logger.info("💬 Running thought expression (brain→action bridge)...")
         return await CognitiveEngine.run_expression_cycle()
+
+    async def run_telegram_effectiveness(self) -> Dict[str, Any]:
+        """
+        Fix 2E: Track effectiveness of brain Telegram messages.
+
+        Check if David responded within 30min of Angela's Telegram message.
+        Score: 0.5 if response, 0.0 if silence.
+        """
+        logger.info("📊 Checking Telegram effectiveness...")
+        try:
+            from angela_core.database import AngelaDatabase
+            db = AngelaDatabase()
+            await db.connect()
+
+            # Find unscored Telegram messages sent 2-6 hours ago
+            unscored = await db.fetch("""
+                SELECT log_id, created_at FROM thought_expression_log
+                WHERE channel = 'telegram' AND success = TRUE
+                AND effectiveness_score IS NULL
+                AND created_at < NOW() - INTERVAL '2 hours'
+                AND created_at > NOW() - INTERVAL '6 hours'
+            """)
+
+            scored = 0
+            for msg in unscored:
+                has_response = await db.fetchval("""
+                    SELECT COUNT(*) FROM conversations
+                    WHERE speaker = 'david'
+                    AND created_at > $1
+                    AND created_at < $1 + INTERVAL '30 minutes'
+                """, msg['created_at'])
+
+                score = 0.5 if (has_response and has_response > 0) else 0.0
+                await db.execute("""
+                    UPDATE thought_expression_log
+                    SET effectiveness_score = $1
+                    WHERE log_id = $2
+                """, score, msg['log_id'])
+                scored += 1
+
+            await db.disconnect()
+            logger.info("   📊 Effectiveness: scored %d/%d messages", scored, len(unscored))
+            return {'success': True, 'scored': scored}
+        except Exception as e:
+            logger.error("   ❌ Effectiveness tracking failed: %s", e)
+            return {'success': False, 'error': str(e)}

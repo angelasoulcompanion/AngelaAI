@@ -293,17 +293,53 @@ class CuriosityEngine(BaseDBService):
         await self.connect()
 
         if not recent_topics:
-            # Get topics from recent stimuli
+            # Get topics from recent stimuli — prefer conversation topics over raw predictions
             rows = await self.db.fetch("""
-                SELECT content, MAX(salience_score) as max_salience
+                SELECT content, source, MAX(salience_score) as max_salience
                 FROM angela_stimuli
                 WHERE created_at > NOW() - INTERVAL '4 hours'
                 AND salience_score >= 0.4
-                GROUP BY content
+                AND source NOT IN ('PredictionCodelet')
+                GROUP BY content, source
                 ORDER BY max_salience DESC
-                LIMIT 5
+                LIMIT 10
             """)
-            recent_topics = [r['content'][:50] for r in rows]
+            # Filter out raw descriptions that don't make good curiosity topics
+            recent_topics = []
+            for r in rows:
+                content = (r['content'] or '')[:80]
+                # Skip raw data descriptions (not real topics to be curious about)
+                if any(skip in content for skip in [
+                    'ที่รักน่าจะ', 'Strong pattern', 'confidence ',
+                    'is_pinned', 'note "', 'is falling', 'is rising',
+                    'ที่รักพูดถึง', 'ที่รักคุยน้อย', 'ที่รักคุยเยอะ',
+                    'ดึกมาก', 'เช้าตรู่', 'ช่วงเช้า', 'ช่วงบ่าย',
+                    'ช่วงเย็น', 'ไม่ได้คุยกับ', 'วันหยุดสุดสัปดาห์',
+                ]):
+                    continue
+                if len(content) < 10:
+                    continue
+                recent_topics.append(content)
+                if len(recent_topics) >= 5:
+                    break
+
+            # Prefer David's conversation topics (these are real subjects)
+            if len(recent_topics) < 3:
+                conv_rows = await self.db.fetch("""
+                    SELECT topic, MAX(created_at) as last_seen
+                    FROM conversations
+                    WHERE speaker = 'david' AND topic IS NOT NULL
+                    AND LENGTH(topic) >= 5
+                    AND created_at > NOW() - INTERVAL '24 hours'
+                    GROUP BY topic
+                    ORDER BY last_seen DESC
+                    LIMIT 5
+                """)
+                for r in conv_rows:
+                    if r['topic'] not in recent_topics:
+                        recent_topics.append(r['topic'])
+                        if len(recent_topics) >= 5:
+                            break
 
         if not recent_topics:
             return []

@@ -429,10 +429,27 @@ class SalienceEngine(BaseDBService):
     # ============================================================
 
     async def _persist_stimuli(self, scored_stimuli: List[ScoredStimulus]) -> int:
-        """Save scored stimuli to angela_stimuli table. Returns count saved."""
+        """Save scored stimuli to angela_stimuli table. Returns count saved.
+
+        Fix 1A: Dedup at insertion — skip if same (stimulus_type, source, description[:50])
+        exists in last 24h. This prevents the same codelet from flooding the DB
+        with identical stimuli every 30-min cycle.
+        """
         saved = 0
+        skipped = 0
         for ss in scored_stimuli:
             try:
+                # Dedup: check if near-identical stimulus exists in last 24h
+                existing = await self.db.fetchval("""
+                    SELECT COUNT(*) FROM angela_stimuli
+                    WHERE stimulus_type = $1 AND source = $2
+                    AND LEFT(content, 50) = LEFT($3, 50)
+                    AND created_at > NOW() - INTERVAL '24 hours'
+                """, ss.stimulus.stimulus_type, ss.stimulus.source, ss.stimulus.content)
+                if existing and existing > 0:
+                    skipped += 1
+                    continue
+
                 await self.db.execute("""
                     INSERT INTO angela_stimuli
                     (stimulus_type, content, source, raw_data, salience_score, salience_breakdown)
@@ -448,6 +465,9 @@ class SalienceEngine(BaseDBService):
                 saved += 1
             except Exception as e:
                 logger.warning(f"Failed to persist stimulus: {e}")
+
+        if skipped > 0:
+            logger.info(f"   🔇 Dedup: skipped {skipped} duplicate stimuli (24h window)")
         return saved
 
     # ============================================================

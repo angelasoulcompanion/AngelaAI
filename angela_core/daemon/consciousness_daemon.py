@@ -294,6 +294,7 @@ class ConsciousnessDaemon(
         # =====================================================================
         results['thought_expression'] = await self.run_thought_expression()
         results['brain_comparison'] = await self.run_brain_comparison()
+        results['telegram_effectiveness'] = await self.run_telegram_effectiveness()
         results['proactive_care'] = await self.run_proactive_care()
         results['proactive_actions'] = await self.run_proactive_actions()
         results['plan_generation'] = await self.run_plan_generation()
@@ -337,6 +338,7 @@ class ConsciousnessDaemon(
             'brain_reflection': self.run_brain_reflection,
             'thought_expression': self.run_thought_expression,
             'brain_comparison': self.run_brain_comparison,
+            'telegram_effectiveness': self.run_telegram_effectiveness,
             'plan_generation': self.run_plan_generation,
             'plan_execution': self.run_plan_execution,
         }
@@ -363,8 +365,8 @@ async def main():
                  'unified_conversation_analysis', 'salience_scan',
                  'thought_generation', 'memory_consolidation',
                  'brain_reflection', 'thought_expression',
-                 'brain_comparison', 'plan_generation',
-                 'plan_execution'],
+                 'brain_comparison', 'telegram_effectiveness',
+                 'plan_generation', 'plan_execution'],
         default='all',
         help='Task to run (default: all)'
     )

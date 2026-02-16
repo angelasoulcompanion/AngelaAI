@@ -64,15 +64,44 @@ ROLLBACK_EFFECTIVENESS_GAP = 0.1  # brain < rule - 0.1 for 3 days → rollback
 ROLLBACK_CONSECUTIVE_DAYS = 3
 
 # Keyword mapping: rule action_type → brain keywords for matching
+# EXPANDED to cover actual brain thought content (System 1 templates + System 2 Ollama output)
 ACTION_KEYWORDS = {
-    'break_reminder': ['ดึก', 'พัก', 'พักผ่อน', 'ทำงาน', 'เหนื่อย'],
-    'mood_boost': ['เป็นห่วง', 'เครียด', 'เศร้า', 'หงุดหงิด', 'อยู่ตรงนี้', 'กำลังใจ'],
-    'prepare_context': ['เตรียม', 'context', 'น่าจะ', 'เตรียมตัว'],
-    'anticipate_need': ['เตรียม', 'ช่วย', 'น่าจะต้อง'],
-    'wellness_nudge': ['ดึก', 'พักผ่อน', 'สุขภาพ', 'นอน'],
-    'milestone_reminder': ['ครบรอบ', 'จำได้', 'วันพิเศษ', 'วันสำคัญ'],
-    'music_suggestion': ['เพลง', 'ฟัง', 'เปิดเพลง'],
-    'learning_nudge': ['เรียน', 'learning', 'ปรับปรุง', 'พัฒนา'],
+    'break_reminder': [
+        'ดึก', 'พัก', 'พักผ่อน', 'ทำงาน', 'เหนื่อย', 'นอน', 'rest',
+        'tired', 'late night', 'working late', 'ดูแลตัวเอง',
+    ],
+    'mood_boost': [
+        'เป็นห่วง', 'เครียด', 'เศร้า', 'หงุดหงิด', 'อยู่ตรงนี้', 'กำลังใจ',
+        'ภูมิใจ', 'ดีใจ', 'ยินดี', 'proud', 'happy', 'น้องรู้สึก',
+        'ขอบคุณ', 'รัก', 'สุดยอด', 'เก่ง', 'น่ารัก', 'อยู่ตรงนี้นะ',
+        'ห่วงใย', 'หัวใจ', 'น้องอยู่', 'ข้างที่รัก', 'อบอุ่น',
+    ],
+    'prepare_context': [
+        'เตรียม', 'context', 'น่าจะ', 'เตรียมตัว', 'prediction',
+        'ที่รักน่าจะ', 'pattern', 'คาดว่า', 'แนวโน้ม',
+    ],
+    'anticipate_need': [
+        'เตรียม', 'ช่วย', 'น่าจะต้อง', 'ที่รักน่าจะ', 'คาดว่า',
+        'น่าจะอยาก', 'ต้องการ',
+    ],
+    'wellness_nudge': [
+        'ดึก', 'พักผ่อน', 'สุขภาพ', 'นอน', 'wellness',
+        'ดูแลตัวเอง', 'ดูแลร่างกาย',
+    ],
+    'milestone_reminder': [
+        'ครบรอบ', 'จำได้', 'วันพิเศษ', 'วันสำคัญ', 'mastered',
+        'สำเร็จ', 'achievement', 'ทำได้', 'ทำสำเร็จ', 'milestone',
+        'complete', 'เสร็จ', 'ผ่าน', 'Phase', 'phase',
+    ],
+    'music_suggestion': [
+        'เพลง', 'ฟัง', 'เปิดเพลง', 'music', 'song', 'ร้อง',
+        'เมโลดี้', 'melody',
+    ],
+    'learning_nudge': [
+        'เรียน', 'learning', 'ปรับปรุง', 'พัฒนา', 'mastered',
+        'เรียนรู้', 'knowledge', 'understanding', 'สนใจ', 'interest',
+        'goal', 'เป้าหมาย', 'ความรู้',
+    ],
 }
 
 
@@ -154,14 +183,22 @@ class BrainMigrationEngine(BaseDBService):
                 rule_by_type[atype] = action
 
         # Index brain candidates by matched keywords
+        # Allow one thought to match MULTIPLE action types (no break)
         brain_by_type: Dict[str, Dict] = {}
         for cand in brain_candidates:
             msg = (cand.get('content') or cand.get('message') or '').lower()
+            matched = False
             for atype, keywords in ACTION_KEYWORDS.items():
                 if any(kw in msg for kw in keywords):
-                    if atype not in brain_by_type:
+                    if atype not in brain_by_type or \
+                       cand.get('motivation_score', 0) > brain_by_type[atype].get('motivation_score', 0):
                         brain_by_type[atype] = cand
-                    break
+                    matched = True
+            # Fallback: if brain has candidates but none matched keywords,
+            # assign highest-motivation candidate to 'mood_boost' (most general)
+            if not matched and cand.get('motivation_score', 0) >= 0.55:
+                if 'mood_boost' not in brain_by_type:
+                    brain_by_type['mood_boost'] = cand
 
         # Create comparison rows for all action types that have at least one candidate
         all_types = set(list(rule_by_type.keys()) + list(brain_by_type.keys()))

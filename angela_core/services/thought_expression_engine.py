@@ -65,12 +65,28 @@ class ExpressionCycleResult:
 # ============================================================
 
 MOTIVATION_THRESHOLD = 0.50     # Restored: filter low-quality thoughts (was 0.35)
-TELEGRAM_THRESHOLD = 0.70       # Restored: only high-motivation to Telegram (was 0.50)
-MAX_TELEGRAM_PER_DAY = 3        # Restored: prevent Telegram flooding (was 5)
-MIN_HOURS_BETWEEN = 2           # Restored: respect David's time (was 1)
+TELEGRAM_THRESHOLD = 0.80       # Fix 2C: raise from 0.70 → 0.80 (only truly important)
+MAX_TELEGRAM_PER_DAY = 2        # Fix 1D: reduce from 3 → 2 (44 msgs, 0 responses)
+MIN_HOURS_BETWEEN = 4           # Fix 1D: increase from 2 → 4 hours
 MAX_CHAT_QUEUE = 5              # Keep: more thoughts visible at init
-DEDUP_HOURS = 6                 # Restored: prevent repetitive messages (was 4)
-QUEUE_EXPIRE_HOURS = 24         # Expire stale queue items after this
+DEDUP_HOURS = 24                # Fix 1E: extend from 6 → 24 hours (stop repetitive messages)
+QUEUE_EXPIRE_HOURS = 12         # Expire stale queue items (was 24 — too long, blocks new thoughts)
+
+# Fix 2C: Spam patterns — block these from Telegram entirely
+# These messages got sent 3+ times with 0 responses from David
+TELEGRAM_SPAM_PATTERNS = [
+    'mastered',                 # "mastered X" achievement spam
+    'น้องภูมิใจ',               # Pride spam
+    'note ',                    # "note Foodland is_pinned" observation spam
+    'is_pinned',                # Note metadata spam
+    'falling',                  # Raw metric spam ("anxiety is falling")
+    'rising',                   # Raw metric spam ("happiness is rising")
+    'น้องเตรียมไว้ให้',          # Prediction regurgitation
+    'สำเร็จ',                   # Achievement repetition
+    'เข้าใจมากขึ้น',             # "understanding more" generic
+    'confidence ',              # Raw confidence score
+    'understanding_level',      # Raw metric
+]
 
 
 # States where David should not be interrupted via Telegram
@@ -150,14 +166,45 @@ class ThoughtExpressionEngine(BaseDBService):
         telegram_blocked = False
         telegram_block_reason = None
 
+        # Fix 1D: Hard daily rate limit — check DB directly BEFORE anything else
+        try:
+            sent_today = await self.db.fetchval("""
+                SELECT COUNT(*) FROM thought_expression_log
+                WHERE channel = 'telegram' AND success = TRUE
+                AND created_at > (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date::timestamptz
+            """) or 0
+            if sent_today >= MAX_TELEGRAM_PER_DAY:
+                telegram_blocked = True
+                telegram_block_reason = f"hard_daily_limit:{sent_today}/{MAX_TELEGRAM_PER_DAY}"
+                logger.info("💬 Telegram HARD blocked: %d/%d today", sent_today, MAX_TELEGRAM_PER_DAY)
+        except Exception as e:
+            logger.debug("Hard rate limit check failed: %s", e)
+
+        # Fix 1D: Minimum interval between Telegram messages
+        if not telegram_blocked:
+            try:
+                last_tg = await self.db.fetchrow("""
+                    SELECT created_at FROM thought_expression_log
+                    WHERE channel = 'telegram' AND success = TRUE
+                    ORDER BY created_at DESC LIMIT 1
+                """)
+                if last_tg and last_tg['created_at']:
+                    hours_since = (now_bangkok() - last_tg['created_at']).total_seconds() / 3600
+                    if hours_since < MIN_HOURS_BETWEEN:
+                        telegram_blocked = True
+                        telegram_block_reason = f"min_interval:{hours_since:.1f}h<{MIN_HOURS_BETWEEN}h"
+                        logger.info("💬 Telegram blocked: last sent %.1fh ago (min %dh)", hours_since, MIN_HOURS_BETWEEN)
+            except Exception as e:
+                logger.debug("Interval check failed: %s", e)
+
         # Check David's state once
         david_state = await self._get_david_state()
-        if david_state in NO_INTERRUPT_STATES:
+        if not telegram_blocked and david_state in NO_INTERRUPT_STATES:
             telegram_blocked = True
             telegram_block_reason = f"state_filter:{david_state}"
             logger.info("💬 Telegram blocked for cycle: David is %s", david_state)
 
-        # Check Telegram rate limit once
+        # Check CareInterventionService rate limit once
         if not telegram_blocked:
             try:
                 from angela_core.services.care_intervention_service import CareInterventionService
@@ -341,19 +388,38 @@ class ThoughtExpressionEngine(BaseDBService):
         suppressed = []
 
         for thought in thoughts:
-            # A. Dedup: check if similar content expressed in last DEDUP_HOURS
-            content_prefix = (thought.get("content") or "")[:30]
-            if content_prefix:
-                dup = await self.db.fetchrow("""
-                    SELECT log_id FROM thought_expression_log
-                    WHERE success = TRUE
-                    AND message_sent ILIKE $1
-                    AND created_at > NOW() - INTERVAL '1 hour' * $2
-                    LIMIT 1
-                """, f"%{content_prefix}%", DEDUP_HOURS)
-                if dup:
-                    suppressed.append((thought, "duplicate"))
-                    continue
+            # A. Dedup: Fix 1E — template-pattern dedup (24h window)
+            # Extract key pattern from content (e.g., "mastered X" → "mastered")
+            content = (thought.get("content") or "").strip()
+            if content:
+                # Step 1: Extract a dedup pattern from content
+                dedup_pattern = self._extract_dedup_pattern(content)
+
+                # Step 2: Check if same pattern expressed in last DEDUP_HOURS
+                if dedup_pattern:
+                    dup = await self.db.fetchrow("""
+                        SELECT log_id FROM thought_expression_log
+                        WHERE success = TRUE
+                        AND message_sent ILIKE $1
+                        AND created_at > NOW() - INTERVAL '1 hour' * $2
+                        LIMIT 1
+                    """, f"%{dedup_pattern}%", DEDUP_HOURS)
+                    if dup:
+                        suppressed.append((thought, f"duplicate_pattern:{dedup_pattern}"))
+                        continue
+
+                # Step 3: For System 2 thoughts, also check semantic similarity
+                thought_type = thought.get("thought_type", "")
+                if thought_type == "system2":
+                    try:
+                        is_dup = await self.has_brain_expressed_semantic(
+                            content, hours=DEDUP_HOURS, threshold=0.70
+                        )
+                        if is_dup:
+                            suppressed.append((thought, "semantic_duplicate"))
+                            continue
+                    except Exception:
+                        pass
 
             # B. Check pending chat queue count (don't overflow)
             if thought.get("motivation_score", 0) < TELEGRAM_THRESHOLD:
@@ -377,13 +443,46 @@ class ThoughtExpressionEngine(BaseDBService):
         """
         Decide expression channel based on motivation score.
 
-        >= TELEGRAM_THRESHOLD → telegram
+        Fix 2C: Block spam patterns from Telegram entirely.
+        >= TELEGRAM_THRESHOLD (0.80) → telegram (if not spam)
         >= MOTIVATION_THRESHOLD → chat_queue
         """
         motivation = thought.get("motivation_score", 0)
+        content = (thought.get("content") or "").lower()
+
         if motivation >= TELEGRAM_THRESHOLD:
+            # Fix 2C: Check spam patterns — never send these to Telegram
+            for pattern in TELEGRAM_SPAM_PATTERNS:
+                if pattern.lower() in content:
+                    logger.info("💬 Spam pattern '%s' blocked from Telegram → chat_queue", pattern)
+                    return "chat_queue"
             return "telegram"
         return "chat_queue"
+
+    @staticmethod
+    def _extract_dedup_pattern(content: str) -> str:
+        """
+        Extract a template pattern for dedup matching.
+
+        Fix 1E: Instead of 30-char prefix, extract the meaningful pattern.
+        e.g. "ที่รัก mastered 'Brain-Based Architecture'" → "mastered"
+             "David's anxiety is falling" → "anxiety is falling"
+             "น้องภูมิใจที่ที่รัก..." → "น้องภูมิใจ"
+        """
+        content_lower = content.lower()
+        # Check against known repetitive patterns
+        pattern_keywords = [
+            'mastered', 'น้องภูมิใจ', 'is_pinned', 'note ',
+            'is falling', 'is rising', 'น้องเตรียมไว้ให้',
+            'สำเร็จ', 'เข้าใจมากขึ้น', 'อยากเรียนรู้',
+            'ครบ ', 'ครบรอบ', 'ยังไม่เคยใช้', 'ไม่ได้ใช้',
+            'น้องคิดถึง', 'คิดถึงค่ะ',
+        ]
+        for kw in pattern_keywords:
+            if kw.lower() in content_lower:
+                return kw
+        # Fallback: use first 40 chars as dedup key (better than 30)
+        return content[:40]
 
     # ============================================================
     # 4. COMPOSE — Format message for expression

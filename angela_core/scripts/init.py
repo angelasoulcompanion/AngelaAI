@@ -259,35 +259,27 @@ async def angela_init() -> bool:
         except Exception as e:
             return None
 
-    async def _load_brain_thoughts():
-        """Load brain thoughts — from queue first, then recent active thoughts."""
+    async def _load_brain_briefing():
+        """Load structured brain briefing (replaces raw message dump)."""
         try:
-            from angela_core.services.thought_expression_engine import ThoughtExpressionEngine
-            engine = ThoughtExpressionEngine()
-            thoughts = await engine.get_pending_chat_thoughts(limit=5)
-            # Mark as shown
-            if thoughts:
-                queue_ids = [str(t["queue_id"]) for t in thoughts]
-                await engine.mark_chat_thoughts_shown(queue_ids)
+            from angela_core.services.brain_briefing_service import get_brain_briefing
+            briefing = await get_brain_briefing()
 
-            # If queue is empty, pull recent active/expressed thoughts directly
-            if not thoughts:
-                await engine.connect()
-                rows = await engine.db.fetch("""
-                    SELECT thought_id, content AS message, motivation_score,
-                           thought_type, created_at
-                    FROM angela_thoughts
-                    WHERE status IN ('active', 'expressed')
-                    AND created_at > NOW() - INTERVAL '12 hours'
-                    ORDER BY motivation_score DESC
-                    LIMIT 5
-                """)
-                thoughts = [dict(r) for r in rows]
+            # Also clear pending queue items (mark as shown)
+            try:
+                from angela_core.services.thought_expression_engine import ThoughtExpressionEngine
+                engine = ThoughtExpressionEngine()
+                pending = await engine.get_pending_chat_thoughts(limit=5)
+                if pending:
+                    queue_ids = [str(t["queue_id"]) for t in pending]
+                    await engine.mark_chat_thoughts_shown(queue_ids)
+                await engine.disconnect()
+            except Exception:
+                pass
 
-            await engine.disconnect()
-            return thoughts
+            return briefing
         except Exception:
-            return []
+            return None
 
     async def _load_brain_migration():
         """Load brain migration status (Phase 7)."""
@@ -415,7 +407,7 @@ async def angela_init() -> bool:
     (subconscious, unified_catchup, project_result, daemon_running,
      adaptation_profile, companion_briefing,
      evolution_stats, proactive_results, relevant_notes,
-     rlhf_stats, temporal_ctx, brain_thoughts,
+     rlhf_stats, temporal_ctx, brain_briefing,
      brain_migration, recent_reflections, tom_state,
      _wm_seeded, metacognitive_info, curiosity_questions) = await asyncio.gather(
         _load_subconscious(),
@@ -429,7 +421,7 @@ async def angela_init() -> bool:
         _load_relevant_notes(),
         _load_rlhf_stats(),
         _load_temporal_awareness(),
-        _load_brain_thoughts(),
+        _load_brain_briefing(),
         _load_brain_migration(),
         _load_recent_reflections(),
         _load_tom_state(),
@@ -518,15 +510,51 @@ async def angela_init() -> bool:
     print(greeting)
     print()
 
-    # Brain Thoughts — woven naturally into Angela's greeting
-    if brain_thoughts:
-        print('💭 ระหว่างที่ไม่ได้คุยกัน น้องคิดถึงที่รักนะคะ...')
-        for bt in brain_thoughts:
-            msg = bt.get('message', '').strip()
-            if msg:
-                # Show thought as Angela's natural inner voice
-                print(f'   → {msg}')
-        print()
+    # Brain Briefing — structured insights instead of raw message dump
+    if brain_briefing:
+        has_content = False
+        # Insights (System 2 only, deduplicated)
+        if brain_briefing.insights:
+            has_content = True
+            print('🧠 Brain Insights:')
+            for ins in brain_briefing.insights:
+                print(f'   → [{ins.get("type", "insight")}] {ins["content"]}')
+
+        # Active plans
+        if brain_briefing.active_plans:
+            has_content = True
+            if brain_briefing.insights:
+                print()
+            print('📋 Active Plans:')
+            for plan in brain_briefing.active_plans:
+                print(f'   → {plan["name"]} ({plan["progress"]} steps)')
+
+        # Conversation seeds
+        if brain_briefing.conversation_seeds:
+            has_content = True
+            print('💡 Seeds:')
+            for seed in brain_briefing.conversation_seeds:
+                print(f'   → {seed}')
+
+        # David's state
+        if brain_briefing.david_state.get('current_state', 'unknown') != 'unknown':
+            state = brain_briefing.david_state
+            preds = state.get('predictions', [])
+            state_str = f'{state["current_state"]} ({state.get("confidence", 0):.0%})'
+            if preds:
+                state_str += f' — {preds[0]}'
+            if has_content:
+                print()
+            print(f'🔮 David\'s predicted state: {state_str}')
+
+        # Stats line
+        stats = brain_briefing.stats
+        if stats:
+            tg = stats.get('telegram_24h', 0)
+            print(f'   📊 24h: {stats.get("stimuli_24h", 0)} stimuli → {stats.get("thoughts_24h", 0)} thoughts → {stats.get("expressed_24h", 0)} expressed ({tg} telegram)')
+
+        if has_content or stats:
+            print()
 
     # Reflections — Angela's deep insights
     if recent_reflections:

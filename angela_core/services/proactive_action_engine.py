@@ -534,6 +534,9 @@ class ProactiveActionEngine:
     async def _check_anticipatory_help(self, predictions: List[Dict]) -> Optional[ProactiveAction]:
         """
         If topic sequence "after A → B" matches, preload related resources.
+
+        Fix 2D: Changed from internal → chat_queue so it shows at init as
+        "Brain suggests: ..." instead of being invisible.
         """
         for pred in predictions:
             if pred.get('category') == 'topic' and pred.get('proactive_action'):
@@ -543,7 +546,7 @@ class ProactiveActionEngine:
                     trigger='pattern',
                     description=pred['proactive_action'],
                     consent_level=1,
-                    channel='internal',
+                    channel='chat_queue',
                     payload={'prediction': pred.get('prediction', ''), 'action': pred['proactive_action']},
                     priority=2,
                     confidence=pred.get('confidence', 0.5),
@@ -664,13 +667,15 @@ class ProactiveActionEngine:
         if not row:
             return None
 
+        # Fix 2D: Changed from internal → chat_queue so song recommendations
+        # actually appear at init as visible suggestions.
         return ProactiveAction(
             action_id=uuid4(),
             action_type='music_suggestion',
             trigger='emotion',
             description=f'🎵 แนะนำเพลง "{row["title"]}" by {row["artist"]} (mood: {mood})',
             consent_level=1,
-            channel='internal',
+            channel='chat_queue',
             payload={
                 'mood': mood,
                 'state': state,

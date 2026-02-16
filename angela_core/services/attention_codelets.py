@@ -442,34 +442,80 @@ class PatternCodelet(BaseCodelet):
 # ============================================================
 
 class CalendarCodelet(BaseCodelet):
-    """Perceives calendar events from DB data (no MCP dependency for daemon)."""
+    """Perceives calendar events via Google Calendar API (direct, no MCP dependency)."""
 
     codelet_name = "CalendarCodelet"
+
+    # Credentials path (same as MCP calendar server)
+    CREDENTIALS_DIR = "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp_servers/angela-calendar/credentials"
+
+    async def _fetch_today_events(self) -> List[Dict[str, Any]]:
+        """Fetch today's events from Google Calendar API directly."""
+        import asyncio
+        from pathlib import Path
+        try:
+            from mcp_servers.shared.google_auth import get_google_service
+        except ImportError:
+            import sys
+            sys.path.insert(0, "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/mcp_servers")
+            from shared.google_auth import get_google_service
+
+        def _api_call():
+            from zoneinfo import ZoneInfo
+            service = get_google_service("calendar", Path(self.CREDENTIALS_DIR))
+            bkk = ZoneInfo("Asia/Bangkok")
+            now = datetime.now(bkk)
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            today_end = today_start + timedelta(days=1)
+
+            result = service.events().list(
+                calendarId='primary',
+                timeMin=today_start.isoformat(),
+                timeMax=today_end.isoformat(),
+                singleEvents=True,
+                orderBy='startTime',
+            ).execute()
+            return result.get('items', [])
+
+        return await asyncio.to_thread(_api_call)
 
     async def scan(self) -> List[Stimulus]:
         stimuli = []
         now = now_bangkok()
 
-        # Check if calendar events table exists (synced by other processes)
         try:
-            events = await self.db.fetch("""
-                SELECT summary, start_time, end_time, location, description
-                FROM google_calendar_events
-                WHERE DATE(start_time AT TIME ZONE 'Asia/Bangkok') = CURRENT_DATE
-                ORDER BY start_time
-            """)
-        except Exception:
-            # Table doesn't exist yet — that's OK, skip calendar
+            events = await self._fetch_today_events()
+        except Exception as e:
+            logger.debug("CalendarCodelet: Google Calendar API unavailable: %s", e)
             return stimuli
 
         for event in events:
-            start = event['start_time']
-            end = event.get('end_time')
+            summary = event.get('summary', '(ไม่มีชื่อ)')
+            location = event.get('location')
+
+            # Parse start/end times
+            start_raw = event.get('start', {})
+            end_raw = event.get('end', {})
+            start_str = start_raw.get('dateTime') or start_raw.get('date')
+            end_str = end_raw.get('dateTime') or end_raw.get('date')
 
             # Compute time relationship
-            if start and hasattr(start, 'timestamp'):
-                if start > now:
-                    minutes_until = (start - now).total_seconds() / 60
+            urgency = "today"
+            time_desc = "วันนี้"
+            if start_str and 'T' in start_str:
+                from zoneinfo import ZoneInfo
+                start_dt = datetime.fromisoformat(start_str)
+                if start_dt.tzinfo is None:
+                    start_dt = start_dt.replace(tzinfo=ZoneInfo("Asia/Bangkok"))
+
+                end_dt = None
+                if end_str and 'T' in end_str:
+                    end_dt = datetime.fromisoformat(end_str)
+                    if end_dt.tzinfo is None:
+                        end_dt = end_dt.replace(tzinfo=ZoneInfo("Asia/Bangkok"))
+
+                if start_dt > now:
+                    minutes_until = (start_dt - now).total_seconds() / 60
                     if minutes_until <= 60:
                         time_desc = f"ใน {int(minutes_until)} นาที"
                         urgency = "imminent"
@@ -477,27 +523,24 @@ class CalendarCodelet(BaseCodelet):
                         time_desc = f"ใน {int(minutes_until / 60)} ชั่วโมง"
                         urgency = "upcoming"
                     else:
-                        time_desc = f"วันนี้เวลา {start.strftime('%H:%M')}"
+                        time_desc = f"วันนี้เวลา {start_dt.strftime('%H:%M')}"
                         urgency = "later_today"
-                elif end and end > now:
+                elif end_dt and end_dt > now:
                     time_desc = "กำลังเกิดขึ้นตอนนี้"
                     urgency = "happening_now"
                 else:
-                    time_desc = f"เสร็จไปแล้ว ({start.strftime('%H:%M')})"
+                    time_desc = f"เสร็จไปแล้ว ({start_dt.strftime('%H:%M')})"
                     urgency = "past"
-            else:
-                time_desc = "วันนี้"
-                urgency = "today"
 
             stimuli.append(Stimulus(
                 stimulus_type="calendar",
-                content=f"📅 {event['summary']} — {time_desc}",
+                content=f"📅 {summary} — {time_desc}",
                 source=self.codelet_name,
                 raw_data={
-                    "event_summary": event['summary'],
-                    "start_time": str(start) if start else None,
-                    "end_time": str(end) if end else None,
-                    "location": event.get('location'),
+                    "event_summary": summary,
+                    "start_time": start_str,
+                    "end_time": end_str,
+                    "location": location,
                     "urgency": urgency,
                 },
             ))
@@ -627,12 +670,21 @@ class GoalCodelet(BaseCodelet):
             ))
 
         # 2. Recent learnings with high confidence (completed goals)
+        # Fix 1B: Only emit each "mastered X" topic ONCE per 7 days, not every cycle.
+        # Filter out topics already emitted as goal stimuli in the last 7 days.
         recent_wins = await self.db.fetch("""
-            SELECT topic, category, insight, confidence_level, times_reinforced
-            FROM learnings
-            WHERE confidence_level >= 0.9
-            AND created_at > NOW() - INTERVAL '7 days'
-            ORDER BY confidence_level DESC
+            SELECT l.topic, l.category, l.insight, l.confidence_level, l.times_reinforced
+            FROM learnings l
+            WHERE l.confidence_level >= 0.9
+            AND l.created_at > NOW() - INTERVAL '7 days'
+            AND NOT EXISTS (
+                SELECT 1 FROM angela_stimuli s
+                WHERE s.source = 'GoalCodelet'
+                AND s.stimulus_type = 'goal'
+                AND s.content ILIKE '%' || l.topic || '%'
+                AND s.created_at > NOW() - INTERVAL '7 days'
+            )
+            ORDER BY l.confidence_level DESC
             LIMIT 3
         """)
 
@@ -710,6 +762,18 @@ class PredictionCodelet(BaseCodelet):
         if not isinstance(predictions, list):
             return stimuli
 
+        # Fix 1C: Check which predictions already emitted today — fire once per day
+        already_emitted = set()
+        try:
+            rows = await self.db.fetch("""
+                SELECT content FROM angela_stimuli
+                WHERE source = 'PredictionCodelet'
+                AND created_at > NOW() - INTERVAL '24 hours'
+            """)
+            already_emitted = {r['content'] for r in rows}
+        except Exception:
+            pass
+
         for pred in predictions:
             confidence = pred.get('confidence', 0)
             time_window = pred.get('time_window', '')
@@ -717,9 +781,13 @@ class PredictionCodelet(BaseCodelet):
 
             # Only consider high-confidence predictions for current time window
             if confidence >= 0.5 and time_window == current_window:
+                content = f"ที่รักน่าจะ {prediction_text} ช่วง{current_window}"
+                # Skip if already emitted today
+                if content in already_emitted:
+                    continue
                 stimuli.append(Stimulus(
                     stimulus_type="prediction",
-                    content=f"ที่รักน่าจะ {prediction_text} ช่วง{current_window}",
+                    content=content,
                     source=self.codelet_name,
                     raw_data={
                         "prediction": prediction_text,
@@ -746,6 +814,7 @@ class CuriosityCodelet(BaseCodelet):
         stimuli = []
 
         # 1. Find topics David discussed recently that Angela knows little about
+        # Use exact topic match against knowledge_nodes (not broad ILIKE substring)
         try:
             unknown_topics = await self.db.fetch("""
                 WITH recent_topics AS (
@@ -753,25 +822,26 @@ class CuriosityCodelet(BaseCodelet):
                     FROM conversations
                     WHERE speaker = 'david'
                     AND topic IS NOT NULL
-                    AND created_at > NOW() - INTERVAL '24 hours'
-                ),
-                known_topics AS (
-                    SELECT concept_name
-                    FROM knowledge_nodes
-                    WHERE understanding_level >= 0.5
+                    AND LENGTH(topic) >= 5
+                    AND created_at > NOW() - INTERVAL '48 hours'
                 )
                 SELECT rt.topic
                 FROM recent_topics rt
-                LEFT JOIN known_topics kt
-                    ON rt.topic ILIKE '%' || kt.concept_name || '%'
-                    OR kt.concept_name ILIKE '%' || rt.topic || '%'
-                WHERE kt.concept_name IS NULL
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM knowledge_nodes kn
+                    WHERE kn.understanding_level >= 0.7
+                    AND LENGTH(kn.concept_name) >= 5
+                    AND (
+                        LOWER(kn.concept_name) = LOWER(rt.topic)
+                        OR LOWER(rt.topic) = LOWER(kn.concept_name)
+                    )
+                )
                 LIMIT 3
             """)
 
             for row in unknown_topics:
                 topic = row['topic']
-                if topic and len(topic) >= 3:
+                if topic and len(topic) >= 5:
                     stimuli.append(Stimulus(
                         stimulus_type="curiosity",
                         content=f"ที่รักพูดถึง '{topic}' แต่น้องยังไม่เข้าใจดี — น้องอยากเรียนรู้!",
@@ -785,13 +855,16 @@ class CuriosityCodelet(BaseCodelet):
         except Exception as e:
             logger.warning("Curiosity topic scan failed: %s", e)
 
-        # 2. Find knowledge nodes with low understanding that were recently referenced
+        # 2. Find knowledge nodes with low understanding that Angela HASN'T used recently
+        # (inverted logic: nodes we SHOULD revisit because they're forgotten)
         try:
             low_understanding = await self.db.fetch("""
                 SELECT kn.concept_name, kn.understanding_level, kn.last_used_at
                 FROM knowledge_nodes kn
                 WHERE kn.understanding_level < 0.4
-                AND kn.last_used_at > NOW() - INTERVAL '7 days'
+                AND kn.understanding_level > 0.0
+                AND LENGTH(kn.concept_name) >= 5
+                AND (kn.last_used_at IS NULL OR kn.last_used_at < NOW() - INTERVAL '14 days')
                 ORDER BY kn.understanding_level ASC
                 LIMIT 3
             """)
