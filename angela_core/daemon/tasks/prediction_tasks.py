@@ -6,7 +6,7 @@ Split from consciousness_daemon.py (Phase 6C refactor)
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Any
 
 logger = logging.getLogger('consciousness_daemon')
@@ -165,6 +165,18 @@ class PredictionTasksMixin:
                 logger.info(f"   Yesterday's accuracy: {verification['accuracy']:.0%}")
             else:
                 logger.info(f"   Yesterday: {verification.get('reason', 'N/A')}")
+
+            # Backfill: verify older unverified briefings (2-7 days ago)
+            from angela_core.utils.timezone import today_bangkok
+            today = today_bangkok()
+            for days_ago in range(2, 8):
+                target = today - timedelta(days=days_ago)
+                try:
+                    backfill = await self.companion_service.verify_predictions(briefing_date=target)
+                    if backfill.get('verified'):
+                        logger.info(f"   Backfill {target}: accuracy {backfill['accuracy']:.0%}")
+                except Exception:
+                    pass  # Already verified or no briefing — skip
 
             logger.info("   ✅ Companion predictions complete!")
 

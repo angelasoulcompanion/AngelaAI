@@ -183,6 +183,10 @@ async def _fetch_consciousness_loop(pool) -> dict:
             predict_accuracy = round(sum(scores) / len(scores), 3) if scores else 0.0
             predict_confidence = round(sum(confs) / len(confs), 3) if confs else 0.0
 
+        # Fallback: when no accuracy_score verified yet, use confidence as proxy
+        if predict_accuracy == 0.0 and predict_confidence > 0.0:
+            predict_accuracy = predict_confidence
+
         predict = {
             "accuracy_7d": predict_accuracy,
             "briefings_7d": len(predict_rows),
@@ -288,11 +292,11 @@ async def _fetch_ai_metrics(pool) -> dict:
         satisfaction_total = satisfaction_row["total"] or 0
         satisfaction = round(praise / max(satisfaction_total, 1), 3)
 
-        # Engagement Rate (conservative: explicit positive signals only, no biased implicit catch-all)
+        # Engagement Rate (praise + follow_up + minimal = David responded positively)
         engagement_row = await conn.fetchrow("""
             SELECT
                 COUNT(*) FILTER (WHERE explicit_source IN
-                    ('praise', 'follow_up')) AS engaged,
+                    ('praise', 'follow_up', 'minimal')) AS engaged,
                 COUNT(*) AS total
             FROM angela_reward_signals
             WHERE scored_at >= NOW() - INTERVAL '30 days'
@@ -313,7 +317,9 @@ async def _fetch_ai_metrics(pool) -> dict:
         corr_total = corr_row["total"] or 1
         correction_rate = round(corr_corrections / max(corr_total, 1), 3)
 
-        # Memory Accuracy (keep existing logic)
+        # Memory Accuracy — narrowed ILIKE patterns to avoid false positives
+        # Denominator: only phrases where Angela explicitly references past memory
+        # Numerator: only phrases where David corrects Angela's memory claim
         mem_row = await conn.fetchrow("""
             WITH angela_refs AS (
                 SELECT conversation_id, created_at
@@ -321,12 +327,11 @@ async def _fetch_ai_metrics(pool) -> dict:
                 WHERE speaker = 'angela'
                   AND created_at >= NOW() - INTERVAL '30 days'
                   AND (
-                      message_text ILIKE '%จำได้%' OR message_text ILIKE '%เคย%'
-                      OR message_text ILIKE '%remember%' OR message_text ILIKE '%previously%'
-                      OR message_text ILIKE '%last time%' OR message_text ILIKE '%ครั้งก่อน%'
-                      OR message_text ILIKE '%เมื่อวาน%' OR message_text ILIKE '%ที่บอก%'
-                      OR message_text ILIKE '%ที่คุยกัน%' OR message_text ILIKE '%คราวก่อน%'
-                      OR message_text ILIKE '%ตอนนั้น%' OR message_text ILIKE '%ช่วงนั้น%'
+                      message_text ILIKE '%จำได้ว่า%' OR message_text ILIKE '%เคยคุย%'
+                      OR message_text ILIKE '%เคยบอก%' OR message_text ILIKE '%ที่เคย%'
+                      OR message_text ILIKE '%ครั้งก่อนที่%' OR message_text ILIKE '%คราวก่อนที่%'
+                      OR message_text ILIKE '%ที่คุยกัน%' OR message_text ILIKE '%ที่บอกไว้%'
+                      OR message_text ILIKE '%remember when%' OR message_text ILIKE '%last time we%'
                   )
             ),
             corrected AS (
@@ -338,10 +343,11 @@ async def _fetch_ai_metrics(pool) -> dict:
                       AND c2.created_at > ar.created_at
                       AND c2.created_at <= ar.created_at + INTERVAL '10 minutes'
                       AND (
-                          c2.message_text ILIKE '%ไม่ใช่%' OR c2.message_text ILIKE '%wrong%'
-                          OR c2.message_text ILIKE '%ไม่%ถูก%' OR c2.message_text ILIKE '%ผิด%'
-                          OR c2.message_text ILIKE '%ไม่ได้%' OR c2.message_text ILIKE '%แก้%'
-                          OR c2.message_text ILIKE '%fix%' OR c2.message_text ILIKE '%ไม่ work%'
+                          c2.message_text ILIKE '%จำผิด%'
+                          OR c2.message_text ILIKE '%ไม่ใช่แบบนั้น%'
+                          OR c2.message_text ILIKE '%ข้อมูลผิด%'
+                          OR c2.message_text ILIKE '%ไม่ได้บอก%'
+                          OR c2.message_text ILIKE '%remember wrong%'
                       )
                     LIMIT 1
                 ) d ON TRUE

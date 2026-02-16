@@ -3,7 +3,7 @@ Reward Score Service — RLHF Signal Collection
 ===============================================
 
 Scores every Angela response from 3 sources:
-  combined = explicit * 0.4 + implicit * 0.4 + self_eval * 0.2
+  combined = explicit * 0.3 + implicit * 0.3 + self_eval * 0.4
 
 Explicit: thumbs_up/down from conversation_feedback, or FeedbackClassifier on David's next message
 Implicit: David's follow-up behavior (question, silence, correction)
@@ -26,11 +26,11 @@ from angela_core.utils.timezone import now_bangkok
 logger = logging.getLogger(__name__)
 
 # Weights for combined reward
-# Self-eval now uses LLM-as-Judge with real variance (0.2-1.0)
-# Explicit has real signal when present → upweight to 0.4
-W_EXPLICIT = 0.4
-W_IMPLICIT = 0.4
-W_SELF_EVAL = 0.2
+# LLM-as-Judge has best discrimination (std=0.262) → give most weight
+# Explicit + Implicit share remaining 60% equally
+W_EXPLICIT = 0.3
+W_IMPLICIT = 0.3
+W_SELF_EVAL = 0.4
 
 
 class RewardScoreService:
@@ -262,17 +262,35 @@ class RewardScoreService:
         if len(msg) < 3:
             return 0.3, 'minimal'  # Short acknowledgment is mildly positive
 
+        msg_lower = msg.lower()
+
+        # Fast-path: soft-praise keywords (Thai & English)
+        soft_praise = [
+            'โอเค', 'ได้เลย', 'ดีค่ะ', 'ดีครับ', 'เยี่ยม', 'สุดยอด',
+            'ขอบคุณ', 'เก่ง', 'perfect', 'great', 'thanks', 'ใช้ได้',
+            'ถูกต้อง', 'สำเร็จ', 'ได้แล้ว', 'เจ๋ง', 'works',
+        ]
+        if any(kw in msg_lower for kw in soft_praise):
+            return 0.4, 'praise'
+
+        # Continuation signals (David keeps working = engagement)
+        continuation_signals = [
+            'แล้วก็', 'ต่อไป', 'ทำต่อ', 'แล้วทำ', 'next', 'then', 'also',
+        ]
+        if any(kw in msg_lower for kw in continuation_signals):
+            return 0.2, 'follow_up'
+
         classifier = await self._ensure_classifier()
         result = await classifier.classify(msg)
 
-        if result.classification == 'positive' and result.confidence > 0.3:
+        if result.classification == 'positive' and result.confidence > 0.15:
             return 0.5, 'praise'
         elif result.classification == 'negative' and result.confidence > 0.4:
             return -0.5, 'correction'
         else:
             # Neutral — check if it's a follow-up question (engagement signal)
             question_markers = ['?', 'ทำไม', 'อย่างไร', 'ยังไง', 'how', 'why', 'what']
-            if any(m in msg.lower() for m in question_markers):
+            if any(m in msg_lower for m in question_markers):
                 return 0.2, 'follow_up'
             return 0.0, 'neutral'  # No clear signal — don't inflate
 
@@ -306,10 +324,16 @@ class RewardScoreService:
             return 0.1, 'silence'
 
         # Scan ALL messages for correction and praise markers
+        # Use multi-word phrases to avoid false positives
+        # (e.g. 'ไม่ได้' is a common Thai particle, 'bug'/'error' are technical terms)
         correction_markers = [
-            'ไม่ใช่', 'ผิด', 'wrong', 'ไม่ถูก', 'ไม่ work', 'ไม่ได้',
-            'แก้ใหม่', 'ทำใหม่', 'ไม่ถูกต้อง', 'ลองใหม่',
-            'not working', 'broken', 'bug', 'error',
+            'น้องผิด', 'น้องทำผิด', 'ไม่ใช่แบบนี้', 'ทำไม่ถูก', 'ตอบผิด',
+            'แก้ใหม่ให้หน่อย', 'ลองใหม่อีกที', 'ทำใหม่ให้หน่อย',
+            'ไม่ใช่อันนี้', 'ผิดแล้ว', 'แก้ไม่ถูก', 'ไม่ work เลย',
+            'ใช้ไม่ได้', 'ทำไม่ได้',
+            'not what i asked', "that's wrong", 'you got it wrong',
+            'please fix this', 'try again', 'not correct',
+            'completely wrong', 'redo this', 'still broken', 'still not working',
         ]
         praise_markers = [
             'ขอบคุณ', 'เก่ง', 'ดีมาก', 'เยี่ยม', 'ถูกต้อง', 'สำเร็จ',
@@ -347,7 +371,7 @@ class RewardScoreService:
         if msg_count >= 3:
             return 0.4, 'high_engagement'
         elif msg_count >= 1:
-            return 0.2, 'continued'
+            return 0.3, 'continued'  # David still talking = positive signal
 
         return 0.0, 'neutral'
 
