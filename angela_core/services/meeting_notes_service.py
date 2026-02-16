@@ -183,6 +183,24 @@ class MeetingNotesParser:
         # Divider lines (━━━, ---, ═══, etc.)
         if re.fullmatch(r'[━─═\-—_]{3,}', t):
             return True
+        # Markdown headers (## Something)
+        if re.match(r'^#{1,6}\s', t):
+            return True
+        # Markdown table divider row (|---|---|---| or |:---:|:---:|)
+        if re.fullmatch(r'[\|\-\s:]+', t) and '|' in t:
+            return True
+        # Markdown table row (starts and ends with |, 3+ pipes)
+        if t.startswith('|') and t.endswith('|') and t.count('|') >= 3:
+            # Empty cells only (| | | |)
+            inner = re.sub(r'\|', '', t).strip()
+            if not inner:
+                return True
+            # Table header with known column names
+            cells = [c.strip().lower() for c in t.split('|') if c.strip()]
+            header_words = {'action', 'owner', 'due date', 'due', 'status',
+                            'test case', 'notes', 'date', 'result', 'results'}
+            if cells and all(c in header_words for c in cells):
+                return True
         # Section header: starts with emoji or ends with ":"  with no real content
         if t.endswith(':') and len(t) < 30:
             return True
@@ -197,6 +215,10 @@ class MeetingNotesParser:
         for line in text.split('\n'):
             line = line.strip()
             if not line:
+                continue
+
+            # Skip markdown table rows early (root cause of junk action items)
+            if line.startswith('|') or re.match(r'^#{1,6}\s', line):
                 continue
 
             # Match checkbox patterns: - [ ] or - [x] or - [ x ] (with optional spaces)

@@ -46,9 +46,7 @@ MEETING_TEMPLATES = {
 -
 
 ## 📊 Test Results
-| Test Case | Status | Notes |
-|-----------|--------|-------|
-| | | |
+- [ ]
 
 ## 🐛 Issues Found
 -
@@ -63,9 +61,7 @@ MEETING_TEMPLATES = {
 -
 
 ## ✅ Action Items
-| Action | Owner | Due Date |
-|--------|-------|----------|
-| | | |
+- [ ]
 
 ## 📝 Notes
 -
