@@ -295,11 +295,12 @@ class CuriosityEngine(BaseDBService):
         if not recent_topics:
             # Get topics from recent stimuli
             rows = await self.db.fetch("""
-                SELECT DISTINCT content
+                SELECT content, MAX(salience_score) as max_salience
                 FROM angela_stimuli
                 WHERE created_at > NOW() - INTERVAL '4 hours'
                 AND salience_score >= 0.4
-                ORDER BY salience_score DESC
+                GROUP BY content
+                ORDER BY max_salience DESC
                 LIMIT 5
             """)
             recent_topics = [r['content'][:50] for r in rows]

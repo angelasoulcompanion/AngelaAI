@@ -10,6 +10,7 @@ from angela_core.daemon.tasks.human_mind import HumanMindMixin
 from angela_core.daemon.tasks.daily_rituals import DailyRitualsMixin
 from angela_core.daemon.tasks.realtime_tracking import RealtimeTrackingMixin
 from angela_core.daemon.tasks.system_monitoring import SystemMonitorMixin
+from angela_core.daemon.tasks.brain_tasks import BrainTasksMixin
 
 __all__ = [
     'SelfLearningMixin',
@@ -19,4 +20,5 @@ __all__ = [
     'DailyRitualsMixin',
     'RealtimeTrackingMixin',
     'SystemMonitorMixin',
+    'BrainTasksMixin',
 ]

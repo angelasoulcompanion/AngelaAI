@@ -88,12 +88,35 @@ class BrainTasksMixin:
             logger.error("   ❌ [Brain] Thought expression failed: %s", e)
             return {'success': False, 'error': str(e)}
 
-    async def run_brain_comparison(self) -> Dict[str, Any]:
+    async def capture_brain_candidates(self) -> list:
+        """
+        Capture brain candidates BEFORE expression consumes them.
+
+        Must be called before run_brain_thought_expression() because
+        expression marks thoughts as status='expressed', making them
+        invisible to evaluate_for_comparison() which queries status='active'.
+        """
+        try:
+            from angela_core.services.thought_expression_engine import ThoughtExpressionEngine
+            expr_engine = ThoughtExpressionEngine()
+            candidates = await expr_engine.evaluate_for_comparison()
+            await expr_engine.disconnect()
+            return candidates
+        except Exception as e:
+            logger.warning("   ⚠️ [Brain] Failed to capture brain candidates: %s", e)
+            return []
+
+    async def run_brain_comparison(self, pre_captured_candidates: list = None) -> Dict[str, Any]:
         """
         Run brain-vs-rule comparison — Phase 7A.
 
         Compare what brain would express vs what rules would trigger.
         Must run AFTER thought expression. Creates own DB connections.
+
+        Args:
+            pre_captured_candidates: Brain candidates captured BEFORE expression.
+                If None, will try evaluate_for_comparison() (may return empty
+                if expression already consumed active thoughts).
         """
         logger.info("🔄 [Brain] Running brain-vs-rule comparison...")
         try:
@@ -101,10 +124,14 @@ class BrainTasksMixin:
             from angela_core.services.thought_expression_engine import ThoughtExpressionEngine
             from angela_core.services.proactive_action_engine import ProactiveActionEngine
 
-            # Get brain candidates (dry run)
-            expr_engine = ThoughtExpressionEngine()
-            brain_candidates = await expr_engine.evaluate_for_comparison()
-            await expr_engine.disconnect()
+            # Use pre-captured candidates if available (fixes ordering bug)
+            if pre_captured_candidates is not None:
+                brain_candidates = pre_captured_candidates
+            else:
+                # Fallback: try evaluate_for_comparison() directly
+                expr_engine = ThoughtExpressionEngine()
+                brain_candidates = await expr_engine.evaluate_for_comparison()
+                await expr_engine.disconnect()
 
             # Get rule actions (dry run)
             action_engine = ProactiveActionEngine()
@@ -122,7 +149,8 @@ class BrainTasksMixin:
 
             await migration.disconnect()
 
-            logger.info("   ✅ [Brain] Comparison: %d logged, %d classified", logged, classified)
+            logger.info("   ✅ [Brain] Comparison: %d logged, %d classified (brain_candidates=%d)",
+                         logged, classified, len(brain_candidates))
             if rolled_back:
                 logger.warning("   ⚠️ [Brain] Auto-rollback: %s", rolled_back)
 
@@ -160,6 +188,26 @@ class BrainTasksMixin:
             return result
         except Exception as e:
             logger.error("   ❌ [Brain] Plan execution failed: %s", e)
+            return {'success': False, 'error': str(e)}
+
+    async def run_brain_curiosity(self) -> Dict[str, Any]:
+        """
+        Run curiosity engine — detect knowledge gaps, generate questions.
+
+        Uses recent stimuli topics. No LLM (System 1 templates).
+        Creates own DB connection — safe for asyncio.gather().
+        """
+        logger.info("❓ [Brain] Running curiosity engine...")
+        try:
+            from angela_core.services.curiosity_engine import CuriosityEngine
+            engine = CuriosityEngine()
+            questions = await engine.run_curiosity_cycle()
+            await engine.disconnect()
+            asked = sum(1 for q in questions if q.should_ask)
+            logger.info("   ✅ [Brain] Curiosity: %d questions generated, %d should_ask", len(questions), asked)
+            return {'success': True, 'questions_generated': len(questions), 'should_ask': asked}
+        except Exception as e:
+            logger.error("   ❌ [Brain] Curiosity failed: %s", e)
             return {'success': False, 'error': str(e)}
 
     # ========================================

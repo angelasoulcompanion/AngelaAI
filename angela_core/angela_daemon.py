@@ -59,6 +59,7 @@ from angela_core.daemon.tasks import (
     DailyRitualsMixin,
     RealtimeTrackingMixin,
     SystemMonitorMixin,
+    BrainTasksMixin,
 )
 
 # Setup logging
@@ -82,6 +83,7 @@ class AngelaDaemon(
     DailyRitualsMixin,
     RealtimeTrackingMixin,
     SystemMonitorMixin,
+    BrainTasksMixin,
 ):
     """Angela's background service - her heart that beats continuously"""
 
@@ -117,6 +119,8 @@ class AngelaDaemon(
         self.emotion_pattern_analyzer = None  # 🔮 Emotion pattern analyzer
         self.rlhf_orchestrator = RLHFOrchestrator()  # 🎯 RLHF (creates own DB)
         self.last_rlhf_cycle = None  # Track last RLHF cycle
+        self.last_brain_30min_cycle = None  # Track last brain 30-min cycle
+        self.last_brain_4h_cycle = None  # Track last brain 4-hour cycle
 
     async def start(self):
         """เริ่ม daemon"""
@@ -215,6 +219,8 @@ class AngelaDaemon(
         logger.info("📚 Documentation scan: Every hour + daily full scan")
         logger.info("🧠 Memory completeness check: Daily at 10:00 AM")
         logger.info("🎯 RLHF cycle: Every 4 hours (reward scoring + preference pairs)")
+        logger.info("🧠 Brain 30-min: salience scan + thought generation → capture → expression → comparison → curiosity → plan execution")
+        logger.info("🧠 Brain 4-hour: memory consolidation → reflection → plan generation")
 
         # Main loop
         try:
@@ -380,6 +386,37 @@ class AngelaDaemon(
                 # 🎯 RLHF Cycle: Score + extract pairs (every 4 hours = 48 iterations)
                 if iteration % 48 == 0 and iteration > 0:
                     await self.run_rlhf_cycle()
+
+                # 🧠 Brain 30-min tasks (every 30 min = 6 iterations)
+                # Salience + thought generation run in parallel (no dependency)
+                # Then: capture → expression → comparison (with pre-captured) → curiosity → plan execution
+                if iteration % 6 == 0 and iteration > 0:
+                    logger.info("🧠 [Brain] Starting 30-min cycle...")
+                    # PARALLEL: salience scan + thought generation
+                    await asyncio.gather(
+                        self.run_brain_salience_scan(),
+                        self.run_brain_thought_generation(),
+                        return_exceptions=True,
+                    )
+                    # CAPTURE brain candidates BEFORE expression consumes them
+                    brain_candidates = await self.capture_brain_candidates()
+                    # SEQUENTIAL: expression → comparison (with pre-captured) → curiosity → plan execution
+                    await self.run_brain_thought_expression()
+                    await self.run_brain_comparison(pre_captured_candidates=brain_candidates)
+                    await self.run_brain_curiosity()
+                    await self.run_brain_plan_execution()
+                    self.last_brain_30min_cycle = clock.now()
+                    logger.info("🧠 [Brain] 30-min cycle complete")
+
+                # 🧠 Brain 4-hour tasks (every 4h = 48 iterations)
+                # All use Ollama → must run sequentially
+                if iteration % 48 == 0 and iteration > 0:
+                    logger.info("🧠 [Brain] Starting 4-hour cycle...")
+                    await self.run_brain_memory_consolidation()
+                    await self.run_brain_reflection()
+                    await self.run_brain_plan_generation()
+                    self.last_brain_4h_cycle = clock.now()
+                    logger.info("🧠 [Brain] 4-hour cycle complete")
 
                 # 💜 David Presence Check (every 6 hours = 72 iterations)
                 if iteration % 72 == 0:  # Every 6 hours
