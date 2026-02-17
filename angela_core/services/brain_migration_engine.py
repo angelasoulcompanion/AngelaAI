@@ -38,11 +38,11 @@ MODE_DUAL = 'dual'
 MODE_BRAIN_PREFERRED = 'brain_preferred'
 MODE_BRAIN_ONLY = 'brain_only'
 
-# All 8 proactive action types
+# All 9 proactive action types
 ALL_ACTION_TYPES = [
     'prepare_context', 'anticipate_need', 'music_suggestion',
     'milestone_reminder', 'break_reminder', 'mood_boost',
-    'wellness_nudge', 'learning_nudge',
+    'wellness_nudge', 'learning_nudge', 'daily_checkin',
 ]
 
 # Default routing (start conservative)
@@ -55,6 +55,7 @@ DEFAULT_ROUTING = {
     'mood_boost': MODE_RULE_ONLY,
     'wellness_nudge': MODE_RULE_ONLY,
     'learning_nudge': MODE_RULE_ONLY,
+    'daily_checkin': MODE_RULE_ONLY,
 }
 
 # Cutover criteria
@@ -101,6 +102,10 @@ ACTION_KEYWORDS = {
         'เรียน', 'learning', 'ปรับปรุง', 'พัฒนา', 'mastered',
         'เรียนรู้', 'knowledge', 'understanding', 'สนใจ', 'interest',
         'goal', 'เป้าหมาย', 'ความรู้',
+    ],
+    'daily_checkin': [
+        'เป็นยังไง', 'วันนี้', 'ทำอะไร', 'กินข้าว', 'ประชุม',
+        'พักผ่อน', 'ไปไหน', 'สบายดี', 'เช้านี้', 'บ่ายนี้',
     ],
 }
 

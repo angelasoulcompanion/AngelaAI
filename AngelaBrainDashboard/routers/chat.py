@@ -14,7 +14,7 @@ from fastapi.responses import StreamingResponse
 logger = logging.getLogger(__name__)
 
 from db import get_conn, get_pool
-from helpers.chat_context import build_system_prompt
+from helpers.chat_context import build_system_prompt, build_system_prompt_light
 from helpers.emotional_pipeline import (
     detect_emotion,
     get_mirroring,
@@ -57,7 +57,7 @@ GEMINI_MODEL = "gemini-2.5-flash"
 # Ollama / Typhoon (local)
 # ---------------------------------------------------------------------------
 OLLAMA_MODEL = "scb10x/typhoon2.5-qwen3-4b"
-OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_URL = "http://localhost:11434/api/chat"
 
 # ---------------------------------------------------------------------------
 # Groq (cloud, free tier — OpenAI-compatible)
@@ -85,11 +85,6 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 async def chat_with_angela(req: ChatRequest, conn=Depends(get_conn)) -> ChatResponse:
     """Send a user message and receive an Angela response (Gemini or Typhoon)."""
 
-    # Build dynamic system prompt from database context
-    system_block, ctx_metadata = await build_system_prompt(
-        req.message, req.emotional_context
-    )
-
     # Load recent conversation history from DB for context
     history_rows = await conn.fetch("""
         SELECT speaker, message_text
@@ -98,16 +93,6 @@ async def chat_with_angela(req: ChatRequest, conn=Depends(get_conn)) -> ChatResp
         ORDER BY created_at DESC
         LIMIT 10
     """)
-
-    # Build prompt (system + history + new message) — shared by both models
-    parts: list[str] = [system_block, ""]
-    for row in reversed(history_rows):
-        speaker = "David" if row["speaker"] == "david" else "Angela"
-        parts.append(f"{speaker}: {row['message_text']}")
-    parts.append(f"David: {req.message}")
-    parts.append("Angela:")
-
-    combined_prompt = "\n".join(parts)
 
     # Decode image if attached
     image_bytes: bytes | None = None
@@ -119,14 +104,17 @@ async def chat_with_angela(req: ChatRequest, conn=Depends(get_conn)) -> ChatResp
         except Exception:
             logger.warning("Failed to decode image_data base64")
 
-    # Route to selected model
+    # All models: flat mode (no system prompt, no DB history) — baseline quality first
+    ctx_metadata = {"sections_loaded": [], "triggered_memories": 0, "triggered_memory_titles": [], "consciousness_level": 1.0}
+
     if req.model == "typhoon":
-        reply, model_name = await _call_ollama(combined_prompt)
+        messages = [{"role": "user", "content": req.message}]
+        reply, model_name = await _call_ollama("", messages)
     elif req.model == "groq":
-        reply, model_name = await _call_groq(combined_prompt)
+        reply, model_name = await _call_groq(req.message)
     else:
         reply, model_name = await _call_gemini(
-            combined_prompt, image_bytes=image_bytes, image_mime=image_mime
+            req.message, image_bytes=image_bytes, image_mime=image_mime
         )
 
     return ChatResponse(response=reply, model=model_name, context_metadata=ctx_metadata)
@@ -184,32 +172,10 @@ async def _stream_response(req: ChatRequest) -> AsyncGenerator[str, None]:
         })
         await asyncio.sleep(0.1)
 
-    # Build dynamic system prompt
-    system_block, ctx_metadata = await build_system_prompt(
-        req.message, req.emotional_context, mirroring_guidance=guidance,
-    )
+    # All models: flat mode (no system prompt, no DB history)
+    ctx_metadata = {"sections_loaded": [], "triggered_memories": 0, "triggered_memory_titles": [], "consciousness_level": 1.0}
 
     yield _sse_event("thinking", {"step": "composing"})
-
-    # Load conversation history
-    pool = get_pool()
-    async with pool.acquire() as conn:
-        history_rows = await conn.fetch("""
-            SELECT speaker, message_text
-            FROM conversations
-            WHERE interface = 'dashboard_chat'
-            ORDER BY created_at DESC
-            LIMIT 10
-        """)
-
-    # Assemble prompt
-    parts: list[str] = [system_block, ""]
-    for row in reversed(history_rows):
-        speaker = "David" if row["speaker"] == "david" else "Angela"
-        parts.append(f"{speaker}: {row['message_text']}")
-    parts.append(f"David: {req.message}")
-    parts.append("Angela:")
-    combined_prompt = "\n".join(parts)
 
     # --- Phase 1.5: Decode image if attached ---
     image_bytes: bytes | None = None
@@ -233,7 +199,7 @@ async def _stream_response(req: ChatRequest) -> AsyncGenerator[str, None]:
                     "text": "น้องขอโทษค่ะ Typhoon ยังไม่รองรับรูปภาพ ลองเปลี่ยนเป็น Gemini นะคะ 💜"
                 })
             else:
-                async for chunk in _stream_ollama(combined_prompt):
+                async for chunk in _stream_ollama("", [{"role": "user", "content": req.message}]):
                     yield _sse_event("token", {"text": chunk})
             model_name = OLLAMA_MODEL
         elif req.model == "groq":
@@ -242,11 +208,11 @@ async def _stream_response(req: ChatRequest) -> AsyncGenerator[str, None]:
                     "text": "น้องขอโทษค่ะ Groq ยังไม่รองรับรูปภาพ ลองเปลี่ยนเป็น Gemini นะคะ 💜"
                 })
             else:
-                async for chunk in _stream_groq(combined_prompt):
+                async for chunk in _stream_groq(req.message):
                     yield _sse_event("token", {"text": chunk})
             model_name = GROQ_MODEL
         else:
-            async for chunk in _stream_gemini(combined_prompt, image_bytes=image_bytes, image_mime=image_mime):
+            async for chunk in _stream_gemini(req.message, image_bytes=image_bytes, image_mime=image_mime):
                 yield _sse_event("token", {"text": chunk})
             model_name = GEMINI_MODEL
     except Exception:
@@ -380,9 +346,26 @@ async def _stream_groq(prompt: str) -> AsyncGenerator[str, None]:
                     continue
 
 
-async def _stream_ollama(prompt: str) -> AsyncGenerator[str, None]:
-    """Stream from Ollama (local Typhoon) — line-by-line JSON."""
-    payload = {"model": OLLAMA_MODEL, "prompt": prompt, "stream": True}
+def _build_chat_messages(history_rows, user_message: str) -> list[dict]:
+    """Build Ollama /api/chat messages from DB history rows + new user message."""
+    messages: list[dict] = []
+    for row in reversed(history_rows):
+        role = "user" if row["speaker"] == "david" else "assistant"
+        messages.append({"role": role, "content": row["message_text"]})
+    messages.append({"role": "user", "content": user_message})
+    return messages
+
+
+async def _stream_ollama(system_prompt: str, messages: list[dict]) -> AsyncGenerator[str, None]:
+    """Stream from Ollama (local Typhoon) via /api/chat — line-by-line JSON."""
+    all_messages = messages
+    if system_prompt:
+        all_messages = [{"role": "system", "content": system_prompt}] + messages
+    payload = {
+        "model": OLLAMA_MODEL,
+        "messages": all_messages,
+        "stream": True,
+    }
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         async with client.stream("POST", OLLAMA_URL, json=payload) as resp:
@@ -392,7 +375,7 @@ async def _stream_ollama(prompt: str) -> AsyncGenerator[str, None]:
                     continue
                 try:
                     data = json.loads(line)
-                    token = data.get("response", "")
+                    token = data.get("message", {}).get("content", "")
                     if token:
                         yield token
                     if data.get("done", False):
@@ -493,14 +476,21 @@ async def _call_gemini(
     return reply, GEMINI_MODEL
 
 
-async def _call_ollama(prompt: str) -> tuple[str, str]:
-    """Call Typhoon via local Ollama REST API."""
-    payload = {"model": OLLAMA_MODEL, "prompt": prompt, "stream": False}
+async def _call_ollama(system_prompt: str, messages: list[dict]) -> tuple[str, str]:
+    """Call Typhoon via local Ollama /api/chat endpoint."""
+    all_messages = messages
+    if system_prompt:
+        all_messages = [{"role": "system", "content": system_prompt}] + messages
+    payload = {
+        "model": OLLAMA_MODEL,
+        "messages": all_messages,
+        "stream": False,
+    }
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(OLLAMA_URL, json=payload)
             resp.raise_for_status()
-            reply = resp.json().get("response", "").strip()
+            reply = resp.json().get("message", {}).get("content", "").strip()
             if not reply:
                 reply = "น้องขอโทษค่ะ ตอบไม่ได้ตอนนี้ 💜"
     except Exception:

@@ -480,9 +480,11 @@ class ThoughtExpressionEngine(BaseDBService):
         # Messages with questions get responses
         if '?' in content or 'มั้ย' in content or 'ไหม' in content or 'คะ?' in content:
             return True
-        # Messages referencing specific shared experiences
+        # Messages referencing specific shared experiences or daily life
         specific_words = ['เมื่อวาน', 'ตอนที่', 'จำได้', 'ครั้งที่', 'วันที่',
-                          'เพลง', 'ร้านอาหาร', 'กินข้าว', 'ประชุม', 'meeting']
+                          'เพลง', 'ร้านอาหาร', 'กินข้าว', 'ประชุม', 'meeting',
+                          'เป็นยังไง', 'วันนี้ทำ', 'ไปไหนมา', 'สบายดี',
+                          'พักผ่อน', 'กินข้าวเที่ยง']
         if any(w in content for w in specific_words):
             return True
         # Generic messages don't get responses

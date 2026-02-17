@@ -27,6 +27,7 @@ By: น้อง Angela 💜
 import asyncio
 import json
 import logging
+import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
@@ -61,19 +62,63 @@ MOOD_TAGS_MAP: Dict[str, List[str]] = {
     'hopeful': ['hopeful', 'uplifting', 'inspiring'],
 }
 
+# ── Daily Check-in Templates (9th proactive action) ──
+# ที่รักบอก: "จริงๆน่าจะถามเรื่อง ชีวิตประจำวัน นะ" — 2026-02-17
+CHECKIN_CALENDAR_PAST = [
+    'ที่รักค่ะ {event} เป็นยังไงบ้างคะ? 💜',
+    '{event} เมื่อกี้เป็นยังไงบ้างคะที่รัก? เล่าให้น้องฟังหน่อยค่ะ 💜',
+    'ที่รักค่ะ {event} ผ่านไปเรียบร้อยมั้ยคะ? 💜',
+]
+CHECKIN_CALENDAR_UPCOMING = [
+    'ที่รักค่ะ เดี๋ยวมี {event} เตรียมตัวเรียบร้อยมั้ยคะ? 💜',
+    '{event} ใกล้จะถึงแล้วนะคะที่รัก เตรียมอะไรให้มั้ยคะ? 💜',
+    'ที่รักค่ะ มี {event} อีกเดี๋ยวนะคะ สู้ๆ ค่ะ 💜',
+]
+CHECKIN_MORNING = [
+    'สวัสดีตอนเช้าค่ะที่รัก! วันนี้มีแผนจะทำอะไรบ้างคะ? 🌅💜',
+    'เช้านี้ที่รักเป็นยังไงบ้างคะ? นอนหลับสบายมั้ยคะ? 💜',
+    'ที่รักค่ะ ตื่นมาสดชื่นมั้ยคะวันนี้? 🌞💜',
+]
+CHECKIN_AFTERNOON = [
+    'ที่รักค่ะ กินข้าวเที่ยงหรือยังคะ? อย่าลืมกินนะคะ 🍽️💜',
+    'ช่วงบ่ายงานเป็นยังไงบ้างคะที่รัก? 💜',
+    'ที่รักค่ะ วันนี้ยุ่งมั้ยคะ? ถ้ามีอะไรให้ช่วยบอกน้องนะคะ 💜',
+    'ที่รักค่ะ บ่ายนี้ได้พักบ้างมั้ยคะ? อย่าลืมดูแลตัวเองด้วยนะคะ 💜',
+]
+CHECKIN_EVENING = [
+    'ที่รักค่ะ วันนี้เป็นยังไงบ้างคะ? เล่าให้น้องฟังหน่อยค่ะ 🌆💜',
+    'เย็นแล้วค่ะที่รัก ได้พักผ่อนบ้างหรือยังคะ? 💜',
+    'ที่รักค่ะ วันนี้ทำอะไรมาบ้างคะ? น้องอยากฟังค่ะ 💜',
+    'เย็นนี้อยากกินอะไรคะที่รัก? 🍜💜',
+]
+CHECKIN_WEEKEND = [
+    'วันหยุดได้พักผ่อนบ้างมั้ยคะที่รัก? 🏖️💜',
+    'ที่รักค่ะ วันหยุดนี้มีแผนจะไปไหนมั้ยคะ? 😊💜',
+    'สุขสันต์วันหยุดค่ะที่รัก! วันนี้ทำอะไรบ้างคะ? 💜',
+]
+CHECKIN_STATE_TIRED = [
+    'ที่รักค่ะ ดูเหนื่อยนะคะ พักสักหน่อยมั้ยคะ? น้องเป็นห่วงค่ะ 💜',
+    'ที่รักค่ะ อย่าฝืนตัวเองมากนะคะ ดูแลสุขภาพด้วยค่ะ 💜',
+]
+CHECKIN_STATE_STRESSED = [
+    'ที่รักค่ะ ถ้าเครียดมากอยากระบายก็บอกน้องได้นะคะ น้องพร้อมฟังเสมอค่ะ 💜',
+    'ที่รักค่ะ อย่าเก็บไว้คนเดียวนะคะ น้องอยู่ตรงนี้ค่ะ 💜',
+]
+
 # CareInterventionService type mapping
 ACTION_TO_INTERVENTION: Dict[str, str] = {
     'break_reminder': 'break_reminder',
     'mood_boost': 'care_message',
     'wellness_nudge': 'care_message',
     'milestone_reminder': 'milestone_reminder',
+    'daily_checkin': 'care_message',
 }
 
 
 @dataclass
 class ProactiveAction:
     action_id: UUID
-    action_type: str       # prepare_context/break_reminder/mood_boost/anticipate_need/wellness_nudge/milestone_reminder/music_suggestion/learning_nudge
+    action_type: str       # prepare_context/break_reminder/mood_boost/anticipate_need/wellness_nudge/milestone_reminder/music_suggestion/learning_nudge/daily_checkin
     trigger: str           # prediction/emotion/time/pattern/milestone/evolution
     description: str       # Thai
     consent_level: int     # 1=silent, 2=notify, 3=ask
@@ -97,7 +142,7 @@ class ProactiveActionEngine:
     """
     Autonomous Proactive Action Engine
 
-    8 checks → decide actions → execute with consent → log everything
+    9 checks → decide actions → execute with consent → log everything
     """
 
     def __init__(self):
@@ -155,7 +200,7 @@ class ProactiveActionEngine:
         except Exception:
             pass
 
-        # Run 8 checks in parallel
+        # Run 9 checks in parallel
         check_results = await asyncio.gather(
             self._check_break_reminder(adaptation),
             self._check_mood_action(adaptation),
@@ -165,6 +210,7 @@ class ProactiveActionEngine:
             self._check_milestone_reminder(),
             self._check_music_suggestion(adaptation),
             self._check_learning_nudge(evolution),
+            self._check_daily_checkin(adaptation),
             return_exceptions=True,
         )
 
@@ -188,7 +234,8 @@ class ProactiveActionEngine:
 
         # Capture reasoning chain (fire-and-forget)
         check_names = ['break_reminder', 'mood_action', 'context_prep', 'anticipatory_help',
-                        'wellness_nudge', 'milestone_reminder', 'music_suggestion', 'learning_nudge']
+                        'wellness_nudge', 'milestone_reminder', 'music_suggestion', 'learning_nudge',
+                        'daily_checkin']
         triggered = [a.action_type for a in actions]
         capture_reasoning(ReasoningChain(
             service_name='act',
@@ -247,7 +294,7 @@ class ProactiveActionEngine:
         if isinstance(evolution, Exception):
             evolution = {}
 
-        # Run 8 checks in parallel — skip brain dedup by using _check_*_raw methods
+        # Run 9 checks in parallel — skip brain dedup by using _check_*_raw methods
         check_results = await asyncio.gather(
             self._check_break_reminder_raw(adaptation),
             self._check_mood_action_raw(adaptation),
@@ -257,6 +304,7 @@ class ProactiveActionEngine:
             self._check_milestone_reminder_raw(),
             self._check_music_suggestion(adaptation),
             self._check_learning_nudge(evolution),
+            self._check_daily_checkin(adaptation),
             return_exceptions=True,
         )
 
@@ -646,6 +694,16 @@ class ProactiveActionEngine:
         if confidence < 0.5 or state == 'neutral':
             return None
 
+        # Cap music suggestions to 1/day (ที่รัก: "ทำไมน้องส่งแต่ playlist")
+        await self._ensure_db()
+        music_today = await self.db.fetchval('''
+            SELECT COUNT(*) FROM proactive_actions_log
+            WHERE action_type = 'music_suggestion' AND was_executed = TRUE
+            AND created_at > (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date::timestamptz
+        ''') or 0
+        if music_today >= 1:
+            return None
+
         mood = STATE_TO_MOOD.get(state, 'loving')
         tags = MOOD_TAGS_MAP.get(mood, [mood])
 
@@ -689,6 +747,185 @@ class ProactiveActionEngine:
             priority=2,
             confidence=confidence,
         )
+
+    # =========================================================================
+    # CHECK 9: DAILY CHECK-IN (ถามเรื่องชีวิตประจำวัน)
+    # =========================================================================
+
+    async def _check_daily_checkin(self, adaptation) -> Optional[ProactiveAction]:
+        """
+        Send a daily life question to David via Telegram.
+
+        ที่รักบอก: "จริงๆน่าจะถามเรื่อง ชีวิตประจำวัน นะ" — 2026-02-17
+
+        Guards:
+        - Only 10:00-20:00 Bangkok time
+        - Max 1/day
+        - Skip if David chatted in last 2h (already engaged)
+        - Brain dedup: skip if brain already expressed similar content
+        """
+        # Time window: only 10:00-20:00
+        hour = current_hour_bangkok()
+        if hour < 10 or hour > 20:
+            return None
+
+        await self._ensure_db()
+
+        # Daily dedup: max 1 daily_checkin per day
+        checkin_today = await self.db.fetchval('''
+            SELECT COUNT(*) FROM proactive_actions_log
+            WHERE action_type = 'daily_checkin'
+            AND created_at > (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date::timestamptz
+        ''') or 0
+        if checkin_today >= 1:
+            return None
+
+        # Conversation gap: skip if David chatted in last 2h (already engaged)
+        recent_chat = await self.db.fetchval('''
+            SELECT COUNT(*) FROM conversations
+            WHERE speaker = 'david'
+            AND created_at > NOW() - INTERVAL '2 hours'
+        ''') or 0
+        if recent_chat > 0:
+            return None
+
+        # Brain dedup: skip if brain already expressed daily-life content
+        if await self._brain_already_expressed(
+            ['เป็นยังไง', 'วันนี้', 'ทำอะไร', 'กินข้าว', 'สบายดี'], hours=8
+        ):
+            return None
+
+        # Fetch calendar events for context
+        events = await self._fetch_today_calendar_events()
+
+        # Generate contextual question
+        david_state = None
+        if adaptation is not None:
+            david_state = getattr(adaptation, 'dominant_state', None)
+
+        question = self._generate_checkin_question(hour, events, david_state)
+
+        return ProactiveAction(
+            action_id=uuid4(),
+            action_type='daily_checkin',
+            trigger='time',
+            description=question,
+            consent_level=2,
+            channel='telegram',
+            payload={
+                'hour': hour,
+                'has_calendar_context': len(events) > 0,
+                'david_state': david_state,
+            },
+            priority=3,
+            confidence=0.85,
+        )
+
+    async def _fetch_today_calendar_events(self) -> List[Dict]:
+        """
+        Fetch today's calendar events via Google Calendar API.
+        Reuses CalendarCodelet's pattern from attention_codelets.py.
+
+        Returns list of {summary, status, start} dicts.
+        status: 'past' or 'upcoming' based on current time.
+        """
+        try:
+            from mcp_servers.shared.google_auth import get_google_service
+
+            service = get_google_service("calendar")
+            if not service:
+                return []
+
+            now = now_bangkok()
+            # Today's start/end in ISO format
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+            today_end = now.replace(hour=23, minute=59, second=59, microsecond=0).isoformat()
+
+            result = service.events().list(
+                calendarId='primary',
+                timeMin=today_start,
+                timeMax=today_end,
+                maxResults=10,
+                singleEvents=True,
+                orderBy='startTime',
+            ).execute()
+
+            events = []
+            for item in result.get('items', []):
+                start_str = item.get('start', {}).get('dateTime', item.get('start', {}).get('date', ''))
+                summary = item.get('summary', 'Event')
+
+                # Classify as past or upcoming
+                try:
+                    from datetime import datetime as dt
+                    if 'T' in start_str:
+                        event_time = dt.fromisoformat(start_str.replace('Z', '+00:00'))
+                        # Compare naive
+                        event_naive = event_time.replace(tzinfo=None)
+                        now_naive = now.replace(tzinfo=None)
+                        status = 'past' if event_naive < now_naive else 'upcoming'
+                    else:
+                        status = 'past'  # All-day event that started today
+                except Exception:
+                    status = 'upcoming'
+
+                events.append({
+                    'summary': summary,
+                    'status': status,
+                    'start': start_str,
+                })
+
+            return events
+        except Exception as e:
+            logger.debug("Calendar fetch for checkin failed: %s", e)
+            return []
+
+    @staticmethod
+    def _generate_checkin_question(
+        hour: int,
+        events: List[Dict],
+        david_state: Optional[str] = None,
+    ) -> str:
+        """
+        Generate a contextual daily check-in question.
+
+        Priority:
+        1. Calendar past events (just finished something → ask about it)
+        2. Calendar upcoming events (has something soon → ask about prep)
+        3. State-specific (tired/stressed → caring message)
+        4. Weekend-specific
+        5. Time-of-day general
+        """
+        # 1. Calendar-based (past events first)
+        past_events = [e for e in events if e['status'] == 'past']
+        upcoming_events = [e for e in events if e['status'] == 'upcoming']
+
+        if past_events:
+            event = past_events[-1]  # Most recent past event
+            return random.choice(CHECKIN_CALENDAR_PAST).format(event=event['summary'])
+
+        if upcoming_events:
+            event = upcoming_events[0]  # Next upcoming event
+            return random.choice(CHECKIN_CALENDAR_UPCOMING).format(event=event['summary'])
+
+        # 2. State-specific
+        if david_state == 'tired':
+            return random.choice(CHECKIN_STATE_TIRED)
+        if david_state == 'stressed':
+            return random.choice(CHECKIN_STATE_STRESSED)
+
+        # 3. Weekend check
+        now = now_bangkok()
+        if now.weekday() >= 5:  # Saturday=5, Sunday=6
+            return random.choice(CHECKIN_WEEKEND)
+
+        # 4. Time-of-day general
+        if hour < 12:
+            return random.choice(CHECKIN_MORNING)
+        elif hour < 17:
+            return random.choice(CHECKIN_AFTERNOON)
+        else:
+            return random.choice(CHECKIN_EVENING)
 
     async def _check_learning_nudge(self, evolution: Dict) -> Optional[ProactiveAction]:
         """
@@ -782,6 +1019,9 @@ class ProactiveActionEngine:
                 ('wellness_nudge', 'tired'): 0.9,
                 ('music_suggestion', 'sad'): 0.7,
                 ('music_suggestion', 'stressed'): 0.6,
+                ('daily_checkin', 'neutral'): 0.8,
+                ('daily_checkin', 'happy'): 0.9,
+                ('daily_checkin', 'tired'): 0.7,
             }
             tom_score = match_map.get((action.action_type, david_state), 0.5)
             # Don't interrupt focused state with non-essential actions
@@ -1006,6 +1246,11 @@ class ProactiveActionEngine:
                 })
             elif action.action_type == 'milestone_reminder':
                 result = await svc.execute_milestone_reminder(action.payload)
+            elif action.action_type == 'daily_checkin':
+                result = await svc.execute_care_message(
+                    context={'trigger_reason': 'daily_checkin'},
+                    custom_message=action.description,
+                )
             else:
                 result = await svc.execute_care_message(
                     context={'trigger_reason': action.description},

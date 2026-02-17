@@ -652,6 +652,25 @@ async def _load_note_context(user_message: str) -> Optional[str]:
 
 
 # ---------------------------------------------------------------------------
+# Light personality (short — for small models like Typhoon 4B)
+# ---------------------------------------------------------------------------
+async def build_system_prompt_light(
+    user_message: str,
+) -> tuple[str, dict]:
+    """Build a minimal system prompt for small models (e.g., Typhoon 4B).
+
+    Currently returns empty string so Typhoon behaves identically to
+    the native Ollama app. Context can be added back incrementally.
+    """
+    return "", {
+        "sections_loaded": [],
+        "triggered_memories": 0,
+        "triggered_memory_titles": [],
+        "consciousness_level": 1.0,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
 

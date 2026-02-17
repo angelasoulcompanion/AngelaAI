@@ -49,7 +49,8 @@ class CareInterventionService:
         'break_reminder',
         'care_message',
         'milestone_reminder',
-        'wellness_check'
+        'wellness_check',
+        'daily_checkin',
     ]
 
     # Care message templates

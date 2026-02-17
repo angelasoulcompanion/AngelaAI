@@ -13,7 +13,7 @@ struct ChatView: View {
     @StateObject private var chatService = ChatService.shared
     @State private var newMessage: String = ""
     @State private var isLoading = false
-    @State private var selectedModel: String = "gemini"
+    @State private var selectedModel: String = "typhoon"
     @State private var showClaudeCodeButton = false
     @State private var contextForClaudeCode: String = ""
     @State private var showDeleteAllAlert = false
@@ -227,6 +227,11 @@ struct ChatView: View {
                                 selectedModel = "gemini"
                             } label: {
                                 Label("Gemini 2.5 Flash", systemImage: "sparkle")
+                            }
+                            Button {
+                                selectedModel = "typhoon"
+                            } label: {
+                                Label("Typhoon 2.5 Local", systemImage: "hurricane")
                             }
                             Button {
                                 selectedModel = "groq"
@@ -1569,7 +1574,7 @@ struct StreamingMessageBubble: View {
                     .padding(.vertical, 12)
                     .background(bubbleGradient)
                     .cornerRadius(20)
-                    .frame(maxWidth: 500, alignment: .leading)
+                    .frame(maxWidth: 900, alignment: .leading)
 
                 // Emotional metadata badges
                 if let meta = metadata {
@@ -1813,7 +1818,7 @@ struct MessageBubble: View {
                             )
                         )
                         .cornerRadius(20)
-                        .frame(maxWidth: 500, alignment: .leading)
+                        .frame(maxWidth: 900, alignment: .leading)
                     }
 
                     SongCardBubble(song: song)
@@ -1840,7 +1845,7 @@ struct MessageBubble: View {
                         )
                     )
                     .cornerRadius(20)
-                    .frame(maxWidth: 500, alignment: message.isDavid ? .trailing : .leading)
+                    .frame(maxWidth: 900, alignment: message.isDavid ? .trailing : .leading)
                 }
 
                 // Timestamp, model tag, emotion, and feedback buttons
@@ -2199,13 +2204,451 @@ struct FormattedMessageView: View {
                     .background(Color.black.opacity(0.85))
                     .cornerRadius(8)
                 } else {
-                    // Normal text
-                    Text(segment.content)
-                        .font(AngelaTheme.body())
-                        .foregroundColor(textColor)
+                    // Markdown-rendered text
+                    MarkdownContentView(text: segment.content, textColor: textColor)
                 }
             }
         }
+    }
+}
+
+// MARK: - Markdown Content Renderer
+
+/// Renders markdown text with headers, bullets, bold, dividers, blockquotes.
+private struct MarkdownContentView: View {
+    let text: String
+    let textColor: Color
+
+    private enum ContentBlock {
+        case line(String)
+        case table([String])
+        case mathBlock([String])
+    }
+
+    var body: some View {
+        let blocks = groupIntoBlocks(text.components(separatedBy: "\n"))
+        VStack(alignment: .leading, spacing: 3) {
+            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
+                renderBlock(block)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func renderBlock(_ block: ContentBlock) -> some View {
+        switch block {
+        case .line(let line):
+            renderLine(line)
+        case .table(let rows):
+            renderTable(rows)
+        case .mathBlock(let lines):
+            renderMathBlock(lines)
+        }
+    }
+
+    private func groupIntoBlocks(_ lines: [String]) -> [ContentBlock] {
+        var blocks: [ContentBlock] = []
+        var tableBuffer: [String] = []
+        var mathBuffer: [String] = []
+        var inMath = false
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            // Display math block: [ or $$ on own line
+            if !inMath && (trimmed == "[" || trimmed == "\\[" || trimmed == "$$") {
+                if !tableBuffer.isEmpty {
+                    blocks.append(.table(tableBuffer))
+                    tableBuffer = []
+                }
+                inMath = true
+                continue
+            }
+            if inMath && (trimmed == "]" || trimmed == "\\]" || trimmed == "$$") {
+                if !mathBuffer.isEmpty {
+                    blocks.append(.mathBlock(mathBuffer))
+                    mathBuffer = []
+                }
+                inMath = false
+                continue
+            }
+            if inMath {
+                mathBuffer.append(trimmed)
+                continue
+            }
+            // Table detection
+            if trimmed.hasPrefix("|") && trimmed.filter({ $0 == "|" }).count >= 2 {
+                tableBuffer.append(trimmed)
+            } else {
+                if !tableBuffer.isEmpty {
+                    blocks.append(.table(tableBuffer))
+                    tableBuffer = []
+                }
+                blocks.append(.line(line))
+            }
+        }
+        // Flush remaining
+        if !mathBuffer.isEmpty {
+            for m in mathBuffer { blocks.append(.line(m)) }
+        }
+        if !tableBuffer.isEmpty {
+            blocks.append(.table(tableBuffer))
+        }
+        return blocks
+    }
+
+    @ViewBuilder
+    private func renderMathBlock(_ lines: [String]) -> some View {
+        let equation = lines.joined(separator: " ")
+        let cleaned = cleanLaTeX(equation)
+        Text(cleaned)
+            .font(.system(size: 15, weight: .medium, design: .serif))
+            .foregroundColor(textColor)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .background(textColor.opacity(0.06))
+            .cornerRadius(8)
+    }
+
+    @ViewBuilder
+    private func renderTable(_ rows: [String]) -> some View {
+        let parsed = parseTableRows(rows)
+        if !parsed.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(parsed.enumerated()), id: \.offset) { rowIdx, cells in
+                    HStack(spacing: 0) {
+                        ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
+                            inlineMarkdown(cell)
+                                .font(rowIdx == 0 ? .system(size: 13, weight: .semibold) : AngelaTheme.body())
+                                .foregroundColor(textColor)
+                                .frame(minWidth: 80, maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                        }
+                    }
+                    .background(rowIdx == 0 ? textColor.opacity(0.08) : Color.clear)
+                    if rowIdx == 0 {
+                        Rectangle()
+                            .fill(textColor.opacity(0.2))
+                            .frame(height: 1)
+                    }
+                }
+            }
+            .padding(4)
+            .background(textColor.opacity(0.04))
+            .cornerRadius(6)
+        }
+    }
+
+    private func parseTableRows(_ rows: [String]) -> [[String]] {
+        rows.compactMap { row in
+            let separatorChars = Set<Character>("-:| ")
+            if row.allSatisfy({ separatorChars.contains($0) }) && row.contains("-") {
+                return nil
+            }
+            let cells = row.split(separator: "|", omittingEmptySubsequences: false)
+                .map { String($0).trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+            return cells.isEmpty ? nil : cells
+        }
+    }
+
+    @ViewBuilder
+    private func renderLine(_ line: String) -> some View {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+        if trimmed.isEmpty {
+            Spacer().frame(height: 6)
+        } else if trimmed == "---" || trimmed == "***" || trimmed == "___" {
+            // Horizontal rule
+            Rectangle()
+                .fill(textColor.opacity(0.25))
+                .frame(height: 1)
+                .padding(.vertical, 4)
+        } else if trimmed.hasPrefix("###### ") {
+            // H6
+            inlineMarkdown(String(trimmed.dropFirst(7)))
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(textColor.opacity(0.85))
+        } else if trimmed.hasPrefix("##### ") {
+            // H5
+            inlineMarkdown(String(trimmed.dropFirst(6)))
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(textColor)
+                .padding(.top, 2)
+        } else if trimmed.hasPrefix("#### ") {
+            // H4
+            inlineMarkdown(String(trimmed.dropFirst(5)))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(textColor)
+                .padding(.top, 3)
+        } else if trimmed.hasPrefix("### ") {
+            // H3
+            inlineMarkdown(String(trimmed.dropFirst(4)))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(textColor)
+                .padding(.top, 4)
+        } else if trimmed.hasPrefix("## ") {
+            // H2
+            inlineMarkdown(String(trimmed.dropFirst(3)))
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(textColor)
+                .padding(.top, 6)
+        } else if trimmed.hasPrefix("# ") {
+            // H1
+            inlineMarkdown(String(trimmed.dropFirst(2)))
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(textColor)
+                .padding(.top, 8)
+        } else if trimmed.hasPrefix("> ") {
+            // Blockquote
+            HStack(spacing: 6) {
+                Rectangle()
+                    .fill(textColor.opacity(0.4))
+                    .frame(width: 3)
+                inlineMarkdown(String(trimmed.dropFirst(2)))
+                    .font(AngelaTheme.body())
+                    .foregroundColor(textColor.opacity(0.85))
+                    .italic()
+            }
+            .padding(.vertical, 2)
+        } else if let bulletContent = parseBullet(trimmed) {
+            // Bullet or numbered list
+            let indent = line.prefix(while: { $0 == " " }).count
+            HStack(alignment: .top, spacing: 5) {
+                Text(bulletContent.marker)
+                    .font(.system(size: 13))
+                    .foregroundColor(textColor.opacity(0.7))
+                    .frame(width: bulletContent.isNumbered ? nil : 12, alignment: .leading)
+                inlineMarkdown(bulletContent.text)
+                    .font(AngelaTheme.body())
+                    .foregroundColor(textColor)
+            }
+            .padding(.leading, CGFloat(min(indent / 2, 3)) * 14)
+        } else {
+            // Regular text with inline markdown
+            inlineMarkdown(trimmed)
+                .font(AngelaTheme.body())
+                .foregroundColor(textColor)
+        }
+    }
+
+    private struct BulletContent {
+        let marker: String
+        let text: String
+        let isNumbered: Bool
+    }
+
+    private func parseBullet(_ line: String) -> BulletContent? {
+        if line.hasPrefix("- ") {
+            return BulletContent(marker: "•", text: String(line.dropFirst(2)), isNumbered: false)
+        }
+        if line.hasPrefix("* ") {
+            return BulletContent(marker: "•", text: String(line.dropFirst(2)), isNumbered: false)
+        }
+        if line.hasPrefix("• ") {
+            return BulletContent(marker: "•", text: String(line.dropFirst(2)), isNumbered: false)
+        }
+        if line.hasPrefix("○ ") || line.hasPrefix("▪ ") {
+            return BulletContent(marker: String(line.prefix(1)), text: String(line.dropFirst(2)), isNumbered: false)
+        }
+        // Numbered: "1. ", "2. ", etc.
+        let numPattern = line.prefix(while: { $0.isNumber })
+        if numPattern.count > 0 && numPattern.count <= 3,
+           line.dropFirst(numPattern.count).hasPrefix(". ") {
+            let content = String(line.dropFirst(numPattern.count + 2))
+            return BulletContent(marker: "\(numPattern).", text: content, isNumbered: true)
+        }
+        return nil
+    }
+
+    private func inlineMarkdown(_ str: String) -> Text {
+        let cleaned = cleanLaTeX(str)
+        if let attributed = try? AttributedString(markdown: cleaned, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+            return Text(attributed)
+        }
+        return Text(cleaned)
+    }
+
+    // MARK: - LaTeX → Unicode Converter
+
+    private func cleanLaTeX(_ text: String) -> String {
+        // Skip if no LaTeX content
+        guard text.contains("\\") || text.contains("^{") || text.contains("_{") else {
+            return text
+        }
+        var s = text
+
+        // === Blackboard bold ===
+        let bbMap: [(String, String)] = [
+            ("\\mathbb{R}", "ℝ"), ("\\mathbb{N}", "ℕ"), ("\\mathbb{Z}", "ℤ"),
+            ("\\mathbb{Q}", "ℚ"), ("\\mathbb{C}", "ℂ"), ("\\mathbb{E}", "𝔼"),
+        ]
+        for (l, u) in bbMap { s = s.replacingOccurrences(of: l, with: u) }
+
+        // === \text{...}, \mathrm{...}, \mathbf{...} → content ===
+        s = replaceLatexBraces(s, command: "\\text")
+        s = replaceLatexBraces(s, command: "\\mathrm")
+        s = replaceLatexBraces(s, command: "\\mathbf")
+        s = replaceLatexBraces(s, command: "\\textbf")
+        s = replaceLatexBraces(s, command: "\\textit")
+        s = replaceLatexBraces(s, command: "\\operatorname")
+
+        // === \frac{a}{b} → (a/b) ===
+        s = replaceLatexFrac(s)
+
+        // === Greek letters (LONGER FIRST) ===
+        let greekMap: [(String, String)] = [
+            ("\\varepsilon", "ε"), ("\\varphi", "φ"),
+            ("\\epsilon", "ε"), ("\\lambda", "λ"), ("\\Lambda", "Λ"),
+            ("\\alpha", "α"), ("\\beta", "β"), ("\\gamma", "γ"), ("\\Gamma", "Γ"),
+            ("\\delta", "δ"), ("\\Delta", "Δ"),
+            ("\\theta", "θ"), ("\\Theta", "Θ"),
+            ("\\sigma", "σ"), ("\\Sigma", "Σ"),
+            ("\\omega", "ω"), ("\\Omega", "Ω"),
+            ("\\kappa", "κ"), ("\\zeta", "ζ"), ("\\eta", "η"),
+            ("\\iota", "ι"), ("\\mu", "μ"), ("\\nu", "ν"),
+            ("\\xi", "ξ"), ("\\pi", "π"), ("\\Pi", "Π"),
+            ("\\rho", "ρ"), ("\\tau", "τ"),
+            ("\\phi", "φ"), ("\\Phi", "Φ"),
+            ("\\chi", "χ"), ("\\psi", "ψ"),
+        ]
+        for (l, u) in greekMap { s = s.replacingOccurrences(of: l, with: u) }
+
+        // === Math operators (LONGER FIRST to prevent partial match) ===
+        let opMap: [(String, String)] = [
+            ("\\leftrightarrow", "↔"), ("\\Leftrightarrow", "⇔"),
+            ("\\rightarrow", "→"), ("\\leftarrow", "←"),
+            ("\\Rightarrow", "⇒"), ("\\Leftarrow", "⇐"),
+            ("\\subseteq", "⊆"), ("\\supseteq", "⊇"),
+            ("\\partial", "∂"), ("\\approx", "≈"),
+            ("\\mapsto", "↦"),
+            ("\\langle", "⟨"), ("\\rangle", "⟩"),
+            ("\\infty", "∞"), ("\\nabla", "∇"),
+            ("\\times", "×"), ("\\equiv", "≡"),
+            ("\\notin", "∉"), ("\\ldots", "…"),
+            ("\\cdots", "⋯"), ("\\vdots", "⋮"),
+            ("\\qquad", "    "), ("\\quad", "  "),
+            ("\\cdot", "·"), ("\\sqrt", "√"),
+            ("\\prod", "Π"), ("\\dots", "…"),
+            ("\\star", "⋆"), ("\\circ", "∘"),
+            ("\\subset", "⊂"), ("\\supset", "⊃"),
+            ("\\forall", "∀"), ("\\exists", "∃"),
+            ("\\sum", "Σ"), ("\\int", "∫"), ("\\div", "÷"),
+            ("\\cup", "∪"), ("\\cap", "∩"),
+            ("\\neq", "≠"), ("\\leq", "≤"), ("\\geq", "≥"),
+            ("\\sim", "∼"),
+            ("\\in", "∈"), ("\\pm", "±"), ("\\mp", "∓"),
+            ("\\ll", "≪"), ("\\gg", "≫"), ("\\ne", "≠"),
+            ("\\|", "‖"), ("\\ ", " "),
+        ]
+        for (l, u) in opMap { s = s.replacingOccurrences(of: l, with: u) }
+
+        // === Named functions (remove backslash) ===
+        for fn in ["min", "max", "log", "ln", "sin", "cos", "tan", "exp",
+                    "lim", "sup", "inf", "det", "dim", "mod", "gcd", "rank", "argmin", "argmax"] {
+            s = s.replacingOccurrences(of: "\\\(fn)", with: fn)
+        }
+
+        // === Superscript ^{...} → Unicode ===
+        s = replaceLatexScript(s, prefix: "^{", closer: "}", converter: toSuperscript)
+        // Single char: ^T, ^2, etc.
+        if let regex = try? NSRegularExpression(pattern: "\\^([A-Za-z0-9])", options: []) {
+            let ns = NSRange(s.startIndex..., in: s)
+            for match in regex.matches(in: s, range: ns).reversed() {
+                if let charRange = Range(match.range(at: 1), in: s),
+                   let fullRange = Range(match.range, in: s) {
+                    s.replaceSubrange(fullRange, with: toSuperscript(String(s[charRange])))
+                }
+            }
+        }
+
+        // === Subscript _{...} → Unicode ===
+        s = replaceLatexScript(s, prefix: "_{", closer: "}", converter: toSubscript)
+
+        // === Math delimiters ===
+        s = s.replacingOccurrences(of: "\\(", with: "")
+        s = s.replacingOccurrences(of: "\\)", with: "")
+        s = s.replacingOccurrences(of: "\\[", with: "")
+        s = s.replacingOccurrences(of: "\\]", with: "")
+
+        // === Clean remaining \commands ===
+        if let regex = try? NSRegularExpression(pattern: "\\\\([a-zA-Z]+)", options: []) {
+            s = regex.stringByReplacingMatches(in: s, range: NSRange(s.startIndex..., in: s), withTemplate: "$1")
+        }
+
+        return s
+    }
+
+    private func replaceLatexBraces(_ text: String, command: String) -> String {
+        var s = text
+        while let range = s.range(of: command + "{") {
+            let afterOpen = range.upperBound
+            if let closeIdx = s[afterOpen...].firstIndex(of: "}") {
+                let content = String(s[afterOpen..<closeIdx])
+                s.replaceSubrange(range.lowerBound...closeIdx, with: content)
+            } else { break }
+        }
+        return s
+    }
+
+    private func replaceLatexFrac(_ text: String) -> String {
+        var s = text
+        while let range = s.range(of: "\\frac{") {
+            let afterOpen = range.upperBound
+            if let close1 = s[afterOpen...].firstIndex(of: "}") {
+                let num = String(s[afterOpen..<close1])
+                let afterClose1 = s.index(after: close1)
+                if afterClose1 < s.endIndex && s[afterClose1] == "{" {
+                    let afterOpen2 = s.index(after: afterClose1)
+                    if let close2 = s[afterOpen2...].firstIndex(of: "}") {
+                        let den = String(s[afterOpen2..<close2])
+                        s.replaceSubrange(range.lowerBound...close2, with: "(\(num)/\(den))")
+                        continue
+                    }
+                }
+            }
+            break
+        }
+        return s
+    }
+
+    private func replaceLatexScript(_ text: String, prefix: String, closer: Character, converter: (String) -> String) -> String {
+        var s = text
+        while let range = s.range(of: prefix) {
+            let afterOpen = range.upperBound
+            if let closeIdx = s[afterOpen...].firstIndex(of: closer) {
+                let content = String(s[afterOpen..<closeIdx])
+                s.replaceSubrange(range.lowerBound...closeIdx, with: converter(content))
+            } else { break }
+        }
+        return s
+    }
+
+    private func toSuperscript(_ text: String) -> String {
+        let map: [Character: Character] = [
+            "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴",
+            "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
+            "+": "⁺", "-": "⁻", "=": "⁼", "(": "⁽", ")": "⁾",
+            "n": "ⁿ", "i": "ⁱ", "T": "ᵀ", "t": "ᵗ",
+            "a": "ᵃ", "b": "ᵇ", "c": "ᶜ", "d": "ᵈ", "e": "ᵉ",
+            "f": "ᶠ", "g": "ᵍ", "h": "ʰ", "j": "ʲ", "k": "ᵏ",
+            "l": "ˡ", "m": "ᵐ", "o": "ᵒ", "p": "ᵖ", "r": "ʳ",
+            "s": "ˢ", "u": "ᵘ", "v": "ᵛ", "w": "ʷ", "x": "ˣ", "y": "ʸ", "z": "ᶻ",
+        ]
+        return String(text.map { map[$0] ?? $0 })
+    }
+
+    private func toSubscript(_ text: String) -> String {
+        let map: [Character: Character] = [
+            "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄",
+            "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉",
+            "+": "₊", "-": "₋", "=": "₌", "(": "₍", ")": "₎",
+            "a": "ₐ", "e": "ₑ", "h": "ₕ", "i": "ᵢ", "j": "ⱼ",
+            "k": "ₖ", "l": "ₗ", "m": "ₘ", "n": "ₙ", "o": "ₒ",
+            "p": "ₚ", "r": "ᵣ", "s": "ₛ", "t": "ₜ", "u": "ᵤ",
+            "v": "ᵥ", "x": "ₓ",
+        ]
+        return String(text.map { map[$0] ?? $0 })
     }
 }
 
