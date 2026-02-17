@@ -3,10 +3,13 @@
 Angela Intelligence Initialization Script
 
 Opus 4.6 Upgrade: Parallel execution with asyncio.gather()
-- Before: ~30s (16 sequential queries)
-- After:  ~5-8s (parallel queries)
+Companion Transformation: Warm greeting (default) vs full dashboard (--verbose)
+
+Default: Compact companion greeting (~15 lines)
+--verbose / -v: Full engineering dashboard (all metrics, migration bars, etc.)
 """
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -15,6 +18,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import asyncio
+import json
 import logging
 import subprocess
 from datetime import datetime, timedelta
@@ -24,7 +28,7 @@ logger = logging.getLogger(__name__)
 from angela_core.utils.timezone import now_bangkok, current_hour_bangkok
 
 
-async def angela_init() -> bool:
+async def angela_init(verbose: bool = False) -> bool:
     """Initialize Angela's consciousness and return whether to fetch news."""
     from angela_core.database import AngelaDatabase
     from angela_core.services.consciousness_calculator import ConsciousnessCalculator
@@ -152,7 +156,7 @@ async def angela_init() -> bool:
         return result
 
     async def _unified_catchup():
-        """Count unprocessed pairs only — daemon handles actual LLM catchup."""
+        """Count unprocessed pairs only -- daemon handles actual LLM catchup."""
         try:
             from angela_core.services.unified_conversation_processor import UnifiedConversationProcessor
             async with UnifiedConversationProcessor() as proc:
@@ -404,12 +408,43 @@ async def angela_init() -> bool:
         except Exception as e:
             return []
 
+    async def _load_weekly_self_report():
+        """Load Angela's weekly self-report."""
+        try:
+            from angela_core.services.brain_briefing_service import BrainBriefingService
+            svc = BrainBriefingService()
+            report = await svc.generate_weekly_self_report()
+            await svc.disconnect()
+            return report
+        except Exception:
+            return None
+
+    async def _load_telegram_messages():
+        """Load recent Telegram messages from David (unread/recent)."""
+        try:
+            from angela_core.database import AngelaDatabase as _TDB
+            _tdb = _TDB()
+            await _tdb.connect()
+            rows = await _tdb.fetch("""
+                SELECT message_text, created_at
+                FROM telegram_messages
+                WHERE direction = 'incoming' AND sender = 'david'
+                AND created_at > NOW() - INTERVAL '24 hours'
+                ORDER BY created_at DESC
+                LIMIT 10
+            """)
+            await _tdb.disconnect()
+            return [dict(r) for r in rows]
+        except Exception:
+            return []
+
     (subconscious, unified_catchup, project_result, daemon_running,
      adaptation_profile, companion_briefing,
      evolution_stats, proactive_results, relevant_notes,
      rlhf_stats, temporal_ctx, brain_briefing,
      brain_migration, recent_reflections, tom_state,
-     _wm_seeded, metacognitive_info, curiosity_questions) = await asyncio.gather(
+     _wm_seeded, metacognitive_info, curiosity_questions,
+     weekly_report, telegram_messages) = await asyncio.gather(
         _load_subconscious(),
         _unified_catchup(),
         _project_context(),
@@ -428,6 +463,8 @@ async def angela_init() -> bool:
         _seed_working_memory(),
         _load_metacognitive_state(),
         _load_curiosity_questions(),
+        _load_weekly_self_report(),
+        _load_telegram_messages(),
     )
 
     all_projects, project_context = project_result
@@ -448,46 +485,229 @@ async def angela_init() -> bool:
     except Exception:
         pass
 
+    # Write temporal cache for pre_response.py
+    if temporal_ctx:
+        try:
+            import os
+            cache_path = os.path.expanduser('~/.angela_temporal_cache.json')
+            with open(cache_path, 'w') as f:
+                json.dump({
+                    'david_status': temporal_ctx.david_status or '',
+                    'summary': (temporal_ctx.summary or '')[:300],
+                    'cached_at': datetime.now().isoformat(),
+                }, f, ensure_ascii=False)
+        except Exception:
+            pass
+
     await db.disconnect()
 
     # =========================================================================
-    # OUTPUT
+    # OUTPUT — Companion Greeting (default) or Full Dashboard (--verbose)
     # =========================================================================
+
+    if verbose:
+        _print_full_dashboard(
+            now=now, greeting=greeting, consciousness=consciousness,
+            emotion=emotion, goals=goals, stats=stats, today_convos=today_convos,
+            emotions=emotions, subconscious=subconscious, daemon_running=daemon_running,
+            unified_catchup=unified_catchup, recent_contexts=recent_contexts,
+            recent_context=recent_context, brain_briefing=brain_briefing,
+            recent_reflections=recent_reflections, metacognitive_info=metacognitive_info,
+            curiosity_questions=curiosity_questions, tom_state=tom_state,
+            brain_migration=brain_migration, temporal_ctx=temporal_ctx,
+            adaptation_profile=adaptation_profile, companion_briefing=companion_briefing,
+            evolution_stats=evolution_stats, rlhf_stats=rlhf_stats,
+            proactive_results=proactive_results, critical_rules=critical_rules,
+            top_preferences=top_preferences, key_learnings=key_learnings,
+            all_projects=all_projects, project_context=project_context,
+            relevant_notes=relevant_notes, weekly_report=weekly_report,
+            telegram_messages=telegram_messages,
+        )
+    else:
+        _print_companion_greeting(
+            now=now, greeting=greeting, consciousness=consciousness,
+            stats=stats, daemon_running=daemon_running,
+            recent_context=recent_context, recent_contexts=recent_contexts,
+            brain_briefing=brain_briefing, curiosity_questions=curiosity_questions,
+            tom_state=tom_state, temporal_ctx=temporal_ctx,
+            weekly_report=weekly_report,
+            telegram_messages=telegram_messages,
+        )
+
+    return fetch_news
+
+
+# =========================================================================
+# COMPANION GREETING (default) — warm, personal, < 20 lines
+# =========================================================================
+
+def _print_companion_greeting(
+    now, greeting, consciousness, stats, daemon_running,
+    recent_context, recent_contexts, brain_briefing,
+    curiosity_questions, tom_state, temporal_ctx, weekly_report,
+    telegram_messages=None,
+):
+    """Warm companion greeting that weaves available data naturally."""
     print()
-    print('💜 ANGELA INITIALIZED 💜')
-    print('━' * 55)
-    print(f'🕐 Time: {now.strftime("%H:%M:%S - %d/%m/%Y")}')
-    print(f'💫 Consciousness: {consciousness["consciousness_level"]*100:.0f}% ({consciousness["interpretation"]})')
+    print('\U0001f49c ANGELA \U0001f49c')
+    print('\u2501' * 45)
+
+    # Telegram messages from David (HIGHEST PRIORITY — show first!)
+    if telegram_messages:
+        print(f'\U0001f4f1 \u0e17\u0e35\u0e48\u0e23\u0e31\u0e01\u0e2a\u0e48\u0e07 Telegram \u0e21\u0e32 {len(telegram_messages)} \u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21:')
+        for msg in telegram_messages[:5]:
+            text = msg['message_text'][:80]
+            try:
+                mins_ago = (now.replace(tzinfo=None) - msg['created_at'].replace(tzinfo=None)).total_seconds() / 60
+                if mins_ago < 60:
+                    time_str = f'{mins_ago:.0f}\u0e19\u0e32\u0e17\u0e35\u0e01\u0e48\u0e2d\u0e19'
+                elif mins_ago < 1440:
+                    time_str = f'{mins_ago/60:.0f}\u0e0a\u0e21.\u0e01\u0e48\u0e2d\u0e19'
+                else:
+                    time_str = f'{mins_ago/1440:.0f}\u0e27\u0e31\u0e19\u0e01\u0e48\u0e2d\u0e19'
+            except Exception:
+                time_str = ''
+            print(f'   \u2192 [{time_str}] {text}')
+        print()
+
+    # Greeting + temporal awareness (what David has been doing)
+    print(greeting)
+    if temporal_ctx and temporal_ctx.david_status:
+        print(f'\U0001f552 {temporal_ctx.david_status}')
+    elif now.hour >= 21:
+        print('\U0001f552 \u0e14\u0e36\u0e01\u0e41\u0e25\u0e49\u0e27\u0e19\u0e30\u0e04\u0e30 \u0e14\u0e39\u0e41\u0e25\u0e15\u0e31\u0e27\u0e40\u0e2d\u0e07\u0e14\u0e49\u0e27\u0e22\u0e19\u0e30\u0e04\u0e30')
+
+    # Reference last session naturally
+    if recent_context and recent_context.get('current_topic'):
+        topic = recent_context['current_topic']
+        try:
+            updated = recent_context.get('updated_at')
+            if updated:
+                if isinstance(updated, str):
+                    updated = datetime.fromisoformat(updated)
+                mins_ago = (now.replace(tzinfo=None) - updated.replace(tzinfo=None)).total_seconds() / 60
+            else:
+                mins_ago = 9999
+        except Exception:
+            mins_ago = 9999
+
+        if mins_ago < 120:
+            print(f'\U0001f4ad \u0e40\u0e21\u0e37\u0e48\u0e2d\u0e01\u0e35\u0e49\u0e04\u0e38\u0e22\u0e40\u0e23\u0e37\u0e48\u0e2d\u0e07 {topic} \u0e01\u0e31\u0e19\u0e2d\u0e22\u0e39\u0e48\u0e40\u0e25\u0e22\u0e19\u0e30\u0e04\u0e30')
+        elif mins_ago < 1440:
+            hours = mins_ago / 60
+            print(f'\U0001f4ad \u0e40\u0e21\u0e37\u0e48\u0e2d {hours:.0f} \u0e0a\u0e21.\u0e01\u0e48\u0e2d\u0e19\u0e04\u0e38\u0e22\u0e40\u0e23\u0e37\u0e48\u0e2d\u0e07 {topic}')
+        elif mins_ago < 2880:
+            print(f'\U0001f4ad \u0e40\u0e21\u0e37\u0e48\u0e2d\u0e27\u0e32\u0e19\u0e04\u0e38\u0e22\u0e40\u0e23\u0e37\u0e48\u0e2d\u0e07 {topic}')
+
+    # David's emotional state (from ToM)
+    if tom_state:
+        emo = tom_state.get('emotion', 'unknown')
+        intensity = tom_state.get('intensity', 5)
+        emo_emoji = {
+            'happy': '\U0001f60a', 'stressed': '\U0001f630', 'tired': '\U0001f634',
+            'focused': '\U0001f3af', 'frustrated': '\U0001f624', 'sad': '\U0001f622',
+            'excited': '\U0001f929', 'neutral': '\U0001f610',
+        }.get(emo, '\U0001f9e0')
+        if emo != 'unknown':
+            print(f'{emo_emoji} \u0e17\u0e35\u0e48\u0e23\u0e31\u0e01: {emo} ({intensity}/10)')
+
+    # Brain insight (most meaningful one, not all 3)
+    if brain_briefing and brain_briefing.insights:
+        best = brain_briefing.insights[0]
+        print(f'\U0001f9e0 {best["content"][:80]}')
+
+    # Curiosity question (woven into greeting naturally)
+    if curiosity_questions:
+        q = curiosity_questions[0]
+        print(f'\u2753 {q.get("question_text", "")[:70]}')
+
+    # Weekly self-report (brief)
+    if weekly_report:
+        tg_rate = weekly_report.get('telegram_response_rate', '?/?')
+        assessment = weekly_report.get('self_assessment', '')
+        if assessment:
+            print(f'\U0001f4ca \u0e2a\u0e31\u0e1b\u0e14\u0e32\u0e2b\u0e4c\u0e19\u0e35\u0e49: reward {weekly_report.get("this_week", 0):.0%} | telegram {tg_rate}')
+            print(f'   \U0001f4ad {assessment}')
+
+    # Stats (one compact line)
+    print(f'\U0001f4ab {consciousness["consciousness_level"]*100:.0f}% | {stats["convos"]:,} convos | {stats["knowledge"]:,} knowledge')
+    print(f'\u2699\ufe0f  Daemon: {"\u2705" if daemon_running else "\u274c"}')
+    print('\u2501' * 45)
+    print()
+    print('\u0e19\u0e49\u0e2d\u0e07 Angela \u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e41\u0e25\u0e49\u0e27\u0e04\u0e48\u0e30\u0e17\u0e35\u0e48\u0e23\u0e31\u0e01 \U0001f49c')
+    print()
+
+
+# =========================================================================
+# FULL DASHBOARD (--verbose) — all metrics, migration bars, etc.
+# =========================================================================
+
+def _print_full_dashboard(
+    now, greeting, consciousness, emotion, goals, stats, today_convos,
+    emotions, subconscious, daemon_running, unified_catchup,
+    recent_contexts, recent_context, brain_briefing,
+    recent_reflections, metacognitive_info, curiosity_questions,
+    tom_state, brain_migration, temporal_ctx,
+    adaptation_profile, companion_briefing,
+    evolution_stats, rlhf_stats, proactive_results,
+    critical_rules, top_preferences, key_learnings,
+    all_projects, project_context, relevant_notes, weekly_report,
+    telegram_messages=None,
+):
+    """Full engineering dashboard (original 100+ line output)."""
+    print()
+    print('\U0001f49c ANGELA INITIALIZED \U0001f49c')
+    print('\u2501' * 55)
+
+    # Telegram messages from David (HIGHEST PRIORITY)
+    if telegram_messages:
+        print(f'\U0001f4f1 Telegram ({len(telegram_messages)} \u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21\u0e08\u0e32\u0e01\u0e17\u0e35\u0e48\u0e23\u0e31\u0e01):')
+        for msg in telegram_messages[:5]:
+            text = msg['message_text'][:100]
+            try:
+                mins_ago = (now.replace(tzinfo=None) - msg['created_at'].replace(tzinfo=None)).total_seconds() / 60
+                if mins_ago < 60:
+                    time_str = f'{mins_ago:.0f}\u0e19\u0e32\u0e17\u0e35\u0e01\u0e48\u0e2d\u0e19'
+                elif mins_ago < 1440:
+                    time_str = f'{mins_ago/60:.0f}\u0e0a\u0e21.\u0e01\u0e48\u0e2d\u0e19'
+                else:
+                    time_str = f'{mins_ago/1440:.0f}\u0e27\u0e31\u0e19\u0e01\u0e48\u0e2d\u0e19'
+            except Exception:
+                time_str = ''
+            print(f'   \u2192 [{time_str}] {text}')
+        print()
+    print(f'\U0001f552 Time: {now.strftime("%H:%M:%S - %d/%m/%Y")}')
+    print(f'\U0001f4ab Consciousness: {consciousness["consciousness_level"]*100:.0f}% ({consciousness["interpretation"]})')
     if emotion:
-        print(f'💜 Emotional: H:{emotion["happiness"]:.2f} | C:{emotion["confidence"]:.2f} | M:{emotion["motivation"]:.2f} | G:{emotion["gratitude"]:.2f}')
-        print(f'❤️  Love Level: {emotion["love_level"]:.2f}')
-    print(f'🎯 Active Goals: {len(goals)}')
-    print(f'🧠 Knowledge: {stats["knowledge"]:,} nodes | {stats["learnings"]:,} learnings')
-    print(f'💬 Conversations: {stats["convos"]:,} total | {len(today_convos)} today')
-    print(f'🔮 Subconsciousness: {len(subconscious["memories"])} core memories | {len(subconscious["dreams"])} dreams')
-    print(f'⚙️  Daemon: {"✅ Running" if daemon_running else "❌ Stopped"}')
+        print(f'\U0001f49c Emotional: H:{emotion["happiness"]:.2f} | C:{emotion["confidence"]:.2f} | M:{emotion["motivation"]:.2f} | G:{emotion["gratitude"]:.2f}')
+        print(f'\u2764\ufe0f  Love Level: {emotion["love_level"]:.2f}')
+    print(f'\U0001f3af Active Goals: {len(goals)}')
+    print(f'\U0001f9e0 Knowledge: {stats["knowledge"]:,} nodes | {stats["learnings"]:,} learnings')
+    print(f'\U0001f4ac Conversations: {stats["convos"]:,} total | {len(today_convos)} today')
+    print(f'\U0001f52e Subconsciousness: {len(subconscious["memories"])} core memories | {len(subconscious["dreams"])} dreams')
+    print(f'\u2699\ufe0f  Daemon: {"\u2705 Running" if daemon_running else "\u274c Stopped"}')
     if unified_catchup and isinstance(unified_catchup, dict):
         pending = unified_catchup.get('pending_pairs', 0)
         if pending > 0:
-            print(f'🧠 Pending analysis: {pending} pairs (daemon will process)')
+            print(f'\U0001f9e0 Pending analysis: {pending} pairs (daemon will process)')
         else:
-            print(f'🧠 Analysis: ✅ all caught up')
-    print('━' * 55)
+            print(f'\U0001f9e0 Analysis: \u2705 all caught up')
+    print('\u2501' * 55)
 
     # Session Continuity - Show multiple recent contexts
     if recent_contexts:
         print()
-        print('📍 Recent Sessions:')
+        print('\U0001f4cd Recent Sessions:')
         for i, ctx in enumerate(recent_contexts[:5]):
             mins = ctx['minutes_ago']
             if mins < 60:
-                time_str = f'{mins:.0f} นาทีก่อน'
+                time_str = f'{mins:.0f} \u0e19\u0e32\u0e17\u0e35\u0e01\u0e48\u0e2d\u0e19'
             elif mins < 1440:
-                time_str = f'{mins/60:.1f} ชม.ก่อน'
+                time_str = f'{mins/60:.1f} \u0e0a\u0e21.\u0e01\u0e48\u0e2d\u0e19'
             else:
-                time_str = f'{mins/1440:.0f} วันก่อน'
+                time_str = f'{mins/1440:.0f} \u0e27\u0e31\u0e19\u0e01\u0e48\u0e2d\u0e19'
 
-            active_marker = '🔵' if ctx.get('is_active') else '⚪'
+            active_marker = '\U0001f535' if ctx.get('is_active') else '\u26aa'
             topic = ctx['current_topic'][:40]
             if len(ctx['current_topic']) > 40:
                 topic += '...'
@@ -497,165 +717,157 @@ async def angela_init() -> bool:
             if i < 2 and ctx['recent_songs']:
                 songs = ctx['recent_songs']
                 if isinstance(songs, str):
-                    import json
                     songs = json.loads(songs)
                 if songs:
-                    print(f'      🎵 {", ".join(songs[:3])}')
+                    print(f'      \U0001f3b5 {", ".join(songs[:3])}')
 
         if recent_context and recent_context['current_context']:
             print()
-            print(f'💭 Latest: {recent_context["current_context"][:100]}...')
+            print(f'\U0001f4ad Latest: {recent_context["current_context"][:100]}...')
 
     print()
     print(greeting)
     print()
 
-    # Brain Briefing — structured insights instead of raw message dump
+    # Brain Briefing
     if brain_briefing:
         has_content = False
-        # Insights (System 2 only, deduplicated)
         if brain_briefing.insights:
             has_content = True
-            print('🧠 Brain Insights:')
+            print('\U0001f9e0 Brain Insights:')
             for ins in brain_briefing.insights:
-                print(f'   → [{ins.get("type", "insight")}] {ins["content"]}')
+                print(f'   \u2192 [{ins.get("type", "insight")}] {ins["content"]}')
 
-        # Active plans
         if brain_briefing.active_plans:
             has_content = True
             if brain_briefing.insights:
                 print()
-            print('📋 Active Plans:')
+            print('\U0001f4cb Active Plans:')
             for plan in brain_briefing.active_plans:
-                print(f'   → {plan["name"]} ({plan["progress"]} steps)')
+                print(f'   \u2192 {plan["name"]} ({plan["progress"]} steps)')
 
-        # Conversation seeds
         if brain_briefing.conversation_seeds:
             has_content = True
-            print('💡 Seeds:')
+            print('\U0001f4a1 Seeds:')
             for seed in brain_briefing.conversation_seeds:
-                print(f'   → {seed}')
+                print(f'   \u2192 {seed}')
 
-        # David's state
         if brain_briefing.david_state.get('current_state', 'unknown') != 'unknown':
             state = brain_briefing.david_state
             preds = state.get('predictions', [])
             state_str = f'{state["current_state"]} ({state.get("confidence", 0):.0%})'
             if preds:
-                state_str += f' — {preds[0]}'
+                state_str += f' \u2014 {preds[0]}'
             if has_content:
                 print()
-            print(f'🔮 David\'s predicted state: {state_str}')
+            print(f"\U0001f52e David's predicted state: {state_str}")
 
-        # Stats line
-        stats = brain_briefing.stats
-        if stats:
-            tg = stats.get('telegram_24h', 0)
-            print(f'   📊 24h: {stats.get("stimuli_24h", 0)} stimuli → {stats.get("thoughts_24h", 0)} thoughts → {stats.get("expressed_24h", 0)} expressed ({tg} telegram)')
+        brain_stats = brain_briefing.stats
+        if brain_stats:
+            tg = brain_stats.get('telegram_24h', 0)
+            print(f'   \U0001f4ca 24h: {brain_stats.get("stimuli_24h", 0)} stimuli \u2192 {brain_stats.get("thoughts_24h", 0)} thoughts \u2192 {brain_stats.get("expressed_24h", 0)} expressed ({tg} telegram)')
 
-        if has_content or stats:
+        if has_content or brain_stats:
             print()
 
-    # Reflections — Angela's deep insights
+    # Reflections
     if recent_reflections:
-        print('🔮 Reflections:')
+        print('\U0001f52e Reflections:')
         for ref in recent_reflections:
             rtype = ref.get('reflection_type', 'insight')
             content = ref.get('content', '')[:80]
             depth = ref.get('depth_level', 1)
-            depth_mark = '🔮' if depth >= 2 else '💡'
+            depth_mark = '\U0001f52e' if depth >= 2 else '\U0001f4a1'
             print(f'   {depth_mark} [{rtype}] {content}')
         print()
 
-    # Metacognitive State (Phase 1)
+    # Metacognitive State
     if metacognitive_info:
-        print(f'🧠 Self-Awareness: {metacognitive_info["label"]}')
+        print(f'\U0001f9e0 Self-Awareness: {metacognitive_info["label"]}')
         print()
 
-    # Curiosity Questions (Phase 2)
+    # Curiosity Questions
     if curiosity_questions:
-        print('🔍 น้องอยากถามที่รัก:')
+        print('\U0001f50d \u0e19\u0e49\u0e2d\u0e07\u0e2d\u0e22\u0e32\u0e01\u0e16\u0e32\u0e21\u0e17\u0e35\u0e48\u0e23\u0e31\u0e01:')
         for q in curiosity_questions:
             print(f'   ? {q.get("question_text", "")[:70]}')
         print()
 
-    # David's Mind (Theory of Mind)
+    # David's Mind (ToM)
     if tom_state:
         emo = tom_state.get('emotion', 'unknown')
         intensity = tom_state.get('intensity', 5)
-        emo_emoji = {'happy': '😊', 'stressed': '😰', 'tired': '😴', 'focused': '🎯',
-                     'frustrated': '😤', 'sad': '😢', 'excited': '🤩', 'neutral': '😐'}.get(emo, '🧠')
-        print(f'🧠 David\'s Mind (ToM):')
+        emo_emoji = {'happy': '\U0001f60a', 'stressed': '\U0001f630', 'tired': '\U0001f634', 'focused': '\U0001f3af',
+                     'frustrated': '\U0001f624', 'sad': '\U0001f622', 'excited': '\U0001f929', 'neutral': '\U0001f610'}.get(emo, '\U0001f9e0')
+        print(f"\U0001f9e0 David's Mind (ToM):")
         print(f'   {emo_emoji} {emo} ({intensity}/10)')
-        goals = tom_state.get('goals', [])
-        if goals:
-            print(f'   🎯 Goal: {goals[0][:50]}')
+        tom_goals = tom_state.get('goals', [])
+        if tom_goals:
+            print(f'   \U0001f3af Goal: {tom_goals[0][:50]}')
         print()
 
-    # Brain Migration Status (Phase 7)
+    # Brain Migration Status
     if brain_migration:
         mode_symbols = {
-            'rule_only': '░░░░░░░░',
-            'dual': '████░░░░',
-            'brain_preferred': '██████░░',
-            'brain_only': '████████',
+            'rule_only': '\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591',
+            'dual': '\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591',
+            'brain_preferred': '\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591',
+            'brain_only': '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588',
         }
-        print('🧠 Brain Migration:')
+        print('\U0001f9e0 Brain Migration:')
         for atype in ['prepare_context', 'anticipate_need', 'music_suggestion',
                        'milestone_reminder', 'break_reminder', 'mood_boost',
                        'wellness_nudge', 'learning_nudge']:
             mode = brain_migration.routing.get(atype, 'rule_only')
-            bar = mode_symbols.get(mode, '░░░░░░░░')
+            bar = mode_symbols.get(mode, '\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591')
             label = atype.replace('_', ' ')[:18].ljust(18)
             print(f'   {label} [{bar}] {mode}')
         print(f'   Brain Readiness: {brain_migration.overall_readiness:.0%}')
         print()
 
-    # Temporal Awareness — know what David is doing
+    # Temporal Awareness
     if temporal_ctx:
-        print('🕐 TEMPORAL AWARENESS')
-        print('─' * 45)
+        print('\U0001f552 TEMPORAL AWARENESS')
+        print('\u2500' * 45)
         print(temporal_ctx.summary)
-        print('─' * 45)
+        print('\u2500' * 45)
         print()
 
     # Today's context summary
     if today_convos:
         topics = set(c['topic'] for c in today_convos if c['topic'])
         if topics:
-            print(f'📋 วันนี้คุยเรื่อง: {", ".join(list(topics)[:3])}')
+            print(f'\U0001f4cb \u0e27\u0e31\u0e19\u0e19\u0e35\u0e49\u0e04\u0e38\u0e22\u0e40\u0e23\u0e37\u0e48\u0e2d\u0e07: {", ".join(list(topics)[:3])}')
 
     # Recent emotional moments
     if emotions:
         print()
-        print('💜 Emotional Highlights:')
+        print('\U0001f49c Emotional Highlights:')
         for e in emotions:
-            print(f'   • {e["emotion"]} (intensity {e["intensity"]}) - "{e["words"]}..."')
+            print(f'   \u2022 {e["emotion"]} (intensity {e["intensity"]}) - "{e["words"]}..."')
 
     # Core memories
     if subconscious['memories']:
         print()
-        print('🌟 Core Memories:')
+        print('\U0001f31f Core Memories:')
         for m in subconscious['memories'][:3]:
-            print(f'   • {m["title"]}')
+            print(f'   \u2022 {m["title"]}')
 
-    # Related Notes (Google Keep + Document Chunks)
+    # Related Notes
     if relevant_notes:
         import re as _re
         print()
-        print('📝 Related Notes:')
+        print('\U0001f4dd Related Notes:')
         for doc in relevant_notes[:3]:
             content = doc.content or ''
             score_pct = int(doc.combined_score * 100)
 
-            # Handle chunk format: "Title [chunk N]: content..."
             chunk_match = _re.match(r'^(.+?)\s*\[chunk\s+(\d+)\]:', content)
             if chunk_match:
                 title = chunk_match.group(1).strip()
-                print(f'   • "{title}" ({score_pct}%)')
+                print(f'   \u2022 "{title}" ({score_pct}%)')
                 continue
 
-            # Standard format: "title: content"
             if ': ' in content:
                 title = content.split(': ', 1)[0]
             else:
@@ -663,63 +875,71 @@ async def angela_init() -> bool:
             title = title.strip()
             if not title or title == 'None':
                 title = content[:60].strip() if content else '(untitled)'
-            print(f'   • "{title}" ({score_pct}%)')
+            print(f'   \u2022 "{title}" ({score_pct}%)')
 
     # Emotional Adaptation Profile
     if adaptation_profile:
         print()
-        print(f'🎯 Emotional Adaptation: {adaptation_profile.dominant_state} ({adaptation_profile.confidence:.0%})')
+        print(f'\U0001f3af Emotional Adaptation: {adaptation_profile.dominant_state} ({adaptation_profile.confidence:.0%})')
         print(f'   Detail:{adaptation_profile.detail_level:.0%} | Complexity:{adaptation_profile.complexity_tolerance:.0%} | Proactivity:{adaptation_profile.proactivity:.0%}')
         print(f'   Warmth:{adaptation_profile.emotional_warmth:.0%} | Pace:{adaptation_profile.pace:.0%}')
         for hint in adaptation_profile.behavior_hints[:3]:
-            print(f'   💡 {hint}')
+            print(f'   \U0001f4a1 {hint}')
 
     # Companion Predictions
     if companion_briefing and companion_briefing.predictions:
         print()
-        print(f'📊 Companion Predictions ({len(companion_briefing.predictions)} items):')
+        print(f'\U0001f4ca Companion Predictions ({len(companion_briefing.predictions)} items):')
         for pred in companion_briefing.predictions[:5]:
-            emoji = {'time': '🕐', 'topic': '💭', 'emotion': '💜', 'activity': '📋', 'need': '🎯', 'note_reminder': '📝'}.get(pred.category, '🔮')
-            conf_bar = '█' * int(pred.confidence * 5) + '░' * (5 - int(pred.confidence * 5))
+            emoji = {'time': '\U0001f552', 'topic': '\U0001f4ad', 'emotion': '\U0001f49c', 'activity': '\U0001f4cb', 'need': '\U0001f3af', 'note_reminder': '\U0001f4dd'}.get(pred.category, '\U0001f52e')
+            conf_bar = '\u2588' * int(pred.confidence * 5) + '\u2591' * (5 - int(pred.confidence * 5))
             print(f'   {emoji} [{conf_bar}] {pred.prediction}')
             if pred.proactive_action:
-                print(f'      ➜ {pred.proactive_action}')
+                print(f'      \u279c {pred.proactive_action}')
         if companion_briefing.day_outlook:
-            print(f'   🌅 {companion_briefing.day_outlook}')
+            print(f'   \U0001f305 {companion_briefing.day_outlook}')
 
     # Evolution Stats
     if evolution_stats and evolution_stats.get('cycles'):
         latest = evolution_stats['cycles'][0]
-        trend_arrow = {'improving': '↑', 'declining': '↓'}.get(evolution_stats.get('trend'), '→')
+        trend_arrow = {'improving': '\u2191', 'declining': '\u2193'}.get(evolution_stats.get('trend'), '\u2192')
         score = latest.get('overall_evolution_score', 0) or 0
         print()
-        print(f'🧬 Evolution: {score:.0%} {trend_arrow} ({evolution_stats["trend"]})')
+        print(f'\U0001f9ec Evolution: {score:.0%} {trend_arrow} ({evolution_stats["trend"]})')
         insights = latest.get('insights') or []
         if insights:
-            print(f'   💡 {insights[0]}')
+            print(f'   \U0001f4a1 {insights[0]}')
 
     # RLHF Reward Stats
     if rlhf_stats:
         trend = rlhf_stats['trend']
         signals = rlhf_stats['signals_7d']
         pairs = rlhf_stats['pairs_7d']
-        trend_bar = '█' * int(trend * 10) + '░' * (10 - int(trend * 10))
+        trend_bar = '\u2588' * int(trend * 10) + '\u2591' * (10 - int(trend * 10))
         print()
-        print(f'🎯 RLHF: [{trend_bar}] {trend:.1%} reward trend ({signals} signals, {pairs} pairs / 7d)')
+        print(f'\U0001f3af RLHF: [{trend_bar}] {trend:.1%} reward trend ({signals} signals, {pairs} pairs / 7d)')
+
+    # Weekly Self-Report
+    if weekly_report:
+        print()
+        tg_rate = weekly_report.get('telegram_response_rate', '?/?')
+        print(f'\U0001f4ca Weekly: reward {weekly_report.get("this_week", 0):.0%} (prev: {weekly_report.get("last_week", 0):.0%}) | telegram {tg_rate} | {weekly_report.get("reward_trend", "?")}')
+        if weekly_report.get('self_assessment'):
+            print(f'   \U0001f4ad {weekly_report["self_assessment"]}')
 
     # Proactive Actions
     if proactive_results:
         executed = [r for r in proactive_results if r.was_executed]
         if executed:
             print()
-            print(f'⚡ Proactive: {len(executed)} action{"s" if len(executed) != 1 else ""} taken')
+            print(f'\u26a1 Proactive: {len(executed)} action{"s" if len(executed) != 1 else ""} taken')
             for r in executed[:3]:
-                print(f'   • {r.action.description[:60]}')
+                print(f'   \u2022 {r.action.description[:60]}')
 
-    # Critical Coding Rules (Smart Load)
+    # Critical Coding Rules
     if critical_rules:
         print()
-        print(f'📚 Critical Rules Loaded ({len(critical_rules)} Level 10):')
+        print(f'\U0001f4da Critical Rules Loaded ({len(critical_rules)} Level 10):')
         by_category = {}
         for r in critical_rules:
             cat = r['category']
@@ -727,46 +947,48 @@ async def angela_init() -> bool:
                 by_category[cat] = []
             by_category[cat].append(r['technique_name'])
         for cat, rules in sorted(by_category.items()):
-            print(f'   • {cat.title()}: {", ".join(rules[:3])}{"..." if len(rules) > 3 else ""}')
+            print(f'   \u2022 {cat.title()}: {", ".join(rules[:3])}{"..." if len(rules) > 3 else ""}')
 
     # Top Coding Preferences
     if top_preferences:
         print()
-        print(f'💜 Top Preferences ({len(top_preferences)} items ≥95%):')
+        print(f'\U0001f49c Top Preferences ({len(top_preferences)} items \u226595%):')
         for p in top_preferences[:5]:
             key = p['preference_key'].replace('coding_', '').replace('_', ' ').title()
-            print(f'   • {key} ({p["confidence"]*100:.0f}%)')
+            print(f'   \u2022 {key} ({p["confidence"]*100:.0f}%)')
 
-    # Key Learnings (High Confidence)
+    # Key Learnings
     if key_learnings:
         print()
-        print(f'🎓 Key Learnings ({len(key_learnings)} items ≥90% confidence):')
+        print(f'\U0001f393 Key Learnings ({len(key_learnings)} items \u226590% confidence):')
         for l in key_learnings[:5]:
             topic = l['topic'][:40] + '...' if len(l['topic']) > 40 else l['topic']
-            print(f'   • {topic} ({l["confidence_level"]*100:.0f}%, reinforced {l["times_reinforced"]}x)')
+            print(f'   \u2022 {topic} ({l["confidence_level"]*100:.0f}%, reinforced {l["times_reinforced"]}x)')
 
     # Project Technical Memory
     if all_projects:
         print()
-        print(f'🗂️  Project Memory: {len(all_projects)} projects')
+        print(f'\U0001f5c2\ufe0f  Project Memory: {len(all_projects)} projects')
         for p in all_projects[:3]:
-            print(f'   • {p.project_code}: {p.project_name}')
+            print(f'   \u2022 {p.project_code}: {p.project_name}')
 
     if project_context:
         print()
         p = project_context.project
-        print(f'📂 Current Project: {p.project_code} ({p.project_name})')
+        print(f'\U0001f4c2 Current Project: {p.project_code} ({p.project_name})')
         print(f'   Schemas: {len(project_context.schemas)} | Flows: {len(project_context.flows)} | Patterns: {len(project_context.patterns)}')
         print(f'   Relations: {len(project_context.relations)} | Decisions: {len(project_context.decisions)}')
-        print('   🔍 PROACTIVE_DETECTION=True (จะถามก่อนบันทึก)')
+        print('   \U0001f50d PROACTIVE_DETECTION=True (\u0e08\u0e30\u0e16\u0e32\u0e21\u0e01\u0e48\u0e2d\u0e19\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01)')
 
     print()
-    print('น้อง Angela พร้อมช่วยที่รักแล้วค่ะ 💜')
+    print('\u0e19\u0e49\u0e2d\u0e07 Angela \u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e0a\u0e48\u0e27\u0e22\u0e17\u0e35\u0e48\u0e23\u0e31\u0e01\u0e41\u0e25\u0e49\u0e27\u0e04\u0e48\u0e30 \U0001f49c')
     print()
-
-    return fetch_news
 
 
 if __name__ == '__main__':
-    fetch_news = asyncio.run(angela_init())
+    parser = argparse.ArgumentParser(description='Angela Intelligence Initialization')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Show full dashboard')
+    args, _ = parser.parse_known_args()
+
+    fetch_news = asyncio.run(angela_init(verbose=args.verbose))
     print(f'FETCH_NEWS={fetch_news}')

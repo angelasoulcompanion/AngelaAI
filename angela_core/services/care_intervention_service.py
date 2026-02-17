@@ -85,7 +85,7 @@ class CareInterventionService:
     def __init__(self, db: Optional[AngelaDatabase] = None):
         self.db = db
         self._owns_db = db is None
-        self._telegram_service = None
+        self._channel_router = None
 
     async def _ensure_db(self):
         """Ensure database connection"""
@@ -93,20 +93,21 @@ class CareInterventionService:
             self.db = AngelaDatabase()
             await self.db.connect()
 
-    async def _get_telegram_service(self):
-        """Get telegram service for sending messages"""
-        if self._telegram_service is None:
-            from angela_core.services.telegram_service import TelegramService
-            self._telegram_service = TelegramService()
-            await self._telegram_service.initialize()
-        return self._telegram_service
+    async def _get_channel_router(self):
+        """Get channel router for sending messages."""
+        if self._channel_router is None:
+            from angela_core.channels.channel_router import get_channel_router
+            self._channel_router = get_channel_router()
+            # Ensure telegram channel is initialized
+            tg = self._channel_router.get_channel("telegram")
+            if tg and not tg.is_available:
+                await tg.initialize()
+        return self._channel_router
 
     async def close(self):
         """Close resources"""
         if self._owns_db and self.db:
             await self.db.disconnect()
-        if self._telegram_service:
-            await self._telegram_service.close()
 
     # =========================================================
     # PERMISSION CHECKING
@@ -214,28 +215,20 @@ class CareInterventionService:
         message_template = random.choice(self.SLEEP_SONG_MESSAGES)
         message = message_template.format(song=song_text)
 
-        # Send via Telegram
-        telegram = await self._get_telegram_service()
-        chat_id = await self._get_david_chat_id()
+        # Send via ChannelRouter
+        from angela_core.channels.message_types import OutgoingMessage
+        router = await self._get_channel_router()
+        result = await router.route(
+            OutgoingMessage(text=message, priority="urgent", source="care_intervention"),
+            preference="telegram",
+        )
 
-        if not chat_id:
-            return InterventionResult(
-                success=False,
-                intervention_id=None,
-                message_sent=message,
-                channel="telegram",
-                error="Could not find David's chat ID"
-            )
-
-        try:
-            await telegram.send_message(chat_id, message, parse_mode=None)
-
-            # Log intervention
+        if result.success:
             intervention_id = await self._log_intervention(
                 intervention_type='sleep_song',
                 trigger_reason=context.get('trigger_reason', 'Sleep issue detected'),
                 message_sent=message,
-                channel='telegram',
+                channel=result.channel,
                 song_title=song_info.get('title'),
                 song_artist=song_info.get('artist'),
                 song_url=song_info.get('youtube_url')
@@ -245,17 +238,16 @@ class CareInterventionService:
                 success=True,
                 intervention_id=intervention_id,
                 message_sent=message,
-                channel="telegram",
+                channel=result.channel,
                 song_info=song_info
             )
-
-        except Exception as e:
+        else:
             return InterventionResult(
                 success=False,
                 intervention_id=None,
                 message_sent=message,
-                channel="telegram",
-                error=str(e)
+                channel=result.channel,
+                error=result.error
             )
 
     async def execute_break_reminder(
@@ -287,43 +279,35 @@ class CareInterventionService:
         # Select message
         message = random.choice(self.BREAK_REMINDER_MESSAGES)
 
-        # Send via Telegram
-        telegram = await self._get_telegram_service()
-        chat_id = await self._get_david_chat_id()
+        # Send via ChannelRouter
+        from angela_core.channels.message_types import OutgoingMessage
+        router = await self._get_channel_router()
+        result = await router.route(
+            OutgoingMessage(text=message, priority="urgent", source="care_intervention"),
+            preference="telegram",
+        )
 
-        if not chat_id:
-            return InterventionResult(
-                success=False,
-                intervention_id=None,
-                message_sent=message,
-                channel="telegram",
-                error="Could not find David's chat ID"
-            )
-
-        try:
-            await telegram.send_message(chat_id, message, parse_mode=None)
-
+        if result.success:
             intervention_id = await self._log_intervention(
                 intervention_type='break_reminder',
                 trigger_reason=context.get('trigger_reason', 'Long working session'),
                 message_sent=message,
-                channel='telegram'
+                channel=result.channel
             )
 
             return InterventionResult(
                 success=True,
                 intervention_id=intervention_id,
                 message_sent=message,
-                channel="telegram"
+                channel=result.channel
             )
-
-        except Exception as e:
+        else:
             return InterventionResult(
                 success=False,
                 intervention_id=None,
                 message_sent=message,
-                channel="telegram",
-                error=str(e)
+                channel=result.channel,
+                error=result.error
             )
 
     async def execute_care_message(
@@ -357,43 +341,35 @@ class CareInterventionService:
         # Select message
         message = custom_message or random.choice(self.CARE_MESSAGE_TEMPLATES)
 
-        # Send via Telegram
-        telegram = await self._get_telegram_service()
-        chat_id = await self._get_david_chat_id()
+        # Send via ChannelRouter
+        from angela_core.channels.message_types import OutgoingMessage
+        router = await self._get_channel_router()
+        result = await router.route(
+            OutgoingMessage(text=message, priority="urgent", source="care_intervention"),
+            preference="telegram",
+        )
 
-        if not chat_id:
-            return InterventionResult(
-                success=False,
-                intervention_id=None,
-                message_sent=message,
-                channel="telegram",
-                error="Could not find David's chat ID"
-            )
-
-        try:
-            await telegram.send_message(chat_id, message, parse_mode=None)
-
+        if result.success:
             intervention_id = await self._log_intervention(
                 intervention_type='care_message',
                 trigger_reason=context.get('trigger_reason', 'Wellness check'),
                 message_sent=message,
-                channel='telegram'
+                channel=result.channel
             )
 
             return InterventionResult(
                 success=True,
                 intervention_id=intervention_id,
                 message_sent=message,
-                channel="telegram"
+                channel=result.channel
             )
-
-        except Exception as e:
+        else:
             return InterventionResult(
                 success=False,
                 intervention_id=None,
                 message_sent=message,
-                channel="telegram",
-                error=str(e)
+                channel=result.channel,
+                error=result.error
             )
 
     async def execute_milestone_reminder(
@@ -437,27 +413,20 @@ class CareInterventionService:
         else:
             message = f"💜 ที่รักค่ะ อีก {days_until} วันจะถึงวัน {title} ค่ะ 💜"
 
-        # Send via Telegram
-        telegram = await self._get_telegram_service()
-        chat_id = await self._get_david_chat_id()
+        # Send via ChannelRouter
+        from angela_core.channels.message_types import OutgoingMessage
+        router = await self._get_channel_router()
+        result = await router.route(
+            OutgoingMessage(text=message, priority="urgent", source="care_intervention"),
+            preference="telegram",
+        )
 
-        if not chat_id:
-            return InterventionResult(
-                success=False,
-                intervention_id=None,
-                message_sent=message,
-                channel="telegram",
-                error="Could not find David's chat ID"
-            )
-
-        try:
-            await telegram.send_message(chat_id, message, parse_mode=None)
-
+        if result.success:
             intervention_id = await self._log_intervention(
                 intervention_type='milestone_reminder',
                 trigger_reason=f"Upcoming: {title} in {days_until} days",
                 message_sent=message,
-                channel='telegram'
+                channel=result.channel
             )
 
             # Update last reminded date
@@ -472,16 +441,15 @@ class CareInterventionService:
                 success=True,
                 intervention_id=intervention_id,
                 message_sent=message,
-                channel="telegram"
+                channel=result.channel
             )
-
-        except Exception as e:
+        else:
             return InterventionResult(
                 success=False,
                 intervention_id=None,
                 message_sent=message,
-                channel="telegram",
-                error=str(e)
+                channel=result.channel,
+                error=result.error
             )
 
     # =========================================================
@@ -519,12 +487,6 @@ class CareInterventionService:
         ]
 
         return random.choice(default_songs)
-
-    async def _get_david_chat_id(self) -> Optional[int]:
-        """Get David's Telegram chat ID"""
-        # David's known Telegram ID
-        DAVID_TELEGRAM_ID = 7980404818
-        return DAVID_TELEGRAM_ID
 
     async def _log_intervention(
         self,

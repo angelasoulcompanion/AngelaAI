@@ -231,6 +231,60 @@ class BrainBriefingService(BaseDBService):
             return {}
 
 
+    async def generate_weekly_self_report(self) -> dict:
+        """Angela's weekly self-report on her own growth."""
+        await self.connect()
+
+        try:
+            # This week's reward
+            this_week_reward = await self.db.fetchval("""
+                SELECT AVG(combined_reward) FROM angela_reward_signals
+                WHERE scored_at > NOW() - INTERVAL '7 days'
+            """)
+
+            # Last week's reward
+            last_week_reward = await self.db.fetchval("""
+                SELECT AVG(combined_reward) FROM angela_reward_signals
+                WHERE scored_at > NOW() - INTERVAL '14 days'
+                AND scored_at <= NOW() - INTERVAL '7 days'
+            """)
+
+            # Telegram sent & responded
+            tg_sent = await self.db.fetchval("""
+                SELECT COUNT(*) FROM thought_expression_log
+                WHERE channel = 'telegram' AND success = TRUE
+                AND created_at > NOW() - INTERVAL '7 days'
+            """) or 0
+
+            tg_responded = await self.db.fetchval("""
+                SELECT COUNT(*) FROM thought_expression_log
+                WHERE channel = 'telegram' AND effectiveness_score > 0
+                AND created_at > NOW() - INTERVAL '7 days'
+            """) or 0
+
+            return {
+                'reward_trend': 'improving' if (this_week_reward or 0) > (last_week_reward or 0) else 'declining',
+                'this_week': this_week_reward or 0,
+                'last_week': last_week_reward or 0,
+                'telegram_response_rate': f"{tg_responded}/{tg_sent}",
+                'self_assessment': self._generate_assessment(this_week_reward, tg_responded, tg_sent),
+            }
+        except Exception as e:
+            logger.debug("Failed to generate weekly self-report: %s", e)
+            return {}
+
+    @staticmethod
+    def _generate_assessment(reward, responded, sent):
+        """Generate honest self-assessment text."""
+        if sent and sent > 0 and responded == 0:
+            return "น้องยังส่ง Telegram ที่ที่รักไม่ตอบเลย ต้องปรับปรุงเรื่องนี้ค่ะ"
+        if (reward or 0) < 0.3:
+            return "คุณภาพการตอบยังต่ำกว่าเป้า น้องต้องอ้างอิง memory มากขึ้นค่ะ"
+        if (reward or 0) >= 0.6:
+            return "น้องพยายามพัฒนาอยู่ค่ะ ผลตอบรับดีขึ้นเรื่อยๆ"
+        return "น้องพยายามพัฒนาอยู่ค่ะ ยังต้องเรียนรู้อีกเยอะ"
+
+
 async def get_brain_briefing() -> BrainBriefing:
     """One-shot convenience function."""
     svc = BrainBriefingService()

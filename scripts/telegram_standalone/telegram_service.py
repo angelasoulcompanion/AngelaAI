@@ -1,6 +1,10 @@
 """
 Angela Telegram Service (Standalone)
 Handles Telegram Bot API interactions
+
+Updated: 2026-02-16 — Fix schema mismatch with actual telegram_messages table
+Actual columns: message_id (uuid), telegram_update_id, telegram_message_id,
+                chat_id, sender, message_text, direction, created_at
 """
 
 import asyncio
@@ -44,11 +48,11 @@ class TelegramService:
     async def initialize(self):
         """Initialize the service"""
         if not self.bot_token:
-            # Get token from LOCAL our_secrets (secrets stay local for security)
+            # Get token from Neon our_secrets
             self.bot_token = await get_secret('telegram_bot_token')
 
             if not self.bot_token:
-                raise ValueError("Telegram bot token not found in local database!")
+                raise ValueError("Telegram bot token not found in database!")
 
             # Initialize database connection for message storage (Neon)
             self._db = AngelaDatabase()
@@ -69,6 +73,7 @@ class TelegramService:
         result = await self._db.fetchrow("""
             SELECT MAX(telegram_update_id) as last_id
             FROM telegram_messages
+            WHERE direction = 'incoming'
         """)
 
         if result and result['last_id']:
@@ -145,37 +150,69 @@ class TelegramService:
         await self._api_call("sendChatAction", chat_id=chat_id, action="typing")
 
     async def is_already_responded(self, update_id: int) -> bool:
-        """Check if we already responded to this update"""
+        """Check if we already processed this update (incoming message exists in DB)."""
         if self._db is None:
             self._db = AngelaDatabase()
             await self._db.connect()
 
         result = await self._db.fetchrow("""
-            SELECT angela_response FROM telegram_messages
-            WHERE telegram_update_id = $1 AND angela_response IS NOT NULL
+            SELECT message_id FROM telegram_messages
+            WHERE telegram_update_id = $1
+            LIMIT 1
         """, update_id)
 
         return result is not None
 
-    async def save_message(self, msg: TelegramMessage, response_text: str = None):
-        """Save message and response to database"""
+    async def save_incoming_message(self, msg: TelegramMessage):
+        """Save David's incoming message to telegram_messages."""
         if self._db is None:
             self._db = AngelaDatabase()
             await self._db.connect()
 
         await self._db.execute("""
             INSERT INTO telegram_messages
-            (telegram_update_id, telegram_message_id, chat_id, from_id,
-             from_name, message_text, is_command, command, angela_response, responded_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            ON CONFLICT (telegram_update_id) DO UPDATE SET
-                angela_response = EXCLUDED.angela_response,
-                responded_at = EXCLUDED.responded_at
-        """,
-            msg.update_id, msg.message_id, msg.chat_id, msg.from_id,
-            msg.from_name, msg.text, msg.is_command, msg.command,
-            response_text, datetime.now() if response_text else None
-        )
+            (telegram_update_id, telegram_message_id, chat_id, sender, message_text, direction, created_at)
+            VALUES ($1, $2, $3, 'david', $4, 'incoming', NOW())
+        """, msg.update_id, msg.message_id, msg.chat_id, msg.text)
+
+    async def save_outgoing_message(self, chat_id: int, message_text: str, telegram_message_id: int = None):
+        """Save Angela's outgoing response to telegram_messages."""
+        if self._db is None:
+            self._db = AngelaDatabase()
+            await self._db.connect()
+
+        await self._db.execute("""
+            INSERT INTO telegram_messages
+            (telegram_message_id, chat_id, sender, message_text, direction, created_at)
+            VALUES ($1, $2, 'angela', $3, 'outgoing', NOW())
+        """, telegram_message_id, chat_id, message_text)
+
+    async def save_to_conversations(self, speaker: str, message_text: str, session_id: str = 'telegram'):
+        """Save message to conversations table so brain can learn from it."""
+        if self._db is None:
+            self._db = AngelaDatabase()
+            await self._db.connect()
+
+        await self._db.execute("""
+            INSERT INTO conversations
+            (session_id, speaker, message_text, topic, interface, created_at)
+            VALUES ($1, $2, $3, 'telegram_chat', 'telegram', NOW())
+        """, session_id, speaker, message_text)
+
+    async def get_recent_incoming(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get recent incoming messages from David (for init.py display)."""
+        if self._db is None:
+            self._db = AngelaDatabase()
+            await self._db.connect()
+
+        rows = await self._db.fetch("""
+            SELECT message_text, created_at
+            FROM telegram_messages
+            WHERE direction = 'incoming' AND sender = 'david'
+            ORDER BY created_at DESC
+            LIMIT $1
+        """, limit)
+        return [dict(r) for r in rows]
 
     async def is_david(self, from_id: int) -> bool:
         """Check if the sender is David"""

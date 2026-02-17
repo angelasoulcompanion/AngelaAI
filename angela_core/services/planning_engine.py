@@ -36,7 +36,9 @@ logger = logging.getLogger(__name__)
 
 VALID_ACTION_TYPES = frozenset({
     'rag_search', 'telegram', 'email', 'proactive_action', 'agent',
+    'auto',  # LLM auto-selects tools via AgentDispatcher
 })
+# tool:<name> is also valid but checked dynamically
 
 MAX_ACTIVE_PLANS = 3
 MAX_STEPS_PER_PLAN = 7
@@ -46,26 +48,29 @@ PLAN_GENERATION_PROMPT = """You are Angela's planning brain. Generate a multi-st
 
 Rules:
 - Return 3-7 steps maximum
-- Each step must use one of these action_types: rag_search, telegram, email, proactive_action, agent
+- Each step must use one of the available action_types
 - Steps should be ordered logically (earlier steps prepare for later ones)
 - Be specific about what each step does
 - Consider David's schedule and preferences
+- Prefer 'auto' for complex multi-tool steps
 
 Available action_types:
-- rag_search: Search Angela's memory for relevant information
-- telegram: Send a message to David via Telegram
-- email: Send an email
+- rag_search: Search Angela's memory for relevant information (payload: {"query": "..."})
+- telegram: Send a message to David via Telegram (payload: {"message": "..."})
+- email: Send an email (payload: {"to": "...", "subject": "...", "body": "..."})
 - proactive_action: Trigger an existing proactive care action
-- agent: Use LLM reasoning for complex analysis
+- agent: Use LLM reasoning for complex analysis (payload: {"prompt": "...", "context": "..."})
+- auto: Let LLM auto-select the best tool(s) for this step (payload: {"intent": "...", "context": "..."})
+{dynamic_tools}
 
 Respond ONLY with valid JSON:
-{
+{{
   "plan_name": "Short descriptive name",
   "description": "1-2 sentence explanation",
   "steps": [
-    {"step_order": 1, "step_name": "...", "action_type": "rag_search", "payload": {"query": "..."}}
+    {{"step_order": 1, "step_name": "...", "action_type": "rag_search", "payload": {{"query": "..."}}}}
   ]
-}"""
+}}"""
 
 
 @dataclass
@@ -188,6 +193,10 @@ class PlanningEngine(BaseDBService):
         # Get context for plan generation
         context = await self._gather_goal_context(goal)
 
+        # Inject dynamic tools into prompt
+        dynamic_tools_text = self._get_dynamic_tools_text()
+        prompt = PLAN_GENERATION_PROMPT.replace("{dynamic_tools}", dynamic_tools_text)
+
         reasoning = self._get_reasoning()
         user_msg = (
             f"Goal: {goal.content}\n"
@@ -198,7 +207,7 @@ class PlanningEngine(BaseDBService):
         )
 
         raw = await reasoning._call_claude(
-            PLAN_GENERATION_PROMPT, user_msg, max_tokens=1024
+            prompt, user_msg, max_tokens=1024
         )
 
         if not raw:
@@ -276,6 +285,26 @@ class PlanningEngine(BaseDBService):
             ORDER BY p.priority DESC, p.created_at ASC
         """)
         return [dict(r) for r in rows]
+
+    @staticmethod
+    def _get_dynamic_tools_text() -> str:
+        """Get dynamically registered tools for prompt injection."""
+        try:
+            from angela_core.services.tool_registry import get_registry
+            registry = get_registry()
+            # Only include non-built-in categories (system, discovered)
+            extra_tools = []
+            for tool_info in registry.list_tools():
+                name = tool_info["name"]
+                # Skip tools already covered by legacy action_types
+                if name in ('rag_search', 'send_telegram', 'send_email', 'recall_memory'):
+                    continue
+                extra_tools.append(f"- tool:{name}: {tool_info['description']}")
+            if extra_tools:
+                return "\n\nAdditional tools (use action_type 'tool:<name>'):\n" + "\n".join(extra_tools)
+        except Exception:
+            pass
+        return ""
 
     # ── Private: Context Gathering ──
 
@@ -363,8 +392,10 @@ class PlanningEngine(BaseDBService):
             return False
 
         for step in plan.steps:
-            if step.get('action_type') not in VALID_ACTION_TYPES:
-                logger.warning("Invalid action_type: %s", step.get('action_type'))
+            action_type = step.get('action_type', '')
+            # Accept valid types OR tool:<name> pattern
+            if action_type not in VALID_ACTION_TYPES and not action_type.startswith('tool:'):
+                logger.warning("Invalid action_type: %s", action_type)
                 return False
 
         return True

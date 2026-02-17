@@ -29,6 +29,7 @@ class LLMRoute(str, Enum):
     CLAUDE_CODE_TASK = "claude_code_task"  # Use Task tool natively (best quality)
     CLAUDE_API_OPUS = "claude-opus-4-6"    # Opus 4.6 via API (high complexity)
     CLAUDE_API_SONNET = "claude-sonnet-4-5-20250929"  # Sonnet via API (good balance)
+    CLAUDE_API_TOOL_USE = "claude_tool_use"  # Claude API with native tool_use
     OLLAMA = "ollama"                      # Local Ollama (fallback)
 
 
@@ -105,13 +106,15 @@ class LLMRouter:
         except Exception as e:
             return False
 
-    def route(self, task: str = "", complexity: str = "medium") -> LLMRoute:
+    def route(self, task: str = "", complexity: str = "medium",
+              needs_tool_use: bool = False) -> LLMRoute:
         """
         Determine which LLM to use for a task.
 
         Args:
             task: Task description (for context)
             complexity: "low", "medium", or "high"
+            needs_tool_use: Whether native tool_use is required
 
         Returns:
             LLMRoute indicating which LLM to use
@@ -120,6 +123,11 @@ class LLMRouter:
         if self.is_claude_code_session():
             logger.info("Route: Claude Code Task tool (interactive session)")
             return LLMRoute.CLAUDE_CODE_TASK
+
+        # Priority 1.5: Tool use required → Claude API with tools
+        if needs_tool_use and self.claude_api_available():
+            logger.info("Route: Claude API tool_use (tool calling required)")
+            return LLMRoute.CLAUDE_API_TOOL_USE
 
         # Priority 2: Claude API
         if self.claude_api_available():
@@ -145,6 +153,7 @@ class LLMRouter:
             LLMRoute.CLAUDE_CODE_TASK: "claude-opus-4-6",  # Claude Code model
             LLMRoute.CLAUDE_API_OPUS: "claude-opus-4-6",
             LLMRoute.CLAUDE_API_SONNET: "claude-sonnet-4-5-20250929",
+            LLMRoute.CLAUDE_API_TOOL_USE: "claude-sonnet-4-5-20250929",
             LLMRoute.OLLAMA: "llama3.2:latest",
         }
         return model_map.get(route, "claude-sonnet-4-5-20250929")

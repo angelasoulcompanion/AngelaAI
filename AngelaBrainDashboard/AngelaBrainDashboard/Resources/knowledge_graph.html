@@ -268,7 +268,8 @@
             console.log('📊 Rendering graph with', data.nodes.length, 'nodes and', data.links.length, 'links');
 
             // Update stats
-            document.getElementById('stat-nodes').textContent = data.nodes.length;
+            const totalNodes = data.totalNodes || data.nodes.length;
+            document.getElementById('stat-nodes').textContent = data.nodes.length + ' / ' + totalNodes;
             document.getElementById('stat-edges').textContent = data.links.length;
             const categories = new Set(data.nodes.map(n => n.category).filter(c => c));
             document.getElementById('stat-categories').textContent = categories.size;

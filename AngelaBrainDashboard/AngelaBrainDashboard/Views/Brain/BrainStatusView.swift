@@ -1338,7 +1338,7 @@ class BrainStatusViewModel: ObservableObject {
                 return GraphLink(source: sourceId, target: targetId, strength: rel.strength)
             }
 
-            graphData = GraphData(nodes: graphNodes, links: graphLinks)
+            graphData = GraphData(nodes: graphNodes, links: graphLinks, totalNodes: brainStats.totalKnowledgeNodes)
             hasMoreNodes = nodes.count < brainStats.totalKnowledgeNodes
         } catch {
             print("❌ Knowledge graph: \(error)")

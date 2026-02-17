@@ -164,6 +164,44 @@ class ClaudeReasoningService:
             return await self._call_claude_api(system, user_message, max_tokens)
 
     # =========================================================================
+    # TOOL USE METHODS (Phase 2: Agent Dispatcher)
+    # =========================================================================
+
+    async def call_with_tools(
+        self, system: str, user_message: str,
+        tools: List[Dict[str, Any]], max_tokens: int = 1024,
+    ) -> Optional[Any]:
+        """
+        Call Claude API with native tool_use support.
+
+        Args:
+            system: System prompt
+            user_message: User message
+            tools: List of tool definitions in Anthropic format
+            max_tokens: Max tokens for response
+
+        Returns:
+            Full response object (caller handles tool_use blocks)
+        """
+        if not await self._ensure_claude():
+            return None
+
+        try:
+            import asyncio
+            response = await asyncio.to_thread(
+                self._claude_client.messages.create,
+                model=self._claude_model,
+                max_tokens=max_tokens,
+                system=system,
+                tools=tools,
+                messages=[{"role": "user", "content": user_message}],
+            )
+            return response
+        except Exception as e:
+            logger.error("Claude tool_use call failed: %s", e)
+            return None
+
+    # =========================================================================
     # PUBLIC METHODS
     # =========================================================================
 

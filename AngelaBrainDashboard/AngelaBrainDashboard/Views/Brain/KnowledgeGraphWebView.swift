@@ -27,6 +27,7 @@ struct GraphLink: Codable {
 struct GraphData: Codable {
     let nodes: [GraphNode]
     let links: [GraphLink]
+    let totalNodes: Int?
 }
 
 // MARK: - WebView Coordinator
@@ -181,7 +182,8 @@ struct KnowledgeGraphWebView_Previews: PreviewProvider {
                 GraphLink(source: "1", target: "2", strength: 1.0),
                 GraphLink(source: "1", target: "3", strength: 0.7),
                 GraphLink(source: "2", target: "4", strength: 0.6)
-            ]
+            ],
+            totalNodes: 10225
         )
 
         KnowledgeGraphWebView(graphData: sampleData) { id, name in

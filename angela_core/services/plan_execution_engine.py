@@ -263,8 +263,16 @@ class PlanExecutionEngine(BaseDBService):
     async def _dispatch_action(
         self, action_type: str, payload: Dict, step: Dict
     ) -> str:
-        """Dispatch to the appropriate service by action_type."""
+        """Dispatch to the appropriate service by action_type.
 
+        Routes:
+        - Known action_types → legacy handlers (backward compatible)
+        - 'auto' → AgentDispatcher (LLM selects tools)
+        - tool:<name> → ToolRegistry direct execution
+        - Unknown → try ToolRegistry, then fallback to error
+        """
+
+        # Legacy routes (backward compatible)
         if action_type == 'rag_search':
             return await self._action_rag_search(payload)
         elif action_type == 'telegram':
@@ -275,8 +283,13 @@ class PlanExecutionEngine(BaseDBService):
             return await self._action_proactive(payload)
         elif action_type == 'agent':
             return await self._action_agent(payload, step)
+        elif action_type == 'auto':
+            return await self._action_auto_dispatch(payload, step)
+        elif action_type.startswith('tool:'):
+            return await self._action_tool(action_type[5:], payload)
         else:
-            return f"unknown_action_type: {action_type}"
+            # Try tool registry as fallback
+            return await self._action_tool(action_type, payload)
 
     # ── Action Implementations ──
 
@@ -372,6 +385,29 @@ class PlanExecutionEngine(BaseDBService):
             return (result or "no_response")[:1000]
         except Exception as e:
             return f"agent_error: {e}"
+
+    async def _action_auto_dispatch(self, payload: Dict, step: Dict) -> str:
+        """Use AgentDispatcher to auto-select tools via LLM."""
+        intent = payload.get('intent', step.get('step_name', ''))
+        context = payload.get('context', '')
+
+        try:
+            from angela_core.services.agent_dispatcher import AgentDispatcher
+            dispatcher = AgentDispatcher()
+            result = await dispatcher.dispatch(intent, context)
+            return json.dumps(result.to_dict(), ensure_ascii=False, default=str)[:1000]
+        except Exception as e:
+            return f"auto_dispatch_error: {e}"
+
+    async def _action_tool(self, tool_name: str, payload: Dict) -> str:
+        """Execute a tool from the registry directly."""
+        try:
+            from angela_core.services.tool_registry import get_registry
+            registry = get_registry()
+            result = await registry.execute(tool_name, **payload)
+            return json.dumps(result.to_dict(), ensure_ascii=False, default=str)[:1000]
+        except Exception as e:
+            return f"tool_error: {e}"
 
     # ── Progress Tracking ──
 

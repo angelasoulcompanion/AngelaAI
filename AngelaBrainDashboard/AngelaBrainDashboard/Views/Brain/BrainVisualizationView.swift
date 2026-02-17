@@ -597,7 +597,7 @@ class BrainVisualizationViewModel: ObservableObject {
             )
         }
 
-        graphData = GraphData(nodes: graphNodes, links: graphLinks)
+        graphData = GraphData(nodes: graphNodes, links: graphLinks, totalNodes: brainStats?.totalKnowledgeNodes)
         print("📊 Built graph data: \(graphNodes.count) nodes, \(graphLinks.count) links (all IDs normalized to lowercase)")
     }
 }

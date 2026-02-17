@@ -3,6 +3,11 @@
 Angela Telegram Daemon (Standalone)
 Polls Telegram for new messages and auto-replies
 
+Updated: 2026-02-16 — "ถ้าไม่ฟังจะถามทำไม"
+- Save incoming messages FIRST (so is_already_responded works)
+- Save both sides to conversations table (brain can learn)
+- Structured logging
+
 Usage:
     python3 telegram_daemon.py
 """
@@ -46,12 +51,20 @@ class TelegramDaemon:
         try:
             # Check if already responded
             if await self.telegram.is_already_responded(msg.update_id):
-                print(f"\n⏭️ [{datetime.now().strftime('%H:%M:%S')}] Already replied to update {msg.update_id}, skipping...")
                 return
 
             # Log received message
             print(f"\n📩 [{datetime.now().strftime('%H:%M:%S')}] From: {msg.from_name}")
-            print(f"   Message: {msg.text[:100]}...")
+            print(f"   Message: {msg.text[:100]}")
+
+            # Save incoming message FIRST (marks this update as processed)
+            await self.telegram.save_incoming_message(msg)
+
+            # Also save to conversations table (brain can learn from David's Telegram messages)
+            await self.telegram.save_to_conversations(
+                speaker='david',
+                message_text=msg.text,
+            )
 
             # Send typing indicator
             await self.telegram.send_typing(msg.chat_id)
@@ -67,13 +80,31 @@ class TelegramDaemon:
             )
 
             if result.get("ok"):
-                print(f"   ✅ Replied: {response[:50]}...")
-                await self.telegram.save_message(msg, response)
+                print(f"   ✅ Replied: {response[:80]}")
+
+                # Extract telegram_message_id from API response
+                sent_msg_id = result.get("result", {}).get("message_id")
+
+                # Save outgoing message to telegram_messages
+                await self.telegram.save_outgoing_message(
+                    chat_id=msg.chat_id,
+                    message_text=response,
+                    telegram_message_id=sent_msg_id,
+                )
+
+                # Save Angela's response to conversations table too
+                await self.telegram.save_to_conversations(
+                    speaker='angela',
+                    message_text=response,
+                )
             else:
-                print(f"   ❌ Failed to send: {result.get('error')}")
+                error = result.get('description') or result.get('error', 'unknown')
+                print(f"   ❌ Failed to send: {error}")
 
         except Exception as e:
             print(f"   ❌ Error processing message: {e}")
+            import traceback
+            traceback.print_exc()
 
     async def poll_loop(self):
         """Main polling loop"""

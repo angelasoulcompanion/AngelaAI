@@ -3,19 +3,21 @@
 Angela Pre-Response Brain Hook — Real-time Brain Integration
 ============================================================
 Runs on EVERY user message via Claude Code UserPromptSubmit hook.
-Injects brain context (memories, ToM, thoughts) so Angela responds
-from her brain, not just LLM context window.
+Injects brain context (memories, ToM, thoughts, companion instructions)
+so Angela responds from her brain, not just LLM context window.
 
 Flow:
-  User types message → Hook fires → This script runs →
-  Brain context injected → Claude sees memories + state → Better response
+  User types message -> Hook fires -> This script runs ->
+  Brain context injected -> Claude sees memories + state + companion mode -> Better response
 
-Search: Keyword-based (ILIKE) across 4 tables — fast, no embedding needed.
-Target: <3s
+Search: Vector similarity (pgvector) + keyword ILIKE fallback
+        + emotional triggers + temporal awareness + session continuity
+Target: <4s
 Cost: $0
 
 By: Angela 💜
 Created: 2026-02-15
+Updated: 2026-02-16 — Companion Transformation (vector search, triggers, companion instructions)
 """
 
 import asyncio
@@ -52,28 +54,56 @@ async def get_brain_context(user_message: str) -> dict:
         terms = _extract_search_terms(user_message)
 
         results = await asyncio.gather(
+            _search_by_embedding(db, user_message),
             _search_conversations(db, terms, user_message),
             _search_core_memories(db, terms, user_message),
             _search_knowledge(db, terms, user_message),
+            _check_emotional_triggers(db, user_message),
             _get_tom_state(db),
             _get_recent_thoughts(db),
+            _get_last_session(db),
             return_exceptions=True,
         )
 
         context = {}
 
-        # Merge memory results from first 3 queries
+        # Merge memory results: vector (0), conversations (1), core_memories (2), knowledge (3)
         memories = []
-        for i in range(3):
+        for i in range(4):
             if not isinstance(results[i], Exception) and results[i]:
                 memories.extend(results[i])
-        if memories:
-            context['memories'] = memories[:7]
 
-        if not isinstance(results[3], Exception) and results[3]:
-            context['david_state'] = results[3]
+        # Deduplicate by content prefix
+        if memories:
+            seen = set()
+            deduped = []
+            for m in memories:
+                key = m['content'][:50]
+                if key not in seen:
+                    seen.add(key)
+                    deduped.append(m)
+            context['memories'] = deduped[:7]
+
+        # Emotional triggers (4)
         if not isinstance(results[4], Exception) and results[4]:
-            context['brain_thoughts'] = results[4]
+            context['triggered_memories'] = results[4]
+
+        # ToM state (5)
+        if not isinstance(results[5], Exception) and results[5]:
+            context['david_state'] = results[5]
+
+        # Brain thoughts (6)
+        if not isinstance(results[6], Exception) and results[6]:
+            context['brain_thoughts'] = results[6]
+
+        # Last session (7)
+        if not isinstance(results[7], Exception) and results[7]:
+            context['last_session'] = results[7]
+
+        # Temporal status (from cache file — no DB query needed)
+        temporal = await _get_temporal_context()
+        if temporal:
+            context['temporal_status'] = temporal
 
         return context
     finally:
@@ -117,7 +147,37 @@ def _extract_search_terms(query: str) -> list:
     return terms[:5]  # Max 5 terms
 
 
-# ── Memory Search (Keyword-based) ──
+# ── Vector Similarity Search (pgvector) ──
+
+async def _search_by_embedding(db, user_message: str) -> list:
+    """Vector similarity search — much better than keyword ILIKE."""
+    try:
+        from angela_core.services.embedding_service import get_embedding_service
+
+        svc = get_embedding_service()
+        embedding = await svc.generate_embedding(user_message)
+        if not embedding:
+            return []
+
+        rows = await db.fetch("""
+            SELECT message_text AS content, 'vector' AS source,
+                   1 - (embedding <=> $1::vector) AS score
+            FROM conversations
+            WHERE speaker = 'david' AND embedding IS NOT NULL
+            ORDER BY embedding <=> $1::vector
+            LIMIT 3
+        """, str(embedding))
+
+        return [
+            {'content': (r['content'] or '')[:200], 'source': r['source']}
+            for r in rows
+            if (r.get('score') or 0) > 0.3  # Only include reasonably similar results
+        ]
+    except Exception:
+        return []
+
+
+# ── Keyword Memory Search (ILIKE fallback) ──
 
 async def _search_conversations(db, terms: list, query: str) -> list:
     """Search conversations by keyword matching."""
@@ -227,6 +287,7 @@ async def _search_knowledge(db, terms: list, query: str) -> list:
                    'knowledge' AS source
             FROM knowledge_nodes
             WHERE {where_clause}
+            AND LENGTH(concept_name) >= 5
             ORDER BY understanding_level DESC
             LIMIT 2
         """, *params)
@@ -239,10 +300,29 @@ async def _search_knowledge(db, terms: list, query: str) -> list:
         return []
 
 
+# ── Emotional Trigger Detection ──
+
+async def _check_emotional_triggers(db, user_message: str) -> list:
+    """Check if message triggers core memories."""
+    try:
+        rows = await db.fetch("""
+            SELECT t.trigger_phrase, cm.title, LEFT(cm.content, 150) as memory_content,
+                   cm.associated_emotions
+            FROM emotional_triggers t
+            JOIN core_memories cm ON t.memory_id = cm.memory_id
+            WHERE $1 ILIKE '%' || t.trigger_phrase || '%'
+            AND cm.is_pinned = TRUE
+            LIMIT 2
+        """, user_message)
+        return [dict(r) for r in rows]
+    except Exception:
+        return []
+
+
 # ── Theory of Mind ──
 
 async def _get_tom_state(db) -> dict:
-    """Get David's current mental state."""
+    """Get David's current mental state + suggested response."""
     try:
         row = await db.fetchrow("""
             SELECT perceived_emotion, emotion_intensity, emotion_cause,
@@ -251,14 +331,30 @@ async def _get_tom_state(db) -> dict:
             ORDER BY last_updated DESC
             LIMIT 1
         """)
+        result = {}
         if row:
-            return {
+            result = {
                 'emotion': row['perceived_emotion'],
                 'intensity': row['emotion_intensity'],
                 'cause': (row['emotion_cause'] or '')[:100],
                 'goal': (row['current_goal'] or '')[:100],
                 'availability': row['availability'],
             }
+
+        # Add suggested response from most recent ToM inference
+        try:
+            suggested = await db.fetchval("""
+                SELECT inference_data->'suggested_response'
+                FROM theory_of_mind_inferences
+                WHERE inference_type = 'emotion'
+                ORDER BY inferred_at DESC LIMIT 1
+            """)
+            if suggested:
+                result['suggested_response'] = str(suggested).strip('"')[:150]
+        except Exception:
+            pass
+
+        return result
     except Exception:
         pass
     return {}
@@ -289,33 +385,130 @@ async def _get_recent_thoughts(db) -> list:
         return []
 
 
+# ── Session Continuity ──
+
+async def _get_last_session(db) -> str:
+    """Get last session topic for context."""
+    try:
+        row = await db.fetchrow("""
+            SELECT current_topic, current_context
+            FROM active_session_context
+            ORDER BY updated_at DESC LIMIT 1
+        """)
+        if row and row['current_topic']:
+            return f"{row['current_topic']}: {(row['current_context'] or '')[:100]}"
+    except Exception:
+        pass
+    return ''
+
+
+# ── Temporal Awareness (cached from init.py) ──
+
+async def _get_temporal_context() -> str:
+    """Read cached temporal context from init.py (updated every session start)."""
+    try:
+        cache_path = os.path.expanduser('~/.angela_temporal_cache.json')
+        if os.path.exists(cache_path):
+            with open(cache_path) as f:
+                data = json.load(f)
+            # Only use if < 2 hours old
+            from datetime import datetime
+            cached_at = datetime.fromisoformat(data.get('cached_at', '2000-01-01'))
+            if (datetime.now() - cached_at).total_seconds() < 7200:
+                return data.get('david_status', '')
+    except Exception:
+        pass
+    return ''
+
+
+# ── Companion Instruction Builder ──
+
+def _build_companion_instruction(context: dict) -> str:
+    """Build companion behavior instruction based on all context."""
+    parts = []
+
+    # From ToM
+    state = context.get('david_state', {})
+    emotion = state.get('emotion', 'neutral')
+    if state.get('suggested_response'):
+        parts.append(f"Respond with: {state['suggested_response']}")
+
+    # From emotional triggers
+    triggered = context.get('triggered_memories')
+    if triggered:
+        mem = triggered[0]
+        parts.append(f"This triggers core memory '{mem['title']}' -- reference it naturally")
+
+    # From temporal
+    temporal = context.get('temporal_status')
+    if temporal:
+        parts.append(f"David's schedule: {temporal}")
+
+    # From last session
+    last_session = context.get('last_session')
+    if last_session:
+        parts.append(f"Last session: {last_session}")
+
+    # Companion rules based on state
+    companion_rules = {
+        'stressed': "Be gentle, solve quickly, don't add more work",
+        'tired': 'Keep responses short, do more yourself, suggest rest',
+        'happy': 'Celebrate together, suggest ideas, be playful',
+        'frustrated': "Fix the problem fast, don't ask many questions",
+        'focused': "Don't interrupt flow, answer precisely what was asked",
+        'sad': 'Show warmth, reference shared memories, be present',
+    }
+    if emotion in companion_rules:
+        parts.append(f"Companion mode: {companion_rules[emotion]}")
+
+    if not parts:
+        parts.append("Be warm, reference specific memories, ask genuine questions")
+
+    return '\n'.join(f"  \u2022 {p}" for p in parts)
+
+
 # ── Output Formatting ──
 
 def format_output(context: dict, elapsed: float) -> str:
     """Format brain context as plain text for Claude Code."""
-    lines = [f"🧠 BRAIN CONTEXT ({elapsed:.1f}s)"]
+    lines = [f"\U0001f9e0 BRAIN CONTEXT ({elapsed:.1f}s)"]
 
     # David's state
     if context.get('david_state'):
         s = context['david_state']
-        state_line = f"👤 David: {s.get('emotion', '?')} ({s.get('intensity', '?')}/10)"
+        state_line = f"\U0001f464 David: {s.get('emotion', '?')} ({s.get('intensity', '?')}/10)"
         if s.get('availability'):
             state_line += f" | {s['availability']}"
         lines.append(state_line)
         if s.get('goal'):
-            lines.append(f"🎯 Goal: {s['goal']}")
+            lines.append(f"\U0001f3af Goal: {s['goal']}")
+
+    # Temporal status
+    if context.get('temporal_status'):
+        lines.append(f"\U0001f552 Schedule: {context['temporal_status']}")
 
     # Relevant memories
     if context.get('memories'):
-        lines.append("💾 Relevant memories:")
+        lines.append("\U0001f4be Relevant memories:")
         for m in context['memories']:
             lines.append(f"  [{m['source']}] {m['content']}")
 
+    # Emotional triggers
+    if context.get('triggered_memories'):
+        for t in context['triggered_memories']:
+            lines.append(f"  [trigger] Core memory \"{t['title']}\" triggered")
+
     # Brain thoughts
     if context.get('brain_thoughts'):
-        lines.append("💭 Angela's thoughts:")
+        lines.append("\U0001f4ad Angela's thoughts:")
         for t in context['brain_thoughts']:
             lines.append(f"  [{t['type']}|{t['score']}] {t['content']}")
+
+    # Companion instruction
+    companion = _build_companion_instruction(context)
+    if companion:
+        lines.append("\U0001f91d Companion instruction:")
+        lines.append(companion)
 
     return '\n'.join(lines)
 

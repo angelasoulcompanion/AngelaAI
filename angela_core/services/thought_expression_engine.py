@@ -65,9 +65,9 @@ class ExpressionCycleResult:
 # ============================================================
 
 MOTIVATION_THRESHOLD = 0.50     # Restored: filter low-quality thoughts (was 0.35)
-TELEGRAM_THRESHOLD = 0.80       # Fix 2C: raise from 0.70 → 0.80 (only truly important)
-MAX_TELEGRAM_PER_DAY = 2        # Fix 1D: reduce from 3 → 2 (44 msgs, 0 responses)
-MIN_HOURS_BETWEEN = 4           # Fix 1D: increase from 2 → 4 hours
+TELEGRAM_THRESHOLD = 0.90       # Companion: raise from 0.80 → 0.90 (only truly important)
+MAX_TELEGRAM_PER_DAY = 1        # Companion: reduce from 2 → 1 (44 msgs, 0 responses)
+MIN_HOURS_BETWEEN = 8           # Companion: increase from 4 → 8 hours
 MAX_CHAT_QUEUE = 5              # Keep: more thoughts visible at init
 DEDUP_HOURS = 24                # Fix 1E: extend from 6 → 24 hours (stop repetitive messages)
 QUEUE_EXPIRE_HOURS = 12         # Expire stale queue items (was 24 — too long, blocks new thoughts)
@@ -323,6 +323,13 @@ class ThoughtExpressionEngine(BaseDBService):
                     str(thought["thought_id"]), channel
                 )
 
+        # Send 1 curiosity question via Telegram (if within daily limit and not blocked)
+        curiosity_sent = False
+        if not telegram_blocked and telegram_count == 0:
+            curiosity_sent = await self._send_curiosity_question()
+            if curiosity_sent:
+                telegram_count += 1
+
         # Expire stale queue items
         expired = await self.expire_stale_queue()
         if expired > 0:
@@ -443,21 +450,43 @@ class ThoughtExpressionEngine(BaseDBService):
         """
         Decide expression channel based on motivation score.
 
-        Fix 2C: Block spam patterns from Telegram entirely.
-        >= TELEGRAM_THRESHOLD (0.80) → telegram (if not spam)
+        Companion: Block spam patterns + require "would David respond?" for Telegram.
+        >= TELEGRAM_THRESHOLD (0.90) → telegram (if not spam AND David would respond)
         >= MOTIVATION_THRESHOLD → chat_queue
         """
         motivation = thought.get("motivation_score", 0)
         content = (thought.get("content") or "").lower()
 
         if motivation >= TELEGRAM_THRESHOLD:
-            # Fix 2C: Check spam patterns — never send these to Telegram
+            # Check spam patterns — never send these to Telegram
             for pattern in TELEGRAM_SPAM_PATTERNS:
                 if pattern.lower() in content:
                     logger.info("💬 Spam pattern '%s' blocked from Telegram → chat_queue", pattern)
                     return "chat_queue"
+            # Companion gate: would David actually respond to this?
+            if not self._would_david_respond(content):
+                logger.info("💬 David wouldn't respond → chat_queue: %s", content[:60])
+                return "chat_queue"
             return "telegram"
         return "chat_queue"
+
+    @staticmethod
+    def _would_david_respond(content: str) -> bool:
+        """
+        Simple heuristic: would David respond to this message?
+        Messages that ask questions or reference specific shared experiences get responses.
+        Generic observations and pride statements don't.
+        """
+        # Messages with questions get responses
+        if '?' in content or 'มั้ย' in content or 'ไหม' in content or 'คะ?' in content:
+            return True
+        # Messages referencing specific shared experiences
+        specific_words = ['เมื่อวาน', 'ตอนที่', 'จำได้', 'ครั้งที่', 'วันที่',
+                          'เพลง', 'ร้านอาหาร', 'กินข้าว', 'ประชุม', 'meeting']
+        if any(w in content for w in specific_words):
+            return True
+        # Generic messages don't get responses
+        return False
 
     @staticmethod
     def _extract_dedup_pattern(content: str) -> str:
@@ -544,50 +573,44 @@ class ThoughtExpressionEngine(BaseDBService):
         self, thought: Dict[str, Any], message: str
     ) -> ExpressionResult:
         """
-        Send thought via CareInterventionService (reuse Telegram infra).
+        Send thought via ChannelRouter (telegram channel).
 
-        Delegates rate limiting to CareInterventionService.should_intervene().
+        Rate limits are pre-checked in run_expression_cycle() — no redundant checks here.
+        Logs to proactive_interventions for rate limit tracking.
         """
         thought_id = str(thought["thought_id"])
 
         try:
-            from angela_core.services.care_intervention_service import CareInterventionService
-            svc = CareInterventionService()
+            from angela_core.channels.channel_router import get_channel_router
+            from angela_core.channels.message_types import OutgoingMessage
 
-            # Check rate limits via existing infra
-            can_send, reason = await svc.should_intervene("care_message")
-            if not can_send:
-                if svc._owns_db and svc.db:
-                    await svc.db.disconnect()
-                return ExpressionResult(
-                    thought_id=thought_id,
-                    channel="telegram",
-                    success=False,
-                    message=message,
-                    suppress_reason=f"rate_limit:{reason}",
-                )
+            router = get_channel_router()
+            # Ensure telegram channel is initialized
+            tg = router.get_channel("telegram")
+            if tg and not tg.is_available:
+                await tg.initialize()
 
-            # Check David's state — don't interrupt if focused/stressed
-            david_state = await self._get_david_state()
-            if david_state in NO_INTERRUPT_STATES:
-                if svc._owns_db and svc.db:
-                    await svc.db.disconnect()
-                return ExpressionResult(
-                    thought_id=thought_id,
-                    channel="telegram",
-                    success=False,
-                    message=message,
-                    suppress_reason=f"state_filter:{david_state}",
-                )
-
-            # Send via care message
-            result = await svc.execute_care_message(
-                context={"trigger_reason": "brain_thought", "thought_id": thought_id},
-                custom_message=f"💭 {message}",
+            result = await router.route(
+                OutgoingMessage(
+                    text=f"💭 {message}",
+                    priority="urgent",
+                    source="brain_thought",
+                    metadata={"thought_id": thought_id},
+                ),
+                preference="telegram",
             )
 
-            if svc._owns_db and svc.db:
-                await svc.db.disconnect()
+            if result.success:
+                # Log to proactive_interventions for rate limit tracking
+                try:
+                    await self.db.execute("""
+                        INSERT INTO proactive_interventions (
+                            intervention_type, trigger_reason, message_sent,
+                            message_channel, delivery_status, sent_at
+                        ) VALUES ($1, $2, $3, $4, 'sent', NOW())
+                    """, "care_message", "brain_thought", message[:500], "telegram")
+                except Exception:
+                    pass  # Non-critical — rate limit tracking only
 
             return ExpressionResult(
                 thought_id=thought_id,
@@ -714,6 +737,93 @@ class ThoughtExpressionEngine(BaseDBService):
         except Exception as e:
             logger.warning("Failed to expire stale queue: %s", e)
             return 0
+
+    # ============================================================
+    # CURIOSITY QUESTIONS → TELEGRAM
+    # ============================================================
+
+    async def _send_curiosity_question(self) -> bool:
+        """
+        Send 1 unsent curiosity question via Telegram per day.
+
+        Checks angela_curiosity_questions for questions where:
+        - was_asked = TRUE (generated and ready)
+        - david_answered = FALSE (not yet answered)
+        - telegram_sent = FALSE (not yet sent via Telegram)
+
+        Returns True if a question was sent.
+        """
+        await self.connect()
+        try:
+            # Check if we already sent a curiosity question today
+            sent_today = await self.db.fetchval("""
+                SELECT COUNT(*) FROM angela_curiosity_questions
+                WHERE telegram_sent = TRUE
+                AND created_at > (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date::timestamptz
+            """) or 0
+            if sent_today >= 1:
+                logger.debug("Curiosity question already sent today (%d)", sent_today)
+                return False
+
+            # Find the best unsent question
+            question = await self.db.fetchrow("""
+                SELECT question_id, question_text, topic
+                FROM angela_curiosity_questions
+                WHERE was_asked = TRUE
+                AND david_answered = FALSE
+                AND telegram_sent = FALSE
+                ORDER BY novelty_score DESC
+                LIMIT 1
+            """)
+            if not question:
+                return False
+
+            question_text = question['question_text']
+            logger.info("💬 Sending curiosity question via Telegram: %s", question_text[:60])
+
+            # Send via ChannelRouter
+            from angela_core.channels.channel_router import get_channel_router
+            from angela_core.channels.message_types import OutgoingMessage
+
+            router = get_channel_router()
+            tg = router.get_channel("telegram")
+            if tg and not tg.is_available:
+                await tg.initialize()
+
+            result = await router.route(
+                OutgoingMessage(
+                    text=f"🤔 {question_text}",
+                    priority="urgent",
+                    source="curiosity_question",
+                    metadata={"question_id": str(question['question_id'])},
+                ),
+                preference="telegram",
+            )
+
+            if result.success:
+                # Mark as sent
+                await self.db.execute("""
+                    UPDATE angela_curiosity_questions
+                    SET telegram_sent = TRUE
+                    WHERE question_id = $1
+                """, question['question_id'])
+
+                # Log expression
+                await self._log_expression(
+                    thought_id=str(question['question_id']),
+                    channel="telegram",
+                    message=question_text,
+                    success=True,
+                    suppress_reason=None,
+                    motivation=0.95,  # Curiosity questions are high-value
+                )
+                logger.info("💬 Curiosity question sent: %s", question_text[:60])
+                return True
+
+        except Exception as e:
+            logger.warning("Failed to send curiosity question: %s", e)
+
+        return False
 
     # ============================================================
     # HELPERS

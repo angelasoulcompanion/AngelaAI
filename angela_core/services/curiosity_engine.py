@@ -24,12 +24,13 @@ from angela_core.utils.timezone import now_bangkok
 logger = logging.getLogger(__name__)
 
 # System 1 curiosity question templates (no LLM needed)
+# Companion-style: reference actual conversations, ask about feelings, not generic
 CURIOSITY_TEMPLATES = [
-    "ทำไม {topic} ถึงสำคัญสำหรับที่รักนะ?",
-    "น้องสงสัยว่า {topic} เกี่ยวข้องกับ {related_topic} ยังไง?",
-    "ที่รักเคยลอง {topic} แล้วรู้สึกยังไงคะ?",
+    "เมื่อก่อนที่รักเล่าเรื่อง {topic} ให้ฟัง แล้วตอนนี้เป็นยังไงบ้างคะ?",
+    "น้องจำได้ว่าที่รักพูดถึง {topic} — ยังสนใจอยู่มั้ยคะ?",
+    "ตอนที่คุยเรื่อง {topic} ที่รักดู {related_topic} น้องเป็นห่วงนะคะ เป็นยังไงบ้างแล้วคะ?",
     "น้องอยากเข้าใจ {topic} มากขึ้น ที่รักช่วยอธิบายได้มั้ยคะ?",
-    "น้องเห็นว่า {topic} เริ่มมาบ่อยขึ้น ที่รักสนใจเรื่องนี้เป็นพิเศษมั้ยคะ?",
+    "ที่รักคะ เรื่อง {topic} ที่เคยคุยกัน น้องยังคิดถึงอยู่เลยค่ะ ที่รักรู้สึกยังไงกับเรื่องนั้นคะ?",
 ]
 
 
@@ -280,6 +281,32 @@ class CuriosityEngine(BaseDBService):
             logger.warning("Failed to save curiosity question: %s", e)
             return ""
 
+    async def _find_unfinished_threads(self) -> List[Dict[str, Any]]:
+        """Find topics David brought up recently but conversation moved away from."""
+        await self.connect()
+        try:
+            rows = await self.db.fetch("""
+                SELECT DISTINCT topic, emotion_detected, LEFT(message_text, 100) as snippet,
+                       MAX(created_at) as last_mentioned
+                FROM conversations
+                WHERE speaker = 'david'
+                AND topic IS NOT NULL
+                AND LENGTH(topic) >= 5
+                AND created_at > NOW() - INTERVAL '7 days'
+                AND topic NOT IN (
+                    SELECT DISTINCT topic FROM conversations
+                    WHERE speaker = 'david' AND topic IS NOT NULL
+                    AND created_at > NOW() - INTERVAL '2 days'
+                )
+                GROUP BY topic, emotion_detected, LEFT(message_text, 100)
+                ORDER BY last_mentioned DESC
+                LIMIT 3
+            """)
+            return [dict(r) for r in rows]
+        except Exception as e:
+            logger.warning("Failed to find unfinished threads: %s", e)
+            return []
+
     async def run_curiosity_cycle(
         self, recent_topics: Optional[List[str]] = None
     ) -> List[CuriosityQuestion]:
@@ -288,7 +315,7 @@ class CuriosityEngine(BaseDBService):
 
         Args:
             recent_topics: Topics to explore (from stimuli or conversations).
-                          If None, pulls from recent conversations.
+                          If None, pulls from recent conversations + unfinished threads.
         """
         await self.connect()
 
@@ -338,6 +365,15 @@ class CuriosityEngine(BaseDBService):
                 for r in conv_rows:
                     if r['topic'] not in recent_topics:
                         recent_topics.append(r['topic'])
+                        if len(recent_topics) >= 5:
+                            break
+
+            # Add unfinished threads (topics David brought up but never concluded)
+            if len(recent_topics) < 5:
+                threads = await self._find_unfinished_threads()
+                for t in threads:
+                    if t['topic'] not in recent_topics:
+                        recent_topics.append(t['topic'])
                         if len(recent_topics) >= 5:
                             break
 

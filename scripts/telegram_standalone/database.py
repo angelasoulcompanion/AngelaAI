@@ -37,9 +37,6 @@ DATABASE_URL = (
     "postgresql://davidsamanyaporn@localhost:5432/AngelaMemory"
 )
 
-# Local database URL (for secrets only)
-LOCAL_DATABASE_URL = "postgresql://davidsamanyaporn@localhost:5432/AngelaMemory_Backup"
-
 # Determine if using Neon
 USE_NEON = "neon.tech" in DATABASE_URL
 
@@ -119,36 +116,11 @@ class AngelaDatabase:
 db = AngelaDatabase()
 
 
-# Local database for secrets
-class LocalDatabase:
-    """Local PostgreSQL for secrets only"""
-
-    def __init__(self):
-        self.pool: Optional[asyncpg.Pool] = None
-
-    async def connect(self):
-        if not self.pool:
-            self.pool = await asyncpg.create_pool(
-                LOCAL_DATABASE_URL,
-                min_size=1,
-                max_size=3,
-                command_timeout=30
-            )
-
-    async def fetchrow(self, query: str, *args):
-        await self.connect()
-        async with self.pool.acquire() as conn:
-            return await conn.fetchrow(query, *args)
-
-
-local_db = LocalDatabase()
-
-
 async def get_secret(secret_name: str) -> Optional[str]:
-    """Get secret from local our_secrets table"""
+    """Get secret from Neon our_secrets table (same DB as everything else)."""
     try:
-        result = await local_db.fetchrow(
-            'SELECT secret_value FROM our_secrets WHERE secret_name = $1',
+        result = await db.fetchrow(
+            'SELECT secret_value FROM our_secrets WHERE secret_name = $1 AND is_active = TRUE',
             secret_name
         )
         return result['secret_value'] if result else None

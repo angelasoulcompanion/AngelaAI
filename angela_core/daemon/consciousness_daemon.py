@@ -69,6 +69,16 @@ from angela_core.daemon.tasks.prediction_tasks import PredictionTasksMixin
 from angela_core.daemon.tasks.proactive_tasks import ProactiveTasksMixin
 from angela_core.daemon.tasks.maintenance_tasks import MaintenanceTasksMixin
 
+# Event Bus + Tool Registry (Phase 3)
+from angela_core.services.event_bus import get_event_bus
+from angela_core.services.tool_registry import get_registry
+
+# Skills System (OpenClaw Skills)
+from angela_core.skills.skill_registry import get_skill_registry
+
+# Channel Router (OpenClaw Multi-Channel Gateway)
+from angela_core.channels.channel_router import get_channel_router
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -119,6 +129,11 @@ class ConsciousnessDaemon(
         self.keep_sync_service: Optional[GoogleKeepSyncService] = None
         self.rlhf_orchestrator: Optional[RLHFOrchestrator] = None
         self.unified_processor: Optional[UnifiedConversationProcessor] = None
+        self.event_bus = None
+        self.tool_registry = None
+        self.skill_registry = None
+        self.channel_router = None
+        self._event_listeners = None
         self.running = False
 
     async def initialize(self):
@@ -154,12 +169,75 @@ class ConsciousnessDaemon(
         logger.info("   ✅ Google Keep Sync Service initialized 📝")
         logger.info("   ✅ RLHF Orchestrator initialized 🎯")
         logger.info("   ✅ Unified Conversation Processor initialized 🔬")
+
+        # Tool Registry + Event Bus (Phase 3: OpenClaw Body)
+        self.tool_registry = get_registry()
+        logger.info("   ✅ Tool Registry initialized (%d built-in tools) 🔧", self.tool_registry.tool_count)
+
+        # Tool Discovery (Phase 4: scan system for CLI tools, packages, API keys)
+        try:
+            from angela_core.services.tool_discovery import ToolDiscovery
+            discovery = ToolDiscovery(self.tool_registry)
+            discovery_report = await discovery.scan()
+            logger.info("   ✅ Tool Discovery: +%d tools found (CLI=%d, pkg=%d, keys=%d) 🔍",
+                        discovery_report["total_discovered"],
+                        discovery_report["cli"]["found"],
+                        discovery_report["packages"]["found"],
+                        discovery_report["api_keys"]["found"])
+        except Exception as e:
+            logger.warning("   ⚠️ Tool Discovery failed (non-critical): %s", e)
+
+        self.event_bus = get_event_bus()
+        try:
+            from angela_core.services.event_listeners import setup_default_listeners
+            self._event_listeners = setup_default_listeners(self.event_bus)
+            await self.event_bus.start()
+            logger.info("   ✅ Event Bus started 📡")
+        except Exception as e:
+            logger.warning("   ⚠️ Event Bus setup failed (non-critical): %s", e)
+
+        # Channel Router (OpenClaw Multi-Channel Gateway)
+        self.channel_router = get_channel_router()
+        try:
+            ch_status = await self.channel_router.initialize_all()
+            available = sum(1 for v in ch_status.values() if v)
+            logger.info("   ✅ Channel Router initialized (%d/%d channels) 📡",
+                        available, len(ch_status))
+        except Exception as e:
+            logger.warning("   ⚠️ Channel Router init failed (non-critical): %s", e)
+
+        # Skills System (OpenClaw hot-loadable plugins)
+        self.skill_registry = get_skill_registry()
+        try:
+            skill_count = await self.skill_registry.load_all_skills()
+            logger.info("   ✅ Skill Registry loaded (%d skills) 🧩", skill_count)
+        except Exception as e:
+            logger.warning("   ⚠️ Skill loading failed (non-critical): %s", e)
+
         logger.info("💫 Consciousness Daemon ready!")
 
     async def shutdown(self):
         """Graceful shutdown"""
         logger.info("🛑 Shutting down Consciousness Daemon...")
         self.running = False
+
+        # Stop event bus + close channels
+        if self.event_bus:
+            await self.event_bus.stop()
+        if self.channel_router:
+            await self.channel_router.close_all()
+
+        # Sync tool stats + skills to DB
+        if self.tool_registry and self.db:
+            try:
+                await self.tool_registry.sync_to_db(self.db)
+            except Exception:
+                pass
+        if self.skill_registry and self.db:
+            try:
+                await self.skill_registry.sync_to_db(self.db)
+            except Exception:
+                pass
 
         if self.unified_processor:
             await self.unified_processor.disconnect()
@@ -299,6 +377,19 @@ class ConsciousnessDaemon(
         results['proactive_actions'] = await self.run_proactive_actions()
         results['plan_generation'] = await self.run_plan_generation()
         results['plan_execution'] = await self.run_plan_execution()
+
+        # Run scheduled skills (OpenClaw Skills System)
+        if self.skill_registry:
+            try:
+                skill_results = await self.skill_registry.check_and_run_scheduled()
+                results['scheduled_skills'] = {
+                    'success': True,
+                    'executed': len(skill_results),
+                    'details': skill_results,
+                }
+            except Exception as e:
+                logger.error("Scheduled skills error: %s", e)
+                results['scheduled_skills'] = {'success': False, 'error': str(e)}
 
         logger.info("\n" + "=" * 60)
         logger.info("✅ All tasks complete!")
