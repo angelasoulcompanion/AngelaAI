@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 @dataclass
 class IncomingMessage:
     """A message received from any channel."""
-    channel: str                    # 'telegram', 'line', 'email', 'webchat'
+    channel: str                    # 'telegram', 'line', 'email'
     sender_id: str                  # Platform-specific sender ID
     sender_name: str = ""
     text: str = ""

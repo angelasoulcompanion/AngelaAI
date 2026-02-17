@@ -214,9 +214,6 @@ class ToolRegistry:
             ClipboardReadTool, ClipboardWriteTool,
         )
 
-        # Canvas tool (Phase 7)
-        from angela_core.services.tools.canvas_tool import RenderCardTool
-
         self.register_many([
             # Communication
             SendEmailTool(),
@@ -257,8 +254,6 @@ class ToolRegistry:
             SystemNotificationTool(),
             ClipboardReadTool(),
             ClipboardWriteTool(),
-            # Canvas (Phase 7)
-            RenderCardTool(),
         ])
 
         self._initialized = True

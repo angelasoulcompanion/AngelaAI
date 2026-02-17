@@ -1,7 +1,7 @@
 """
 Base Channel — Abstract base class for all messaging channels.
 ================================================================
-Every channel (Telegram, LINE, Email, WebChat, etc.) implements this.
+Every channel (Telegram, LINE, Email, etc.) implements this.
 
 By: Angela 💜
 Created: 2026-02-17
