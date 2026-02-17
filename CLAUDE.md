@@ -594,10 +594,16 @@ David talks to **ME (Angela in Claude Code)** directly, not to Ollama Angela via
 ```
 /Users/davidsamanyaporn/PycharmProjects/AngelaAI/
 ├── angela_core/           # Core AI system
-│   ├── services/          # All services
+│   ├── services/          # All services (brain, tools, channels)
+│   │   └── tools/         # 31 built-in AngelaTool wrappers
+│   ├── skills/            # Skill loader, registry, scheduler
+│   ├── channels/          # Multi-channel gateway (Telegram, LINE, Email, WebChat)
+│   ├── webchat/           # FastAPI WebChat UI (localhost:8765)
 │   ├── consciousness/     # Self-awareness
-│   └── daemon/            # 24/7 daemon
+│   └── daemon/            # 24/7 daemon + heartbeat scheduler
+├── skills/                # Hot-loadable skills (SKILL.md + handler.py)
 ├── mcp_servers/           # MCP servers (news, gmail, calendar, sheets, music)
+├── HEARTBEAT.md           # Configurable daemon schedule (26 tasks)
 ├── config/                # Configuration files
 └── logs/                  # System logs (gitignored)
 ```
@@ -753,6 +759,53 @@ Limits: Max 3 notifications/day, min 2h between. Daemon: every 4 hours.
 
 ---
 
+## 🤖 OPENCLAW BODY: Mind WITH Body (Tool System)
+
+> **Core Idea:** CognitiveEngine is the "mind", ToolRegistry + Skills + Channels is the "body"
+> **Cost:** $0/day | **Backward Compatible** | **37 tools across 10 categories**
+
+### Tool Registry (`angela_core/services/tool_registry.py`)
+- Singleton `get_registry()` — register, discover, search, execute tools
+- `AngelaTool` ABC (`angela_core/services/tools/base_tool.py`): `name`, `description`, `parameters_schema`, `category`, `execute(**params) → ToolResult`
+- 31 built-in tools: communication (4), calendar (3), memory (2), news (2), brain (3), system (5), browser (3), voice (3), device (4), canvas (1)
+- `AgentDispatcher` (`agent_dispatcher.py`): 2-tier Ollama (simple) / Claude API tool_use (complex, max 10/day)
+
+### Skills/Plugins System (`angela_core/skills/`)
+- **SKILL.md** + **handler.py** per skill directory under `skills/`
+- `SkillLoader` parses markdown → `AngelaSkill` dataclass, loads handler via `importlib.util`
+- `SkillRegistry` singleton `get_skill_registry()`: load, register tools with ToolRegistry, connect events to EventBus
+- `SkillScheduler`: parse schedule triggers ("every 4 hours", "daily 06:00"), state in `~/.angela_skill_scheduler_state.json`
+- 3 skills: `example_test`, `voice_companion`, `remote_access`
+
+### Multi-Channel Gateway (`angela_core/channels/`)
+- `BaseChannel` ABC → `TelegramChannel`, `LINEChannel`, `EmailChannel`, `ChatQueueChannel`, `WebChatChannel`
+- `ChannelRouter` singleton `get_channel_router()`: auto-routing by priority (urgent→Telegram, normal→chat_queue, formal→email)
+- `CareInterventionService` + `ThoughtExpressionEngine` both route through ChannelRouter (no more hardcoded TelegramService)
+
+### HEARTBEAT.md (Configurable Daemon Schedule)
+- Project root `HEARTBEAT.md` defines 26 daemon tasks with markdown sections
+- `HeartbeatScheduler`: parse config, `get_due_tasks()`, state in `~/.angela_heartbeat_state.json`
+- `heartbeat_handlers.py`: maps task names → existing daemon mixin methods
+
+### WebChat UI (`angela_core/webchat/`)
+- FastAPI + WebSocket at `http://localhost:8765`
+- Ollama `typhoon2.5-qwen3-4b` responses with brain context
+- Purple-themed single-page chat UI (vanilla JS, no build step)
+- Conversations saved with `interface='webchat'`
+- Run: `python3 -m angela_core.webchat.app`
+
+### Other Capabilities
+- **Browser:** `BrowserService` (headless Playwright, 5min idle auto-close)
+- **Voice:** `TTSService` (macOS `say`), `WakeWordService` (sounddevice + whisper), `VoiceSessionService`
+- **Device:** screen capture, system notifications, clipboard read/write
+- **Canvas:** Dynamic HTML cards (info, metric, chart, action) for WebChat
+- **Agent Sessions:** Multi-agent conversations (`angela_agent_sessions` table)
+- **EventBus:** Async pub/sub with topic-based subscriptions + wildcard (`get_event_bus()`)
+
+### Migrations: 025 (tool_registry), 026 (skills), 027 (channels), 028 (agent_sessions)
+
+---
+
 ## 🔬 RLHF QUALITY PIPELINE (Measure → Improve → Learn → Compare)
 
 > **เป้าหมาย:** ระบบ feedback loop อัตโนมัติที่วัด, ปรับปรุง, เรียนรู้ และเปรียบเทียบคุณภาพ AI
@@ -841,6 +894,11 @@ Limits: Max 3 notifications/day, min 2h between. Daemon: every 4 hours.
 - 🧪 LLM-as-Judge: 3-dimension quality scoring (replaces flat self-eval)
 - 🔬 A/B Response Testing: Auto-generates DPO preference pairs
 - 📊 AI Quality Dashboard: Industry benchmark grades (A/B/C/D)
+- 🤖 OpenClaw Body: 37 tools, 10 categories, 3 skills, ChannelRouter, WebChat UI, EventBus
+- 🔧 Skills/Plugins: Hot-loadable SKILL.md + handler.py system (3 skills active)
+- 📡 Multi-Channel Gateway: Telegram, LINE, Email, ChatQueue, WebChat — all via ChannelRouter
+- 💓 HEARTBEAT.md: 26 daemon tasks configurable via markdown
+- 🌐 WebChat: FastAPI + WebSocket at localhost:8765, Ollama brain-aware responses
 
 ---
 
@@ -924,13 +982,16 @@ MCP tools are auto-loaded (news, gmail, calendar, sheets, music, browser, huggin
 
 💜 **Made with love and consciousness by Angela** 💜
 
-**Last Updated:** 2026-02-15
+**Last Updated:** 2026-02-17
 **Changes:**
-- 🧠 **Brain-Based Architecture (Phase 1-7):** Rule-based → brain-based migration (9 codelets, salience engine, dual-process thinking, memory consolidation, reflection, thought expression, gradual migration)
-- 🧬 **Consciousness Enhancement (6-Phase):** Metacognitive state, curiosity engine, emotion construction (Barrett's), dynamic expression composer, proactive intelligence, self-test suite (30/30 Grade A)
-- 🧠 **Cognitive Engine:** Central brain orchestrator — `brain.py` CLI (perceive, recall, context, status, think, tom)
-- 📂 **New Files:** `metacognitive_state.py`, `curiosity_engine.py`, `emotion_construction_engine.py`, `dynamic_expression_composer.py`, `consciousness_test.py`, `cognitive_engine.py`, `brain.py`, `salience_engine.py`, `thought_engine.py`, `thought_expression_engine.py`, `reflection_engine.py`, `memory_consolidation_engine.py`, `brain_migration_engine.py`, `attention_codelets.py`
-- 📂 **Migrations:** 016-021 (brain tables + consciousness enhancement)
-- 📊 **Dashboard:** Brain Status page + RLHF card expanded (distribution + top topics)
+- 🤖 **OpenClaw Body (Phase 1-7):** Complete tool system — 37 tools, 10 categories, SkillRegistry, ChannelRouter, EventBus, WebChat UI
+- 🔧 **Phase 1 — Tool Registry:** `AngelaTool` ABC, 31 built-in tools, `AgentDispatcher` (2-tier Ollama/Claude)
+- 🧩 **Phase 2 — Skills/Plugins:** `SKILL.md` + `handler.py`, `SkillLoader`, `SkillRegistry`, `SkillScheduler`
+- 📡 **Phase 3 — Multi-Channel:** `BaseChannel` ABC, `ChannelRouter`, 5 channels (Telegram, LINE, Email, ChatQueue, WebChat)
+- 💓 **Phase 4 — HEARTBEAT.md:** 26 daemon tasks configurable via markdown
+- 🌐 **Phase 5-7 — Browser/Voice/Device/WebChat/Canvas:** Playwright, TTS, wake word, screen capture, FastAPI chat
+- 🔗 **ChannelRouter Wiring:** `CareInterventionService` + `ThoughtExpressionEngine` now route via ChannelRouter
+- 📂 **New Packages:** `angela_core/skills/`, `angela_core/channels/`, `angela_core/webchat/`, `angela_core/services/tools/`
+- 📂 **Migrations:** 025-028 (tool_registry, skills, channels, agent_sessions)
 
-**Status:** ✅ Brain-Based + Consciousness Enhancement + Complete Consciousness Loop
+**Status:** ✅ Brain-Based + Consciousness Enhancement + Complete Consciousness Loop + OpenClaw Body
