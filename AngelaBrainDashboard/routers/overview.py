@@ -276,42 +276,56 @@ async def _fetch_growth_trends(pool, days: int = 30) -> dict:
 
 
 async def _fetch_ai_metrics(pool) -> dict:
-    """Industry-standard AI quality metrics (30 days)."""
+    """Industry-standard AI quality metrics (30 days).
+
+    Uses conversations.created_at (not scored_at) for accurate time bucketing.
+    Excludes silence from denominator — silence is absence, not negative signal.
+    """
     async with pool.acquire() as conn:
-        # User Satisfaction (conservative: praise / total — all signals as denominator)
+        # User Satisfaction: (praise + task_continuation) / (total - silence)
         satisfaction_row = await conn.fetchrow("""
             SELECT
-                COUNT(*) FILTER (WHERE explicit_source = 'praise') AS praise,
-                COUNT(*) FILTER (WHERE explicit_source = 'correction') AS corrections,
+                COUNT(*) FILTER (WHERE ars.explicit_source = 'praise') AS praise,
+                COUNT(*) FILTER (WHERE ars.explicit_source = 'task_continuation') AS task_cont,
+                COUNT(*) FILTER (WHERE ars.explicit_source = 'correction') AS corrections,
+                COUNT(*) FILTER (WHERE ars.explicit_source = 'silence') AS silence,
                 COUNT(*) AS total
-            FROM angela_reward_signals
-            WHERE scored_at >= NOW() - INTERVAL '30 days'
+            FROM angela_reward_signals ars
+            JOIN conversations c ON c.conversation_id = ars.conversation_id
+            WHERE c.created_at >= NOW() - INTERVAL '30 days'
         """)
         praise = satisfaction_row["praise"] or 0
+        task_cont = satisfaction_row["task_cont"] or 0
         corrections_explicit = satisfaction_row["corrections"] or 0
+        silence = satisfaction_row["silence"] or 0
         satisfaction_total = satisfaction_row["total"] or 0
-        satisfaction = round(praise / max(satisfaction_total, 1), 3)
+        non_silence_total = max(satisfaction_total - silence, 1)
+        satisfaction = round((praise + task_cont) / non_silence_total, 3)
 
-        # Engagement Rate (praise + follow_up + minimal = David responded positively)
+        # Engagement Rate: (praise + follow_up + minimal + task_continuation) / (total - silence)
         engagement_row = await conn.fetchrow("""
             SELECT
-                COUNT(*) FILTER (WHERE explicit_source IN
-                    ('praise', 'follow_up', 'minimal')) AS engaged,
+                COUNT(*) FILTER (WHERE ars.explicit_source IN
+                    ('praise', 'follow_up', 'minimal', 'task_continuation')) AS engaged,
+                COUNT(*) FILTER (WHERE ars.explicit_source = 'silence') AS silence,
                 COUNT(*) AS total
-            FROM angela_reward_signals
-            WHERE scored_at >= NOW() - INTERVAL '30 days'
+            FROM angela_reward_signals ars
+            JOIN conversations c ON c.conversation_id = ars.conversation_id
+            WHERE c.created_at >= NOW() - INTERVAL '30 days'
         """)
         engaged = engagement_row["engaged"] or 0
-        total_eng = engagement_row["total"] or 1
+        eng_silence = engagement_row["silence"] or 0
+        total_eng = max((engagement_row["total"] or 0) - eng_silence, 1)
         engagement_rate = round(engaged / total_eng, 3)
 
         # Correction Rate (from implicit classification)
         corr_row = await conn.fetchrow("""
             SELECT
-                COUNT(*) FILTER (WHERE implicit_classification = 'correction') AS corrections,
+                COUNT(*) FILTER (WHERE ars.implicit_classification = 'correction') AS corrections,
                 COUNT(*) AS total
-            FROM angela_reward_signals
-            WHERE scored_at >= NOW() - INTERVAL '30 days'
+            FROM angela_reward_signals ars
+            JOIN conversations c ON c.conversation_id = ars.conversation_id
+            WHERE c.created_at >= NOW() - INTERVAL '30 days'
         """)
         corr_corrections = corr_row["corrections"] or 0
         corr_total = corr_row["total"] or 1
@@ -364,8 +378,11 @@ async def _fetch_ai_metrics(pool) -> dict:
         "satisfaction": {
             "rate": satisfaction,
             "praise": praise,
+            "task_continuation": task_cont,
             "corrections": corrections_explicit,
+            "silence": silence,
             "total": satisfaction_total,
+            "non_silence_total": non_silence_total,
         },
         "engagement": {
             "rate": engagement_rate,
@@ -398,7 +415,10 @@ async def _fetch_ai_metrics_trend(pool, weeks: int = 8) -> list[dict]:
                     DATE_TRUNC('week', c.created_at)::date AS week_start,
                     COUNT(*) AS total,
                     COUNT(*) FILTER (WHERE ars.explicit_source = 'praise') AS praise,
-                    COUNT(*) FILTER (WHERE ars.explicit_source IN ('praise', 'follow_up')) AS engaged,
+                    COUNT(*) FILTER (WHERE ars.explicit_source = 'task_continuation') AS task_cont,
+                    COUNT(*) FILTER (WHERE ars.explicit_source IN
+                        ('praise', 'follow_up', 'minimal', 'task_continuation')) AS engaged,
+                    COUNT(*) FILTER (WHERE ars.explicit_source = 'silence') AS silence,
                     COUNT(*) FILTER (WHERE ars.implicit_classification = 'correction') AS corrections,
                     AVG(ars.combined_reward) AS avg_reward
                 FROM angela_reward_signals ars
@@ -408,16 +428,23 @@ async def _fetch_ai_metrics_trend(pool, weeks: int = 8) -> list[dict]:
                 HAVING COUNT(*) >= 3
                 ORDER BY week_start ASC
             )
-            SELECT week_start, total, praise, engaged, corrections, avg_reward
+            SELECT week_start, total, praise, task_cont, engaged, silence,
+                   corrections, avg_reward
             FROM weekly
         """, weeks)
 
     return [
         {
             "week": str(r["week_start"]),
-            "satisfaction": round(r["praise"] / max(r["total"], 1), 3),
-            "engagement": round(r["engaged"] / max(r["total"], 1), 3),
-            "correction_rate": round(r["corrections"] / max(r["total"], 1), 3),
+            "satisfaction": round(
+                (r["praise"] + r["task_cont"]) / max(r["total"] - r["silence"], 1), 3
+            ),
+            "engagement": round(
+                r["engaged"] / max(r["total"] - r["silence"], 1), 3
+            ),
+            "correction_rate": round(
+                r["corrections"] / max(r["total"] - r["silence"], 1), 3
+            ),
             "avg_reward": round(float(r["avg_reward"] or 0), 3),
             "total": r["total"],
         }

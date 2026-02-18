@@ -3,7 +3,7 @@ Reward Score Service — RLHF Signal Collection
 ===============================================
 
 Scores every Angela response from 3 sources:
-  combined = explicit * 0.3 + implicit * 0.3 + self_eval * 0.4
+  combined = explicit * 0.35 + implicit * 0.35 + self_eval * 0.30
 
 Explicit: thumbs_up/down from conversation_feedback, or FeedbackClassifier on David's next message
 Implicit: David's follow-up behavior (question, silence, correction)
@@ -26,11 +26,11 @@ from angela_core.utils.timezone import now_bangkok
 logger = logging.getLogger(__name__)
 
 # Weights for combined reward
-# LLM-as-Judge has best discrimination (std=0.262) → give most weight
-# Explicit + Implicit share remaining 60% equally
-W_EXPLICIT = 0.3
-W_IMPLICIT = 0.3
-W_SELF_EVAL = 0.4
+# self_eval (LLM-as-Judge) std=0.175 → low discrimination
+# Explicit + Implicit reflect David's actual behavior → give more weight
+W_EXPLICIT = 0.35
+W_IMPLICIT = 0.35
+W_SELF_EVAL = 0.30
 
 
 class RewardScoreService:
@@ -279,6 +279,14 @@ class RewardScoreService:
         ]
         if any(kw in msg_lower for kw in continuation_signals):
             return 0.2, 'follow_up'
+
+        # Task continuation: David gives next instruction = implicitly accepted previous result
+        task_continuation_kw = [
+            'ทำให้', 'แก้', 'เปลี่ยน', 'เพิ่ม', 'ลบ', 'สร้าง', 'ปรับ',
+            'commit', 'push', 'deploy', 'build', 'run', 'save', 'log',
+        ]
+        if any(kw in msg_lower for kw in task_continuation_kw):
+            return 0.3, 'task_continuation'
 
         classifier = await self._ensure_classifier()
         result = await classifier.classify(msg)

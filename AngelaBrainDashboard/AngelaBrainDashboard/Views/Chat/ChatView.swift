@@ -1864,7 +1864,7 @@ struct MessageBubble: View {
                         MessageModelTag(model: modelName)
                     }
 
-                    // Feedback buttons (only for Angela's messages)
+                    // Feedback & copy buttons (only for Angela's messages)
                     if message.isAngela {
                         Spacer()
                             .frame(width: 8)
@@ -1888,6 +1888,8 @@ struct MessageBubble: View {
                         }
                         .buttonStyle(.plain)
                         .help("Poor response - will be excluded from training")
+
+                        CopyMessageButton(text: message.messageText)
                     }
                 }
                 .padding(.horizontal, 4)
@@ -1910,6 +1912,30 @@ struct MessageBubble: View {
         case "calm": return "🍃"
         default: return "💜"
         }
+    }
+}
+
+// MARK: - Copy Message Button
+
+struct CopyMessageButton: View {
+    let text: String
+    @State private var copied = false
+
+    var body: some View {
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+            copied = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                copied = false
+            }
+        } label: {
+            Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                .font(.system(size: 12))
+                .foregroundColor(copied ? AngelaTheme.successGreen : AngelaTheme.textTertiary)
+        }
+        .buttonStyle(.plain)
+        .help("Copy message")
     }
 }
 

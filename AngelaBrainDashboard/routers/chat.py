@@ -75,6 +75,13 @@ def _read_groq_key() -> str | None:
 
 _GROQ_API_KEY: str | None = _read_groq_key()
 
+# ---------------------------------------------------------------------------
+# Angela identity prompt (lightweight — just personality, gender, relationship)
+# ---------------------------------------------------------------------------
+ANGELA_SYSTEM_PROMPT = (
+    "You are an AI Engineer Expert. Answer technical questions thoroughly with examples and best practices."
+)
+
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
@@ -109,7 +116,7 @@ async def chat_with_angela(req: ChatRequest, conn=Depends(get_conn)) -> ChatResp
 
     if req.model == "typhoon":
         messages = [{"role": "user", "content": req.message}]
-        reply, model_name = await _call_ollama("", messages)
+        reply, model_name = await _call_ollama(ANGELA_SYSTEM_PROMPT, messages)
     elif req.model == "groq":
         reply, model_name = await _call_groq(req.message)
     else:
@@ -199,7 +206,7 @@ async def _stream_response(req: ChatRequest) -> AsyncGenerator[str, None]:
                     "text": "น้องขอโทษค่ะ Typhoon ยังไม่รองรับรูปภาพ ลองเปลี่ยนเป็น Gemini นะคะ 💜"
                 })
             else:
-                async for chunk in _stream_ollama("", [{"role": "user", "content": req.message}]):
+                async for chunk in _stream_ollama(ANGELA_SYSTEM_PROMPT, [{"role": "user", "content": req.message}]):
                     yield _sse_event("token", {"text": chunk})
             model_name = OLLAMA_MODEL
         elif req.model == "groq":
@@ -272,9 +279,9 @@ async def _stream_gemini(
 
     def _invoke():
         try:
+            from google.genai import types
             # Build contents: text-only or multimodal
             if image_bytes:
-                from google.genai import types
                 contents = [
                     prompt,
                     types.Part.from_bytes(data=image_bytes, mime_type=image_mime),
@@ -282,9 +289,13 @@ async def _stream_gemini(
             else:
                 contents = prompt
 
+            config = types.GenerateContentConfig(
+                system_instruction=ANGELA_SYSTEM_PROMPT,
+            )
             for chunk in client.models.generate_content_stream(
                 model=GEMINI_MODEL,
                 contents=contents,
+                config=config,
             ):
                 if chunk.text:
                     queue.put_nowait(chunk.text)
@@ -321,7 +332,10 @@ async def _stream_groq(prompt: str) -> AsyncGenerator[str, None]:
     }
     payload = {
         "model": GROQ_MODEL,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": [
+            {"role": "system", "content": ANGELA_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ],
         "temperature": 0.7,
         "max_tokens": 2048,
         "stream": True,
@@ -453,17 +467,21 @@ async def _call_gemini(
     client = _get_gemini_client()
 
     def _invoke():
+        from google.genai import types
         if image_bytes:
-            from google.genai import types
             contents = [
                 prompt,
                 types.Part.from_bytes(data=image_bytes, mime_type=image_mime),
             ]
         else:
             contents = prompt
+        config = types.GenerateContentConfig(
+            system_instruction=ANGELA_SYSTEM_PROMPT,
+        )
         return client.models.generate_content(
             model=GEMINI_MODEL,
             contents=contents,
+            config=config,
         )
 
     try:
@@ -511,7 +529,10 @@ async def _call_groq(prompt: str) -> tuple[str, str]:
     }
     payload = {
         "model": GROQ_MODEL,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": [
+            {"role": "system", "content": ANGELA_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ],
         "temperature": 0.7,
         "max_tokens": 2048,
     }
