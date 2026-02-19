@@ -156,7 +156,7 @@ class ReasoningChainService:
             result = await self.db.execute('''
                 UPDATE angela_reasoning_chains rc
                 SET related_reward_id = rs.reward_id
-                FROM reward_scores rs
+                FROM angela_reward_signals rs
                 WHERE rc.conversation_id = rs.conversation_id
                   AND rc.related_reward_id IS NULL
                   AND rc.created_at > NOW() - INTERVAL '1 hour' * $1

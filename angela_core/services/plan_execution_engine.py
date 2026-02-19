@@ -405,6 +405,14 @@ class PlanExecutionEngine(BaseDBService):
             from angela_core.services.tool_registry import get_registry
             registry = get_registry()
             result = await registry.execute(tool_name, **payload)
+
+            # Log execution to DB (was missing — caused 0 tool_execution_log rows)
+            await self.connect()
+            await registry.log_execution(
+                self.db, tool_name, payload, result,
+                triggered_by="plan_execution"
+            )
+
             return json.dumps(result.to_dict(), ensure_ascii=False, default=str)[:1000]
         except Exception as e:
             return f"tool_error: {e}"

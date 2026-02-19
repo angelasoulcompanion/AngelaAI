@@ -233,6 +233,15 @@ class ThoughtExpressionEngine(BaseDBService):
             channel = self._decide_channel(thought)
             message = await self._compose_message(thought)
 
+            # ── Telegram Final Gate (check COMPOSED message, not raw thought) ──
+            if channel == "telegram":
+                if not self._would_david_respond(message):
+                    # Try to add a question hook to make it respondable
+                    message = self._add_reply_hook(thought, message)
+                    if not self._would_david_respond(message):
+                        logger.info("💬 Composed message has no reply hook → chat_queue: %s", message[:60])
+                        channel = "chat_queue"
+
             # ── Self-Critique Gate ──
             if critique_svc:
                 try:
@@ -450,8 +459,8 @@ class ThoughtExpressionEngine(BaseDBService):
         """
         Decide expression channel based on motivation score.
 
-        Companion: Block spam patterns + require "would David respond?" for Telegram.
-        >= TELEGRAM_THRESHOLD (0.90) → telegram (if not spam AND David would respond)
+        Companion: Block spam patterns. Telegram gate moved to AFTER compose.
+        >= TELEGRAM_THRESHOLD (0.90) → telegram_candidate (checked after compose)
         >= MOTIVATION_THRESHOLD → chat_queue
         """
         motivation = thought.get("motivation_score", 0)
@@ -463,31 +472,30 @@ class ThoughtExpressionEngine(BaseDBService):
                 if pattern.lower() in content:
                     logger.info("💬 Spam pattern '%s' blocked from Telegram → chat_queue", pattern)
                     return "chat_queue"
-            # Companion gate: would David actually respond to this?
-            if not self._would_david_respond(content):
-                logger.info("💬 David wouldn't respond → chat_queue: %s", content[:60])
-                return "chat_queue"
+            # Mark as telegram candidate — final gate happens after compose
             return "telegram"
         return "chat_queue"
 
     @staticmethod
-    def _would_david_respond(content: str) -> bool:
+    def _would_david_respond(composed_message: str) -> bool:
         """
-        Simple heuristic: would David respond to this message?
-        Messages that ask questions or reference specific shared experiences get responses.
-        Generic observations and pride statements don't.
+        Check if the COMPOSED message (not raw thought) would get a response.
+        Fix: previously checked raw thought content which never had questions.
+        Now checks the final message that David would actually see.
+
+        Rule: Telegram messages MUST contain a direct question or reply hook.
         """
-        # Messages with questions get responses
-        if '?' in content or 'มั้ย' in content or 'ไหม' in content or 'คะ?' in content:
+        msg = composed_message.lower()
+        # Must contain a question — David responds to questions, not statements
+        question_markers = ['?', 'มั้ย', 'ไหม', 'บ้าง', 'ยัง', 'หรือเปล่า',
+                            'เป็นยังไง', 'ดีมั้ย', 'ว่าไง', 'คิดยังไง']
+        if any(m in msg for m in question_markers):
             return True
-        # Messages referencing specific shared experiences or daily life
-        specific_words = ['เมื่อวาน', 'ตอนที่', 'จำได้', 'ครั้งที่', 'วันที่',
-                          'เพลง', 'ร้านอาหาร', 'กินข้าว', 'ประชุม', 'meeting',
-                          'เป็นยังไง', 'วันนี้ทำ', 'ไปไหนมา', 'สบายดี',
-                          'พักผ่อน', 'กินข้าวเที่ยง']
-        if any(w in content for w in specific_words):
+        # Life context references that invite response
+        life_hooks = ['กินข้าว', 'นอนหลับ', 'ไปไหน', 'วันนี้ทำ', 'ประชุม',
+                      'meeting', 'สบายดี', 'พักผ่อน', 'เหนื่อย']
+        if any(w in msg for w in life_hooks):
             return True
-        # Generic messages don't get responses
         return False
 
     @staticmethod
@@ -514,6 +522,55 @@ class ThoughtExpressionEngine(BaseDBService):
                 return kw
         # Fallback: use first 40 chars as dedup key (better than 30)
         return content[:40]
+
+    @staticmethod
+    def _add_reply_hook(thought: Dict[str, Any], message: str) -> str:
+        """
+        Add a conversational question to a message that lacks a reply hook.
+        This transforms internal monologue into conversational Telegram messages.
+
+        Strategy: Pick a relevant question based on thought content or time of day.
+        """
+        import random
+        from angela_core.utils.timezone import now_bangkok
+
+        content = (thought.get("content") or "").lower()
+        hour = now_bangkok().hour
+
+        # Time-based questions (most natural and easy to answer)
+        if 5 <= hour <= 10:
+            time_questions = [
+                "วันนี้ที่รักมีแพลนอะไรบ้างคะ?",
+                "นอนหลับดีมั้ยคะเมื่อคืน?",
+                "กินข้าวเช้ายังคะที่รัก?",
+            ]
+        elif 11 <= hour <= 14:
+            time_questions = [
+                "กินข้าวเที่ยงอะไรดีคะที่รัก?",
+                "เช้านี้เป็นยังไงบ้างคะ?",
+            ]
+        elif 15 <= hour <= 19:
+            time_questions = [
+                "วันนี้เหนื่อยมั้ยคะที่รัก?",
+                "เย็นนี้ทำอะไรบ้างคะ?",
+            ]
+        else:
+            time_questions = [
+                "ดึกแล้วนะคะ พักได้ยังคะ?",
+                "วันนี้เป็นยังไงบ้างคะที่รัก?",
+            ]
+
+        # Content-based questions (if thought has relevant context)
+        if any(w in content for w in ['เพลง', 'song', 'music']):
+            return message.rstrip() + " ที่รักฟังเพลงอะไรอยู่คะ? 🎵"
+        elif any(w in content for w in ['ทำงาน', 'code', 'project', 'develop']):
+            return message.rstrip() + " งานวันนี้เป็นยังไงบ้างคะ?"
+        elif any(w in content for w in ['เครียด', 'เหนื่อย', 'tired', 'stress']):
+            return message.rstrip() + " น้องช่วยอะไรได้บ้างคะ? 💜"
+
+        # Default: append a time-appropriate question
+        question = random.choice(time_questions)
+        return message.rstrip() + f"\n{question}"
 
     # ============================================================
     # 4. COMPOSE — Format message for expression

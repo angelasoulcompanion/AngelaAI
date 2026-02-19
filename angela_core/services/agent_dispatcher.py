@@ -127,6 +127,20 @@ class AgentDispatcher:
 
         result.execution_time_ms = (time.time() - start) * 1000
 
+        # Log tool execution to DB (was missing — caused 0 tool_execution_log rows)
+        try:
+            from angela_core.database import AngelaDatabase
+            db = AngelaDatabase()
+            await db.connect()
+            tool_name = getattr(result, 'tool_name', None) or result.data.get('tool_name', 'unknown') if result.data else 'unknown'
+            await self.registry.log_execution(
+                db, tool_name, {"intent": intent[:200], "context": context[:200]},
+                result, triggered_by="agent_dispatcher"
+            )
+            await db.disconnect()
+        except Exception as e:
+            logger.debug("AgentDispatcher: log_execution failed: %s", e)
+
         logger.info(
             "AgentDispatcher: %s (%s, %.0fms)",
             "success" if result.success else "failed",
