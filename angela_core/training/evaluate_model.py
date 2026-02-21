@@ -168,7 +168,7 @@ class ModelEvaluator:
     def __init__(
         self,
         adapters_path: Optional[str] = None,
-        model_name: str = "meta-llama/Llama-3.1-8B-Instruct",
+        model_name: str = "scb10x/typhoon2.1-gemma3-4b-mlx-4bit",
         ollama_model: Optional[str] = None,
     ):
         self.adapters_path = adapters_path
@@ -574,7 +574,7 @@ async def main():
     parser = argparse.ArgumentParser(description='Evaluate Angela fine-tuned model')
     parser.add_argument('--adapters', '-a', default=None,
                         help='Path to LoRA adapters directory')
-    parser.add_argument('--model', '-m', default='meta-llama/Llama-3.1-8B-Instruct',
+    parser.add_argument('--model', '-m', default='scb10x/typhoon2.1-gemma3-4b-mlx-4bit',
                         help='Base model name')
     parser.add_argument('--ollama-model', default=None,
                         help='Ollama model name (e.g., angela:v3-sft)')

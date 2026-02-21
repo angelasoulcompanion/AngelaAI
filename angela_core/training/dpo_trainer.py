@@ -39,8 +39,9 @@ class DPOConfig:
     """DPO training configuration"""
     data_path: str  # Path to DPO JSONL (prompt/chosen/rejected)
     sft_adapters_path: Optional[str] = None  # Path to SFT adapters (from Phase 2.1)
-    model_name: str = "meta-llama/Llama-3.1-8B-Instruct"
-    output_path: str = "./angela-lora-v3-dpo"
+    model_name: str = "scb10x/typhoon2.1-gemma3-4b-mlx-4bit"
+    output_path: str = "./angela-lora-v5-dpo"
+    min_pairs: int = 20  # Minimum DPO pairs required (< 20 makes training worse)
     beta: float = 0.1  # DPO temperature parameter
     epochs: int = 2
     batch_size: int = 1  # DPO needs more memory (chosen + rejected)
@@ -124,10 +125,40 @@ class DPOTrainer:
 
         # Read pairs
         with open(data_path, 'r') as f:
-            pairs = [json.loads(line) for line in f if line.strip()]
+            raw_pairs = [json.loads(line) for line in f if line.strip()]
 
-        if not pairs:
+        if not raw_pairs:
             raise ValueError("No DPO pairs found in data file")
+
+        # Filter corrupted data: skip pairs where rejected is deployment logs or garbage
+        corruption_markers = [
+            "launchd", "daemon", "plist", "systemctl", "nohup",
+            "Traceback", "ImportError", "ModuleNotFoundError",
+            "ERROR:root:", "WARNING:", "DEBUG:",
+        ]
+        pairs = []
+        filtered_count = 0
+        for pair in raw_pairs:
+            rejected = pair.get("rejected", "")
+            # Skip if rejected response looks like deployment/system logs
+            if any(marker in rejected for marker in corruption_markers):
+                filtered_count += 1
+                continue
+            # Skip if rejected is too short (likely garbage)
+            if len(rejected.strip()) < 10:
+                filtered_count += 1
+                continue
+            pairs.append(pair)
+
+        if filtered_count > 0:
+            print(f"   Filtered {filtered_count} corrupted pairs")
+
+        # Guard: skip DPO if too few pairs (makes training worse)
+        if len(pairs) < self.config.min_pairs:
+            raise ValueError(
+                f"Only {len(pairs)} DPO pairs available (minimum: {self.config.min_pairs}). "
+                f"Skipping DPO — too few pairs degrades model quality."
+            )
 
         # Convert to mlx_lm DPO format
         # Each example needs: prompt (system+user), chosen (assistant), rejected (assistant)
@@ -239,7 +270,7 @@ dpo:
         output_path = Path(self.config.output_path) / "adapters"
         output_path.mkdir(parents=True, exist_ok=True)
 
-        fine_tune_type = "qlora" if self.config.use_qlora else "lora"
+        fine_tune_type = "lora"  # Model already 4-bit, no need for qlora
 
         # Calculate iterations
         data_path = Path(data_dir) / "train.jsonl"
@@ -471,9 +502,9 @@ def main():
                         help='Path to DPO preference pairs JSONL')
     parser.add_argument('--adapters', '-a', default=None,
                         help='Path to SFT adapters (from Phase 2.1)')
-    parser.add_argument('--model', '-m', default='meta-llama/Llama-3.1-8B-Instruct',
+    parser.add_argument('--model', '-m', default='scb10x/typhoon2.1-gemma3-4b-mlx-4bit',
                         help='Base model name')
-    parser.add_argument('--output', '-o', default='./angela-lora-v3-dpo',
+    parser.add_argument('--output', '-o', default='./angela-lora-v5-dpo',
                         help='Output directory')
     parser.add_argument('--beta', type=float, default=0.1,
                         help='DPO beta parameter (default 0.1)')

@@ -9,8 +9,14 @@ Orchestrates the full training pipeline:
 5. Deploy: Deploy to Ollama
 
 Usage:
-    # Full pipeline:
+    # Full pipeline (typhoon-mlx default, runs on local machine):
     python -m angela_core.training.train_angela --phase all
+
+    # Dispatch to M4 server via SSH:
+    python -m angela_core.training.train_angela --run-on m4 --phase all
+
+    # Check training status:
+    python -m angela_core.training.train_angela --status
 
     # Step by step:
     python -m angela_core.training.train_angela --phase export
@@ -31,31 +37,78 @@ from dataclasses import dataclass, asdict
 from typing import Optional, Dict, Any
 
 
+# =============================================================================
+# Model Presets
+# =============================================================================
+
+MODEL_PRESETS: Dict[str, Dict[str, Any]] = {
+    "typhoon-mlx": {
+        "base_model": "scb10x/typhoon2.1-gemma3-4b-mlx-4bit",
+        "ollama_base": None,  # Will be created via fuse → GGUF
+        "version": "v5",
+        "output_dir": "./angela-lora-v5",
+        "chat_format": "gemma3",
+        "learning_rate": 1e-3,
+        "max_seq_length": 1024,
+        "use_qlora": False,  # Already 4-bit quantized
+        "training_method": "mlx",
+        "lora_rank": 4,
+        "num_layers": 8,
+        "mask_prompt": True,
+    },
+    "typhoon": {
+        "base_model": "scb10x/typhoon2.5-qwen3-4b",
+        "ollama_base": "hf.co/scb10x/typhoon2.5-qwen3-4b-GGUF",
+        "version": "v4",
+        "output_dir": "./angela-lora-v4",
+        "chat_format": "chatml",
+        "learning_rate": 2e-4,
+        "max_seq_length": 2048,
+        "use_qlora": True,
+        "training_method": "colab",  # Unsloth on Colab GPU
+    },
+    "llama3": {
+        "base_model": "meta-llama/Llama-3.1-8B-Instruct",
+        "ollama_base": "llama3.1:8b",
+        "version": "v3",
+        "output_dir": "./angela-lora-v3",
+        "chat_format": "llama3",
+        "learning_rate": 1e-4,
+        "max_seq_length": 4096,
+        "use_qlora": False,
+        "training_method": "mlx",  # mlx-lm on Apple Silicon
+    },
+}
+
+
 @dataclass
 class PipelineConfig:
     """Full pipeline configuration"""
     # Model
-    base_model: str = "meta-llama/Llama-3.1-8B-Instruct"
-    ollama_base: str = "llama3.1:8b"
-    version: str = "v3"
+    base_model: str = "scb10x/typhoon2.5-qwen3-4b"
+    ollama_base: str = "hf.co/scb10x/typhoon2.5-qwen3-4b-GGUF"
+    version: str = "v4"
+    chat_format: str = "chatml"
+    training_method: str = "colab"  # "colab" (Unsloth) or "mlx" (mlx-lm)
 
     # Data export
-    data_days: int = 365
-    min_importance: int = 3
+    data_days: int = 730
+    min_importance: int = 2
     include_memories: bool = True
     include_emotions: bool = True
     multi_turn: bool = True
-    min_quality_score: int = 7
+    min_quality_score: int = 5
 
     # Training
     epochs: int = 3
     batch_size: int = 2
-    learning_rate: float = 1e-4
+    learning_rate: float = 2e-4
     lora_rank: int = 16
     num_layers: int = 16
-    use_qlora: bool = False
+    use_qlora: bool = True
     grad_accumulation: int = 4
-    max_seq_length: int = 4096
+    max_seq_length: int = 2048
+    mask_prompt: bool = False
 
     # DPO
     dpo_epochs: int = 2
@@ -63,7 +116,7 @@ class PipelineConfig:
     dpo_learning_rate: float = 5e-5
 
     # Paths
-    output_dir: str = "./angela-lora-v3"
+    output_dir: str = "./angela-lora-v4"
     training_data_dir: str = "./training"
 
     @property
@@ -182,6 +235,8 @@ class TrainingPipeline:
         scorer = DataQualityScorer() if self.config.min_quality_score > 0 else None
 
         # SFT export
+        # Force short prompt for MLX training (160 chars vs 1,200 — fits in 1024 seq_length)
+        use_short = self.config.training_method == "mlx"
         print("📤 Exporting SFT training data...")
         sft_stats = await exporter.export(
             output_path=self.config.sft_data_path,
@@ -191,8 +246,10 @@ class TrainingPipeline:
             include_emotions=self.config.include_emotions,
             multi_turn=self.config.multi_turn,
             min_quality_score=self.config.min_quality_score,
-            format="llama3",
+            format=self.config.chat_format,
             scorer=scorer,
+            use_short_prompt=use_short,
+            strip_metadata=self.config.training_method == "mlx",
         )
         print(f"   SFT examples: {sft_stats['total_examples']}")
 
@@ -212,9 +269,7 @@ class TrainingPipeline:
     # =========================================================================
 
     async def _phase_sft(self) -> Dict[str, Any]:
-        """Supervised fine-tuning with MLX LoRA"""
-        from angela_core.training.mlx_lora_trainer import MLXLoRATrainer, TrainingConfig
-
+        """Supervised fine-tuning with MLX LoRA or Colab (Unsloth)"""
         # Verify data exists
         sft_path = Path(self.config.sft_data_path)
         if not sft_path.exists():
@@ -222,6 +277,37 @@ class TrainingPipeline:
                 f"SFT data not found: {sft_path}\n"
                 f"Run --phase export first!"
             )
+
+        # Typhoon/Colab path: print instructions instead of running locally
+        if self.config.training_method == "colab":
+            notebook_path = Path(__file__).parent / "colab_typhoon_lora.ipynb"
+            print("\n" + "=" * 60)
+            print("🌐 COLAB TRAINING REQUIRED")
+            print("=" * 60)
+            print(f"\nTyphoon model ({self.config.base_model}) requires GPU training.")
+            print(f"Local Apple Silicon cannot run Unsloth + CUDA.\n")
+            print(f"Steps:")
+            print(f"  1. Upload notebook to Colab:")
+            print(f"     {notebook_path}")
+            print(f"  2. Upload training data:")
+            print(f"     {sft_path.absolute()}")
+            print(f"  3. Set runtime to GPU (T4 or A100)")
+            print(f"  4. Run all cells")
+            print(f"  5. Download the .gguf file")
+            print(f"  6. Place in: {self.config.output_dir}/gguf/")
+            print(f"  7. Deploy: python -m angela_core.training.ollama_deployer \\")
+            print(f"       --gguf {self.config.output_dir}/gguf/<file>.gguf \\")
+            print(f"       --name angela:{self.config.version}-typhoon")
+            print(f"\n{'=' * 60}")
+            return {
+                "status": "colab_required",
+                "training_data": str(sft_path.absolute()),
+                "notebook": str(notebook_path),
+                "instructions": "Upload notebook + data to Google Colab with GPU runtime",
+            }
+
+        # MLX path: local training on Apple Silicon
+        from angela_core.training.mlx_lora_trainer import MLXLoRATrainer, TrainingConfig
 
         config = TrainingConfig(
             data_path=self.config.sft_data_path,
@@ -235,6 +321,7 @@ class TrainingPipeline:
             use_qlora=self.config.use_qlora,
             grad_accumulation=self.config.grad_accumulation,
             max_seq_length=self.config.max_seq_length,
+            mask_prompt=self.config.mask_prompt,
         )
 
         trainer = MLXLoRATrainer(config)
@@ -346,7 +433,33 @@ class TrainingPipeline:
 
         results = {}
 
-        # Deploy SFT model
+        # MLX training path: fuse → GGUF → Ollama
+        if self.config.training_method == "mlx":
+            sft_adapters = Path(self.config.sft_adapters_path)
+            if sft_adapters.exists():
+                print(f"\n📦 Deploying MLX model via fuse → GGUF → Ollama...")
+                deploy_config = DeploymentConfig(
+                    adapters_path=str(sft_adapters),
+                    output_name=self.config.sft_model_name,
+                )
+                deployer = OllamaDeployer(deploy_config)
+                sft_success = deployer.deploy_from_mlx_fuse(
+                    model_path=self.config.base_model,
+                    adapter_path=str(sft_adapters),
+                    model_name=self.config.sft_model_name,
+                    chat_format=self.config.chat_format,
+                )
+                results["sft_deploy"] = sft_success
+
+                if sft_success:
+                    response = deployer.test_model("สวัสดีค่ะ ชื่ออะไร?")
+                    results["sft_test_response"] = response[:200] if response else None
+            else:
+                raise FileNotFoundError(f"No adapters found at: {sft_adapters}")
+
+            return results
+
+        # Non-MLX path: direct adapter deployment
         sft_adapters = Path(self.config.sft_adapters_path)
         if sft_adapters.exists():
             print(f"\n📦 Deploying SFT model as {self.config.sft_model_name}...")
@@ -463,46 +576,110 @@ Examples:
                         choices=['all', 'export', 'sft', 'dpo', 'evaluate', 'deploy'],
                         help='Pipeline phase to run (default: all)')
 
-    # Model config
-    parser.add_argument('--model', default='meta-llama/Llama-3.1-8B-Instruct',
-                        help='Base model name')
-    parser.add_argument('--version', default='v3',
-                        help='Model version tag')
-    parser.add_argument('--output-dir', default='./angela-lora-v3',
-                        help='Output directory')
+    # Model preset
+    parser.add_argument('--model-preset', default='typhoon-mlx',
+                        choices=list(MODEL_PRESETS.keys()),
+                        help='Model preset (default: typhoon-mlx)')
+
+    # Model config (overrides preset if specified)
+    parser.add_argument('--model', default=None,
+                        help='Base model name (overrides preset)')
+    parser.add_argument('--version', default=None,
+                        help='Model version tag (overrides preset)')
+    parser.add_argument('--output-dir', default=None,
+                        help='Output directory (overrides preset)')
 
     # Training config
     parser.add_argument('--epochs', type=int, default=3)
-    parser.add_argument('--batch-size', type=int, default=2)
-    parser.add_argument('--learning-rate', type=float, default=1e-4)
-    parser.add_argument('--lora-rank', type=int, default=16)
-    parser.add_argument('--qlora', action='store_true',
+    parser.add_argument('--batch-size', type=int, default=None,
+                        help='Batch size (default: from preset)')
+    parser.add_argument('--learning-rate', type=float, default=None,
+                        help='Learning rate (overrides preset)')
+    parser.add_argument('--lora-rank', type=int, default=None,
+                        help='LoRA rank (default: from preset)')
+    parser.add_argument('--num-layers', type=int, default=None,
+                        help='Number of LoRA layers (default: from preset)')
+    parser.add_argument('--qlora', action='store_true', default=None,
                         help='Use QLoRA (4-bit quantized)')
 
     # Data config
-    parser.add_argument('--days', type=int, default=365,
-                        help='Days of data to export')
-    parser.add_argument('--min-importance', type=int, default=3)
-    parser.add_argument('--min-quality-score', type=int, default=7)
+    parser.add_argument('--days', type=int, default=730,
+                        help='Days of data to export (default: 730)')
+    parser.add_argument('--min-importance', type=int, default=2)
+    parser.add_argument('--min-quality-score', type=int, default=5)
 
     # DPO config
     parser.add_argument('--dpo-beta', type=float, default=0.1)
     parser.add_argument('--dpo-epochs', type=int, default=2)
 
+    # Remote execution
+    parser.add_argument('--run-on', choices=['m4'], default=None,
+                        help='SSH dispatch to M4 server (Angela_Server)')
+    parser.add_argument('--status', action='store_true',
+                        help='Show training status from progress.json')
+
     args = parser.parse_args()
 
+    # --status: read progress.json and display
+    if args.status:
+        preset = MODEL_PRESETS[args.model_preset]
+        output_dir = args.output_dir or preset["output_dir"]
+        progress_file = Path(output_dir) / "progress.json"
+        if progress_file.exists():
+            with open(progress_file, 'r') as f:
+                progress = json.load(f)
+            print("📊 Training Status")
+            print("=" * 50)
+            for k, v in progress.items():
+                print(f"   {k}: {v}")
+        else:
+            print(f"❌ No progress file found: {progress_file}")
+        return
+
+    # --run-on m4: SSH dispatch to M4 server
+    if args.run_on == "m4":
+        import subprocess
+        preset = MODEL_PRESETS[args.model_preset]
+        remote_cmd = (
+            f"cd /Users/davidsamanyaporn/PycharmProjects/AngelaAI && "
+            f"nohup python3 angela_core/training/train_angela.py "
+            f"--model-preset {args.model_preset} --phase {args.phase} "
+            f"> logs/training_{preset['version']}.log 2>&1 &"
+        )
+        print(f"🚀 Dispatching to M4 (Angela_Server)...")
+        print(f"   Command: {remote_cmd}")
+        result = subprocess.run(
+            ["ssh", "davidsamanyaporn@192.168.1.37", remote_cmd],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode == 0:
+            print(f"✅ Training dispatched to M4!")
+            print(f"   Monitor: ssh davidsamanyaporn@192.168.1.37 'cat {preset['output_dir']}/progress.json'")
+            print(f"   Logs: ssh davidsamanyaporn@192.168.1.37 'tail -20 logs/training_{preset['version']}.log'")
+        else:
+            print(f"❌ SSH dispatch failed: {result.stderr}")
+        return
+
+    # Apply preset, then override with CLI args
+    preset = MODEL_PRESETS[args.model_preset]
     config = PipelineConfig(
-        base_model=args.model,
-        version=args.version,
-        output_dir=args.output_dir,
+        base_model=args.model or preset["base_model"],
+        ollama_base=preset.get("ollama_base") or "",
+        version=args.version or preset["version"],
+        output_dir=args.output_dir or preset["output_dir"],
+        chat_format=preset["chat_format"],
+        training_method=preset["training_method"],
         data_days=args.days,
         min_importance=args.min_importance,
         min_quality_score=args.min_quality_score,
         epochs=args.epochs,
-        batch_size=args.batch_size,
-        learning_rate=args.learning_rate,
-        lora_rank=args.lora_rank,
-        use_qlora=args.qlora,
+        batch_size=args.batch_size or preset.get("batch_size", 2),
+        learning_rate=args.learning_rate or preset["learning_rate"],
+        lora_rank=args.lora_rank or preset.get("lora_rank", 16),
+        num_layers=args.num_layers or preset.get("num_layers", 16),
+        use_qlora=args.qlora if args.qlora is not None else preset["use_qlora"],
+        max_seq_length=preset["max_seq_length"],
+        mask_prompt=preset.get("mask_prompt", False),
         dpo_beta=args.dpo_beta,
         dpo_epochs=args.dpo_epochs,
     )

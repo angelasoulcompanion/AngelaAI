@@ -5,14 +5,14 @@ Extends the basic exporter with:
 - Multi-turn conversation grouping (session-based)
 - Memory-enriched context (RAG-style core_memories + knowledge_nodes)
 - Emotional state context (David's detected state + adaptation hints)
-- Llama 3.1 chat template format
+- Llama 3.1 / ChatML chat template format
 - DPO preference pairs export from angela_preference_pairs
 
 Usage:
     python -m angela_core.training.enhanced_data_exporter \
-        --output training/angela_v3_sft.jsonl \
-        --dpo-output training/angela_v3_dpo.jsonl \
-        --days 365 --include-memories --multi-turn --format llama3
+        --output training/angela_v4_sft.jsonl \
+        --dpo-output training/angela_v4_dpo.jsonl \
+        --days 365 --include-memories --multi-turn --format chatml
 
     python -m angela_core.training.enhanced_data_exporter --preview --days 365
 """
@@ -169,18 +169,19 @@ class EnhancedDataExporter:
     async def export(
         self,
         output_path: str,
-        days: int = 365,
-        min_importance: int = 3,
+        days: int = 730,
+        min_importance: int = 2,
         include_memories: bool = True,
         include_emotions: bool = True,
         multi_turn: bool = True,
-        min_quality_score: int = 7,
+        min_quality_score: int = 5,
         max_examples: Optional[int] = None,
-        format: str = "llama3",
+        format: str = "chatml",
         use_short_prompt: bool = False,
         scorer: Optional[Any] = None,
         include_reasoning: bool = False,
         cot_format: str = "thinking_tags",
+        strip_metadata: bool = False,
     ) -> Dict[str, Any]:
         """
         Export enhanced training data to JSONL.
@@ -259,7 +260,7 @@ class EnhancedDataExporter:
             with open(output_file, 'w', encoding='utf-8') as f:
                 for ex in examples:
                     line = {"messages": ex.messages}
-                    if ex.metadata:
+                    if ex.metadata and not strip_metadata:
                         line["metadata"] = ex.metadata
                     f.write(json.dumps(line, ensure_ascii=False) + '\n')
 
@@ -758,6 +759,9 @@ class EnhancedDataExporter:
                     role = "user" if turn.speaker == "david" else "assistant"
                     messages.append({"role": role, "content": turn.message})
 
+                # Fix consecutive assistant messages (truncate at first pair)
+                messages = self._fix_consecutive_assistant(messages)
+
                 # Ensure alternating user/assistant (skip if malformed)
                 if not self._validate_message_sequence(messages):
                     continue
@@ -856,6 +860,23 @@ class EnhancedDataExporter:
         if messages[-1]["role"] != "assistant":
             return False
         return True
+
+    @staticmethod
+    def _fix_consecutive_assistant(messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        """
+        Fix consecutive assistant->assistant messages by truncating at the first pair.
+
+        The bug: some multi-turn examples have two assistant messages in a row
+        (e.g., system, user, assistant, assistant, user, assistant).
+        Fix: keep everything up to and including the first assistant, then stop
+        if the next message is also assistant.
+        """
+        fixed: List[Dict[str, str]] = []
+        for msg in messages:
+            if fixed and msg["role"] == "assistant" and fixed[-1]["role"] == "assistant":
+                break
+            fixed.append(msg)
+        return fixed
 
     # =========================================================================
     # Internal: Context Enrichment
@@ -1140,14 +1161,14 @@ async def main():
     parser = argparse.ArgumentParser(
         description="Enhanced Training Data Exporter for Angela LLM Fine-Tuning"
     )
-    parser.add_argument("--output", "-o", default="training/angela_v3_sft.jsonl",
+    parser.add_argument("--output", "-o", default="training/angela_v5_sft.jsonl",
                         help="Output JSONL file path")
     parser.add_argument("--dpo-output", default=None,
                         help="Output JSONL for DPO preference pairs")
-    parser.add_argument("--days", "-d", type=int, default=365,
-                        help="Days of history to export")
-    parser.add_argument("--min-importance", "-i", type=int, default=3,
-                        help="Minimum importance level (1-10)")
+    parser.add_argument("--days", "-d", type=int, default=730,
+                        help="Days of history to export (default: 730)")
+    parser.add_argument("--min-importance", "-i", type=int, default=2,
+                        help="Minimum importance level (1-10, default: 2)")
     parser.add_argument("--include-memories", action="store_true",
                         help="Inject relevant memories into system prompt")
     parser.add_argument("--include-emotions", action="store_true",
@@ -1158,8 +1179,8 @@ async def main():
                         help="Minimum quality score (0-10, requires scorer)")
     parser.add_argument("--max-examples", type=int, default=None,
                         help="Maximum number of examples")
-    parser.add_argument("--format", choices=["llama3", "chatml"], default="llama3",
-                        help="Chat template format")
+    parser.add_argument("--format", choices=["llama3", "chatml"], default="chatml",
+                        help="Chat template format (default: chatml for Typhoon/Qwen)")
     parser.add_argument("--short-prompt", action="store_true",
                         help="Use shorter system prompt")
     parser.add_argument("--include-reasoning", action="store_true",
@@ -1167,6 +1188,8 @@ async def main():
     parser.add_argument("--cot-format", choices=["thinking_tags", "none"],
                         default="thinking_tags",
                         help="CoT format: thinking_tags (inject <|thinking|> blocks) or none (metadata only)")
+    parser.add_argument("--strip-metadata", action="store_true",
+                        help="Strip metadata from JSONL (keep only messages)")
     parser.add_argument("--preview", action="store_true",
                         help="Show preview statistics only")
 
@@ -1226,6 +1249,7 @@ async def main():
         scorer=scorer,
         include_reasoning=args.include_reasoning,
         cot_format=args.cot_format,
+        strip_metadata=args.strip_metadata,
     )
 
     print("\n✅ SFT Export Complete!")
