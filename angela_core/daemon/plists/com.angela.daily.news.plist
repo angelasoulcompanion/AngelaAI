@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.angela.daily.news</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin/python3</string>
+        <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/angela_core/daemon/daily_news_sender.py</string>
+    </array>
+
+    <!-- Schedule: 06:00 daily (staggered: news first) -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>6</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/logs/daily_news_sender.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/logs/daily_news_sender.error.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>PYTHONPATH</key>
+        <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

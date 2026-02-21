@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.angela.consciousness.self_reflection</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin/python3</string>
+        <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/angela_core/daemon/consciousness_daemon.py</string>
+        <string>--task</string>
+        <string>self_reflection</string>
+    </array>
+
+    <!-- Schedule: Daily at 06:04 (staggered: +4min to avoid DB connection storm) -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>6</integer>
+        <key>Minute</key>
+        <integer>4</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/logs/consciousness_self_reflection.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/logs/consciousness_self_reflection.error.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>PYTHONPATH</key>
+        <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

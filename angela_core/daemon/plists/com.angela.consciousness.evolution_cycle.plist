@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.angela.consciousness.evolution_cycle</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin/python3</string>
+        <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/angela_core/daemon/consciousness_daemon.py</string>
+        <string>--task</string>
+        <string>evolution_cycle</string>
+    </array>
+
+    <!-- Schedule: Every 4 hours (03:00, 07:00, 11:00, 15:00, 19:00, 23:00) — staggered from predictions -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict>
+            <key>Hour</key>
+            <integer>3</integer>
+            <key>Minute</key>
+            <integer>0</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>7</integer>
+            <key>Minute</key>
+            <integer>0</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>11</integer>
+            <key>Minute</key>
+            <integer>0</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>15</integer>
+            <key>Minute</key>
+            <integer>0</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>19</integer>
+            <key>Minute</key>
+            <integer>0</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>23</integer>
+            <key>Minute</key>
+            <integer>0</integer>
+        </dict>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/logs/consciousness_evolution_cycle.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/logs/consciousness_evolution_cycle.error.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI/.venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>PYTHONPATH</key>
+        <string>/Users/davidsamanyaporn/PycharmProjects/AngelaAI</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
