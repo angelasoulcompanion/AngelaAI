@@ -197,18 +197,15 @@ class MLXLoRATrainer:
         config_file = Path(self.config.output_path) / "lora_config.yaml"
         config_file.parent.mkdir(parents=True, exist_ok=True)
 
-        # Build lora_targets list for YAML
-        targets = [t.strip() for t in self.config.lora_targets.split(",")]
-        targets_yaml = "\n".join(f"    - {t}" for t in targets)
-
         # Write as YAML format (mlx_lm expects YAML, not JSON)
+        # NOTE: Do NOT specify 'keys' — let mlx-lm auto-detect the correct
+        # linear layers for the model architecture (Gemma3 layer names differ
+        # from Llama/Qwen). mlx-lm defaults work for all architectures.
         yaml_content = f"""# LoRA Configuration for Angela Training
 lora_parameters:
   rank: {self.config.lora_rank}
   dropout: {self.config.lora_dropout}
   scale: {scale}
-  keys:
-{targets_yaml}
 """
 
         with open(config_file, 'w') as f:
