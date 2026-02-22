@@ -648,15 +648,34 @@ class PredictiveCompanionService:
         ''', target_date)
         actual_topic_set = {r['topic'] for r in actual_topics}
 
-        # Simple accuracy: did predicted topics appear?
+        # Verify emotion predictions against actual emotional_states
+        actual_emotions = await self.db.fetch('''
+            SELECT DISTINCT emotion_detected FROM conversations
+            WHERE speaker = 'david' AND emotion_detected IS NOT NULL
+              AND (created_at AT TIME ZONE 'Asia/Bangkok')::date = $1
+        ''', target_date)
+        actual_emotion_set = {r['emotion_detected'].lower() for r in actual_emotions}
+
+        # Accuracy: check all verifiable categories
         correct = 0
         total = 0
         for pred in predictions:
-            if pred.get('category') in ('time', 'topic'):
+            category = pred.get('category')
+            if category in ('time', 'topic'):
                 total += 1
                 evidence = pred.get('evidence', [{}])
                 predicted_topic = evidence[0].get('topic') or evidence[0].get('to') if evidence else None
                 if predicted_topic and predicted_topic in actual_topic_set:
+                    correct += 1
+            elif category == 'emotion':
+                total += 1
+                predicted = pred.get('prediction', '').lower()
+                if any(e in predicted for e in actual_emotion_set):
+                    correct += 1
+            elif category == 'activity':
+                total += 1
+                predicted = pred.get('prediction', '').lower()
+                if any(t.lower() in predicted or predicted in t.lower() for t in actual_topic_set):
                     correct += 1
 
         accuracy = correct / max(total, 1)

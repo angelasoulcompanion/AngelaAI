@@ -12,11 +12,11 @@
 ## Every 2 hours
 - theory_of_mind: Analyze David's emotional state (parallel_safe: true)
 - meta_awareness: Bias detection + anomaly detection (parallel_safe: true)
+- evolution_cycle: Self-evolving feedback loop (parallel_safe: true)
 
 ## Every 4 hours
 - predictions: Pattern predictions from conversation history (parallel_safe: true)
 - companion_predictions: Mine companion patterns + daily briefings (parallel_safe: true)
-- evolution_cycle: Self-evolving feedback loop (parallel_safe: true)
 - memory_consolidation: Episodic → semantic memory consolidation (parallel_safe: true)
 - brain_reflection: High-level reflections on experiences (parallel_safe: true)
 - plan_generation: Generate multi-step plans for stale goals (parallel_safe: true)

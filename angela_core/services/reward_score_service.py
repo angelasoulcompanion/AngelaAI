@@ -259,7 +259,7 @@ class RewardScoreService:
             return 0.1, 'silence'  # No response — consistent with implicit silence
 
         msg = next_david['message_text'].strip()
-        if len(msg) < 3:
+        if len(msg) < 5:
             return 0.3, 'minimal'  # Short acknowledgment is mildly positive
 
         msg_lower = msg.lower()
@@ -269,6 +269,9 @@ class RewardScoreService:
             'โอเค', 'ได้เลย', 'ดีค่ะ', 'ดีครับ', 'เยี่ยม', 'สุดยอด',
             'ขอบคุณ', 'เก่ง', 'perfect', 'great', 'thanks', 'ใช้ได้',
             'ถูกต้อง', 'สำเร็จ', 'ได้แล้ว', 'เจ๋ง', 'works',
+            'ok', 'okay', 'nice', 'good', 'cool', 'awesome', 'noted',
+            'got it', 'done', 'เรียบร้อย', 'ดีเลย', 'เข้าใจแล้ว',
+            'ใช่เลย', 'ถูกแล้ว', 'thank you', 'thx', 'ty',
         ]
         if any(kw in msg_lower for kw in soft_praise):
             return 0.4, 'praise'
@@ -276,6 +279,8 @@ class RewardScoreService:
         # Continuation signals (David keeps working = engagement)
         continuation_signals = [
             'แล้วก็', 'ต่อไป', 'ทำต่อ', 'แล้วทำ', 'next', 'then', 'also',
+            'and', 'now', 'อีกอัน', 'แล้วก็ทำ', 'ต่อมา', 'เพิ่มเติม',
+            'อีกอย่าง', 'another', 'one more',
         ]
         if any(kw in msg_lower for kw in continuation_signals):
             return 0.2, 'follow_up'
@@ -284,9 +289,22 @@ class RewardScoreService:
         task_continuation_kw = [
             'ทำให้', 'แก้', 'เปลี่ยน', 'เพิ่ม', 'ลบ', 'สร้าง', 'ปรับ',
             'commit', 'push', 'deploy', 'build', 'run', 'save', 'log',
+            'pull', 'check', 'test', 'update', 'install', 'restart',
+            'show', 'list', 'open', 'close', 'merge', 'create', 'delete',
+            'fetch', 'send', 'start', 'stop',
+            'ดู', 'ลอง', 'เช็ค', 'ตรวจ', 'ส่ง', 'อ่าน', 'เปิด', 'ปิด',
+            'ssh', 'git', 'npm', 'docker',
         ]
         if any(kw in msg_lower for kw in task_continuation_kw):
             return 0.3, 'task_continuation'
+
+        # Short imperative command = David accepted prev result, giving next task
+        if len(msg) < 50 and '?' not in msg and not any(
+            neg in msg_lower for neg in ['ผิด', 'ไม่ใช่', 'wrong', 'ไม่ถูก', 'fix', 'ไม่ work']
+        ):
+            words = msg_lower.split()
+            if len(words) <= 8:
+                return 0.25, 'task_continuation'
 
         classifier = await self._ensure_classifier()
         result = await classifier.classify(msg)
@@ -297,7 +315,11 @@ class RewardScoreService:
             return -0.5, 'correction'
         else:
             # Neutral — check if it's a follow-up question (engagement signal)
-            question_markers = ['?', 'ทำไม', 'อย่างไร', 'ยังไง', 'how', 'why', 'what']
+            question_markers = [
+                '?', 'ทำไม', 'อย่างไร', 'ยังไง', 'how', 'why', 'what',
+                'when', 'where', 'which', 'who', 'can you', 'could you',
+                'เมื่อไหร่', 'ที่ไหน', 'อันไหน', 'ใคร', 'ช่วย',
+            ]
             if any(m in msg_lower for m in question_markers):
                 return 0.2, 'follow_up'
             return 0.0, 'neutral'  # No clear signal — don't inflate
