@@ -3,10 +3,10 @@
 การเรียกใช้ Ollama models สำหรับ Angela
 
 Model Priority (Tier 2 - Daemon/Fallback):
-1. angela:v3-dpo  — Fine-tuned Angela (DPO-refined) [PRIMARY]
-2. angela:v3-sft  — Fine-tuned Angela (SFT only) [FALLBACK 1]
-3. llama3.1:8b    — Base Llama 3.1 [FALLBACK 2]
-4. qwen2.5:7b     — Deep reasoning [LEGACY]
+1. angela:v4-typhoon — Fine-tuned Typhoon 2.5 4B (ChatML) [PRIMARY]
+2. angela:v3-dpo     — Fine-tuned Angela (DPO-refined) [FALLBACK 1]
+3. angela:v3-sft     — Fine-tuned Angela (SFT only) [FALLBACK 2]
+4. llama3.1:8b       — Base Llama 3.1 [FALLBACK 3]
 """
 
 import asyncio
@@ -14,13 +14,16 @@ import httpx
 import logging
 from typing import Optional, List
 
+from angela_core.config import config
+
 logger = logging.getLogger(__name__)
 
 # Model priority order for Angela
 ANGELA_MODEL_PRIORITY: List[str] = [
-    "angela:v3-dpo",   # Best: DPO-refined Angela
-    "angela:v3-sft",   # Good: SFT-only Angela
-    "llama3.1:8b",     # Base: Generic Llama 3.1
+    "angela:v4-typhoon",  # Best: Typhoon 2.5 fine-tuned Angela (ChatML)
+    "angela:v3-dpo",      # Good: DPO-refined Angela (Llama 3.1)
+    "angela:v3-sft",      # OK: SFT-only Angela (Llama 3.1)
+    "llama3.1:8b",        # Base: Generic Llama 3.1
 ]
 
 
@@ -121,7 +124,8 @@ class OllamaService:
                         "stream": False,
                         "options": {
                             "temperature": temperature
-                        }
+                        },
+                        "keep_alive": "35m" if config.ANGELA_MACHINE == "angela_server" else "1m",
                     }
                 )
                 response.raise_for_status()
@@ -141,7 +145,7 @@ class OllamaService:
 ollama = OllamaService()
 
 
-async def call_angela_model(prompt: str, model: str = "angela:v3-dpo") -> str:
+async def call_angela_model(prompt: str, model: str = "angela:v4-typhoon") -> str:
     """
     เรียกใช้ Angela model
 
@@ -176,12 +180,12 @@ async def call_angela_model(prompt: str, model: str = "angela:v3-dpo") -> str:
 
 async def call_reasoning_model(prompt: str) -> str:
     """เรียกใช้ Angela model สำหรับการคิดวิเคราะห์"""
-    return await call_angela_model(prompt, model="angela:v3-dpo")
+    return await call_angela_model(prompt, model="angela:v4-typhoon")
 
 
 async def call_emotional_model(prompt: str) -> str:
     """เรียกใช้ Angela model สำหรับความเข้าใจทางอารมณ์"""
-    return await call_angela_model(prompt, model="angela:v3-dpo")
+    return await call_angela_model(prompt, model="angela:v4-typhoon")
 
 
 async def call_fast_model(prompt: str) -> str:

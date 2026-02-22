@@ -19,6 +19,8 @@ import logging
 import os
 from typing import Dict, List, Optional, Any
 
+from angela_core.config import config
+
 logger = logging.getLogger(__name__)
 
 # Ollama model for daemon reasoning (Thai-capable)
@@ -113,6 +115,7 @@ class ClaudeReasoningService:
                     "num_predict": max_tokens,
                     "temperature": 0.3,
                 },
+                "keep_alive": "35m" if config.ANGELA_MACHINE == "angela_server" else "1m",
             }
             if wants_json:
                 payload["format"] = "json"

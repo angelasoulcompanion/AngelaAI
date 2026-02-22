@@ -30,6 +30,8 @@ import os
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 
+from angela_core.config import config
+
 logger = logging.getLogger(__name__)
 
 # Jina AI Embedding API (free, multilingual, no token required)
@@ -232,7 +234,8 @@ class EmbeddingService:
                             f"{self.OLLAMA_URL}/api/embeddings",
                             json={
                                 "model": model,
-                                "prompt": text
+                                "prompt": text,
+                                "keep_alive": "35m" if config.ANGELA_MACHINE == "angela_server" else "3m",
                             }
                         )
                         response.raise_for_status()
