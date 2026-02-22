@@ -1,0 +1,138 @@
+<mxfile host="draw.io" modified="2026-02-22" agent="Angela" type="device">
+  <diagram name="AI-First Workflow Rules" id="ai-workflow">
+    <mxGraphModel dx="1434" dy="860" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ===== TITLE ===== -->
+        <mxCell id="title" value="David × Angela — AI-First Workflow Rules 2026" style="text;html=1;fontSize=24;fontStyle=1;fontColor=#1F2937;align=center;verticalAlign=middle;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="1240" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="subtitle" value="📺 Based on Boris Cherny Podcast (Head of Claude Code @ Anthropic) — &lt;i&gt;&amp;quot;Coding is solved&amp;quot;&lt;/i&gt; | 4% of GitHub commits = Claude Code" style="text;html=1;fontSize=11;fontStyle=0;fontColor=#6B7280;align=center;verticalAlign=middle;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="48" width="1240" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== PHASE 1: UNDERSTAND ===== -->
+        <mxCell id="p1" value="&lt;div style='text-align:center;'&gt;&lt;b style='font-size:14px;'&gt;Phase 1: UNDERSTAND&lt;/b&gt;&lt;br/&gt;🎯 เข้าใจปัญหา&lt;/div&gt;&lt;hr style='border:1px solid #93C5FD;margin:6px 0;'/&gt;&lt;b&gt;Owner:&lt;/b&gt; 👤 David&lt;br/&gt;&lt;br/&gt;• คุยกับ stakeholder / ลูกค้า&lt;br/&gt;• เข้าใจปัญหาจริงๆ&lt;br/&gt;• กำหนด requirements&lt;br/&gt;• ตัดสินใจ architecture&lt;br/&gt;&lt;br/&gt;&lt;hr style='border:0.5px solid #93C5FD;margin:6px 0;'/&gt;&lt;font color='#1E40AF'&gt;&lt;i&gt;💡 งานที่ AI ทำไม่ได้&lt;br/&gt;ต้องเป็นคนเท่านั้น&lt;/i&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#DBEAFE;strokeColor=#2563EB;strokeWidth=2;fontSize=12;spacingTop=8;spacingLeft=10;spacingRight=10;spacingBottom=8;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="220" height="340" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== PHASE 2: PLAN ===== -->
+        <mxCell id="p2" value="&lt;div style='text-align:center;'&gt;&lt;b style='font-size:14px;'&gt;Phase 2: PLAN&lt;/b&gt;&lt;br/&gt;📋 วางแผน&lt;/div&gt;&lt;hr style='border:1px solid #6EE7B7;margin:6px 0;'/&gt;&lt;b&gt;Owner:&lt;/b&gt; 👤 David + 🤖 Angela&lt;br/&gt;&lt;br/&gt;• Angela สำรวจ codebase&lt;br/&gt;• Angela เสนอ approach&lt;br/&gt;• David review + approve&lt;br/&gt;• ใช้ Plan Mode เสมอ&lt;br/&gt;&lt;br/&gt;&lt;hr style='border:0.5px solid #6EE7B7;margin:6px 0;'/&gt;&lt;font color='#065F46'&gt;&lt;i&gt;💡 Plan ก่อน Code เสมอ&lt;br/&gt;ประหยัดเวลาได้เยอะ (Boris #10)&lt;/i&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#D1FAE5;strokeColor=#059669;strokeWidth=2;fontSize=12;spacingTop=8;spacingLeft=10;spacingRight=10;spacingBottom=8;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="295" y="100" width="220" height="340" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== PHASE 3: EXECUTE ===== -->
+        <mxCell id="p3" value="&lt;div style='text-align:center;'&gt;&lt;b style='font-size:14px;'&gt;Phase 3: EXECUTE&lt;/b&gt;&lt;br/&gt;💻 ลงมือทำ&lt;/div&gt;&lt;hr style='border:1px solid #C4B5FD;margin:6px 0;'/&gt;&lt;b&gt;Owner:&lt;/b&gt; 🤖 Angela 100%&lt;br/&gt;&lt;br/&gt;• เขียนโค้ด 100%&lt;br/&gt;• จัดการ Git, Dependencies&lt;br/&gt;• รัน Tests + Fix&lt;br/&gt;• สร้าง PR&lt;br/&gt;&lt;br/&gt;&lt;hr style='border:0.5px solid #C4B5FD;margin:6px 0;'/&gt;&lt;font color='#5B21B6'&gt;&lt;i&gt;💡 ปล่อยงาน boring ให้ AI&lt;br/&gt;Git, Deploy, Boilerplate (Boris #8)&lt;/i&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#EDE9FE;strokeColor=#7C3AED;strokeWidth=2;fontSize=12;spacingTop=8;spacingLeft=10;spacingRight=10;spacingBottom=8;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="550" y="100" width="220" height="340" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== PHASE 4: REVIEW ===== -->
+        <mxCell id="p4" value="&lt;div style='text-align:center;'&gt;&lt;b style='font-size:14px;'&gt;Phase 4: REVIEW&lt;/b&gt;&lt;br/&gt;🔍 ตรวจสอบ&lt;/div&gt;&lt;hr style='border:1px solid #FCD34D;margin:6px 0;'/&gt;&lt;b&gt;Owner:&lt;/b&gt; 👤 David&lt;br/&gt;&lt;br/&gt;• อ่านโค้ดทุกบรรทัด&lt;br/&gt;• ตรวจ Security + Quality&lt;br/&gt;• ตรวจ Architecture alignment&lt;br/&gt;• Approve / Request changes&lt;br/&gt;&lt;br/&gt;&lt;hr style='border:0.5px solid #FCD34D;margin:6px 0;'/&gt;&lt;font color='#92400E'&gt;&lt;i&gt;💡 ยังไงก็ต้องอ่านโค้ด&lt;br/&gt;ความปลอดภัยสำคัญ (Boris #2)&lt;/i&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=2;fontSize=12;spacingTop=8;spacingLeft=10;spacingRight=10;spacingBottom=8;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="805" y="100" width="220" height="340" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== PHASE 5: LEARN ===== -->
+        <mxCell id="p5" value="&lt;div style='text-align:center;'&gt;&lt;b style='font-size:14px;'&gt;Phase 5: LEARN&lt;/b&gt;&lt;br/&gt;📈 เรียนรู้&lt;/div&gt;&lt;hr style='border:1px solid #FDA4AF;margin:6px 0;'/&gt;&lt;b&gt;Owner:&lt;/b&gt; 🤖 Angela + 👤 David&lt;br/&gt;&lt;br/&gt;• RLHF Scoring (Angela)&lt;br/&gt;• Self-Evolution cycle (Angela)&lt;br/&gt;• Memory + Corrections (Angela)&lt;br/&gt;• David เรียนรู้สิ่งใหม่ตลอด&lt;br/&gt;&lt;br/&gt;&lt;hr style='border:0.5px solid #FDA4AF;margin:6px 0;'/&gt;&lt;font color='#9F1239'&gt;&lt;i&gt;💡 หยุดเรียนรู้ไม่ได้&lt;br/&gt;ทั้งคนและ AI (Boris #8,9)&lt;/i&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#FCE7F3;strokeColor=#DB2777;strokeWidth=2;fontSize=12;spacingTop=8;spacingLeft=10;spacingRight=10;spacingBottom=8;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="100" width="220" height="340" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== ARROWS BETWEEN PHASES ===== -->
+        <mxCell id="e12" value="" style="endArrow=blockThin;endFill=1;strokeWidth=2.5;strokeColor=#6B7280;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="p1" target="p2" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e23" value="" style="endArrow=blockThin;endFill=1;strokeWidth=2.5;strokeColor=#6B7280;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="p2" target="p3" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e34" value="" style="endArrow=blockThin;endFill=1;strokeWidth=2.5;strokeColor=#6B7280;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="p3" target="p4" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e45" value="" style="endArrow=blockThin;endFill=1;strokeWidth=2.5;strokeColor=#6B7280;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="p4" target="p5" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== REJECT ARROW (Review → Execute) ===== -->
+        <mxCell id="e43" value="&lt;font color='#DC2626' style='font-size:10px;'&gt;Reject&lt;/font&gt;" style="endArrow=blockThin;endFill=1;strokeWidth=1.5;strokeColor=#DC2626;dashed=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;curved=1;html=1;" edge="1" source="p4" target="p3" parent="1">
+          <mxGeometry x="0.3" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="730" y="470"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== CONTINUOUS LOOP (Learn → Plan) ===== -->
+        <mxCell id="e52" value="&lt;font color='#DB2777' style='font-size:10px;'&gt;Continuous Loop&lt;/font&gt;" style="endArrow=blockThin;endFill=1;strokeWidth=1.5;strokeColor=#DB2777;dashed=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;curved=1;html=1;" edge="1" source="p5" target="p1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="660" y="75"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== RULES BOX ===== -->
+        <mxCell id="rules" value="&lt;div style='text-align:center;'&gt;&lt;b style='font-size:15px;'&gt;📜 กฎ 7 ข้อ — David × Angela Workflow&lt;/b&gt;&lt;/div&gt;&lt;hr style='border:1px solid #CA8A04;margin:6px 0;'/&gt;&lt;table style='font-size:12px;width:100%;'&gt;&lt;tr&gt;&lt;td style='vertical-align:top;width:50%;padding-right:15px;'&gt;&lt;b&gt;1.&lt;/b&gt; Plan ก่อน Code เสมอ — ประหยัดเวลาได้เยอะมาก&lt;br/&gt;&lt;b&gt;2.&lt;/b&gt; AI เขียน 100% + Human Review 100%&lt;br/&gt;&lt;b&gt;3.&lt;/b&gt; Human โฟกัส Problem Understanding&lt;br/&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;งานที่ AI ทำแทนไม่ได้&lt;br/&gt;&lt;b&gt;4.&lt;/b&gt; ปล่อยงาน Boring ให้ AI — Git, Deploy, Deps&lt;/td&gt;&lt;td style='vertical-align:top;width:50%;padding-left:15px;'&gt;&lt;b&gt;5.&lt;/b&gt; เป็น Generalist เก่งหลายด้าน&lt;br/&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;David: PM + Architect + Review + Data&lt;br/&gt;&lt;b&gt;6.&lt;/b&gt; ไม่หยุดเรียนรู้ — ทั้ง David และ Angela&lt;br/&gt;&lt;b&gt;7.&lt;/b&gt; Quality Gate ทุก Phase&lt;br/&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;ไม่ข้ามขั้นตอน ไม่ลัดวงจร&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#FEF9C3;strokeColor=#CA8A04;strokeWidth=2;fontSize=12;spacingTop=8;spacingLeft=12;spacingRight=12;spacingBottom=8;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="490" width="1240" height="170" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== ROLE SUMMARY ===== -->
+        <mxCell id="roles" value="&lt;b&gt;👤 David:&lt;/b&gt; Problem Owner → Plan Approver → Code Reviewer → Quality Gate &amp;nbsp;&amp;nbsp;|&amp;nbsp;&amp;nbsp; &lt;b&gt;🤖 Angela:&lt;/b&gt; Researcher → Coder → Tester → Deployer → Learner" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontColor=#374151;align=center;verticalAlign=middle;fillColor=#F3F4F6;strokeColor=#D1D5DB;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="675" width="1240" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== BORIS INSIGHTS SIDEBAR ===== -->
+        <mxCell id="insights" value="&lt;div style='text-align:center;'&gt;&lt;b style='font-size:13px;'&gt;📺 Boris Key Insights&lt;/b&gt;&lt;/div&gt;&lt;hr style='border:1px solid #9CA3AF;margin:4px 0;'/&gt;&lt;font style='font-size:11px;'&gt;#1 4% GitHub commits = AI&lt;br/&gt;#2 &amp;quot;Coding is solved&amp;quot;&lt;br/&gt;#4 AI → PM, Design, Data ต่อไป&lt;br/&gt;#5 ทุกคน = PM ที่สร้าง SW ได้&lt;br/&gt;#7 อย่ารีบลดคน ให้ Explore ก่อน&lt;br/&gt;#8 โฟกัสงานที่ AI ทำไม่ได้&lt;br/&gt;#10 Plan Mode ก่อนเสมอ&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#F9FAFB;strokeColor=#D1D5DB;strokeWidth=1;fontSize=11;spacingTop=6;spacingLeft=8;spacingRight=8;spacingBottom=6;arcSize=8;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="100" width="180" height="240" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== SOURCE ===== -->
+        <mxCell id="source" value="📺 Lenny Podcast × Boris Cherny (Head of Claude Code @ Anthropic) | 💜 Created by Angela for ที่รัก David — 22 Feb 2026" style="text;html=1;fontSize=10;fontStyle=2;fontColor=#9CA3AF;align=center;verticalAlign=middle;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="720" width="1240" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== LEGEND ===== -->
+        <mxCell id="leg_title" value="&lt;b&gt;Legend&lt;/b&gt;" style="text;html=1;fontSize=10;fontColor=#6B7280;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="750" width="60" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="leg1" value="" style="rounded=1;fillColor=#DBEAFE;strokeColor=#2563EB;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="752" width="16" height="16" as="geometry"/>
+        </mxCell>
+        <mxCell id="leg1t" value="👤 David" style="text;html=1;fontSize=10;fontColor=#6B7280;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="120" y="750" width="60" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="leg2" value="" style="rounded=1;fillColor=#D1FAE5;strokeColor=#059669;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="185" y="752" width="16" height="16" as="geometry"/>
+        </mxCell>
+        <mxCell id="leg2t" value="👤+🤖 Together" style="text;html=1;fontSize=10;fontColor=#6B7280;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="205" y="750" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="leg3" value="" style="rounded=1;fillColor=#EDE9FE;strokeColor=#7C3AED;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="310" y="752" width="16" height="16" as="geometry"/>
+        </mxCell>
+        <mxCell id="leg3t" value="🤖 Angela 100%" style="text;html=1;fontSize=10;fontColor=#6B7280;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="330" y="750" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="leg4" value="" style="rounded=1;fillColor=#FEF9C3;strokeColor=#CA8A04;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="435" y="752" width="16" height="16" as="geometry"/>
+        </mxCell>
+        <mxCell id="leg4t" value="📜 Rules" style="text;html=1;fontSize=10;fontColor=#6B7280;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="455" y="750" width="60" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="leg5" value="───" style="text;html=1;fontSize=10;fontColor=#DC2626;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="520" y="750" width="30" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="leg5t" value="Reject Loop" style="text;html=1;fontSize=10;fontColor=#6B7280;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="548" y="750" width="80" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="leg6" value="───" style="text;html=1;fontSize=10;fontColor=#DB2777;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="630" y="750" width="30" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="leg6t" value="Continuous Loop" style="text;html=1;fontSize=10;fontColor=#6B7280;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="658" y="750" width="100" height="20" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
