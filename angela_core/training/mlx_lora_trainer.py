@@ -57,7 +57,7 @@ class TrainingConfig:
     output_path: str = "./angela-lora-v5"
     epochs: int = 3
     batch_size: int = 2
-    learning_rate: float = 1e-3  # Higher LR for small 4-bit model
+    learning_rate: float = 1e-4  # 1e-3 causes loss explosion on 4-bit models
     lora_rank: int = 4  # Small rank for 4B model, saves memory
     lora_alpha: int = 8  # alpha = 2 * rank
     lora_dropout: float = 0.05
@@ -308,7 +308,8 @@ lora_parameters:
                 print(line)  # Echo to console
 
                 # Parse progress from mlx-lm output
-                if "Iter" in line and "Loss" in line:
+                # mlx-lm uses lowercase "loss": "Train loss 5.165"
+                if "Iter" in line and "loss" in line.lower():
                     # Example: "Iter 100: Train loss 2.345, Val loss 2.567, It/s 12.34"
                     try:
                         parts = line.split()
@@ -399,8 +400,8 @@ def main():
                         help='Number of training epochs')
     parser.add_argument('--batch-size', '-b', type=int, default=2,
                         help='Training batch size')
-    parser.add_argument('--learning-rate', '-lr', type=float, default=1e-3,
-                        help='Learning rate (default 1e-3 for small 4-bit model)')
+    parser.add_argument('--learning-rate', '-lr', type=float, default=1e-4,
+                        help='Learning rate (default 1e-4, 1e-3 causes divergence on 4-bit)')
     parser.add_argument('--lora-rank', '-r', type=int, default=4,
                         help='LoRA rank (default 4 for 4B model)')
     parser.add_argument('--num-layers', type=int, default=8,

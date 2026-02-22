@@ -48,7 +48,7 @@ MODEL_PRESETS: Dict[str, Dict[str, Any]] = {
         "version": "v5",
         "output_dir": "./angela-lora-v5",
         "chat_format": "gemma3",
-        "learning_rate": 1e-3,
+        "learning_rate": 1e-4,
         "max_seq_length": 1024,
         "use_qlora": False,  # Already 4-bit quantized
         "training_method": "mlx",
