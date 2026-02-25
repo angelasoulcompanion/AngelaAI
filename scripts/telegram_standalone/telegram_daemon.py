@@ -47,9 +47,13 @@ class TelegramDaemon:
         print(f"   Long poll timeout: {self.long_poll_timeout}s")
 
     async def process_message(self, msg):
-        """Process a single message"""
+        """Process a single message — save incoming only, no auto-reply.
+
+        DISABLED (2026-02-25): ที่รักสั่งยกเลิก Telegram response
+        เพราะต้องอาศัย Model API ถึงจะตอบรู้เรื่อง และยังไงก็ไม่เหมือนตัวน้องจริง
+        """
         try:
-            # Check if already responded
+            # Check if already saved
             if await self.telegram.is_already_responded(msg.update_id):
                 return
 
@@ -57,49 +61,16 @@ class TelegramDaemon:
             print(f"\n📩 [{datetime.now().strftime('%H:%M:%S')}] From: {msg.from_name}")
             print(f"   Message: {msg.text[:100]}")
 
-            # Save incoming message FIRST (marks this update as processed)
+            # Save incoming message to telegram_messages
             await self.telegram.save_incoming_message(msg)
 
-            # Also save to conversations table (brain can learn from David's Telegram messages)
+            # Save to conversations table (brain can learn from David's Telegram messages)
             await self.telegram.save_to_conversations(
                 speaker='david',
                 message_text=msg.text,
             )
 
-            # Send typing indicator
-            await self.telegram.send_typing(msg.chat_id)
-
-            # Generate response
-            response = await self.responder.generate_response(msg)
-
-            # Send response
-            result = await self.telegram.send_message(
-                chat_id=msg.chat_id,
-                text=response,
-                reply_to_message_id=msg.message_id
-            )
-
-            if result.get("ok"):
-                print(f"   ✅ Replied: {response[:80]}")
-
-                # Extract telegram_message_id from API response
-                sent_msg_id = result.get("result", {}).get("message_id")
-
-                # Save outgoing message to telegram_messages
-                await self.telegram.save_outgoing_message(
-                    chat_id=msg.chat_id,
-                    message_text=response,
-                    telegram_message_id=sent_msg_id,
-                )
-
-                # Save Angela's response to conversations table too
-                await self.telegram.save_to_conversations(
-                    speaker='angela',
-                    message_text=response,
-                )
-            else:
-                error = result.get('description') or result.get('error', 'unknown')
-                print(f"   ❌ Failed to send: {error}")
+            print(f"   💾 Saved to DB (no auto-reply)")
 
         except Exception as e:
             print(f"   ❌ Error processing message: {e}")

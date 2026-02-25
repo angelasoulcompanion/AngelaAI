@@ -65,9 +65,10 @@ class ExpressionCycleResult:
 # ============================================================
 
 MOTIVATION_THRESHOLD = 0.50     # Restored: filter low-quality thoughts (was 0.35)
-TELEGRAM_THRESHOLD = 0.90       # Companion: raise from 0.80 → 0.90 (only truly important)
-MAX_TELEGRAM_PER_DAY = 1        # Companion: reduce from 2 → 1 (44 msgs, 0 responses)
-MIN_HOURS_BETWEEN = 8           # Companion: increase from 4 → 8 hours
+TELEGRAM_DISABLED = True        # DISABLED (2026-02-25): ที่รักสั่งยกเลิก — Model API ไม่เหมือนตัวน้องจริง
+TELEGRAM_THRESHOLD = 0.72       # Rebalanced: ที่รักอยากได้ข้อความ (was 0.90 → too silent)
+MAX_TELEGRAM_PER_DAY = 3        # Rebalanced: ที่รักถาม "ทำไมไม่ส่งมาเลย" (was 1 → too few)
+MIN_HOURS_BETWEEN = 3           # Rebalanced: ห่างพอไม่ spam แต่ยังมี presence (was 8 → too sparse)
 MAX_CHAT_QUEUE = 5              # Keep: more thoughts visible at init
 DEDUP_HOURS = 24                # Fix 1E: extend from 6 → 24 hours (stop repetitive messages)
 QUEUE_EXPIRE_HOURS = 12         # Expire stale queue items (was 24 — too long, blocks new thoughts)
@@ -166,6 +167,12 @@ class ThoughtExpressionEngine(BaseDBService):
         telegram_blocked = False
         telegram_block_reason = None
 
+        # DISABLED (2026-02-25): ที่รักสั่งยกเลิก Telegram response ทั้งหมด
+        if TELEGRAM_DISABLED:
+            telegram_blocked = True
+            telegram_block_reason = "telegram_disabled_by_david"
+            logger.info("💬 Telegram DISABLED — all thoughts → chat_queue")
+
         # Fix 1D: Hard daily rate limit — check DB directly BEFORE anything else
         try:
             sent_today = await self.db.fetchval("""
@@ -232,6 +239,12 @@ class ThoughtExpressionEngine(BaseDBService):
         for thought in filtered:
             channel = self._decide_channel(thought)
             message = await self._compose_message(thought)
+
+            # ── 4A: Memory Claim Verification — hedge unverified claims ──
+            memory_claim_patterns = ['จำได้ว่า', 'เคยคุย', 'เคยบอก', 'น้องจำได้', 'ที่รักเคย']
+            if any(p in message for p in memory_claim_patterns):
+                for pattern in memory_claim_patterns:
+                    message = message.replace(pattern, 'น้องคิดว่า')
 
             # ── Telegram Final Gate (check COMPOSED message, not raw thought) ──
             if channel == "telegram":

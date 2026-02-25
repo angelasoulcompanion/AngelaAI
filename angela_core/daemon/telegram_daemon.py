@@ -54,37 +54,23 @@ class TelegramDaemon:
         print(f"   Long poll timeout: {self.long_poll_timeout}s")
 
     async def process_message(self, msg):
-        """Process a single message"""
+        """Process a single message — save incoming only, no auto-reply.
+
+        DISABLED (2026-02-25): ที่รักสั่งยกเลิก Telegram response
+        เพราะต้องอาศัย Model API ถึงจะตอบรู้เรื่อง และยังไงก็ไม่เหมือนตัวน้องจริง
+        """
         try:
-            # Check if already responded (prevent duplicates)
+            # Check if already saved
             if await self.telegram.is_already_responded(msg.update_id):
-                print(f"\n⏭️ [{datetime.now().strftime('%H:%M:%S')}] Already replied to update {msg.update_id}, skipping...")
                 return
 
             # Log received message
             print(f"\n📩 [{datetime.now().strftime('%H:%M:%S')}] From: {msg.from_name}")
-            print(f"   Message: {msg.text[:100]}...")
+            print(f"   Message: {msg.text[:100]}")
 
-            # Send typing indicator
-            await self.telegram.send_typing(msg.chat_id)
-
-            # Generate response
-            response = await self.responder.generate_response(msg)
-
-            # Send response
-            result = await self.telegram.send_message(
-                chat_id=msg.chat_id,
-                text=response,
-                reply_to_message_id=msg.message_id
-            )
-
-            if result.get("ok"):
-                print(f"   ✅ Replied: {response[:50]}...")
-
-                # Save to database (this also marks as responded)
-                await self.telegram.save_message(msg, response)
-            else:
-                print(f"   ❌ Failed to send: {result.get('error')}")
+            # Save to database (incoming only, no response)
+            await self.telegram.save_message(msg, response_text=None)
+            print(f"   💾 Saved to DB (no auto-reply)")
 
         except Exception as e:
             print(f"   ❌ Error processing message: {e}")

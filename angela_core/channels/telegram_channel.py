@@ -20,7 +20,15 @@ DAVID_TELEGRAM_CHAT_ID = "7980404818"
 
 
 class TelegramChannel(BaseChannel):
-    """Telegram channel using existing TelegramService."""
+    """Telegram channel using existing TelegramService.
+
+    DISABLED (2026-02-25): ที่รักสั่งยกเลิก Telegram response
+    เพราะต้องอาศัย Model API ถึงจะตอบรู้เรื่อง และยังไงก็ไม่เหมือนตัวน้องจริง
+    ยังรับ incoming messages เก็บ DB ได้ แต่ไม่ส่งออกแล้ว
+    """
+
+    # Set to True to re-enable Telegram sending
+    ENABLED = False
 
     def __init__(self):
         self._service = None
@@ -52,6 +60,13 @@ class TelegramChannel(BaseChannel):
 
     async def send_message(self, message: OutgoingMessage) -> ChannelResult:
         """Send via Telegram Bot API."""
+        if not self.ENABLED:
+            logger.info("TelegramChannel DISABLED — message routed to chat_queue")
+            return ChannelResult(
+                success=False, channel=self.name,
+                error="TelegramChannel disabled by ที่รัก (2026-02-25)",
+            )
+
         if not self._available or not self._service:
             return ChannelResult(
                 success=False, channel=self.name,
