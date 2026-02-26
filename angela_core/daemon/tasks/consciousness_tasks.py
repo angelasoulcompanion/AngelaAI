@@ -195,13 +195,31 @@ class ConsciousnessTasksMixin:
         logger.info("🪞 Running reflection engine (brain-based metacognition)...")
         return await CognitiveEngine.run_reflection_cycle()
 
+    async def run_competition(self) -> Dict[str, Any]:
+        """
+        Run GWT Competition Arena + Ignition Gate — Phase 2 🏟️
+
+        Thoughts compete for consciousness via softmax + lateral inhibition.
+        Winners pass ignition gate to be expressed.
+        Must run AFTER thought_generation, BEFORE thought_expression.
+        Creates own DB connections.
+        """
+        logger.info("🏟️ Running GWT competition + ignition...")
+        try:
+            from angela_core.services.competition_task import run_competition_cycle
+            return await run_competition_cycle()
+        except Exception as e:
+            logger.error("❌ Competition cycle failed: %s", e)
+            return {'success': False, 'error': str(e)}
+
     async def run_thought_expression(self) -> Dict[str, Any]:
         """
         Run thought expression — Brain-Based Architecture Phase 6 💬
 
         High-motivation thoughts → Telegram (urgent) or chat_queue (session).
         Bridge between internal thinking and external action.
-        Runs sequentially after thought_generation, before proactive_actions.
+        Phase 2: Only processes ignited thoughts (competition winners).
+        Runs sequentially after competition, before proactive_actions.
         Creates own DB connection.
         """
         logger.info("💬 Running thought expression (brain→action bridge)...")

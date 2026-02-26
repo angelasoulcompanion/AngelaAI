@@ -9,7 +9,7 @@ Brain tasks were originally only in consciousness_daemon.py (manual runs).
 This mixin brings them into the 24/7 daemon.
 
 Schedule:
-- Every 30 min: salience scan, thought generation (parallel), then expression → comparison → plan execution (sequential)
+- Every 30 min: salience scan, thought generation (parallel), then competition → expression → comparison → plan execution (sequential)
 - Every 4 hours: memory consolidation → reflection → plan generation (sequential, uses Ollama)
 
 Created: 2026-02-15
@@ -68,12 +68,39 @@ class BrainTasksMixin:
             logger.error("   ❌ [Brain] Thought generation failed: %s", e)
             return {'success': False, 'error': str(e)}
 
+    async def run_brain_competition(self) -> Dict[str, Any]:
+        """
+        Run GWT competition + ignition — Phase 2 neuroscience architecture.
+
+        Thoughts compete for consciousness via softmax + lateral inhibition.
+        Winners pass through ignition gate to be expressed.
+        Must run AFTER thought generation, BEFORE expression.
+        Creates own DB connections.
+        """
+        logger.info("🏟️ [Brain] Running GWT competition + ignition...")
+        try:
+            from angela_core.services.competition_task import run_competition_cycle
+            result = await run_competition_cycle()
+            candidates = result.get('candidates', 0)
+            winners = result.get('winners', 0)
+            ignited = result.get('ignited', 0)
+            margin = result.get('margin', 0)
+            logger.info(
+                "   ✅ [Brain] Competition: %d candidates, %d winners, "
+                "%d ignited, margin=%.3f",
+                candidates, winners, ignited, margin,
+            )
+            return result
+        except Exception as e:
+            logger.error("   ❌ [Brain] Competition failed: %s", e)
+            return {'success': False, 'error': str(e)}
+
     async def run_brain_thought_expression(self) -> Dict[str, Any]:
         """
         Run thought expression — bridge between thinking and action.
 
         High-motivation thoughts → Telegram (urgent) or chat_queue (session).
-        Must run AFTER thought generation. Creates own DB connection.
+        Must run AFTER competition (Phase 2). Creates own DB connection.
         """
         logger.info("💬 [Brain] Running thought expression...")
         try:

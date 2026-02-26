@@ -365,11 +365,13 @@ class ConsciousnessDaemon(
                 results[name] = result
 
         # =====================================================================
-        # SEQUENTIAL: Thought expression → brain comparison → proactive care → proactive actions → planning
-        # Thought expression runs first (brain-preferred over rule-based actions)
+        # SEQUENTIAL: Competition → Expression → Comparison → Proactive → Planning
+        # Phase 2 (GWT): Competition + ignition BEFORE expression
+        # Thought expression only processes ignited thoughts (Phase 2 winners)
         # Brain comparison logs brain vs rule for migration tracking (Phase 7)
         # Planning: generate plans (every 4h) then execute steps (every 30m)
         # =====================================================================
+        results['competition'] = await self.run_competition()
         results['thought_expression'] = await self.run_thought_expression()
         results['brain_comparison'] = await self.run_brain_comparison()
         results['telegram_effectiveness'] = await self.run_telegram_effectiveness()
@@ -427,6 +429,7 @@ class ConsciousnessDaemon(
             'thought_generation': self.run_thought_generation,
             'memory_consolidation': self.run_memory_consolidation,
             'brain_reflection': self.run_brain_reflection,
+            'competition': self.run_competition,
             'thought_expression': self.run_thought_expression,
             'brain_comparison': self.run_brain_comparison,
             'telegram_effectiveness': self.run_telegram_effectiveness,

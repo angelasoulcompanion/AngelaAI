@@ -384,16 +384,36 @@ class ThoughtExpressionEngine(BaseDBService):
 
     async def _select_expressible_thoughts(self) -> List[Dict[str, Any]]:
         """
-        Select active thoughts with motivation >= threshold.
-        Ordered by motivation DESC, limited to 10.
+        Select thoughts that have been approved for expression.
+
+        Phase 2 (GWT): Prefer ignited thoughts (passed competition + ignition gate).
+        Fallback: active thoughts with motivation >= threshold (backward compatible).
         """
         await self.connect()
+
+        # Phase 2: Prefer thoughts that won the competition and ignited
+        rows = await self.db.fetch("""
+            SELECT thought_id, thought_type, content, stimulus_ids,
+                   motivation_score, motivation_breakdown, status, created_at
+            FROM angela_thoughts
+            WHERE status = 'active'
+            AND ignition_status = 'ignited'
+            ORDER BY competition_score DESC NULLS LAST, motivation_score DESC
+            LIMIT 5
+        """)
+
+        if rows:
+            return [dict(r) for r in rows]
+
+        # Fallback: no ignited thoughts (competition hasn't run yet or no winners)
+        # Use legacy selection for backward compatibility
         rows = await self.db.fetch("""
             SELECT thought_id, thought_type, content, stimulus_ids,
                    motivation_score, motivation_breakdown, status, created_at
             FROM angela_thoughts
             WHERE status = 'active'
             AND motivation_score >= $1
+            AND (ignition_status IS NULL OR ignition_status != 'extinguished')
             ORDER BY motivation_score DESC
             LIMIT 10
         """, MOTIVATION_THRESHOLD)
