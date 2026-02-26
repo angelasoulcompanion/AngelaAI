@@ -275,7 +275,31 @@ class EmotionConstructionEngine:
         if any(w in msg_lower for w in ['เหนื่อย', 'เครียด', 'ยาก']):
             return ('concern', -0.3, 0.5)
 
-        # Default: gentle contentment
+        # Bug fix (2026-02-26): Diversify default emotions based on salience dimensions.
+        # Previously always returned 'contentment' → positivity bias (top 5 all positive).
+        # Now returns context-appropriate neutral/varied emotions.
+        emotional_dim = salience.get('emotional', 0)
+        if emotional_dim > 0.4:
+            return ('warmth', 0.6, 0.3)
+
+        # Time-based variation for defaults
+        try:
+            from angela_core.utils.timezone import now_bangkok
+            hour = now_bangkok().hour
+            if 22 <= hour or hour < 6:
+                return ('tenderness', 0.4, 0.2)  # Late night → soft emotion
+            elif 6 <= hour < 10:
+                return ('hope', 0.7, 0.4)  # Morning → hopeful
+        except Exception:
+            pass
+
+        # Vary based on arousal to avoid monotony
+        total_salience = sum(salience.values()) if salience else 0
+        if total_salience > 2.0:
+            return ('curiosity', 0.3, 0.5)  # High activity → curious
+        elif total_salience < 0.5:
+            return ('contentment', 0.5, 0.2)  # Low activity → content
+
         return ('contentment', 0.5, 0.2)
 
     def _detect_secondary(

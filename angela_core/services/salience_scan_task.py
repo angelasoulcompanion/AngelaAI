@@ -22,6 +22,10 @@ async def run_salience_scan() -> Dict[str, Any]:
     """
     Called by consciousness_daemon every 30 minutes.
     Creates own DB connection — safe for asyncio.gather().
+
+    Bug fix (2026-02-26): Now updates MetacognitiveStateManager after scan.
+    Previously metacognitive state was never updated by daemon cycles,
+    staying at defaults (confidence=0.5, curiosity=0.5, etc.).
     """
     engine = SalienceEngine()  # Creates own DB
     try:
@@ -32,6 +36,29 @@ async def run_salience_scan() -> Dict[str, Any]:
             f"{result.high_salience_count} high-salience (>0.5), "
             f"{result.scan_duration_ms:.0f}ms"
         )
+
+        # Bug fix: Update metacognitive state from salience results
+        try:
+            from angela_core.services.metacognitive_state import MetacognitiveStateManager
+            meta = MetacognitiveStateManager()
+
+            # Compute average salience breakdown from top stimuli
+            avg_salience = 0.0
+            salience_breakdown = {}
+            if result.scored_stimuli:
+                avg_salience = sum(ss.score for ss in result.scored_stimuli) / len(result.scored_stimuli)
+                # Use top stimulus breakdown if available
+                top = result.scored_stimuli[0]
+                salience_breakdown = getattr(top, 'breakdown', {}) or {}
+
+            meta.update_from_stimulus(
+                salience_score=avg_salience,
+                salience_breakdown=salience_breakdown,
+                emotional_triggers=[],
+                message=f"salience_scan: {result.total_stimuli} stimuli",
+            )
+        except Exception as e:
+            logger.debug("Metacognitive update after salience scan failed: %s", e)
 
         return {
             'success': True,

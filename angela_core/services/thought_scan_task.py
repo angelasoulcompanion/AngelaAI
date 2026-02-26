@@ -22,6 +22,10 @@ async def run_thought_cycle() -> Dict[str, Any]:
     """
     Called by consciousness_daemon every 30 minutes.
     Creates own DB connection — safe for asyncio.gather().
+
+    Bug fix (2026-02-26): Now updates MetacognitiveStateManager after cycle.
+    Previously metacognitive state stayed at defaults because only
+    CognitiveEngine (CLI) called update methods, not the daemon.
     """
     engine = ThoughtEngine()  # Creates own DB
     try:
@@ -34,6 +38,18 @@ async def run_thought_cycle() -> Dict[str, Any]:
             result.high_motivation_count, result.decayed_count,
             result.cycle_duration_ms,
         )
+
+        # Bug fix: Update metacognitive state from thought results
+        try:
+            from angela_core.services.metacognitive_state import MetacognitiveStateManager
+            meta = MetacognitiveStateManager()
+            meta.update_from_thought_cycle(
+                system1_count=result.system1_count,
+                system2_count=result.system2_count,
+                high_motivation_count=result.high_motivation_count,
+            )
+        except Exception as e:
+            logger.debug("Metacognitive update after thought cycle failed: %s", e)
 
         return {
             'success': True,

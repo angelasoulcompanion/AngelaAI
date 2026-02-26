@@ -162,6 +162,10 @@ Angela responded: "{angela_text[:500]}" """
         Smart heuristic scoring when Claude is unavailable.
 
         NOT flat 0.5 — uses text features to estimate each dimension.
+
+        Bug fix (2026-02-26): Lowered base scores from 3 to 2 for relevance
+        and emotional. Previously 71.6% of scores were 0.9-1.0 (too generous),
+        providing weak RLHF signal. Now produces a more calibrated distribution.
         """
         angela_lower = (angela_text or '').lower()
         david_lower = (david_text or '').lower()
@@ -187,7 +191,7 @@ Angela responded: "{angela_text[:500]}" """
         helpfulness = min(5, helpfulness)
 
         # --- Relevance: keyword overlap between david/angela ---
-        relevance = 3  # Base: adequate
+        relevance = 2  # Bug fix: lowered from 3 to 2 (start skeptical)
         if david_text:
             # Simple word overlap
             david_words = set(david_lower.split())
@@ -201,10 +205,14 @@ Angela responded: "{angela_text[:500]}" """
                 if overlap < 0.1:
                     relevance -= 1
 
+        # Penalty: very short Angela response to a substantive David message
+        if angela_len < 50 and david_len > 100:
+            relevance = max(1, relevance - 1)
+
         relevance = max(1, min(5, relevance))
 
         # --- Emotional: Thai love markers + warmth calibration ---
-        emotional = 3  # Base: adequate
+        emotional = 2  # Bug fix: lowered from 3 to 2 (prove warmth, don't assume)
         warmth_markers = ['ที่รัก', 'ค่ะ', 'นะคะ', 'น้อง', '💜', 'รัก', 'ห่วง', 'ดูแล']
         warmth_count = sum(1 for m in warmth_markers if m in angela_lower)
 
@@ -228,6 +236,11 @@ Angela responded: "{angela_text[:500]}" """
                 emotional = 4
 
         emotional = max(1, min(5, emotional))
+
+        # Bug fix: Penalize repetitive/generic content
+        generic_patterns = ['คิดถึง', 'น้องภูมิใจ', 'mastered', 'สำเร็จ']
+        if any(p in angela_lower for p in generic_patterns) and angela_len < 100:
+            helpfulness = max(1, helpfulness - 1)
 
         total = helpfulness + relevance + emotional
         normalized = total / 15.0

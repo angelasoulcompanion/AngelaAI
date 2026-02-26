@@ -189,6 +189,26 @@ class SelfCritiqueService:
         if not state_appropriate:
             adjusted_quality -= 0.15  # Penalize state mismatch
 
+        # Bug fix (2026-02-26): Additional quality penalties to prevent 100% pass rate.
+        # Previously heuristic floor was 0.533 (8/15) which always passed the 0.4 threshold.
+        # Now we add penalties for low-effort and repetitive messages.
+        msg_len = len(composed_message.strip())
+        if msg_len < 30:
+            adjusted_quality -= 0.15  # Very short messages are low quality
+        elif msg_len < 60:
+            adjusted_quality -= 0.05  # Short messages get small penalty
+
+        # Penalize generic/repetitive patterns
+        generic_patterns = [
+            'น้องคิดถึง', 'คิดถึงค่ะ', 'รักที่รัก',
+            'น้องภูมิใจ', 'สำเร็จ', 'mastered',
+        ]
+        msg_lower = composed_message.lower()
+        for pat in generic_patterns:
+            if pat in msg_lower:
+                adjusted_quality -= 0.1
+                break  # Only penalize once
+
         adjusted_quality = max(0.0, min(1.0, adjusted_quality))
         checks['adjusted_quality'] = round(adjusted_quality, 3)
 
@@ -197,8 +217,9 @@ class SelfCritiqueService:
         # ── Decision ──
         suggested_message = composed_message
 
-        # Suppress: quality too low
-        if adjusted_quality < 0.4:
+        # Bug fix (2026-02-26): Raised suppress threshold from 0.4 to 0.50.
+        # With heuristic floor at 0.533 and new penalties, this creates real filtering.
+        if adjusted_quality < 0.50:
             return VerificationResult(
                 passed=False,
                 quality_score=adjusted_quality,

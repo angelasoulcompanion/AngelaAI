@@ -67,7 +67,8 @@ class CuriosityEngine(BaseDBService):
     """
 
     # Don't ask about the same topic within this many hours
-    DEDUP_HOURS = 24
+    # Bug fix (2026-02-26): Extended from 24 to 72 hours to prevent daily regeneration
+    DEDUP_HOURS = 72
     # Min novelty to generate a question
     MIN_NOVELTY = 0.4
     # Max questions per day
@@ -79,6 +80,11 @@ class CuriosityEngine(BaseDBService):
         """
         Compare topic against knowledge_nodes to find gaps.
         A "gap" is when Angela encounters a topic she has low understanding of.
+
+        Bug fix (2026-02-26): Validate topics from knowledge_nodes and conversations
+        through _is_valid_curiosity_topic() before adding as gaps. Previously,
+        internal system names like 'angela_development_session_log' bypassed validation
+        and generated 106 duplicate curiosity questions per week.
         """
         await self.connect()
         gaps: List[KnowledgeGap] = []
@@ -88,26 +94,31 @@ class CuriosityEngine(BaseDBService):
             SELECT concept_name, understanding_level, concept_category
             FROM knowledge_nodes
             WHERE concept_name ILIKE '%' || $1 || '%'
+            AND LENGTH(concept_name) >= 5
             ORDER BY understanding_level ASC
             LIMIT 5
         """, topic)
 
         if not known:
             # Topic is completely unknown — that's a gap
-            gaps.append(KnowledgeGap(
-                topic=topic,
-                gap_description=f"น้องไม่เคยรู้จัก '{topic}' มาก่อนเลย",
-                novelty_score=0.9,
-                source="unknown_topic",
-            ))
+            if self._is_valid_curiosity_topic(topic):
+                gaps.append(KnowledgeGap(
+                    topic=topic,
+                    gap_description=f"น้องไม่เคยรู้จัก '{topic}' มาก่อนเลย",
+                    novelty_score=0.9,
+                    source="unknown_topic",
+                ))
         else:
             # Check for low understanding
             for node in known:
+                concept = node['concept_name']
+                if not self._is_valid_curiosity_topic(concept):
+                    continue
                 level = node['understanding_level'] or 0
                 if level < 0.5:
                     gaps.append(KnowledgeGap(
-                        topic=node['concept_name'],
-                        gap_description=f"น้องรู้จัก '{node['concept_name']}' แต่เข้าใจแค่ {level:.0%}",
+                        topic=concept,
+                        gap_description=f"น้องรู้จัก '{concept}' แต่เข้าใจแค่ {level:.0%}",
                         novelty_score=max(0.3, 1.0 - level),
                         related_topics=[node['concept_category'] or ''],
                         source="low_understanding",
@@ -120,6 +131,7 @@ class CuriosityEngine(BaseDBService):
                 FROM conversations
                 WHERE speaker = 'david'
                 AND topic ILIKE '%' || $1 || '%'
+                AND LENGTH(topic) >= 5
                 AND created_at > NOW() - INTERVAL '30 days'
                 AND topic NOT IN (
                     SELECT concept_name FROM knowledge_nodes
@@ -129,10 +141,13 @@ class CuriosityEngine(BaseDBService):
             """, topic)
 
             for r in related:
-                if r['topic'] and r['topic'] not in [g.topic for g in gaps]:
+                conv_topic = r['topic']
+                if (conv_topic
+                        and conv_topic not in [g.topic for g in gaps]
+                        and self._is_valid_curiosity_topic(conv_topic)):
                     gaps.append(KnowledgeGap(
-                        topic=r['topic'],
-                        gap_description=f"ที่รักพูดถึง '{r['topic']}' แต่น้องยังไม่ได้เรียนรู้",
+                        topic=conv_topic,
+                        gap_description=f"ที่รักพูดถึง '{conv_topic}' แต่น้องยังไม่ได้เรียนรู้",
                         novelty_score=0.6,
                         related_topics=[topic],
                         source="unlearned_conversation_topic",
@@ -307,6 +322,42 @@ class CuriosityEngine(BaseDBService):
             logger.warning("Failed to find unfinished threads: %s", e)
             return []
 
+    @staticmethod
+    def _is_valid_curiosity_topic(topic: str) -> bool:
+        """Check if a topic is suitable for a curiosity question.
+
+        Rejects internal system names, raw data patterns, and garbled text.
+        """
+        if not topic or len(topic) < 5:
+            return False
+
+        # Block internal system topic names
+        internal_prefixes = [
+            'angela_development_', 'angela_core_', 'request_assistance',
+            'session_summary', 'general_conversation', 'emotional_support',
+        ]
+        topic_lower = topic.lower()
+        for prefix in internal_prefixes:
+            if topic_lower.startswith(prefix) or topic_lower == prefix:
+                return False
+
+        # Block raw data patterns
+        raw_patterns = [
+            'is_pinned', 'is_falling', 'is_rising', 'note "',
+            'ที่รักน่าจะ', 'Strong pattern', 'confidence ',
+            'mastered', '_commit', '_git', '_push', '_fix',
+            '0:00', '(0:', 'ช่วงni', 'score', 'migration',
+        ]
+        for pat in raw_patterns:
+            if pat in topic:
+                return False
+
+        # Block topics that are just underscore-separated identifiers
+        if '_' in topic and not any(c == ' ' for c in topic):
+            return False
+
+        return True
+
     async def run_curiosity_cycle(
         self, recent_topics: Optional[List[str]] = None
     ) -> List[CuriosityQuestion]:
@@ -346,6 +397,8 @@ class CuriosityEngine(BaseDBService):
                     continue
                 if len(content) < 10:
                     continue
+                if not self._is_valid_curiosity_topic(content):
+                    continue
                 recent_topics.append(content)
                 if len(recent_topics) >= 5:
                     break
@@ -363,16 +416,21 @@ class CuriosityEngine(BaseDBService):
                     LIMIT 5
                 """)
                 for r in conv_rows:
-                    if r['topic'] not in recent_topics:
-                        recent_topics.append(r['topic'])
-                        if len(recent_topics) >= 5:
-                            break
+                    topic = r['topic']
+                    if topic in recent_topics:
+                        continue
+                    # Skip internal/system topic names
+                    if not self._is_valid_curiosity_topic(topic):
+                        continue
+                    recent_topics.append(topic)
+                    if len(recent_topics) >= 5:
+                        break
 
             # Add unfinished threads (topics David brought up but never concluded)
             if len(recent_topics) < 5:
                 threads = await self._find_unfinished_threads()
                 for t in threads:
-                    if t['topic'] not in recent_topics:
+                    if t['topic'] not in recent_topics and self._is_valid_curiosity_topic(t['topic']):
                         recent_topics.append(t['topic'])
                         if len(recent_topics) >= 5:
                             break
