@@ -583,8 +583,24 @@ class CognitiveEngine:
     # --- 6. RECALL (Convenience) ---
     async def recall(self, topic: str, top_k: int = 5) -> List[ActivatedItem]:
         """Search brain by topic — knowledge + learnings + reflections + thoughts.
-        Shortcut for activate() without full perception."""
-        return await self.activate(topic, top_k=top_k)
+        Shortcut for activate() without full perception.
+        Phase 5: Triggers reconsolidation on recalled knowledge_nodes."""
+        items = await self.activate(topic, top_k=top_k)
+
+        # Phase 5: Reconsolidate recalled knowledge_nodes (memory becomes labile)
+        try:
+            from angela_core.services.memory_enhancement_engine import MemoryEnhancementEngine
+            enhancer = MemoryEnhancementEngine(db=self._db)
+            enhancer._owns_db = False
+            for item in items:
+                if item.source == 'knowledge_node':
+                    await enhancer.reconsolidate_on_recall(
+                        item.item_id, recall_context=topic,
+                    )
+        except Exception as e:
+            logger.debug("Reconsolidation on recall failed: %s", e)
+
+        return items
 
     # --- 7. THINK ---
     async def think(self) -> ThoughtCycleResult:

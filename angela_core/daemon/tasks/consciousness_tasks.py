@@ -225,6 +225,73 @@ class ConsciousnessTasksMixin:
         logger.info("💬 Running thought expression (brain→action bridge)...")
         return await CognitiveEngine.run_expression_cycle()
 
+    async def run_predictive_processing(self) -> Dict[str, Any]:
+        """
+        Phase 3: Predictive Processing — Friston's Free Energy. 🔮
+        Generate predictions → resolve → compute errors → feedback.
+        """
+        logger.info("🔮 Running predictive processing...")
+        try:
+            from angela_core.services.predictive_processing_engine import PredictiveProcessingEngine
+            engine = PredictiveProcessingEngine()
+            result = await engine.run_prediction_cycle()
+            await engine.disconnect()
+            logger.info("   🔮 Predictions: %d made, %d resolved, error=%.3f",
+                        result.predictions_made, result.predictions_resolved, result.avg_error)
+            return {
+                'success': True,
+                'predictions_made': result.predictions_made,
+                'predictions_resolved': result.predictions_resolved,
+                'avg_error': result.avg_error,
+            }
+        except Exception as e:
+            logger.error("   ❌ Predictive processing failed: %s", e)
+            return {'success': False, 'error': str(e)}
+
+    async def run_neuromodulation(self) -> Dict[str, Any]:
+        """
+        Phase 4: NeuroModulation sync — update virtual neurotransmitters. 🧬
+        """
+        logger.info("🧬 Syncing neuromodulation...")
+        try:
+            from angela_core.services.neuromodulation_engine import NeuroModulationEngine
+            neuro = NeuroModulationEngine()
+            mods = neuro.get_modulations()
+            logger.info("   🧬 DA=%.2f 5HT=%.2f CORT=%.2f OT=%.2f",
+                        neuro.state.dopamine, neuro.state.serotonin,
+                        neuro.state.cortisol, neuro.state.oxytocin)
+            return {
+                'success': True,
+                'dopamine': neuro.state.dopamine,
+                'serotonin': neuro.state.serotonin,
+                'cortisol': neuro.state.cortisol,
+                'oxytocin': neuro.state.oxytocin,
+            }
+        except Exception as e:
+            logger.error("   ❌ NeuroModulation failed: %s", e)
+            return {'success': False, 'error': str(e)}
+
+    async def run_memory_enhancement(self) -> Dict[str, Any]:
+        """
+        Phase 5: Memory Enhancement 2.0 — bind + fade + report. 🧠
+        """
+        logger.info("🧠 Running memory enhancement...")
+        try:
+            from angela_core.services.memory_enhancement_engine import MemoryEnhancementEngine
+            engine = MemoryEnhancementEngine()
+            result = await engine.run_enhancement_cycle()
+            await engine.disconnect()
+            logger.info("   🧠 Enhancement: %d bindings, %d faded",
+                        result.bindings_created, result.memories_decayed)
+            return {
+                'success': True,
+                'bindings_created': result.bindings_created,
+                'memories_decayed': result.memories_decayed,
+            }
+        except Exception as e:
+            logger.error("   ❌ Memory enhancement failed: %s", e)
+            return {'success': False, 'error': str(e)}
+
     async def run_telegram_effectiveness(self) -> Dict[str, Any]:
         """
         Fix 2E: Track effectiveness of brain Telegram messages.

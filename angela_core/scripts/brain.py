@@ -133,6 +133,15 @@ async def cmd_status() -> None:
                 bar = "█" * int(item["activation"] * 10) + "░" * (10 - int(item["activation"] * 10))
                 print(f"   [{bar}] {item['source']}: {item['content']}")
 
+        # Phase 4: NeuroModulation
+        try:
+            from angela_core.services.neuromodulation_engine import NeuroModulationEngine
+            neuro = NeuroModulationEngine()
+            print()
+            print(neuro.format_status())
+        except Exception:
+            pass
+
         print("━" * 50)
     finally:
         await engine.close()

@@ -1,18 +1,17 @@
 """
 BrainTasksMixin — Brain-based architecture tasks for the main daemon.
 
-Integrates brain tasks (salience scan, thought generation, thought expression,
-brain comparison, plan execution, memory consolidation, reflection, plan generation)
-into angela_daemon.py so they run automatically on schedule.
-
-Brain tasks were originally only in consciousness_daemon.py (manual runs).
-This mixin brings them into the 24/7 daemon.
+Integrates brain tasks into angela_daemon.py so they run automatically on schedule.
 
 Schedule:
-- Every 30 min: salience scan, thought generation (parallel), then competition → expression → comparison → plan execution (sequential)
-- Every 4 hours: memory consolidation → reflection → plan generation (sequential, uses Ollama)
+- Every 30 min: salience+thought (parallel), competition → expression → comparison → curiosity → prediction → plan execution
+- Every 4 hours: memory consolidation → reflection → plan generation → memory enhancement (sequential, uses Ollama)
+
+Phases: 1-Salience, 2-Competition/Ignition, 3-Predictive Processing,
+        4-NeuroModulation, 5-Memory Enhancement
 
 Created: 2026-02-15
+Updated: 2026-02-27 — Added Phase 3 (Predictive Processing), Phase 4 (NeuroModulation), Phase 5 (Memory Enhancement)
 """
 
 import asyncio
@@ -286,6 +285,100 @@ class BrainTasksMixin:
             logger.error("   ❌ [Brain] Effectiveness tracking failed: %s", e)
             return {'success': False, 'error': str(e)}
 
+    async def run_brain_predictive_processing(self) -> Dict[str, Any]:
+        """
+        Phase 3: Predictive Processing — Friston's Free Energy.
+
+        Generate predictions about David → resolve old predictions → compute errors.
+        Prediction errors feed back into salience weights (surprise signal).
+        No LLM, ~5-10 DB queries, <2 seconds.
+        Creates own DB connection — safe for asyncio.gather().
+        """
+        logger.info("🔮 [Brain] Running predictive processing...")
+        try:
+            from angela_core.services.predictive_processing_engine import PredictiveProcessingEngine
+            engine = PredictiveProcessingEngine()
+            result = await engine.run_prediction_cycle()
+
+            # Phase 4: Feed prediction errors into neuromodulation
+            if result.avg_error > 0:
+                try:
+                    from angela_core.services.neuromodulation_engine import NeuroModulationEngine
+                    neuro = NeuroModulationEngine()
+                    neuro.update_from_prediction_error(result.avg_error)
+                except Exception:
+                    pass
+
+            await engine.disconnect()
+            logger.info(
+                "   ✅ [Brain] Predictions: %d made, %d resolved, avg_error=%.3f",
+                result.predictions_made, result.predictions_resolved, result.avg_error,
+            )
+            return {
+                'success': True,
+                'predictions_made': result.predictions_made,
+                'predictions_resolved': result.predictions_resolved,
+                'avg_error': result.avg_error,
+            }
+        except Exception as e:
+            logger.error("   ❌ [Brain] Predictive processing failed: %s", e)
+            return {'success': False, 'error': str(e)}
+
+    async def run_brain_neuromodulation_sync(self) -> Dict[str, Any]:
+        """
+        Phase 4: NeuroModulation sync — update neurotransmitter levels.
+
+        Reads David's current state and competition results, updates
+        dopamine/serotonin/cortisol/oxytocin levels.
+        Logs attention focus to DB.
+        """
+        logger.info("🧬 [Brain] Syncing neuromodulation state...")
+        try:
+            from angela_core.services.neuromodulation_engine import NeuroModulationEngine
+            from angela_core.database import AngelaDatabase
+
+            neuro = NeuroModulationEngine()
+
+            # Get David's latest state
+            db = AngelaDatabase()
+            await db.connect()
+
+            row = await db.fetchrow("""
+                SELECT dominant_state, confidence
+                FROM emotional_adaptation_log
+                WHERE confidence > 0.5
+                ORDER BY created_at DESC LIMIT 1
+            """)
+            if row:
+                neuro.update_from_david_state(
+                    row['dominant_state'],
+                    int(row['confidence'] * 10),
+                )
+
+            # Log attention focus
+            await neuro.log_attention_focus(db)
+            await db.disconnect()
+
+            mods = neuro.get_modulations()
+            logger.info(
+                "   ✅ [Brain] NeuroMod: DA=%.2f, 5HT=%.2f, CORT=%.2f, OT=%.2f | "
+                "ignition_adj=%+.3f",
+                neuro.state.dopamine, neuro.state.serotonin,
+                neuro.state.cortisol, neuro.state.oxytocin,
+                mods.ignition_threshold_adj,
+            )
+            return {
+                'success': True,
+                'dopamine': neuro.state.dopamine,
+                'serotonin': neuro.state.serotonin,
+                'cortisol': neuro.state.cortisol,
+                'oxytocin': neuro.state.oxytocin,
+                'focus': neuro.state.focus_topic,
+            }
+        except Exception as e:
+            logger.error("   ❌ [Brain] NeuroModulation failed: %s", e)
+            return {'success': False, 'error': str(e)}
+
     # ========================================
     # 4-HOUR TASKS (iteration % 48 == 0)
     # ========================================
@@ -361,4 +454,40 @@ class BrainTasksMixin:
             }
         except Exception as e:
             logger.error("   ❌ [Brain] Plan generation failed: %s", e)
+            return {'success': False, 'error': str(e)}
+
+    async def run_brain_memory_enhancement(self) -> Dict[str, Any]:
+        """
+        Phase 5: Memory Enhancement 2.0 — reconsolidation + binding + fading.
+
+        Auto-bind co-activated memories, fade unused ones, report health.
+        No LLM, ~10 DB queries. Creates own DB connection.
+        """
+        logger.info("🧠 [Brain] Running memory enhancement...")
+        try:
+            from angela_core.services.memory_enhancement_engine import MemoryEnhancementEngine
+            engine = MemoryEnhancementEngine()
+            result = await engine.run_enhancement_cycle()
+            await engine.disconnect()
+
+            health = result.health
+            logger.info(
+                "   ✅ [Brain] Memory Enhancement: %d bindings, %d faded, "
+                "health=%d/%d (%.0f%% healthy)",
+                result.bindings_created, result.memories_decayed,
+                health.healthy_count if health else 0,
+                health.total_nodes if health else 0,
+                (health.healthy_count / max(health.total_nodes, 1) * 100) if health else 0,
+            )
+            return {
+                'success': True,
+                'bindings_created': result.bindings_created,
+                'memories_decayed': result.memories_decayed,
+                'total_nodes': health.total_nodes if health else 0,
+                'healthy_pct': round(
+                    health.healthy_count / max(health.total_nodes, 1) * 100, 1
+                ) if health else 0,
+            }
+        except Exception as e:
+            logger.error("   ❌ [Brain] Memory enhancement failed: %s", e)
             return {'success': False, 'error': str(e)}

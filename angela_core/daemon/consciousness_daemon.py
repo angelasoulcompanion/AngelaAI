@@ -365,16 +365,18 @@ class ConsciousnessDaemon(
                 results[name] = result
 
         # =====================================================================
-        # SEQUENTIAL: Competition → Expression → Comparison → Proactive → Planning
+        # SEQUENTIAL: Competition → Expression → Comparison → Prediction → NeuroMod → Planning
         # Phase 2 (GWT): Competition + ignition BEFORE expression
-        # Thought expression only processes ignited thoughts (Phase 2 winners)
-        # Brain comparison logs brain vs rule for migration tracking (Phase 7)
-        # Planning: generate plans (every 4h) then execute steps (every 30m)
+        # Phase 3: Predictive processing (generate + resolve predictions)
+        # Phase 4: NeuroModulation sync (update neurotransmitter levels)
+        # Phase 5: Memory enhancement (every 4h, with consolidation)
         # =====================================================================
         results['competition'] = await self.run_competition()
         results['thought_expression'] = await self.run_thought_expression()
         results['brain_comparison'] = await self.run_brain_comparison()
         results['telegram_effectiveness'] = await self.run_telegram_effectiveness()
+        results['predictive_processing'] = await self.run_predictive_processing()
+        results['neuromodulation'] = await self.run_neuromodulation()
         results['proactive_care'] = await self.run_proactive_care()
         results['proactive_actions'] = await self.run_proactive_actions()
         results['plan_generation'] = await self.run_plan_generation()
@@ -435,6 +437,9 @@ class ConsciousnessDaemon(
             'telegram_effectiveness': self.run_telegram_effectiveness,
             'plan_generation': self.run_plan_generation,
             'plan_execution': self.run_plan_execution,
+            'predictive_processing': self.run_predictive_processing,
+            'neuromodulation': self.run_neuromodulation,
+            'memory_enhancement': self.run_memory_enhancement,
         }
 
         if task_name not in task_map:

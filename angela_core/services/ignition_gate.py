@@ -120,6 +120,16 @@ class IgnitionGate(BaseDBService):
         start = now_bangkok()
         await self.connect()
 
+        # Phase 4: Get neuromodulation-based threshold adjustment
+        neuro_adj = 0.0
+        try:
+            from angela_core.services.neuromodulation_engine import NeuroModulationEngine
+            neuro = NeuroModulationEngine()
+            mods = neuro.get_modulations()
+            neuro_adj = mods.ignition_threshold_adj
+        except Exception:
+            pass
+
         decisions: List[IgnitionDecision] = []
         ignited = 0
         simmering = 0
@@ -128,6 +138,7 @@ class IgnitionGate(BaseDBService):
         for winner in winners:
             decision = await self._evaluate_ignition(
                 winner, competition_margin, david_state, metacognitive_state,
+                neuro_threshold_adj=neuro_adj,
             )
             decisions.append(decision)
 
@@ -163,6 +174,7 @@ class IgnitionGate(BaseDBService):
         margin: float,
         david_state: str,
         meta: Optional[Dict],
+        neuro_threshold_adj: float = 0.0,
     ) -> IgnitionDecision:
         """Evaluate a single winner for ignition."""
         thought_id = str(winner.get('thought_id', ''))
@@ -206,8 +218,9 @@ class IgnitionGate(BaseDBService):
             'competition_margin': round(score_margin, 3),
         }
 
-        # Decision
-        if ignition_score >= IGNITION_THRESHOLD:
+        # Decision — threshold modulated by Phase 4 neuromodulation
+        effective_threshold = max(0.30, IGNITION_THRESHOLD + neuro_threshold_adj)
+        if ignition_score >= effective_threshold:
             # Check simmer count — if simmered too long, extinguish
             simmer_count = await self._get_simmer_count(thought_id)
             if simmer_count >= MAX_SIMMER_CYCLES:
@@ -224,10 +237,10 @@ class IgnitionGate(BaseDBService):
                 decision='ignite',
                 ignition_score=ignition_score,
                 factors=factors,
-                reason=f"ignition_threshold_passed:{ignition_score:.3f}>={IGNITION_THRESHOLD}",
+                reason=f"ignition_threshold_passed:{ignition_score:.3f}>={effective_threshold:.3f}",
             )
 
-        elif ignition_score >= IGNITION_THRESHOLD * 0.6:
+        elif ignition_score >= effective_threshold * 0.6:
             # Close to threshold — simmer (try again next cycle)
             return IgnitionDecision(
                 thought_id=thought_id,
