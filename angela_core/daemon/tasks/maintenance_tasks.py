@@ -160,3 +160,49 @@ class MaintenanceTasksMixin:
         except Exception as e:
             logger.error(f"   ❌ RLHF cycle failed: {e}")
             return {'success': False, 'error': str(e)}
+
+    async def run_graph_sync(self) -> Dict[str, Any]:
+        """
+        Incremental PG → Neo4j graph sync (every 30 min).
+
+        Syncs knowledge_nodes, conversations, emotions, core_memories,
+        learnings, and relationships into Neo4j graph database.
+        """
+        logger.info("🕸️ Running graph sync...")
+
+        try:
+            from angela_core.services.graph_sync_service import GraphSyncService
+
+            svc = GraphSyncService()
+            await svc.connect()
+            results = await svc.sync_all()
+            await svc.disconnect()
+
+            total_nodes = sum(r.nodes_synced for r in results.values())
+            total_edges = sum(r.edges_synced for r in results.values())
+            errors = [r.error for r in results.values() if r.error]
+
+            logger.info(f"   Nodes synced: {total_nodes}")
+            logger.info(f"   Edges synced: {total_edges}")
+            if errors:
+                for err in errors[:3]:
+                    logger.warning(f"   ⚠️ {err[:80]}")
+
+            logger.info("   ✅ Graph sync complete!")
+
+            await self._log_daemon_activity('graph_sync', {
+                'total_nodes': total_nodes,
+                'total_edges': total_edges,
+                'entity_types': len(results),
+                'errors': len(errors),
+            })
+
+            return {
+                'success': True,
+                'nodes_synced': total_nodes,
+                'edges_synced': total_edges,
+            }
+
+        except Exception as e:
+            logger.error(f"   ❌ Graph sync failed: {e}")
+            return {'success': False, 'error': str(e)}

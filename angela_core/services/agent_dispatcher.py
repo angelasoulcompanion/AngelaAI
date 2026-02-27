@@ -3,9 +3,10 @@ Agent Dispatcher — Brain-Body Bridge
 =====================================
 This is the core of Angela's autonomous action system.
 
-2-tier dispatch:
+3-tier dispatch:
 1. Simple intents → Ollama text-based tool selection (free)
 2. Complex intents → Claude API tool_use (multi-tool chains)
+3. Deep reasoning → LangGraph multi-step agent (Graph-RAG + tools)
 
 Pipeline:
   Brain DECIDE: "ส่งสรุปตารางวันนี้ให้ที่รัก"
@@ -94,12 +95,18 @@ class AgentDispatcher:
         Args:
             intent: Natural language description of what to do
             context: Additional context (emotional state, time, etc.)
-            prefer_tier: Force "ollama" or "claude" (auto-detect if None)
+            prefer_tier: Force "ollama", "claude", or "langgraph" (auto-detect if None)
 
         Returns:
             ToolResult with combined output
         """
         start = time.time()
+
+        # Tier 3: LangGraph deep reasoning
+        if prefer_tier == "langgraph" or self._needs_deep_reasoning(intent):
+            result = await self._dispatch_langgraph(intent, context)
+            result.execution_time_ms = (time.time() - start) * 1000
+            return result
 
         # Classify complexity
         if prefer_tier == "claude":
@@ -341,6 +348,44 @@ If no tool fits, respond: {{"tool_name": "none", "parameters": {{}}}}"""
             logger.error("Claude dispatch failed: %s", e)
             # Fallback to Ollama
             logger.info("Falling back to Ollama after Claude error")
+            return await self._dispatch_ollama(intent, context)
+
+    # ── Tier 3: LangGraph (Deep Reasoning) ──
+
+    def _needs_deep_reasoning(self, intent: str) -> bool:
+        """Check if intent requires multi-step graph-based reasoning."""
+        deep_indicators = [
+            "why", "ทำไม", "how does", "ยังไง", "อธิบาย", "explain",
+            "relationship between", "ความสัมพันธ์", "เชื่อมโยง",
+            "multi-hop", "trace", "reason", "analyze",
+        ]
+        intent_lower = intent.lower()
+        return sum(1 for ind in deep_indicators if ind in intent_lower) >= 2
+
+    async def _dispatch_langgraph(self, intent: str, context: str) -> ToolResult:
+        """Use LangGraph agent for deep multi-step reasoning."""
+        try:
+            from angela_core.services.langchain.agent import AngelaReasoningAgent
+
+            agent = AngelaReasoningAgent()
+            result = await agent.reason(intent)
+
+            return ToolResult(
+                success=True,
+                data={
+                    "answer": result.answer[:2000],
+                    "confidence": result.confidence,
+                    "steps": result.steps,
+                    "sources_used": result.sources_used,
+                    "escalated": result.escalated,
+                    "tier": "langgraph",
+                },
+            )
+        except Exception as e:
+            logger.warning("LangGraph dispatch failed, falling back: %s", e)
+            # Fallback to Claude or Ollama
+            if _check_claude_budget():
+                return await self._dispatch_claude(intent, context)
             return await self._dispatch_ollama(intent, context)
 
     # ── Summary ──

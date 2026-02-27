@@ -410,6 +410,38 @@ class CognitiveEngine:
         except Exception as e:
             logger.warning(f"Thought activation failed: {e}")
 
+        # 4. Graph-RAG: fetch neighbors from Neo4j (if available)
+        try:
+            from angela_core.services.neo4j_service import get_neo4j_service
+            neo4j = get_neo4j_service()
+            if neo4j.available:
+                # Find matching knowledge nodes and their graph neighbors
+                graph_results = await neo4j.execute_read("""
+                    CALL db.index.fulltext.queryNodes('knowledge_fulltext', $query)
+                    YIELD node, score
+                    WHERE score > 0.5
+                    WITH node LIMIT 3
+                    MATCH (node)-[r:RELATES_TO|CONTEXT_BOUND*1..2]-(neighbor:KnowledgeNode)
+                    WHERE neighbor.node_id <> node.node_id
+                    RETURN DISTINCT neighbor.node_id AS node_id,
+                           neighbor.concept_name AS name,
+                           COALESCE(neighbor.my_understanding, '') AS understanding,
+                           COALESCE(neighbor.understanding_level, 0.5) AS level
+                    ORDER BY level DESC
+                    LIMIT $limit
+                """, {"query": message, "limit": top_k})
+                for r in graph_results:
+                    content = f"{r['name']}: {r['understanding']}" if r["understanding"] else r["name"]
+                    items.append(ActivatedItem(
+                        source="graph_rag",
+                        item_id=r["node_id"],
+                        content=content[:200],
+                        activation=round(min(1.0, float(r["level"]) * 0.7 + 0.2), 3),
+                        metadata={"graph_source": True},
+                    ))
+        except Exception as e:
+            logger.debug(f"Graph activation skipped: {e}")
+
         # Sort by activation, keep top
         items.sort(key=lambda x: x.activation, reverse=True)
         items = items[:top_k * 2]
@@ -601,6 +633,37 @@ class CognitiveEngine:
             logger.debug("Reconsolidation on recall failed: %s", e)
 
         return items
+
+    # --- 6b. DEEP REASON (LangGraph Agent) ---
+    async def deep_reason(self, query: str) -> Dict[str, Any]:
+        """Use LangGraph agent for complex multi-hop reasoning through the knowledge graph.
+        Combines vector search + graph traversal + brain recall."""
+        try:
+            from angela_core.services.langchain.agent import AngelaReasoningAgent
+
+            agent = AngelaReasoningAgent()
+            result = await agent.reason(query)
+            return {
+                "answer": result.answer,
+                "confidence": result.confidence,
+                "steps": result.steps,
+                "sources_used": result.sources_used,
+                "time_ms": result.time_ms,
+                "escalated": result.escalated,
+            }
+        except Exception as e:
+            logger.error(f"Deep reasoning failed: {e}")
+            # Fallback to simple recall
+            items = await self.recall(query, top_k=5)
+            context = "\n".join(f"- [{i.source}] {i.content}" for i in items)
+            return {
+                "answer": context,
+                "confidence": 0.3,
+                "steps": ["RECALL_FALLBACK"],
+                "sources_used": len(items),
+                "time_ms": 0,
+                "escalated": False,
+            }
 
     # --- 7. THINK ---
     async def think(self) -> ThoughtCycleResult:

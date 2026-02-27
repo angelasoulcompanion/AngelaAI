@@ -16,6 +16,7 @@ import db
 from routers import (
     brain_status,
     chat,
+    claude_chat,
     consciousness,
     control_center,
     conversations,
@@ -25,6 +26,7 @@ from routers import (
     emotions,
     experiences,
     goals,
+    graph,
     guidelines,
     human_mind,
     knowledge,
@@ -76,6 +78,7 @@ async def health_check():
 
 # Register all routers
 app.include_router(chat.router)
+app.include_router(claude_chat.router)
 app.include_router(consciousness.router)
 app.include_router(control_center.router)
 app.include_router(dashboard.router)
@@ -102,6 +105,7 @@ app.include_router(scheduled_tasks.router)
 app.include_router(scripts.router)
 app.include_router(djay_pro.router)
 app.include_router(brain_status.router)
+app.include_router(graph.router)
 
 
 # Legacy endpoint path (original: /api/subconscious/patterns)

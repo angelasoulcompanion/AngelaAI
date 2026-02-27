@@ -345,6 +345,7 @@ class ConsciousnessDaemon(
             self.run_thought_generation(),
             self.run_memory_consolidation(),
             self.run_brain_reflection(),
+            self.run_graph_sync(),
             return_exceptions=True,
         )
 
@@ -356,6 +357,7 @@ class ConsciousnessDaemon(
             'rlhf_cycle', 'auto_classify_responses', 'unified_conversation_analysis',
             'salience_scan', 'thought_generation',
             'memory_consolidation', 'brain_reflection',
+            'graph_sync',
         ]
         for name, result in zip(task_names, parallel_results):
             if isinstance(result, Exception):
@@ -440,6 +442,7 @@ class ConsciousnessDaemon(
             'predictive_processing': self.run_predictive_processing,
             'neuromodulation': self.run_neuromodulation,
             'memory_enhancement': self.run_memory_enhancement,
+            'graph_sync': self.run_graph_sync,
         }
 
         if task_name not in task_map:
@@ -465,7 +468,7 @@ async def main():
                  'thought_generation', 'memory_consolidation',
                  'brain_reflection', 'thought_expression',
                  'brain_comparison', 'telegram_effectiveness',
-                 'plan_generation', 'plan_execution'],
+                 'plan_generation', 'plan_execution', 'graph_sync'],
         default='all',
         help='Task to run (default: all)'
     )

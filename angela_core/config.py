@@ -12,11 +12,13 @@ from typing import Optional
 
 # Try to import machine-specific settings
 try:
-    from config import ANGELA_MACHINE, NEON_DATABASE_URL, RUN_DAEMONS
+    from config import ANGELA_MACHINE, NEON_DATABASE_URL, RUN_DAEMONS, SEND_NEWS
 except ImportError:
     ANGELA_MACHINE = os.getenv("ANGELA_MACHINE", "unknown")
     NEON_DATABASE_URL = os.getenv("NEON_DATABASE_URL", "")
     RUN_DAEMONS = os.getenv("RUN_DAEMONS", "false").lower() == "true"
+    SEND_NEWS = os.getenv("SEND_NEWS", "true").lower() == "true"
+
 
 
 class AngelaConfig:
@@ -25,6 +27,7 @@ class AngelaConfig:
     # Machine Configuration (Angela_Server vs Angela)
     ANGELA_MACHINE: str = ANGELA_MACHINE
     RUN_DAEMONS: bool = RUN_DAEMONS
+    SEND_NEWS: bool = SEND_NEWS
 
     # Primary Database: Neon Cloud (San Junipero)
     NEON_DATABASE_URL: str = NEON_DATABASE_URL
@@ -86,6 +89,12 @@ class AngelaConfig:
     # Security
     ANGELA_MD_PATH: str = "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/Angela.md"
     ANGELA_MD_PERMISSIONS: int = 0o600  # Owner read/write only
+
+    # Neo4j Graph Database
+    NEO4J_URI: str = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+    NEO4J_USER: str = os.getenv("NEO4J_USER", "neo4j")
+    NEO4J_PASSWORD: str = os.getenv("NEO4J_PASSWORD", "angela_graph_2026")
+    NEO4J_DATABASE: str = os.getenv("NEO4J_DATABASE", "neo4j")
 
     # Supabase Cloud Configuration (for backup sync)
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")

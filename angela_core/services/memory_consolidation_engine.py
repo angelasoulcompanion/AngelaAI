@@ -485,6 +485,22 @@ Episodes ({len(cluster.episodes)} items):
                 abstraction.get("confidence", 0),
             )
 
+        # 4.5. Sync new knowledge to Neo4j graph (if available)
+        try:
+            from angela_core.services.neo4j_service import get_neo4j_service
+            neo4j = get_neo4j_service()
+            if neo4j.available:
+                from angela_core.services.graph_sync_service import GraphSyncService
+                sync_svc = GraphSyncService(db=self.db)
+                sync_svc._owns_db = False
+                sync_result = await sync_svc._sync_knowledge_nodes()
+                logger.info(
+                    "   🕸️ Graph sync: %d nodes synced (%.0fms)",
+                    sync_result.nodes_synced, sync_result.duration_ms,
+                )
+        except Exception as e:
+            logger.debug("Graph sync during consolidation skipped: %s", e)
+
         # 5. Decay old episodes
         decayed = await self._decay_episodes()
 

@@ -155,6 +155,42 @@ class CuriosityEngine(BaseDBService):
         except Exception as e:
             logger.warning("Related topic gap detection failed: %s", e)
 
+        # 3. Graph-based gap detection: find poorly-connected neighbors
+        try:
+            from angela_core.services.neo4j_service import get_neo4j_service
+            neo4j = get_neo4j_service()
+            if neo4j.available:
+                graph_gaps = await neo4j.execute_read("""
+                    CALL db.index.fulltext.queryNodes('knowledge_fulltext', $topic)
+                    YIELD node, score
+                    WHERE score > 0.3
+                    WITH node LIMIT 2
+                    MATCH (node)-[:RELATES_TO]-(neighbor:KnowledgeNode)
+                    WHERE neighbor.understanding_level < 0.5
+                    AND LENGTH(neighbor.concept_name) >= 5
+                    RETURN DISTINCT neighbor.concept_name AS name,
+                           neighbor.understanding_level AS level,
+                           neighbor.concept_category AS category
+                    ORDER BY neighbor.understanding_level ASC
+                    LIMIT 3
+                """, {"topic": topic})
+
+                for r in graph_gaps:
+                    name = r.get("name", "")
+                    if (name
+                            and name not in [g.topic for g in gaps]
+                            and self._is_valid_curiosity_topic(name)):
+                        level = r.get("level", 0) or 0
+                        gaps.append(KnowledgeGap(
+                            topic=name,
+                            gap_description=f"Connected concept '{name}' has low understanding ({level:.0%})",
+                            novelty_score=max(0.4, 1.0 - level),
+                            related_topics=[topic, r.get("category", "")],
+                            source="graph_neighbor",
+                        ))
+        except Exception as e:
+            logger.debug("Graph gap detection skipped: %s", e)
+
         return gaps[:limit]
 
     async def score_novelty(self, topic: str) -> float:

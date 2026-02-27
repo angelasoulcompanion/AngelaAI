@@ -44,6 +44,8 @@ struct ContentView: View {
                             OverviewView()
                         case .chat:
                             ChatView()
+                        case .claudeChat:
+                            ClaudeChatView()
                         case .djAngela:
                             DJAngelaView()
                         case .djayPro:
@@ -94,6 +96,8 @@ struct ContentView: View {
                             MarkdownViewerView()
                         case .knowledgeRAG:
                             KnowledgeRAGView()
+                        case .knowledgeGraph:
+                            KnowledgeGraphView()
                         case .davidResume:
                             ResumeView()
                         }
@@ -137,6 +141,7 @@ struct ContentView: View {
 enum NavigationItem: String, CaseIterable {
     case overview = "Overview"
     case chat = "Chat with Angela"
+    case claudeChat = "Claude Chat"
     case djAngela = "DJ Angela"
     case djayPro = "DJAY PRO"
     case diary = "Angela's Diary"
@@ -162,12 +167,14 @@ enum NavigationItem: String, CaseIterable {
     case trainingStudio = "Training Studio"
     case markdownViewer = "Markdown Viewer"
     case knowledgeRAG = "Knowledge RAG"
+    case knowledgeGraph = "Knowledge Graph"
     case davidResume = "David's Resume"
 
     var icon: String {
         switch self {
         case .overview: return "brain.head.profile"
         case .chat: return "message.fill"
+        case .claudeChat: return "bubble.left.and.text.bubble.right.fill"
         case .djAngela: return "music.note.tv"
         case .djayPro: return "dial.medium.fill"
         case .diary: return "book.fill"
@@ -193,13 +200,14 @@ enum NavigationItem: String, CaseIterable {
         case .trainingStudio: return "cpu.fill"
         case .markdownViewer: return "doc.richtext.fill"
         case .knowledgeRAG: return "books.vertical.fill"
+        case .knowledgeGraph: return "point.3.connected.trianglepath.dotted"
         case .davidResume: return "doc.text.fill"
         }
     }
 
     var group: NavigationGroup {
         switch self {
-        case .overview, .chat, .djAngela, .djayPro, .diary, .thingsOverview:
+        case .overview, .chat, .claudeChat, .djAngela, .djayPro, .diary, .thingsOverview:
             return .core
         case .brain, .emotions, .emotionalBenchmark, .memories, .experiences, .consciousness, .humanLikeMind:
             return .mind
@@ -207,7 +215,7 @@ enum NavigationItem: String, CaseIterable {
             return .growth
         case .preferences, .davidMatrix, .controlCenter, .trainingStudio:
             return .settings
-        case .codingGuidelines, .markdownViewer, .executiveNews, .knowledgeRAG:
+        case .codingGuidelines, .markdownViewer, .executiveNews, .knowledgeRAG, .knowledgeGraph:
             return .documents
         case .davidResume:
             return .settings
