@@ -156,12 +156,12 @@ class KnowledgeGapDetector(BaseDBService):
         """Find nodes not referenced recently."""
         rows = await self.db.fetch("""
             SELECT node_id::text, concept_name, concept_category, understanding_level,
-                   updated_at, created_at
+                   created_at
             FROM knowledge_nodes
-            WHERE (updated_at < NOW() - INTERVAL '%s days' OR updated_at IS NULL)
+            WHERE created_at < NOW() - INTERVAL '%s days'
             AND LENGTH(concept_name) >= 5
             AND understanding_level > 0.3
-            ORDER BY COALESCE(updated_at, created_at) ASC
+            ORDER BY created_at ASC
             LIMIT $1
         """ % self.STALE_DAYS, limit)
 
