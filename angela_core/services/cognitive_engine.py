@@ -568,8 +568,21 @@ class CognitiveEngine:
         if david_state == "focused":
             return Decision(action="INHIBIT", reason="David is focused — don't interrupt")
 
+        # Apply NeuroModulation warmth to expression gate threshold
+        effective_threshold = CONFIDENCE_THRESHOLD
+        try:
+            from angela_core.services.neuromodulation_engine import NeuroModulationEngine
+            neuro = NeuroModulationEngine()
+            mods = neuro.get_modulations()
+            # High warmth → lower threshold (easier to speak)
+            # Low warmth → higher threshold (more reserved)
+            warmth_adj = (mods.expression_warmth - 0.5) * 0.15  # ±0.075 max
+            effective_threshold = max(0.4, min(0.8, CONFIDENCE_THRESHOLD - warmth_adj))
+        except Exception:
+            pass
+
         # Check if we have high-activation content worth sharing
-        high_items = [it for it in situation.activated_items if it.activation >= CONFIDENCE_THRESHOLD]
+        high_items = [it for it in situation.activated_items if it.activation >= effective_threshold]
         if not high_items:
             return Decision(action="INHIBIT", reason="No high-activation content to share")
 

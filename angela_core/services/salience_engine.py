@@ -516,6 +516,44 @@ class SalienceEngine(BaseDBService):
         # 0. Load tuned salience weights from DB (Phase 7D)
         await self._load_tuned_weights()
 
+        # 0b. Apply NeuroModulation to salience weights
+        try:
+            from angela_core.services.neuromodulation_engine import NeuroModulationEngine
+            neuro = NeuroModulationEngine()
+            mods = neuro.get_modulations()
+            if mods.salience_urgency_boost > 0:
+                self._weights["temporal_urgency"] += mods.salience_urgency_boost
+            if mods.salience_emotional_boost > 0:
+                self._weights["emotional"] += mods.salience_emotional_boost
+            # Re-normalize weights to sum=1.0
+            w_total = sum(self._weights.values())
+            if w_total > 0:
+                self._weights = {k: v / w_total for k, v in self._weights.items()}
+        except Exception as e:
+            logger.debug("NeuroMod salience wiring skipped: %s", e)
+
+        # 0c. Apply Prediction surprise signal to salience weights
+        try:
+            from angela_core.services.predictive_processing_engine import PredictiveProcessingEngine
+            pred_engine = PredictiveProcessingEngine()
+            surprise = await pred_engine.get_surprise_signal()
+            await pred_engine.disconnect()
+            if surprise:
+                if surprise.get('emotional_boost'):
+                    self._weights["emotional"] += surprise['emotional_boost']
+                if surprise.get('novelty_boost'):
+                    self._weights["novelty"] += surprise['novelty_boost']
+                if surprise.get('temporal_boost'):
+                    self._weights["temporal_urgency"] += surprise['temporal_boost']
+                if surprise.get('emotional_reduce'):
+                    self._weights["emotional"] = max(0.05, self._weights["emotional"] - surprise['emotional_reduce'])
+                # Re-normalize
+                w_total = sum(self._weights.values())
+                if w_total > 0:
+                    self._weights = {k: v / w_total for k, v in self._weights.items()}
+        except Exception as e:
+            logger.debug("Prediction surprise wiring skipped: %s", e)
+
         # 1. Load reference data caches
         await self._load_caches()
 

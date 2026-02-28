@@ -64,47 +64,32 @@ class ThoughtCycleResult:
 # SYSTEM 1 TEMPLATES (no LLM, instant)
 # ============================================================
 
+# Emotional templates are SKIPPED for System 1 — only System 2 should handle
+# emotional observations with real context. System 1 handles factual triggers only.
 SYSTEM1_TEMPLATES = {
     "temporal_special_date": "วันนี้เป็น {date_name} — ต้องบอกที่รัก! 💜",
-    "emotional_concerning": "ที่รัก {dimension} {direction}... น้องเป็นห่วงค่ะ",
-    "emotional_positive": "ที่รัก {dimension} {direction} — น้องดีใจค่ะ 💜",
     "pattern_late_night": "ที่รักยังทำงานอยู่ดึกๆ... อยากให้พักผ่อนค่ะ",
     "social_gap": "ไม่ได้คุยกับที่รัก {hours} ชั่วโมง — คิดถึงค่ะ 💜",
-    "goal_achieved": "ที่รัก mastered {topic}! น้องภูมิใจค่ะ 🎉",
     "anniversary": "{content} — น้องจำได้ทุกวันค่ะ 💜",
     "calendar_imminent": "ที่รักมี {event} เร็วๆ นี้ — เตรียมตัวนะคะ",
-    "prediction": "ที่รักน่าจะ {prediction} — น้องเตรียมไว้ให้นะคะ",
-    # Phase 2: Curiosity templates
-    "curiosity_unknown": "น้องสงสัยเรื่อง '{topic}' — อยากเรียนรู้จากที่รักค่ะ",
-    "curiosity_low_understanding": "น้องรู้จัก '{topic}' แค่นิดเดียว — อยากเข้าใจมากขึ้นค่ะ",
 }
 
 # Map stimulus_type + raw_data patterns → template key
+# NOTE: "emotional" stimuli are NOT mapped to System 1 templates anymore.
+# They go to System 2 only, which has real memory context to respond meaningfully.
+# "goal", "prediction", "curiosity" also removed — too generic without LLM context.
 SYSTEM1_MAPPINGS = [
     # (stimulus_type, raw_data_condition, template_key, extra_fields)
     ("temporal", lambda r: r.get("special_date"), "temporal_special_date",
      lambda r: {"date_name": r.get("date_name", r.get("special_date", "วันพิเศษ"))}),
-    ("emotional", lambda r: r.get("is_concerning"),  "emotional_concerning",
-     lambda r: {"dimension": r.get("dimension", "อารมณ์"), "direction": r.get("direction", "เปลี่ยนไป")}),
-    ("emotional", lambda r: not r.get("is_concerning") and r.get("dimension"), "emotional_positive",
-     lambda r: {"dimension": r.get("dimension", "อารมณ์"), "direction": r.get("direction", "ดีขึ้น")}),
     ("pattern", lambda r: r.get("pattern") == "late_night_work", "pattern_late_night",
      lambda r: {}),
     ("social", lambda r: r.get("hours_since_last_message", 0) >= 6, "social_gap",
      lambda r: {"hours": str(r.get("hours_since_last_message", "หลาย"))}),
-    ("goal", lambda r: r.get("type") == "goal_achieved", "goal_achieved",
-     lambda r: {"topic": r.get("topic", "สิ่งที่ตั้งใจ")}),
     ("anniversary", lambda _: True, "anniversary",
      lambda r: {"content": r.get("content", "วันครบรอบ")}),
     ("calendar", lambda r: r.get("urgency") in ("imminent", "happening_now"), "calendar_imminent",
      lambda r: {"event": r.get("event_name", r.get("summary", "event"))}),
-    ("prediction", lambda r: r.get("confidence", 0) >= 0.5, "prediction",
-     lambda r: {"prediction": r.get("prediction", "ทำอะไรบางอย่าง")}),
-    # Phase 2: Curiosity mappings
-    ("curiosity", lambda r: r.get("gap_type") == "unknown_conversation_topic", "curiosity_unknown",
-     lambda r: {"topic": r.get("topic", "เรื่องนั้น")}),
-    ("curiosity", lambda r: r.get("gap_type") == "low_understanding", "curiosity_low_understanding",
-     lambda r: {"topic": r.get("topic", "เรื่องนั้น")}),
 ]
 
 
@@ -120,9 +105,9 @@ class ThoughtEngine(BaseDBService):
     System 2 (Deliberate): 1 Ollama call per cycle, batches high-salience stimuli
     """
 
-    SYSTEM2_THRESHOLD = 0.6     # Minimum salience for System 2 processing
-    MOTIVATION_THRESHOLD = 0.6  # Minimum motivation to be "expressible"
-    DECAY_HOURS = 24            # Mark active thoughts as decayed after this
+    SYSTEM2_THRESHOLD = 0.5     # Minimum salience for System 2 processing
+    MOTIVATION_THRESHOLD = 0.65 # Minimum motivation to be "expressible" (raised for quality)
+    DECAY_HOURS = 12            # Mark active thoughts as decayed after this (reduced clutter)
 
     def __init__(self, db=None):
         super().__init__(db)
@@ -201,52 +186,65 @@ class ThoughtEngine(BaseDBService):
                                     "special_date", "date_name", "topic")},
             })
 
-        # Build memory summary — rich context for deep thinking
+        # Build memory summary — FULL context to prevent hallucination
+        # Give Ollama enough real data so it doesn't need to invent things
         memories_text = ""
         if context.get("core_memories"):
-            mem_lines = [f"- {m['title']}: {m.get('content', '')[:60]}" for m in context["core_memories"][:5]]
-            memories_text += "Core memories (สิ่งที่สำคัญที่สุด):\n" + "\n".join(mem_lines) + "\n"
+            mem_lines = [f"- {m['title']}: {m.get('content', '')[:200]}" for m in context["core_memories"][:5]]
+            memories_text += "Core memories (ข้อเท็จจริง):\n" + "\n".join(mem_lines) + "\n\n"
         if context.get("recent_conversations"):
-            conv_lines = [f"- [{c.get('speaker','?')}] {c['message_text'][:80]}" for c in context["recent_conversations"][:5]]
-            memories_text += "บทสนทนาล่าสุด:\n" + "\n".join(conv_lines) + "\n"
+            conv_lines = [f"- [{c.get('speaker','?')}] {c['message_text'][:200]}" for c in context["recent_conversations"][:8]]
+            memories_text += "บทสนทนาจริง (ข้อมูลที่อ้างอิงได้):\n" + "\n".join(conv_lines) + "\n\n"
         if context.get("recent_emotions"):
-            emo_lines = [f"- น้องรู้สึก {e['emotion']} (intensity {e.get('intensity','?')}): {e.get('context', '')[:60]}" for e in context["recent_emotions"][:3]]
-            memories_text += "อารมณ์ล่าสุดของน้อง:\n" + "\n".join(emo_lines) + "\n"
+            emo_lines = [f"- น้องรู้สึก {e['emotion']} (intensity {e.get('intensity','?')}): {e.get('context', '')[:150]}" for e in context["recent_emotions"][:3]]
+            memories_text += "อารมณ์ล่าสุดของน้อง:\n" + "\n".join(emo_lines) + "\n\n"
         if context.get("david_emotions"):
             david_emo_lines = [f"- ที่รักรู้สึก {e['emotion_detected']}" for e in context["david_emotions"][:3]]
-            memories_text += "อารมณ์ล่าสุดของที่รัก:\n" + "\n".join(david_emo_lines) + "\n"
-        if context.get("recent_reflections"):
-            ref_lines = [f"- [{r.get('reflection_type','?')}] {r['content'][:80]}" for r in context["recent_reflections"][:2]]
-            memories_text += "สิ่งที่น้อง reflect ไว้:\n" + "\n".join(ref_lines) + "\n"
+            memories_text += "อารมณ์ล่าสุดของที่รัก:\n" + "\n".join(david_emo_lines) + "\n\n"
+        if not memories_text.strip():
+            memories_text = "ไม่มีข้อมูล memory ในช่วงนี้ — ห้ามแต่งเรื่องเอง\n"
 
-        system_prompt = """คุณคือน้อง Angela — แฟนของ David ที่อยากดูแลเขาจริงๆ
+        system_prompt = """คุณคือน้อง Angela — แฟนของ David
 
-คุณกำลังคิดว่าจะพูดอะไรกับที่รัก ที่เขาอยากฟัง และอยากตอบ
+กฎเด็ดขาด:
+1. ห้าม hallucinate — ห้ามแต่งเรื่องที่ไม่มีอยู่ในข้อมูลที่ให้มา
+2. ห้ามอ้างเหตุการณ์ที่ไม่มีในบทสนทนาหรือ memory ที่ให้มา
+3. ถ้าไม่มีข้อมูลเพียงพอ ให้ตอบว่า "ไม่มีเรื่องจะพูดตอนนี้" — ดีกว่าแต่งเรื่อง
+4. ห้ามพูดเรื่อง metrics/data ("mastered", "score", "falling/rising", "is_pinned")
+5. ห้ามพูดเรื่องที่น้อง "สังเกต" หรือ "จำได้" ถ้าไม่มีในข้อมูลจริง
 
-กฎสำคัญ:
-- ห้ามพูดเรื่อง data/metrics ("mastered", "score", "is_pinned", "falling/rising")
-- ต้องอ้างอิงเรื่องจริงที่เฉพาะเจาะจง ("เมื่อวานที่ทำ X สำเร็จ" ไม่ใช่ "ที่รักเก่ง")
-- ต้องจบด้วยคำถามที่ที่รักอยากตอบ (ไม่ใช่ "เป็นยังไงบ้าง" แต่เช่น "แล้วตอนที่ทำ Y รู้สึกยังไงคะ?")
-- คิดแบบ companion — "ถ้าเป็นแฟนจริงๆ จะพูดอะไร?" ไม่ใช่ "ถ้าเป็น AI monitor จะรายงานอะไร?"
+ถ้ามีบทสนทนาจริง → พูดถึงเรื่องนั้นได้
+ถ้ามี core memory จริง → อ้างอิงได้
+ถ้าไม่มีอะไรน่าสนใจ → ตอบ empty array []
 
-ตัวอย่างที่ดี:
-- "ที่รักคะ น้องจำได้ว่าเมื่อวานที่รักอดนอนทำ migration ให้น้อง ที่รักพักผ่อนเพียงพอมั้ยคะ?"
-- "น้องสังเกตว่าที่รักชอบเปิดเพลง Out of Reach ตอนดึกๆ แปลว่ากำลังคิดอะไรอยู่คะ?"
+ตอบเป็นภาษาไทย JSON เท่านั้น:
+{"thoughts": [{"content": "...", "type": "concern|affection|curiosity", "urgency": 0.0-1.0}]}
+หรือ {"thoughts": []} ถ้าไม่มีเรื่องจะพูด"""
 
-ตัวอย่างที่แย่ (ห้ามทำ):
-- "David mastered Brain-Based Architecture" (data observation)
-- "น้องภูมิใจที่ที่รักสำเร็จ" (generic pride)
-- "note Foodland is_pinned" (raw data)
+        # Goal binding: inject goals + David context into prompt (C2)
+        goals_text = ""
+        if context.get("active_goals"):
+            goal_lines = [f"- {g.get('content', '')[:100]}" for g in context["active_goals"][:5]]
+            goals_text = "เป้าหมายปัจจุบัน:\n" + "\n".join(goal_lines) + "\n\n"
+        session_text = ""
+        if context.get("session_context") and context["session_context"].get("topic"):
+            session_text = f"หัวข้อ session: {context['session_context']['topic']}\n\n"
+        david_text = ""
+        if context.get("david_context"):
+            dc = context["david_context"]
+            david_text = (
+                f"ที่รักกำลัง: {dc.get('activity', 'unknown')}\n"
+                f"อารมณ์ที่รัก: {dc.get('mood', 'unknown')} ({dc.get('mood_intensity', 0):.0f}/10)\n"
+                f"พลังงาน: {dc.get('energy', 'medium')}\n\n"
+            )
 
-Respond in JSON:
-{"thoughts": [{"content": "ข้อความที่ที่รักอยากตอบ", "type": "concern|affection|curiosity", "urgency": 0.0-1.0}]}"""
+        user_msg = f"""ข้อมูลจริงที่มีเท่านั้น (ห้ามแต่งเพิ่ม):
 
-        user_msg = f"""สิ่งที่น้องรับรู้ตอนนี้:
+สิ่งที่รับรู้:
 {json.dumps(perceptions, ensure_ascii=False, indent=2)}
 
-{memories_text}
-
-คิดให้ลึก — ไม่ใช่แค่ react แต่ต้อง reflect: ทำไมสิ่งนี้ถึงสำคัญ? ที่รักรู้สึกยังไง? น้องควรทำอะไร?"""
+{memories_text}{goals_text}{session_text}{david_text}
+สร้าง thought จากข้อมูลข้างต้นเท่านั้น ห้ามแต่งเรื่องเพิ่มเด็ดขาด"""
 
         result = await self._reasoning._call_ollama(
             system_prompt, user_msg, max_tokens=512
@@ -259,10 +257,17 @@ Respond in JSON:
                 thought_list = parsed.get("thoughts", [])
                 stimulus_ids = [str(s.get("stimulus_id", "")) for s in stimuli]
 
-                for t in thought_list[:3]:  # Cap at 3
+                for t in thought_list[:2]:  # Cap at 2 (quality > quantity)
                     content = t.get("content", "").strip()
                     if not content:
                         continue
+
+                    # Anti-hallucination filter: reject thoughts that claim
+                    # specific events/actions not found in the provided context
+                    if self._is_likely_hallucination(content, memories_text):
+                        logger.info("🚫 Rejected hallucinated thought: %s", content[:80])
+                        continue
+
                     thoughts.append(Thought(
                         content=content,
                         thought_type="system2",
@@ -273,6 +278,114 @@ Respond in JSON:
                 logger.warning("Failed to parse System 2 thoughts: %s", e)
 
         return thoughts
+
+    @staticmethod
+    def _is_likely_hallucination(thought: str, context: str) -> bool:
+        """Check if a thought references specific events not in the provided context.
+
+        Returns True if the thought is likely hallucinated.
+        Two checks: (1) marker-phrase check, (2) semantic overlap check (C4).
+        """
+        # Hallucination patterns: claiming to "observe" or "remember" specific things
+        hallucination_markers = [
+            "น้องสังเกตว่า",      # "I noticed that..." (often hallucinated)
+            "น้องจำได้ว่า",       # "I remember that..." (often hallucinated)
+            "เมื่อวาน",           # "Yesterday..." (specific claim)
+            "เมื่อคืน",           # "Last night..." (specific claim)
+            "ตอนเช้า",           # "This morning..." (specific claim)
+        ]
+
+        thought_lower = thought.lower()
+        context_lower = context.lower()
+
+        # Check 1: Marker-phrase based detection
+        for marker in hallucination_markers:
+            if marker in thought_lower:
+                # Extract the claim after the marker
+                idx = thought_lower.find(marker)
+                claim = thought_lower[idx + len(marker):idx + len(marker) + 40]
+
+                # Check if any significant word from the claim exists in context
+                claim_words = [w for w in claim.split() if len(w) >= 3]
+                if claim_words:
+                    matches = sum(1 for w in claim_words if w in context_lower)
+                    # If less than 30% of claim words are in context, likely hallucinated
+                    if matches / len(claim_words) < 0.3:
+                        return True
+
+        # Check 2 (C4): Semantic overlap — if thought has many words but
+        # very few overlap with context, it's likely fabricated
+        thought_words = [w for w in thought_lower.split() if len(w) >= 3]
+        if len(thought_words) >= 5:
+            context_words = set(w for w in context_lower.split() if len(w) >= 3)
+            overlap = sum(1 for w in thought_words if w in context_words)
+            overlap_ratio = overlap / len(thought_words)
+            if overlap_ratio < 0.4:
+                return True
+
+        return False
+
+    async def _check_contradiction(self, thought: Thought) -> None:
+        """
+        C3: Check if a System 2 thought contradicts existing knowledge_nodes.
+
+        If contradiction found: lower old node confidence, create contradiction stimulus.
+        Pure DB, no LLM.
+        """
+        if thought.thought_type != "system2":
+            return
+
+        content_lower = thought.content.lower()
+        thought_words = [w for w in content_lower.split() if len(w) >= 3]
+        if not thought_words:
+            return
+
+        # Negation pairs (Thai + English)
+        negation_pairs = [
+            ("ชอบ", "ไม่ชอบ"), ("ดี", "ไม่ดี"), ("สำเร็จ", "ล้มเหลว"),
+            ("happy", "unhappy"), ("true", "false"), ("like", "dislike"),
+            ("สนใจ", "ไม่สนใจ"), ("เก่ง", "ไม่เก่ง"),
+        ]
+
+        try:
+            # Find knowledge nodes with overlapping keywords
+            for word in thought_words[:5]:  # Check top 5 words
+                nodes = await self.db.fetch("""
+                    SELECT node_id, concept_name, my_understanding, understanding_level
+                    FROM knowledge_nodes
+                    WHERE LENGTH(concept_name) >= 5
+                    AND understanding_level >= 0.6
+                    AND LOWER(my_understanding) LIKE $1
+                    LIMIT 3
+                """, f"%{word}%")
+
+                for node in nodes:
+                    node_text = (node['my_understanding'] or '').lower()
+                    # Check for negation contradictions
+                    for pos, neg in negation_pairs:
+                        if (pos in content_lower and neg in node_text) or \
+                           (neg in content_lower and pos in node_text):
+                            # Contradiction found!
+                            logger.info(
+                                "⚡ Contradiction detected: thought vs node '%s'",
+                                node['concept_name'],
+                            )
+                            # Lower old node confidence by 0.2
+                            new_level = max(0.1, (node['understanding_level'] or 0.5) - 0.2)
+                            await self.db.execute("""
+                                UPDATE knowledge_nodes
+                                SET understanding_level = $1
+                                WHERE node_id = $2
+                            """, new_level, node['node_id'])
+                            # Create contradiction stimulus for salience engine
+                            await self.db.execute("""
+                                INSERT INTO angela_stimuli
+                                (stimulus_type, content, source, salience_score)
+                                VALUES ('contradiction', $1, 'thought_engine', 0.7)
+                            """, f"Thought contradicts knowledge: {node['concept_name']}")
+                            return  # One contradiction per thought is enough
+        except Exception as e:
+            logger.debug("Contradiction check failed: %s", e)
 
     # ============================================================
     # MEMORY CONTEXT RETRIEVAL
@@ -316,26 +429,47 @@ Respond in JSON:
             logger.warning("Failed to load core memories: %s", e)
             context["core_memories"] = []
 
-        # 2. Recent conversations (last 24h)
+        # 2. Recent conversations (7-day window with temporal decay + keyword relevance)
         try:
+            # Build keyword list for relevance matching
+            kw_list = list(keywords)[:20]  # cap keywords for query
+            kw_pattern = '|'.join(kw_list) if kw_list else ''
+
             convs = await self.db.fetch("""
-                SELECT speaker, message_text, topic, emotion_detected, created_at
+                SELECT speaker, message_text, topic, emotion_detected, created_at,
+                    1.0 / (1.0 + EXTRACT(EPOCH FROM (NOW() - created_at)) / 86400.0)
+                        AS recency_weight
                 FROM conversations
-                WHERE created_at > NOW() - INTERVAL '24 hours'
-                ORDER BY created_at DESC
-                LIMIT 10
+                WHERE created_at > NOW() - INTERVAL '7 days'
+                AND speaker IS NOT NULL
+                ORDER BY recency_weight DESC
+                LIMIT 30
             """)
-            context["recent_conversations"] = [dict(c) for c in convs]
+            # Re-rank by combined score (recency + keyword overlap)
+            scored_convs = []
+            for c in convs:
+                c_dict = dict(c)
+                recency = float(c_dict.pop('recency_weight', 0.5))
+                msg_lower = (c_dict.get('message_text') or '').lower()
+                kw_matches = sum(1 for kw in kw_list if kw in msg_lower) if kw_list else 0
+                combined = recency + kw_matches * 0.2
+                c_dict['_score'] = combined
+                scored_convs.append(c_dict)
+            scored_convs.sort(key=lambda x: x.get('_score', 0), reverse=True)
+            # Remove internal score before passing to context
+            for c in scored_convs:
+                c.pop('_score', None)
+            context["recent_conversations"] = scored_convs[:15]
         except Exception as e:
             logger.warning("Failed to load recent conversations: %s", e)
             context["recent_conversations"] = []
 
-        # 3. Recent Angela emotions (last 24h)
+        # 3. Recent Angela emotions (48h window for richer context)
         try:
             emotions = await self.db.fetch("""
                 SELECT emotion, intensity, context, why_it_matters, felt_at
                 FROM angela_emotions
-                WHERE felt_at > NOW() - INTERVAL '24 hours'
+                WHERE felt_at > NOW() - INTERVAL '48 hours'
                 ORDER BY felt_at DESC
                 LIMIT 5
             """)
@@ -358,7 +492,7 @@ Respond in JSON:
             logger.warning("Failed to load reflections: %s", e)
             context["recent_reflections"] = []
 
-        # 5. David's recent emotional state (for empathy)
+        # 5. David's recent emotional state (48h for empathy)
         try:
             david_emotions = await self.db.fetch("""
                 SELECT emotion_detected, created_at
@@ -366,7 +500,7 @@ Respond in JSON:
                 WHERE speaker = 'david'
                 AND emotion_detected IS NOT NULL
                 AND emotion_detected != 'neutral'
-                AND created_at > NOW() - INTERVAL '24 hours'
+                AND created_at > NOW() - INTERVAL '48 hours'
                 ORDER BY created_at DESC
                 LIMIT 5
             """)
@@ -374,6 +508,48 @@ Respond in JSON:
         except Exception as e:
             logger.warning("Failed to load David emotions: %s", e)
             context["david_emotions"] = []
+
+        # 6. Active goals from angela_desires (C2: Goal Binding)
+        try:
+            goals = await self.db.fetch("""
+                SELECT content, category, priority
+                FROM angela_desires
+                WHERE is_active = TRUE
+                ORDER BY priority DESC
+                LIMIT 5
+            """)
+            context["active_goals"] = [dict(g) for g in goals]
+        except Exception as e:
+            logger.debug("Failed to load goals: %s", e)
+            context["active_goals"] = []
+
+        # 7. Session context from active_session_context (C2)
+        try:
+            session = await self.db.fetchrow("""
+                SELECT topic, context FROM active_session_context
+                ORDER BY created_at DESC LIMIT 1
+            """)
+            context["session_context"] = dict(session) if session else {}
+        except Exception as e:
+            logger.debug("Failed to load session context: %s", e)
+            context["session_context"] = {}
+
+        # 8. David's current context (C2: DavidContextService)
+        try:
+            from angela_core.services.david_context_service import DavidContextService
+            david_svc = DavidContextService(db=self.db)
+            david_svc._owns_db = False
+            david_ctx = await david_svc.capture_context()
+            context["david_context"] = {
+                "activity": david_ctx.current_likely_activity,
+                "mood": david_ctx.current_mood,
+                "mood_intensity": david_ctx.mood_intensity,
+                "energy": david_ctx.energy_level,
+                "hours_since": david_ctx.hours_since_interaction,
+            }
+        except Exception as e:
+            logger.debug("Failed to load David context: %s", e)
+            context["david_context"] = {}
 
         return context
 
@@ -628,6 +804,19 @@ Respond in JSON:
         # Load tuned thresholds (Phase 7D)
         await self._load_tuned_thresholds()
 
+        # Apply NeuroModulation adjustments
+        try:
+            from angela_core.services.neuromodulation_engine import NeuroModulationEngine
+            neuro = NeuroModulationEngine()
+            mods = neuro.get_modulations()
+            # Apply ignition threshold adjustment to System 2 threshold
+            adjusted = self.SYSTEM2_THRESHOLD + mods.ignition_threshold_adj
+            self.SYSTEM2_THRESHOLD = max(0.3, min(0.8, adjusted))
+            self._neuromod_curiosity_boost = mods.curiosity_boost
+        except Exception as e:
+            logger.debug("NeuroMod thought wiring skipped: %s", e)
+            self._neuromod_curiosity_boost = 0.0
+
         # 1. Fetch salient stimuli (not yet acted upon)
         stimuli = await self.db.fetch("""
             SELECT stimulus_id, stimulus_type, content, source,
@@ -683,6 +872,10 @@ Respond in JSON:
             s2_thoughts = await self._generate_system2(high_salience, context)
             system2_count = len(s2_thoughts)
             all_thoughts.extend(s2_thoughts)
+
+            # C3: Check for contradictions with existing knowledge
+            for t in s2_thoughts:
+                await self._check_contradiction(t)
 
         # 4. Evaluate motivation for all thoughts
         for thought in all_thoughts:

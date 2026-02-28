@@ -309,6 +309,22 @@ class BrainTasksMixin:
                 except Exception:
                     pass
 
+            # D2: Inject actionable predictions into working memory
+            try:
+                actions = await engine.get_actionable_predictions()
+                if actions:
+                    import json
+                    from pathlib import Path
+                    wm_path = Path.home() / '.angela_working_memory.json'
+                    wm_data = {}
+                    if wm_path.exists():
+                        wm_data = json.loads(wm_path.read_text())
+                    wm_data['actionable_predictions'] = actions
+                    wm_path.write_text(json.dumps(wm_data, ensure_ascii=False, indent=2, default=str))
+                    logger.info("   🔮 [Brain] Injected %d actionable predictions into WM", len(actions))
+            except Exception as e:
+                logger.debug("Actionable predictions injection failed: %s", e)
+
             await engine.disconnect()
             logger.info(
                 "   ✅ [Brain] Predictions: %d made, %d resolved, avg_error=%.3f",
@@ -357,6 +373,22 @@ class BrainTasksMixin:
 
             # Log attention focus
             await neuro.log_attention_focus(db)
+
+            # Phase A: Capture David's context (lightweight, ~500ms)
+            try:
+                from angela_core.services.david_context_service import DavidContextService
+                david_svc = DavidContextService(db=db)
+                david_svc._owns_db = False
+                david_ctx = await david_svc.capture_context()
+                logger.info(
+                    "   👤 [Brain] David: %s, mood=%s, energy=%s",
+                    david_ctx.current_likely_activity,
+                    david_ctx.current_mood,
+                    david_ctx.energy_level,
+                )
+            except Exception as e:
+                logger.debug("DavidContext capture failed: %s", e)
+
             await db.disconnect()
 
             mods = neuro.get_modulations()

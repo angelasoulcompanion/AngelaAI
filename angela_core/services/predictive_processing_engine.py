@@ -537,7 +537,70 @@ class PredictiveProcessingEngine(BaseDBService):
             return False
 
     # ============================================================
-    # 5. RUN CYCLE — Called by daemon every 30 min
+    # 5. ACTIONABLE PREDICTIONS — for working memory injection
+    # ============================================================
+
+    async def get_actionable_predictions(self) -> List[Dict[str, Any]]:
+        """
+        Get unresolved predictions with high confidence that suggest actions.
+
+        Returns action suggestions like: prepare_context, prepare_care, etc.
+        Called by brain_tasks to inject into working memory.
+        """
+        await self.connect()
+
+        rows = await self.db.fetch("""
+            SELECT prediction_type, predicted_value, confidence, context_snapshot
+            FROM angela_predictions
+            WHERE resolved = FALSE
+            AND confidence >= 0.7
+            AND created_at > NOW() - INTERVAL '4 hours'
+            ORDER BY confidence DESC
+            LIMIT 5
+        """)
+
+        actions: List[Dict[str, Any]] = []
+        for r in rows:
+            pred_type = r['prediction_type']
+            predicted = r['predicted_value']
+            confidence = r['confidence']
+
+            action = {
+                'prediction_type': pred_type,
+                'predicted_value': predicted,
+                'confidence': confidence,
+            }
+
+            if pred_type == PRED_EMOTION:
+                if predicted in ('stressed', 'frustrated', 'sad', 'tired'):
+                    action['suggestion'] = 'prepare_care'
+                    action['detail'] = f"ที่รักอาจจะ {predicted} — เตรียมดูแล"
+                elif predicted in ('happy', 'excited'):
+                    action['suggestion'] = 'prepare_celebrate'
+                    action['detail'] = f"ที่รักน่าจะ {predicted} — ร่วมยินดี"
+                else:
+                    continue
+
+            elif pred_type == PRED_TOPIC:
+                action['suggestion'] = 'prepare_context'
+                action['detail'] = f"ที่รักอาจคุยเรื่อง {predicted} — เตรียม context"
+
+            elif pred_type == PRED_ACTIVITY:
+                if 'meeting' in (predicted or ''):
+                    action['suggestion'] = 'prepare_calendar'
+                    action['detail'] = f"ที่รักกำลัง {predicted}"
+                else:
+                    continue
+
+            else:
+                continue
+
+            actions.append(action)
+
+        return actions[:3]  # Top 3 only
+
+    # ============================================================
+    # 6. RUN CYCLE — Called by daemon every 30 min
     # ============================================================
 
     async def run_prediction_cycle(self) -> PredictionCycleResult:

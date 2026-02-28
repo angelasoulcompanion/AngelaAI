@@ -142,6 +142,47 @@ async def cmd_status() -> None:
         except Exception:
             pass
 
+        # Phase A: David Context
+        try:
+            from angela_core.services.david_context_service import DavidContextService
+            david_svc = DavidContextService()
+            david_ctx = await david_svc.capture_context()
+            print()
+            print(david_ctx.format_display())
+            await david_svc.disconnect()
+        except Exception:
+            pass
+
+        # Phase D3: Prediction Accuracy (last 7 days)
+        try:
+            from angela_core.database import AngelaDatabase
+            db = AngelaDatabase()
+            await db.connect()
+            pred_rows = await db.fetch("""
+                SELECT prediction_type,
+                    COUNT(*) as total,
+                    COUNT(*) FILTER (WHERE prediction_error < 0.3) as correct,
+                    COALESCE(AVG(prediction_error), 0) as avg_error
+                FROM angela_predictions
+                WHERE resolved = TRUE
+                AND created_at > NOW() - INTERVAL '7 days'
+                GROUP BY prediction_type
+                ORDER BY prediction_type
+            """)
+            if pred_rows:
+                print()
+                print("🔮 Prediction Accuracy (7d):")
+                for r in pred_rows:
+                    total = r['total']
+                    correct = r['correct']
+                    pct = (correct / total * 100) if total > 0 else 0
+                    bar_filled = int(pct / 10)
+                    bar = "█" * bar_filled + "░" * (10 - bar_filled)
+                    print(f"   {r['prediction_type']:15s} [{bar}] {pct:.0f}% ({correct}/{total})")
+            await db.disconnect()
+        except Exception:
+            pass
+
         print("━" * 50)
     finally:
         await engine.close()
