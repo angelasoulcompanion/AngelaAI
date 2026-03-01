@@ -14,7 +14,7 @@ class DatabaseService: ObservableObject {
     @Published var isConnected = false
     @Published var errorMessage: String?
 
-    private let baseURL = APIConfig.apiBaseURL
+    private var baseURL: String { APIConfig.apiBaseURL }
     private let decoder: JSONDecoder
 
     private init() {
@@ -180,8 +180,40 @@ class DatabaseService: ObservableObject {
         try await get("/market/history/\(symbol)?period=\(period)")
     }
 
+    func fetchWatchlistQuotes(watchlistId: String? = nil) async throws -> [WatchlistQuote] {
+        if let wlId = watchlistId {
+            return try await get("/market/watchlist-quotes?watchlist_id=\(wlId)")
+        }
+        return try await get("/market/watchlist-quotes")
+    }
+
+    func fetchFinancialOutlook(symbol: String) async throws -> FinancialOutlookResponse {
+        try await get("/market/outlook/\(symbol)")
+    }
+
+    func fetchFinancialStatements(symbol: String, period: String = "annual") async throws -> FinancialStatementsResponse {
+        try await get("/market/financials/\(symbol)?period=\(period)")
+    }
+
     func fetchAndStorePrices(assetId: String, days: Int = 365) async throws -> FetchPricesResponse {
         try await get("/market/fetch-prices/\(assetId)?days=\(days)")
+    }
+
+    func fetchTechnicalAnalysis(
+        symbol: String,
+        period: String = "6mo",
+        macdFast: Int = 12, macdSlow: Int = 26, macdSignal: Int = 9,
+        rsiPeriod: Int = 14,
+        smaPeriods: String = "20,50",
+        emaPeriods: String = "12,26",
+        bbPeriod: Int = 20, bbStd: Double = 2.0
+    ) async throws -> TechnicalAnalysisResponse {
+        var url = "/technical/\(symbol)?period=\(period)"
+        url += "&macd_fast=\(macdFast)&macd_slow=\(macdSlow)&macd_signal=\(macdSignal)"
+        url += "&rsi_period=\(rsiPeriod)"
+        url += "&sma_periods=\(smaPeriods)&ema_periods=\(emaPeriods)"
+        url += "&bb_period=\(bbPeriod)&bb_std=\(bbStd)"
+        return try await get(url)
     }
 
     // MARK: - Watchlist Methods
@@ -192,6 +224,26 @@ class DatabaseService: ObservableObject {
 
     func fetchWatchlist(id: String) async throws -> WatchlistDetail {
         try await get("/watchlists/\(id)")
+    }
+
+    func createWatchlist(name: String, description: String?) async throws -> WatchlistCreateResponse {
+        try await post("/watchlists/", body: WatchlistCreateBody(name: name, description: description))
+    }
+
+    func deleteWatchlist(id: String) async throws {
+        try await delete("/watchlists/\(id)")
+    }
+
+    func addWatchlistItem(watchlistId: String, assetId: String, notes: String? = nil) async throws -> WatchlistItemAddResponse {
+        try await post("/watchlists/\(watchlistId)/items", body: WatchlistItemAddBody(assetId: assetId, notes: notes))
+    }
+
+    func removeWatchlistItem(watchlistId: String, assetId: String) async throws {
+        try await delete("/watchlists/\(watchlistId)/items/\(assetId)")
+    }
+
+    func addWatchlistItemBySymbol(watchlistId: String, symbol: String) async throws -> WatchlistItemAddResponse {
+        try await post("/watchlists/\(watchlistId)/add-by-symbol?symbol=\(symbol.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? symbol)", body: EmptyBody())
     }
 
     // MARK: - Dashboard

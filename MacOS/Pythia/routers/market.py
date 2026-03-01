@@ -173,6 +173,201 @@ async def fetch_and_store_prices(
     }
 
 
+@router.get("/watchlist-quotes")
+async def get_watchlist_quotes(watchlist_id: UUID = Query(None, description="Filter by watchlist ID"), conn=Depends(get_conn)):
+    """Get quotes for assets in active watchlists. Optionally filter by watchlist_id."""
+    try:
+        import yfinance as yf
+    except ImportError:
+        raise HTTPException(status_code=503, detail="yfinance not installed")
+
+    # Get unique symbols, optionally filtered by watchlist
+    if watchlist_id is not None:
+        rows = await conn.fetch("""
+            SELECT DISTINCT a.symbol, a.name, a.asset_type::text, a.exchange
+            FROM watchlist_items wi
+            JOIN watchlists w ON wi.watchlist_id = w.watchlist_id
+            JOIN assets a ON wi.asset_id = a.asset_id
+            WHERE w.is_active = true AND w.watchlist_id = $1
+            ORDER BY a.symbol
+        """, watchlist_id)
+    else:
+        rows = await conn.fetch("""
+            SELECT DISTINCT a.symbol, a.name, a.asset_type::text, a.exchange
+            FROM watchlist_items wi
+            JOIN watchlists w ON wi.watchlist_id = w.watchlist_id
+            JOIN assets a ON wi.asset_id = a.asset_id
+            WHERE w.is_active = true
+            ORDER BY a.symbol
+        """)
+
+    if not rows:
+        return []
+
+    results = []
+    for row in rows:
+        symbol = row["symbol"]
+        try:
+            yahoo_sym = get_yahoo_symbol(symbol, row["exchange"])
+            ticker = yf.Ticker(yahoo_sym)
+            info = ticker.info
+
+            curr = info.get("regularMarketPrice")
+            prev = info.get("previousClose")
+            change = round(curr - prev, 4) if curr and prev else None
+            change_pct = round((curr - prev) / prev * 100, 2) if curr and prev else None
+
+            # Sparkline: last 5 days close prices
+            hist = ticker.history(period="5d", interval="1d")
+            sparkline = [round(row_h.get("Close", 0), 2) for _, row_h in hist.iterrows()] if not hist.empty else []
+
+            results.append({
+                "symbol": symbol,
+                "name": info.get("longName") or info.get("shortName") or row["name"],
+                "current_price": curr,
+                "change": change,
+                "change_percent": change_pct,
+                "sparkline": sparkline,
+                "currency": info.get("currency", ""),
+            })
+        except Exception:
+            results.append({
+                "symbol": symbol,
+                "name": row["name"],
+                "current_price": None,
+                "change": None,
+                "change_percent": None,
+                "sparkline": [],
+                "currency": "",
+            })
+
+    return results
+
+
+@router.get("/outlook/{symbol}")
+async def get_financial_outlook(symbol: str):
+    """Get financial outlook: analyst recs, target price, earnings, margins."""
+    try:
+        import yfinance as yf
+    except ImportError:
+        raise HTTPException(status_code=503, detail="yfinance not installed")
+
+    yahoo_symbol = get_yahoo_symbol(symbol)
+    ticker = yf.Ticker(yahoo_symbol)
+    info = ticker.info
+
+    if not info:
+        raise HTTPException(status_code=404, detail=f"No data for {symbol}")
+
+    def safe_round(val, n=2):
+        return round(val, n) if val is not None else None
+
+    def safe_pct(val):
+        return round(val * 100, 2) if val is not None else None
+
+    outlook = {
+        "symbol": symbol.upper(),
+        "name": info.get("longName") or info.get("shortName", symbol),
+        "sector": info.get("sector"),
+        "industry": info.get("industry"),
+        # Analyst recommendations
+        "recommendation": info.get("recommendationKey"),
+        "recommendation_mean": safe_round(info.get("recommendationMean")),
+        "number_of_analysts": info.get("numberOfAnalystOpinions"),
+        "target_high": safe_round(info.get("targetHighPrice")),
+        "target_low": safe_round(info.get("targetLowPrice")),
+        "target_mean": safe_round(info.get("targetMeanPrice")),
+        "target_median": safe_round(info.get("targetMedianPrice")),
+        # Valuation
+        "pe_trailing": safe_round(info.get("trailingPE")),
+        "pe_forward": safe_round(info.get("forwardPE")),
+        "peg_ratio": safe_round(info.get("pegRatio")),
+        "price_to_book": safe_round(info.get("priceToBook")),
+        "price_to_sales": safe_round(info.get("priceToSalesTrailing12Months")),
+        "ev_to_ebitda": safe_round(info.get("enterpriseToEbitda")),
+        # Profitability
+        "profit_margin": safe_pct(info.get("profitMargins")),
+        "operating_margin": safe_pct(info.get("operatingMargins")),
+        "gross_margin": safe_pct(info.get("grossMargins")),
+        "return_on_equity": safe_pct(info.get("returnOnEquity")),
+        "return_on_assets": safe_pct(info.get("returnOnAssets")),
+        # Growth
+        "revenue_growth": safe_pct(info.get("revenueGrowth")),
+        "earnings_growth": safe_pct(info.get("earningsGrowth")),
+        "earnings_quarterly_growth": safe_pct(info.get("earningsQuarterlyGrowth")),
+        # Financials
+        "total_revenue": info.get("totalRevenue"),
+        "ebitda": info.get("ebitda"),
+        "total_debt": info.get("totalDebt"),
+        "total_cash": info.get("totalCash"),
+        "debt_to_equity": safe_round(info.get("debtToEquity")),
+        "current_ratio": safe_round(info.get("currentRatio")),
+        # Dividends
+        "dividend_rate": safe_round(info.get("dividendRate")),
+        "dividend_yield": safe_round(info.get("dividendYield")),  # Yahoo returns % already (e.g. 5.41 = 5.41%)
+        "payout_ratio": safe_pct(info.get("payoutRatio")),
+        "currency": info.get("currency"),
+    }
+
+    return outlook
+
+
+@router.get("/financials/{symbol}")
+async def get_financial_statements(symbol: str, period: str = Query("annual", regex="^(annual|quarterly)$")):
+    """Get financial statements: Income Statement, Balance Sheet, Cash Flow."""
+    try:
+        import yfinance as yf
+    except ImportError:
+        raise HTTPException(status_code=503, detail="yfinance not installed")
+
+    yahoo_symbol = get_yahoo_symbol(symbol)
+    ticker = yf.Ticker(yahoo_symbol)
+
+    def df_to_dict(df):
+        """Convert yfinance DataFrame to serializable dict."""
+        if df is None or df.empty:
+            return {"periods": [], "items": []}
+        # Sort columns (dates) descending — most recent first
+        df = df[sorted(df.columns, reverse=True)]
+        # Columns = dates, Rows = line items
+        periods = [col.strftime("%Y-%m-%d") if hasattr(col, "strftime") else str(col) for col in df.columns]
+        items = []
+        for label, row in df.iterrows():
+            values = []
+            for v in row:
+                if v is None or (hasattr(v, "__float__") and str(v) == "nan"):
+                    values.append(None)
+                else:
+                    try:
+                        values.append(float(v))
+                    except (ValueError, TypeError):
+                        values.append(None)
+            items.append({"label": str(label), "values": values})
+        return {"periods": periods, "items": items}
+
+    try:
+        if period == "annual":
+            income = df_to_dict(ticker.financials)
+            balance = df_to_dict(ticker.balance_sheet)
+            cashflow = df_to_dict(ticker.cashflow)
+        else:
+            income = df_to_dict(ticker.quarterly_financials)
+            balance = df_to_dict(ticker.quarterly_balance_sheet)
+            cashflow = df_to_dict(ticker.quarterly_cashflow)
+    except Exception:
+        income = {"periods": [], "items": []}
+        balance = {"periods": [], "items": []}
+        cashflow = {"periods": [], "items": []}
+
+    return {
+        "symbol": symbol.upper(),
+        "period": period,
+        "income_statement": income,
+        "balance_sheet": balance,
+        "cash_flow": cashflow,
+    }
+
+
 @router.get("/search")
 async def search_market(q: str = Query(..., min_length=1), limit: int = Query(10, ge=1, le=30)):
     """Search for symbols via Yahoo Finance."""
