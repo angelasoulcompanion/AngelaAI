@@ -5,9 +5,11 @@
 
 import SwiftUI
 import Charts
+import os.log
 
 struct MarketOverviewView: View {
     @EnvironmentObject var db: DatabaseService
+    @EnvironmentObject var backend: BackendManager
 
     @State private var searchText = ""
     @State private var quote: StockQuote?
@@ -22,6 +24,10 @@ struct MarketOverviewView: View {
     @State private var selectedCardSymbol: String?
     @State private var selectedCardQuote: StockQuote?
     @State private var isLoadingCardQuote = false
+
+    // Horizontal scroll navigation
+    @State private var scrollTarget: String?
+    @State private var scrollIndex: Int = 0
 
     var body: some View {
         ScrollView {
@@ -75,22 +81,65 @@ struct MarketOverviewView: View {
                     }
                 }
 
-                // Watchlist Cards
+                // Watchlist Cards (streaming-style horizontal scroll, 2 rows)
                 if !watchlistQuotes.isEmpty {
+                    let half = (watchlistQuotes.count + 1) / 2
+                    let topRow = Array(watchlistQuotes.prefix(half))
+                    let bottomRow = Array(watchlistQuotes.dropFirst(half))
+
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Watchlist")
                             .font(PythiaTheme.headline())
                             .foregroundColor(PythiaTheme.textSecondary)
 
-                        LazyVGrid(columns: [
-                            GridItem(.adaptive(minimum: 200, maximum: 260), spacing: 12)
-                        ], spacing: 12) {
-                            ForEach(watchlistQuotes) { wq in
-                                WatchlistStockCard(
-                                    quote: wq,
-                                    isSelected: selectedCardSymbol == wq.symbol
-                                )
-                                .onTapGesture { selectCard(wq.symbol) }
+                        ZStack {
+                            ScrollViewReader { proxy in
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        HStack(spacing: 12) {
+                                            ForEach(topRow) { wq in
+                                                WatchlistStockCard(
+                                                    quote: wq,
+                                                    isSelected: selectedCardSymbol == wq.symbol
+                                                )
+                                                .frame(width: 240)
+                                                .id("top_\(wq.symbol)")
+                                                .onTapGesture { selectCard(wq.symbol) }
+                                            }
+                                        }
+                                        if !bottomRow.isEmpty {
+                                            HStack(spacing: 12) {
+                                                ForEach(bottomRow) { wq in
+                                                    WatchlistStockCard(
+                                                        quote: wq,
+                                                        isSelected: selectedCardSymbol == wq.symbol
+                                                    )
+                                                    .frame(width: 240)
+                                                    .id("bot_\(wq.symbol)")
+                                                    .onTapGesture { selectCard(wq.symbol) }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                .onChange(of: scrollTarget) { _, target in
+                                    guard let target else { return }
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        proxy.scrollTo(target, anchor: .leading)
+                                    }
+                                    scrollTarget = nil
+                                }
+                            }
+
+                            // Left arrow
+                            HStack {
+                                ScrollArrowButton(direction: .left) {
+                                    scrollToNeighbor(topRow, offset: -3)
+                                }
+                                Spacer()
+                                ScrollArrowButton(direction: .right) {
+                                    scrollToNeighbor(topRow, offset: 3)
+                                }
                             }
                         }
                     }
@@ -122,6 +171,10 @@ struct MarketOverviewView: View {
         }
         .background(PythiaTheme.backgroundDark)
         .task {
+            // Wait for backend to be connected before fetching
+            while !backend.isConnected {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
+            }
             await loadWatchlists()
             await loadWatchlistQuotes()
         }
@@ -201,19 +254,51 @@ struct MarketOverviewView: View {
         isLoadingWatchlist = true
         do {
             watchlistQuotes = try await db.fetchWatchlistQuotes(watchlistId: selectedWatchlistId)
-        } catch {}
+            debugLog("[MarketOverview] Loaded \(watchlistQuotes.count) quotes for wl=\(selectedWatchlistId ?? "all")")
+        } catch {
+            debugLog("[MarketOverview] loadWatchlistQuotes ERROR: \(error)")
+        }
         isLoadingWatchlist = false
+    }
+
+    private func debugLog(_ msg: String) {
+        let ts = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
+        let line = "[\(ts)] \(msg)\n"
+        guard let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else { return }
+        let path = dir.appendingPathComponent("pythia_debug.log")
+        if let data = line.data(using: .utf8) {
+            if FileManager.default.fileExists(atPath: path.path) {
+                if let fh = try? FileHandle(forWritingTo: path) {
+                    fh.seekToEndOfFile()
+                    fh.write(data)
+                    try? fh.close()
+                }
+            } else {
+                try? data.write(to: path)
+            }
+        }
+    }
+
+    /// Scroll the watchlist by `offset` cards relative to current position
+    private func scrollToNeighbor(_ row: [WatchlistQuote], offset: Int) {
+        guard !row.isEmpty else { return }
+        scrollIndex = max(0, min(row.count - 1, scrollIndex + offset))
+        scrollTarget = "top_\(row[scrollIndex].symbol)"
     }
 
     private func loadWatchlists() async {
         do {
             watchlists = try await db.fetchWatchlists()
+            Logger().info("[MarketOverview] Loaded \(self.watchlists.count) watchlists")
             // Default to "Thai Stocks" watchlist
             if selectedWatchlistId == nil,
                let thai = watchlists.first(where: { $0.name == "Thai Stocks" }) {
                 selectedWatchlistId = thai.watchlistId
+                Logger().info("[MarketOverview] Auto-selected Thai Stocks: \(thai.watchlistId)")
             }
-        } catch {}
+        } catch {
+            Logger().error("[MarketOverview] loadWatchlists error: \(error.localizedDescription)")
+        }
     }
 }
 
@@ -282,6 +367,22 @@ struct WatchlistStockCard: View {
                     .font(.system(size: 22, weight: .bold))
                     .foregroundColor(PythiaTheme.textTertiary)
                     .frame(maxWidth: .infinity, alignment: .center)
+            }
+
+            // Volume bar
+            if let vol = quote.volume, vol > 0 {
+                HStack(spacing: 4) {
+                    Image(systemName: "chart.bar.fill")
+                        .font(.system(size: 8))
+                        .foregroundColor(PythiaTheme.textTertiary.opacity(0.6))
+                    Text("Vol")
+                        .font(.system(size: 9))
+                        .foregroundColor(PythiaTheme.textTertiary.opacity(0.6))
+                    Text(MarketDataService.shared.formatVolume(vol))
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundColor(PythiaTheme.textSecondary)
+                }
+                .frame(maxWidth: .infinity)
             }
         }
         .padding(12)
@@ -409,6 +510,42 @@ struct QuoteMetric: View {
             Text(value)
                 .font(.system(size: 14, weight: .medium, design: .monospaced))
                 .foregroundColor(PythiaTheme.textPrimary)
+        }
+    }
+}
+
+// MARK: - Scroll Arrow Button (Netflix/Disney+ style)
+
+private struct ScrollArrowButton: View {
+    enum Direction { case left, right }
+
+    let direction: Direction
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                // Gradient fade edge
+                LinearGradient(
+                    colors: direction == .left
+                        ? [PythiaTheme.backgroundDark, PythiaTheme.backgroundDark.opacity(0)]
+                        : [PythiaTheme.backgroundDark.opacity(0), PythiaTheme.backgroundDark],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: 48)
+
+                Image(systemName: direction == .left ? "chevron.left" : "chevron.right")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(PythiaTheme.textSecondary.opacity(isHovered ? 1.0 : 0.5))
+            }
+        }
+        .frame(width: 48)
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) { isHovered = hovering }
         }
     }
 }
