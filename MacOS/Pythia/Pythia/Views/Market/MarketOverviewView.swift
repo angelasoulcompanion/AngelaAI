@@ -25,6 +25,9 @@ struct MarketOverviewView: View {
     @State private var selectedCardQuote: StockQuote?
     @State private var isLoadingCardQuote = false
 
+    // Background refresh
+    @State private var isRefreshing = false
+
     // Horizontal scroll navigation
     @State private var scrollTarget: String?
     @State private var scrollIndex: Int = 0
@@ -69,12 +72,18 @@ struct MarketOverviewView: View {
                         HStack(spacing: 8) {
                             FilterPill(label: "All", isSelected: selectedWatchlistId == nil) {
                                 selectedWatchlistId = nil
-                                Task { await loadWatchlistQuotes() }
+                                Task {
+                                    await loadWatchlistQuotesCached()
+                                    await refreshWatchlistQuotes()
+                                }
                             }
                             ForEach(watchlists) { wl in
                                 FilterPill(label: wl.name, isSelected: selectedWatchlistId == wl.watchlistId) {
                                     selectedWatchlistId = wl.watchlistId
-                                    Task { await loadWatchlistQuotes() }
+                                    Task {
+                                        await loadWatchlistQuotesCached()
+                                        await refreshWatchlistQuotes()
+                                    }
                                 }
                             }
                         }
@@ -88,9 +97,20 @@ struct MarketOverviewView: View {
                     let bottomRow = Array(watchlistQuotes.dropFirst(half))
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Watchlist")
-                            .font(PythiaTheme.headline())
-                            .foregroundColor(PythiaTheme.textSecondary)
+                        HStack(spacing: 8) {
+                            Text("Watchlist")
+                                .font(PythiaTheme.headline())
+                                .foregroundColor(PythiaTheme.textSecondary)
+                            if isRefreshing {
+                                HStack(spacing: 4) {
+                                    ProgressView()
+                                        .scaleEffect(0.6)
+                                    Text("Updating prices...")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(PythiaTheme.textTertiary)
+                                }
+                            }
+                        }
 
                         ZStack {
                             ScrollViewReader { proxy in
@@ -176,7 +196,12 @@ struct MarketOverviewView: View {
                 try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
             }
             await loadWatchlists()
-            await loadWatchlistQuotes()
+
+            // Phase 1: Show cached data instantly (from DB, no Yahoo calls)
+            await loadWatchlistQuotesCached()
+
+            // Phase 2: Refresh with fresh data in background
+            await refreshWatchlistQuotes()
         }
     }
 
@@ -200,7 +225,8 @@ struct MarketOverviewView: View {
                 await autoAddToWatchlist(symbol: symbol)
 
                 // Refresh watchlist cards immediately
-                await loadWatchlistQuotes()
+                await loadWatchlistQuotesCached()
+                await refreshWatchlistQuotes()
             } catch {
                 errorMessage = "Failed to fetch quote: \(error.localizedDescription)"
                 quote = nil
@@ -250,15 +276,32 @@ struct MarketOverviewView: View {
         }
     }
 
-    private func loadWatchlistQuotes() async {
+    /// Phase 1: Load from DB cache — instant, no Yahoo calls
+    private func loadWatchlistQuotesCached() async {
         isLoadingWatchlist = true
         do {
-            watchlistQuotes = try await db.fetchWatchlistQuotes(watchlistId: selectedWatchlistId)
-            debugLog("[MarketOverview] Loaded \(watchlistQuotes.count) quotes for wl=\(selectedWatchlistId ?? "all")")
+            let cached = try await db.fetchWatchlistQuotesCached(watchlistId: selectedWatchlistId)
+            if !cached.isEmpty {
+                watchlistQuotes = cached
+                debugLog("[MarketOverview] Cached \(cached.count) quotes for wl=\(selectedWatchlistId ?? "all")")
+            }
         } catch {
-            debugLog("[MarketOverview] loadWatchlistQuotes ERROR: \(error)")
+            debugLog("[MarketOverview] loadCached ERROR: \(error)")
         }
         isLoadingWatchlist = false
+    }
+
+    /// Phase 2: Fetch fresh data via batch download, update cards when ready
+    private func refreshWatchlistQuotes() async {
+        isRefreshing = true
+        do {
+            let fresh = try await db.fetchWatchlistQuotes(watchlistId: selectedWatchlistId)
+            watchlistQuotes = fresh
+            debugLog("[MarketOverview] Refreshed \(fresh.count) quotes for wl=\(selectedWatchlistId ?? "all")")
+        } catch {
+            debugLog("[MarketOverview] refresh ERROR: \(error)")
+        }
+        isRefreshing = false
     }
 
     private func debugLog(_ msg: String) {

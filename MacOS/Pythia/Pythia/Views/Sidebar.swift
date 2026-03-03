@@ -28,6 +28,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 
     // Market
     case marketOverview
+    case marketBreadth
     case optionsChain
     case watchlist
 
@@ -57,6 +58,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .forecast: return "Forecast"
         case .research: return "Research RAG"
         case .marketOverview: return "Market Overview"
+        case .marketBreadth: return "Market Breadth"
         case .optionsChain: return "Options Chain"
         case .watchlist: return "Watchlist"
         case .backtest: return "Backtest"
@@ -82,6 +84,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .forecast: return "chart.line.flattrend.xyaxis"
         case .research: return "books.vertical.fill"
         case .marketOverview: return "globe"
+        case .marketBreadth: return "chart.bar.doc.horizontal.fill"
         case .optionsChain: return "rectangle.split.3x3.fill"
         case .watchlist: return "star.fill"
         case .backtest: return "clock.arrow.circlepath"
@@ -98,7 +101,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .portfolios, .transactions: return "PORTFOLIO"
         case .mpt, .valueAtRisk, .stressTest, .performance, .correlation: return "ANALYSIS"
         case .aiAdvisor, .sentiment, .forecast, .research: return "AI INSIGHTS"
-        case .marketOverview, .optionsChain, .watchlist: return "MARKET"
+        case .marketOverview, .marketBreadth, .optionsChain, .watchlist: return "MARKET"
         case .backtest, .monteCarlo, .technical, .statistics: return "TOOLS"
         case .settings: return "SETTINGS"
         }
@@ -109,13 +112,12 @@ struct Sidebar: View {
     @Binding var selectedItem: SidebarItem
 
     private let groups: [(String, [SidebarItem])] = [
-        ("DASHBOARD", [.dashboard]),
+        ("DASHBOARD", [.marketOverview, .marketBreadth, .dashboard]),
         ("PORTFOLIO", [.portfolios, .transactions]),
-        ("ANALYSIS", [.mpt, .valueAtRisk, .stressTest, .performance, .correlation]),
+        ("ANALYSIS", [.mpt, .valueAtRisk, .stressTest, .performance, .correlation, .optionsChain]),
         ("AI INSIGHTS", [.aiAdvisor, .sentiment, .forecast, .research]),
-        ("MARKET", [.marketOverview, .optionsChain, .watchlist]),
         ("TOOLS", [.backtest, .monteCarlo, .technical, .statistics]),
-        ("SETTINGS", [.settings]),
+        ("SETTINGS", [.watchlist, .settings]),
     ]
 
     var body: some View {

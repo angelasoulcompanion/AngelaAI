@@ -8,6 +8,7 @@ import Charts
 
 struct DashboardView: View {
     @EnvironmentObject var db: DatabaseService
+    @EnvironmentObject var backendManager: BackendManager
     @State private var summary: DashboardSummary?
     @State private var breakdown: [AssetTypeBreakdown] = []
     @State private var isLoading = true
@@ -125,12 +126,24 @@ struct DashboardView: View {
                         .padding()
                         .pythiaCard()
                     }
-                } else if let error = errorMessage {
-                    EmptyStateView(
-                        icon: "exclamationmark.triangle",
-                        title: "Error Loading Dashboard",
-                        message: error
-                    )
+                } else if errorMessage != nil {
+                    VStack(spacing: 16) {
+                        EmptyStateView(
+                            icon: "exclamationmark.triangle",
+                            title: "Error Loading Dashboard",
+                            message: "Could not connect to the server."
+                        )
+                        if !backendManager.isConnected {
+                            Text("Starting backend...")
+                                .font(PythiaTheme.caption())
+                                .foregroundColor(PythiaTheme.textTertiary)
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else {
+                            Button("Retry") { Task { await loadDashboard() } }
+                                .pythiaPrimaryButton()
+                        }
+                    }
                 } else {
                     EmptyStateView(
                         icon: "chart.bar.xaxis.ascending.badge.clock",
@@ -145,6 +158,11 @@ struct DashboardView: View {
         .background(PythiaTheme.backgroundDark)
         .task {
             await loadDashboard()
+        }
+        .onChange(of: backendManager.isConnected) { _, connected in
+            if connected && summary == nil {
+                Task { await loadDashboard() }
+            }
         }
     }
 

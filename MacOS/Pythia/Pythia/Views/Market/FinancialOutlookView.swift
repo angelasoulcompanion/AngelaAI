@@ -160,7 +160,7 @@ struct FinancialOutlookView: View {
                             .lineLimit(1)
                         ForEach(Array(item.values.prefix(4).enumerated()), id: \.offset) { _, value in
                             if let v = value {
-                                Text(formatLargeNumber(v))
+                                Text(MarketDataService.shared.formatLargeNumber(v))
                                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                                     .foregroundColor(v < 0 ? PythiaTheme.loss : PythiaTheme.textPrimary)
                                     .frame(maxWidth: .infinity, alignment: .trailing)
@@ -322,12 +322,14 @@ struct FinancialOutlookView: View {
             pctRow("Revenue", ol.revenueGrowth)
             pctRow("Earnings", ol.earningsGrowth)
             pctRow("Earnings QoQ", ol.earningsQuarterlyGrowth)
-
             if let rev = ol.totalRevenue {
-                metricRow("Revenue", nil, formatted: formatLargeNumber(rev))
+                metricRow("Revenue", nil, formatted: formatMoney(rev, currency: ol.currency))
             }
             if let ebitda = ol.ebitda {
-                metricRow("EBITDA", nil, formatted: formatLargeNumber(ebitda))
+                metricRow("EBITDA", nil, formatted: formatMoney(ebitda, currency: ol.currency))
+            }
+            if let rev = ol.totalRevenue, let margin = ol.profitMargin {
+                metricRow("Net Income", nil, formatted: formatMoney(rev * margin / 100, currency: ol.currency))
             }
         }
         .frame(minWidth: 130)
@@ -359,10 +361,10 @@ struct FinancialOutlookView: View {
                 .foregroundColor(PythiaTheme.textTertiary)
 
             if let cash = ol.totalCash {
-                metricRow("Cash", nil, formatted: formatLargeNumber(cash))
+                metricRow("Cash", nil, formatted: formatMoney(cash, currency: ol.currency))
             }
             if let debt = ol.totalDebt {
-                metricRow("Total Debt", nil, formatted: formatLargeNumber(debt))
+                metricRow("Total Debt", nil, formatted: formatMoney(debt, currency: ol.currency))
             }
             metricRow("D/E Ratio", ol.debtToEquity)
             metricRow("Current Ratio", ol.currentRatio)
@@ -423,19 +425,8 @@ struct FinancialOutlookView: View {
         }
     }
 
-    private func formatLargeNumber(_ value: Double) -> String {
-        let abs = Swift.abs(value)
-        let sign = value < 0 ? "-" : ""
-        if abs >= 1_000_000_000_000 {
-            return String(format: "%@%.1fT", sign, abs / 1_000_000_000_000)
-        } else if abs >= 1_000_000_000 {
-            return String(format: "%@%.1fB", sign, abs / 1_000_000_000)
-        } else if abs >= 1_000_000 {
-            return String(format: "%@%.1fM", sign, abs / 1_000_000)
-        } else if abs >= 1_000 {
-            return String(format: "%@%.1fK", sign, abs / 1_000)
-        }
-        return String(format: "%@%.0f", sign, abs)
+    private func formatMoney(_ value: Double, currency: String?) -> String {
+        MarketDataService.shared.formatMoney(value, currency: currency)
     }
 
     private func loadOutlook() async {

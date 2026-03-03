@@ -30,11 +30,14 @@ from routers import (
     backtest,
     monte_carlo,
     statistics,
+    technical,
     # Phase 4: AI Features
     ai_advisor,
     ai_sentiment,
     ai_forecast,
     ai_research,
+    # Phase 5: Market Breadth
+    market_breadth,
 )
 
 app = FastAPI(
@@ -87,6 +90,7 @@ app.include_router(options.router)
 app.include_router(backtest.router)
 app.include_router(monte_carlo.router)
 app.include_router(statistics.router)
+app.include_router(technical.router)
 
 # ── Phase 4: AI Features ───────────────────────────────
 app.include_router(ai_advisor.router)
@@ -94,13 +98,17 @@ app.include_router(ai_sentiment.router)
 app.include_router(ai_forecast.router)
 app.include_router(ai_research.router)
 
+# ── Phase 5: Market Breadth ───────────────────────────────
+app.include_router(market_breadth.router)
+
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=8766)
+    args = parser.parse_args()
+
     print("🏛️  Starting Pythia — Quantitative Finance + AI Analysis Platform")
     print("📍 Connecting to Neon Cloud (Singapore)")
-    print("🔗 API will be available at http://127.0.0.1:8766")
-    print("📊 Phase 1: Foundation (Portfolios, Assets, Market)")
-    print("📈 Phase 2: Quantitative Analysis (MPT, VaR, Stress Tests)")
-    print("🧮 Phase 3: Advanced Finance (Options, Backtest, Monte Carlo)")
-    print("🤖 Phase 4: AI Features (Advisor, Sentiment, Forecast, Research)")
-    uvicorn.run(app, host="127.0.0.1", port=8766)
+    print(f"🔗 API will be available at http://127.0.0.1:{args.port}")
+    uvicorn.run(app, host="127.0.0.1", port=args.port)

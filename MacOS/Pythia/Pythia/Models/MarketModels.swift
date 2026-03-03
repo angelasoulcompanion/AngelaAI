@@ -73,6 +73,7 @@ struct WatchlistQuote: Codable, Identifiable {
     let changePercent: Double?
     let sparkline: [Double]
     let currency: String?
+    let volume: Int?
 
     var id: String { symbol }
 
@@ -81,7 +82,7 @@ struct WatchlistQuote: Codable, Identifiable {
         case currentPrice = "current_price"
         case change
         case changePercent = "change_percent"
-        case sparkline, currency
+        case sparkline, currency, volume
     }
 }
 

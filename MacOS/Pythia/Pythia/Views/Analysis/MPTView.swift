@@ -9,7 +9,6 @@ import Charts
 struct MPTView: View {
     @EnvironmentObject var db: DatabaseService
 
-    @State private var portfolios: [Portfolio] = []
     @State private var selectedPortfolioId: String?
     @State private var optimizationType = "max_sharpe"
     @State private var result: OptimizationResponse?
@@ -25,28 +24,22 @@ struct MPTView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: PythiaTheme.spacing) {
-                // Header
                 Text("MPT Optimization")
                     .font(PythiaTheme.title())
                     .foregroundColor(PythiaTheme.textPrimary)
 
-                // Controls
                 controlsCard
 
                 if isLoading {
                     LoadingView("Optimizing portfolio...")
                 } else if let error = errorMessage {
-                    Text(error)
-                        .foregroundColor(PythiaTheme.errorRed)
-                        .padding()
+                    ErrorMessageView(message: error)
                 }
 
-                // Results
                 if let result = result {
                     optimizationResultCard(result)
                 }
 
-                // Efficient Frontier
                 if let frontier = frontier, !frontier.points.isEmpty {
                     efficientFrontierChart(frontier)
                 }
@@ -54,23 +47,13 @@ struct MPTView: View {
             .padding(PythiaTheme.largeSpacing)
         }
         .background(PythiaTheme.backgroundDark)
-        .task { await loadPortfolios() }
     }
 
     // MARK: - Controls
 
     private var controlsCard: some View {
         HStack(spacing: PythiaTheme.spacing) {
-            Picker("Portfolio", selection: Binding(
-                get: { selectedPortfolioId ?? "" },
-                set: { selectedPortfolioId = $0.isEmpty ? nil : $0 }
-            )) {
-                Text("Select Portfolio").tag("")
-                ForEach(portfolios) { p in
-                    Text(p.name).tag(p.portfolioId)
-                }
-            }
-            .frame(width: 200)
+            PortfolioPickerView(selectedId: $selectedPortfolioId)
 
             Picker("Type", selection: $optimizationType) {
                 ForEach(optimizationTypes, id: \.0) { val, label in
@@ -108,12 +91,12 @@ struct MPTView: View {
 
             // KPI row
             HStack(spacing: PythiaTheme.largeSpacing) {
-                metricBox("Expected Return", PythiaTheme.formatPercent(r.expectedReturn), PythiaTheme.profit)
-                metricBox("Volatility", PythiaTheme.formatPercent(r.volatility), PythiaTheme.accentGold)
-                metricBox("Sharpe Ratio", String(format: "%.3f", r.sharpeRatio), PythiaTheme.secondaryBlue)
+                MetricBox("Expected Return", PythiaTheme.formatPercent(r.expectedReturn), PythiaTheme.profit)
+                MetricBox("Volatility", PythiaTheme.formatPercent(r.volatility), PythiaTheme.accentGold)
+                MetricBox("Sharpe Ratio", String(format: "%.3f", r.sharpeRatio), PythiaTheme.secondaryBlue)
             }
 
-            Divider().background(PythiaTheme.textTertiary)
+            PythiaDivider()
 
             // Weights table
             Text("Optimal Weights")
@@ -174,47 +157,14 @@ struct MPTView: View {
             }
             .chartXAxisLabel("Risk (Volatility %)")
             .chartYAxisLabel("Expected Return %")
-            .chartXAxis {
-                AxisMarks { value in
-                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4]))
-                        .foregroundStyle(PythiaTheme.textTertiary.opacity(0.3))
-                    AxisValueLabel()
-                        .foregroundStyle(PythiaTheme.textSecondary)
-                }
-            }
-            .chartYAxis {
-                AxisMarks { value in
-                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4]))
-                        .foregroundStyle(PythiaTheme.textTertiary.opacity(0.3))
-                    AxisValueLabel()
-                        .foregroundStyle(PythiaTheme.textSecondary)
-                }
-            }
+            .pythiaChartAxes()
             .frame(height: 350)
         }
         .padding()
         .pythiaCard()
     }
 
-    // MARK: - Helpers
-
-    private func metricBox(_ label: String, _ value: String, _ color: Color) -> some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundColor(color)
-            Text(label)
-                .font(PythiaTheme.caption())
-                .foregroundColor(PythiaTheme.textSecondary)
-        }
-        .frame(minWidth: 120)
-    }
-
     // MARK: - Data
-
-    private func loadPortfolios() async {
-        do { portfolios = try await db.fetchPortfolios() } catch {}
-    }
 
     private func runOptimization() async {
         guard let pid = selectedPortfolioId else { return }

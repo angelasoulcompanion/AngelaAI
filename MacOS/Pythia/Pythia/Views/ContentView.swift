@@ -8,7 +8,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var databaseService: DatabaseService
     @EnvironmentObject var backendManager: BackendManager
-    @State private var selectedItem: SidebarItem = .dashboard
+    @State private var selectedItem: SidebarItem = .marketOverview
 
     var body: some View {
         NavigationSplitView {
@@ -24,6 +24,8 @@ struct ContentView: View {
                     TransactionsView()
                 case .marketOverview:
                     MarketOverviewView()
+                case .marketBreadth:
+                    MarketBreadthView()
                 case .watchlist:
                     WatchlistView()
                 case .settings:
@@ -68,8 +70,10 @@ struct ContentView: View {
             .background(PythiaTheme.backgroundDark)
         }
         .navigationSplitViewStyle(.balanced)
-        .task {
-            await databaseService.checkConnection()
+        .onChange(of: backendManager.isConnected) { _, connected in
+            if connected {
+                Task { await databaseService.checkConnection() }
+            }
         }
     }
 }

@@ -8,7 +8,6 @@ import SwiftUI
 struct CorrelationView: View {
     @EnvironmentObject var db: DatabaseService
 
-    @State private var portfolios: [Portfolio] = []
     @State private var selectedPortfolioId: String?
     @State private var correlation: CorrelationResponse?
     @State private var isLoading = false
@@ -22,25 +21,9 @@ struct CorrelationView: View {
                     .font(PythiaTheme.title())
                     .foregroundColor(PythiaTheme.textPrimary)
 
-                // Controls
                 HStack(spacing: PythiaTheme.spacing) {
-                    Picker("Portfolio", selection: Binding(
-                        get: { selectedPortfolioId ?? "" },
-                        set: { selectedPortfolioId = $0.isEmpty ? nil : $0 }
-                    )) {
-                        Text("Select Portfolio").tag("")
-                        ForEach(portfolios) { p in
-                            Text(p.name).tag(p.portfolioId)
-                        }
-                    }
-                    .frame(width: 200)
-
-                    Picker("Period", selection: $days) {
-                        Text("90 Days").tag(90)
-                        Text("1 Year").tag(365)
-                        Text("3 Years").tag(1095)
-                    }
-                    .frame(width: 120)
+                    PortfolioPickerView(selectedId: $selectedPortfolioId)
+                    PeriodPicker(days: $days)
 
                     Button("Calculate") {
                         Task { await loadCorrelation() }
@@ -65,7 +48,6 @@ struct CorrelationView: View {
             .padding(PythiaTheme.largeSpacing)
         }
         .background(PythiaTheme.backgroundDark)
-        .task { await loadPortfolios() }
     }
 
     // MARK: - Heatmap
@@ -218,10 +200,6 @@ struct CorrelationView: View {
             }
         }
         return pairs.sorted { abs($0.value) > abs($1.value) }
-    }
-
-    private func loadPortfolios() async {
-        do { portfolios = try await db.fetchPortfolios() } catch {}
     }
 
     private func loadCorrelation() async {

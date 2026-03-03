@@ -4,6 +4,7 @@ Connects to Neon Cloud — Pythia database (Singapore).
 """
 import os
 import sys
+from pathlib import Path
 from typing import AsyncGenerator, Optional
 
 import asyncpg
@@ -52,9 +53,31 @@ async def startup() -> None:
                     CONSTRAINT unique_watchlist_asset UNIQUE (watchlist_id, asset_id)
                 )
             """)
+
+            # Run AI LLM upgrade migration
+            await _run_migrations(conn)
     except Exception as e:
         print(f"❌ Failed to connect to Pythia database: {e}")
         sys.exit(1)
+
+
+async def _run_migrations(conn: asyncpg.Connection) -> None:
+    """Run SQL migration files from database/migrations/."""
+    migrations_dir = Path(__file__).parent / "database" / "migrations"
+    if not migrations_dir.exists():
+        return
+    for sql_file in sorted(migrations_dir.glob("*.sql")):
+        try:
+            sql = sql_file.read_text()
+            for statement in sql.split(";"):
+                stmt = statement.strip()
+                if stmt and not stmt.startswith("--"):
+                    await conn.execute(stmt)
+            print(f"  Migration: {sql_file.name}")
+        except Exception as e:
+            # Skip already-applied migrations (columns/tables already exist)
+            if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
+                print(f"  Migration {sql_file.name}: {e}")
 
 
 async def shutdown() -> None:

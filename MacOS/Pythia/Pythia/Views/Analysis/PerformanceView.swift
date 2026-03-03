@@ -9,7 +9,6 @@ import Charts
 struct PerformanceView: View {
     @EnvironmentObject var db: DatabaseService
 
-    @State private var portfolios: [Portfolio] = []
     @State private var selectedPortfolioId: String?
     @State private var metrics: PerformanceMetricsResponse?
     @State private var drawdown: DrawdownResponse?
@@ -24,25 +23,9 @@ struct PerformanceView: View {
                     .font(PythiaTheme.title())
                     .foregroundColor(PythiaTheme.textPrimary)
 
-                // Controls
                 HStack(spacing: PythiaTheme.spacing) {
-                    Picker("Portfolio", selection: Binding(
-                        get: { selectedPortfolioId ?? "" },
-                        set: { selectedPortfolioId = $0.isEmpty ? nil : $0 }
-                    )) {
-                        Text("Select Portfolio").tag("")
-                        ForEach(portfolios) { p in
-                            Text(p.name).tag(p.portfolioId)
-                        }
-                    }
-                    .frame(width: 200)
-
-                    Picker("Period", selection: $days) {
-                        Text("90 Days").tag(90)
-                        Text("1 Year").tag(365)
-                        Text("3 Years").tag(1095)
-                    }
-                    .frame(width: 120)
+                    PortfolioPickerView(selectedId: $selectedPortfolioId)
+                    PeriodPicker(days: $days)
 
                     Button("Analyze") {
                         Task { await loadMetrics() }
@@ -73,7 +56,6 @@ struct PerformanceView: View {
             .padding(PythiaTheme.largeSpacing)
         }
         .background(PythiaTheme.backgroundDark)
-        .task { await loadPortfolios() }
     }
 
     // MARK: - Returns Card
@@ -83,14 +65,14 @@ struct PerformanceView: View {
             sectionHeader("Returns")
 
             HStack(spacing: PythiaTheme.largeSpacing) {
-                perfMetric("Total Return", PythiaTheme.formatPercent(m.returns?.totalReturn ?? 0),
-                           PythiaTheme.profitLossColor(m.returns?.totalReturn ?? 0))
-                perfMetric("Annualized", PythiaTheme.formatPercent(m.returns?.annualizedReturn ?? 0),
-                           PythiaTheme.profitLossColor(m.returns?.annualizedReturn ?? 0))
-                perfMetric("Beta", String(format: "%.3f", m.market?.beta ?? 0), PythiaTheme.secondaryBlue)
-                perfMetric("Alpha", PythiaTheme.formatPercent(m.market?.alpha ?? 0),
-                           PythiaTheme.profitLossColor(m.market?.alpha ?? 0))
-                perfMetric("R\u{00B2}", String(format: "%.3f", m.market?.rSquared ?? 0), PythiaTheme.textSecondary)
+                MetricBox("Total Return", PythiaTheme.formatPercent(m.returns?.totalReturn ?? 0),
+                          PythiaTheme.profitLossColor(m.returns?.totalReturn ?? 0), size: .small)
+                MetricBox("Annualized", PythiaTheme.formatPercent(m.returns?.annualizedReturn ?? 0),
+                          PythiaTheme.profitLossColor(m.returns?.annualizedReturn ?? 0), size: .small)
+                MetricBox("Beta", String(format: "%.3f", m.market?.beta ?? 0), PythiaTheme.secondaryBlue, size: .small)
+                MetricBox("Alpha", PythiaTheme.formatPercent(m.market?.alpha ?? 0),
+                          PythiaTheme.profitLossColor(m.market?.alpha ?? 0), size: .small)
+                MetricBox("R\u{00B2}", String(format: "%.3f", m.market?.rSquared ?? 0), PythiaTheme.textSecondary, size: .small)
             }
         }
         .padding()
@@ -122,12 +104,12 @@ struct PerformanceView: View {
             sectionHeader("Risk Metrics")
 
             HStack(spacing: PythiaTheme.largeSpacing) {
-                perfMetric("Volatility", PythiaTheme.formatPercent(m.risk?.volatility ?? 0), PythiaTheme.accentGold)
-                perfMetric("Downside Dev", PythiaTheme.formatPercent(m.risk?.downsideDeviation ?? 0), PythiaTheme.loss)
-                perfMetric("Max Drawdown", PythiaTheme.formatPercent(abs(m.risk?.maxDrawdown ?? 0)), PythiaTheme.loss)
-                perfMetric("VaR 95%", PythiaTheme.formatPercent(abs(m.risk?.var95 ?? 0)), PythiaTheme.warningOrange)
-                perfMetric("CVaR 95%", PythiaTheme.formatPercent(abs(m.risk?.cvar95 ?? 0)), PythiaTheme.errorRed)
-                perfMetric("Tracking Error", PythiaTheme.formatPercent(m.market?.trackingError ?? 0), PythiaTheme.textSecondary)
+                MetricBox("Volatility", PythiaTheme.formatPercent(m.risk?.volatility ?? 0), PythiaTheme.accentGold, size: .small)
+                MetricBox("Downside Dev", PythiaTheme.formatPercent(m.risk?.downsideDeviation ?? 0), PythiaTheme.loss, size: .small)
+                MetricBox("Max Drawdown", PythiaTheme.formatPercent(abs(m.risk?.maxDrawdown ?? 0)), PythiaTheme.loss, size: .small)
+                MetricBox("VaR 95%", PythiaTheme.formatPercent(abs(m.risk?.var95 ?? 0)), PythiaTheme.warningOrange, size: .small)
+                MetricBox("CVaR 95%", PythiaTheme.formatPercent(abs(m.risk?.cvar95 ?? 0)), PythiaTheme.errorRed, size: .small)
+                MetricBox("Tracking Error", PythiaTheme.formatPercent(m.market?.trackingError ?? 0), PythiaTheme.textSecondary, size: .small)
             }
         }
         .padding()
@@ -141,11 +123,11 @@ struct PerformanceView: View {
             sectionHeader("Return Distribution")
 
             HStack(spacing: PythiaTheme.largeSpacing) {
-                perfMetric("Skewness", String(format: "%.3f", m.distribution?.skewness ?? 0),
-                           (m.distribution?.skewness ?? 0) < 0 ? PythiaTheme.loss : PythiaTheme.profit)
-                perfMetric("Excess Kurtosis", String(format: "%.3f", m.distribution?.excessKurtosis ?? 0),
-                           (m.distribution?.excessKurtosis ?? 0) > 3 ? PythiaTheme.warningOrange : PythiaTheme.textPrimary)
-                perfMetric("Observations", "\(m.meta?.nObservations ?? 0)", PythiaTheme.textSecondary)
+                MetricBox("Skewness", String(format: "%.3f", m.distribution?.skewness ?? 0),
+                          (m.distribution?.skewness ?? 0) < 0 ? PythiaTheme.loss : PythiaTheme.profit, size: .small)
+                MetricBox("Excess Kurtosis", String(format: "%.3f", m.distribution?.excessKurtosis ?? 0),
+                          (m.distribution?.excessKurtosis ?? 0) > 3 ? PythiaTheme.warningOrange : PythiaTheme.textPrimary, size: .small)
+                MetricBox("Observations", "\(m.meta?.nObservations ?? 0)", PythiaTheme.textSecondary, size: .small)
             }
 
             if let skew = m.distribution?.skewness, let kurt = m.distribution?.excessKurtosis {
@@ -168,9 +150,9 @@ struct PerformanceView: View {
             sectionHeader("Drawdown Analysis")
 
             HStack(spacing: PythiaTheme.largeSpacing) {
-                perfMetric("Max Drawdown", PythiaTheme.formatPercent(abs(dd.maxDrawdown ?? 0)), PythiaTheme.loss)
-                perfMetric("Current Drawdown", PythiaTheme.formatPercent(abs(dd.currentDrawdown ?? 0)),
-                           (dd.currentDrawdown ?? 0) < -0.05 ? PythiaTheme.loss : PythiaTheme.profit)
+                MetricBox("Max Drawdown", PythiaTheme.formatPercent(abs(dd.maxDrawdown ?? 0)), PythiaTheme.loss, size: .small)
+                MetricBox("Current Drawdown", PythiaTheme.formatPercent(abs(dd.currentDrawdown ?? 0)),
+                          (dd.currentDrawdown ?? 0) < -0.05 ? PythiaTheme.loss : PythiaTheme.profit, size: .small)
             }
 
             if let periods = dd.topDrawdowns, !periods.isEmpty {
@@ -208,18 +190,6 @@ struct PerformanceView: View {
             .foregroundColor(PythiaTheme.textPrimary)
     }
 
-    private func perfMetric(_ label: String, _ value: String, _ color: Color) -> some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundColor(color)
-            Text(label)
-                .font(PythiaTheme.caption())
-                .foregroundColor(PythiaTheme.textSecondary)
-        }
-        .frame(minWidth: 90)
-    }
-
     private func ratioGauge(_ label: String, _ value: Double) -> some View {
         VStack(spacing: 4) {
             Text(String(format: "%.3f", value))
@@ -241,10 +211,6 @@ struct PerformanceView: View {
     }
 
     // MARK: - Data
-
-    private func loadPortfolios() async {
-        do { portfolios = try await db.fetchPortfolios() } catch {}
-    }
 
     private func loadMetrics() async {
         guard let pid = selectedPortfolioId else { return }

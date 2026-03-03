@@ -1,12 +1,25 @@
 """
 Pythia Configuration — Quantitative Finance + AI Analysis Platform
 """
+import os
 
 
 class PythiaConfig:
     APP_NAME = "Pythia"
     APP_VERSION = "1.0.0"
     DEBUG = True
+
+    # ── LLM Configuration ──────────────────────────────
+    OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+    OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "scb10x/typhoon2.5-qwen3-4b")
+    EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "nomic-embed-text")
+
+    CLAUDE_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+    CLAUDE_MODEL = "claude-sonnet-4-20250514"
+    CLAUDE_DAILY_LIMIT = 50  # max Claude API calls per day
+
+    LLM_TEMPERATURE = 0.3  # financial precision
+    LLM_MAX_TOKENS = 1024
 
     # MPT Settings
     RISK_FREE_RATES = {

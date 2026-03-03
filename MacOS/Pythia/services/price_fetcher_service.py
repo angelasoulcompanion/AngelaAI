@@ -110,6 +110,39 @@ class PriceFetcherService:
         return results
 
     @staticmethod
+    async def ensure_fresh(
+        conn: asyncpg.Connection,
+        asset_id: UUID,
+        min_rows: int = 20,
+        max_age_hours: int = 24,
+    ) -> bool:
+        """Auto-fetch if data is missing or stale. Returns True if data is available."""
+        row = await conn.fetchrow("""
+            SELECT COUNT(*) AS cnt,
+                   MAX(date) AS latest
+            FROM historical_prices
+            WHERE asset_id = $1
+        """, asset_id)
+
+        cnt = row["cnt"] if row else 0
+        latest = row["latest"] if row else None
+
+        needs_fetch = False
+        if cnt < min_rows:
+            needs_fetch = True
+        elif latest:
+            from datetime import date as date_cls
+            age_days = (date_cls.today() - latest).days
+            if age_days > (max_age_hours / 24):
+                needs_fetch = True
+
+        if needs_fetch:
+            result = await PriceFetcherService.fetch_yahoo_prices(conn, asset_id, days=365)
+            return result.records_fetched >= min_rows or (cnt + result.records_fetched) >= min_rows
+
+        return cnt >= min_rows
+
+    @staticmethod
     async def update_all_assets(
         conn: asyncpg.Connection,
         days: int = 30

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Charts
 
 struct PythiaTheme {
     // MARK: - Primary Colors
@@ -115,6 +116,17 @@ struct PythiaTheme {
         .system(size: 14, weight: .medium, design: .monospaced)
     }
 
+    // MARK: - Light Theme (for PDF export)
+
+    struct Light {
+        static let background = Color.white
+        static let cardBackground = Color(hex: "F8FAFC")
+        static let textPrimary = Color(hex: "111827")
+        static let textSecondary = Color(hex: "6B7280")
+        static let textTertiary = Color(hex: "9CA3AF")
+        static let cardBorder = Color(hex: "E5E7EB")
+    }
+
     // MARK: - Helper
 
     struct Shadow {
@@ -211,5 +223,35 @@ extension View {
                 RoundedRectangle(cornerRadius: PythiaTheme.smallCornerRadius)
                     .stroke(PythiaTheme.secondaryBlue.opacity(0.5), lineWidth: 1)
             )
+    }
+
+    /// Applies standard Pythia chart axis styling — used across 10+ chart views.
+    func pythiaChartAxes(gridOpacity: Double = 0.3) -> some View {
+        self
+            .chartXAxis {
+                AxisMarks { _ in
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4]))
+                        .foregroundStyle(PythiaTheme.textTertiary.opacity(gridOpacity))
+                    AxisValueLabel()
+                        .foregroundStyle(PythiaTheme.textSecondary)
+                }
+            }
+            .chartYAxis {
+                AxisMarks { _ in
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4]))
+                        .foregroundStyle(PythiaTheme.textTertiary.opacity(gridOpacity))
+                    AxisValueLabel()
+                        .foregroundStyle(PythiaTheme.textSecondary)
+                }
+            }
+    }
+}
+
+// MARK: - PythiaDivider
+
+/// Consistent themed divider — replaces `Divider().background(PythiaTheme.textTertiary.opacity(0.3))`.
+struct PythiaDivider: View {
+    var body: some View {
+        Divider().background(PythiaTheme.textTertiary)
     }
 }

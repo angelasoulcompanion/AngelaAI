@@ -9,7 +9,6 @@ import Charts
 struct BacktestView: View {
     @EnvironmentObject var db: DatabaseService
 
-    @State private var assets: [Asset] = []
     @State private var selectedAssetId: String?
     @State private var shortWindow = 20
     @State private var longWindow = 50
@@ -27,16 +26,7 @@ struct BacktestView: View {
 
                 // Controls
                 HStack(spacing: PythiaTheme.spacing) {
-                    Picker("Asset", selection: Binding(
-                        get: { selectedAssetId ?? "" },
-                        set: { selectedAssetId = $0.isEmpty ? nil : $0 }
-                    )) {
-                        Text("Select Asset").tag("")
-                        ForEach(assets) { a in
-                            Text("\(a.symbol) — \(a.name)").tag(a.assetId)
-                        }
-                    }
-                    .frame(width: 250)
+                    AssetPickerView(selectedId: $selectedAssetId, showName: true)
 
                     Stepper("Short SMA: \(shortWindow)", value: $shortWindow, in: 5...100)
                         .frame(width: 180)
@@ -63,7 +53,7 @@ struct BacktestView: View {
             .padding(PythiaTheme.largeSpacing)
         }
         .background(PythiaTheme.backgroundDark)
-        .task { do { assets = try await db.fetchAssets() } catch {} }
+        
     }
 
     private func summaryCard(_ r: BacktestResponse) -> some View {
@@ -79,20 +69,20 @@ struct BacktestView: View {
             }
 
             HStack(spacing: PythiaTheme.largeSpacing) {
-                metricBox("Total Return", PythiaTheme.formatPercent(r.totalReturn), PythiaTheme.profitLossColor(r.totalReturn))
-                metricBox("Ann. Return", PythiaTheme.formatPercent(r.annualizedReturn), PythiaTheme.profitLossColor(r.annualizedReturn))
-                metricBox("Max Drawdown", PythiaTheme.formatPercent(abs(r.maxDrawdown)), PythiaTheme.loss)
-                metricBox("Sharpe", String(format: "%.3f", r.sharpeRatio), PythiaTheme.secondaryBlue)
-                metricBox("Win Rate", PythiaTheme.formatPercent(r.winRate), r.winRate > 0.5 ? PythiaTheme.profit : PythiaTheme.loss)
-                metricBox("Trades", "\(r.nTrades)", PythiaTheme.textPrimary)
+                MetricBox("Total Return", PythiaTheme.formatPercent(r.totalReturn), PythiaTheme.profitLossColor(r.totalReturn), size: .small)
+                MetricBox("Ann. Return", PythiaTheme.formatPercent(r.annualizedReturn), PythiaTheme.profitLossColor(r.annualizedReturn), size: .small)
+                MetricBox("Max Drawdown", PythiaTheme.formatPercent(abs(r.maxDrawdown)), PythiaTheme.loss, size: .small)
+                MetricBox("Sharpe", String(format: "%.3f", r.sharpeRatio), PythiaTheme.secondaryBlue, size: .small)
+                MetricBox("Win Rate", PythiaTheme.formatPercent(r.winRate), r.winRate > 0.5 ? PythiaTheme.profit : PythiaTheme.loss, size: .small)
+                MetricBox("Trades", "\(r.nTrades)", PythiaTheme.textPrimary, size: .small)
             }
 
-            Divider().background(PythiaTheme.textTertiary)
+            PythiaDivider()
 
             HStack(spacing: PythiaTheme.largeSpacing) {
-                metricBox("Strategy", PythiaTheme.formatCurrency(r.finalValue), PythiaTheme.profitLossColor(r.totalReturn))
-                metricBox("Benchmark", PythiaTheme.formatPercent(r.benchmarkReturn), PythiaTheme.textSecondary)
-                metricBox("Excess", PythiaTheme.formatPercent(r.excessReturn), PythiaTheme.profitLossColor(r.excessReturn))
+                MetricBox("Strategy", PythiaTheme.formatCurrency(r.finalValue), PythiaTheme.profitLossColor(r.totalReturn), size: .small)
+                MetricBox("Benchmark", PythiaTheme.formatPercent(r.benchmarkReturn), PythiaTheme.textSecondary, size: .small)
+                MetricBox("Excess", PythiaTheme.formatPercent(r.excessReturn), PythiaTheme.profitLossColor(r.excessReturn), size: .small)
             }
         }
         .padding()
@@ -112,17 +102,7 @@ struct BacktestView: View {
                 )
                 .foregroundStyle(PythiaTheme.secondaryBlue)
             }
-            .chartYAxis {
-                AxisMarks { _ in
-                    AxisGridLine().foregroundStyle(PythiaTheme.textTertiary.opacity(0.3))
-                    AxisValueLabel().foregroundStyle(PythiaTheme.textSecondary)
-                }
-            }
-            .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: 6)) { _ in
-                    AxisValueLabel().foregroundStyle(PythiaTheme.textSecondary)
-                }
-            }
+            .pythiaChartAxes()
             .frame(height: 250)
         }
         .padding()
@@ -163,18 +143,6 @@ struct BacktestView: View {
         }
         .padding()
         .pythiaCard()
-    }
-
-    private func metricBox(_ label: String, _ value: String, _ color: Color) -> some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundColor(color)
-            Text(label)
-                .font(PythiaTheme.caption())
-                .foregroundColor(PythiaTheme.textSecondary)
-        }
-        .frame(minWidth: 80)
     }
 
     private func runBacktest() async {

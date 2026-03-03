@@ -21,7 +21,7 @@ struct PythiaApp: App {
                 .frame(minWidth: 1200, minHeight: 800)
                 .preferredColorScheme(.dark)
                 .onAppear {
-                    backendManager.startServer()
+                    backendManager.autoStart()
                 }
         }
         .windowStyle(.titleBar)

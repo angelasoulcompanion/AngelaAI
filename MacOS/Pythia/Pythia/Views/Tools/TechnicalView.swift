@@ -4,19 +4,15 @@
 //
 
 import SwiftUI
-import Charts
 
 struct TechnicalView: View {
     @EnvironmentObject var db: DatabaseService
 
     @State private var symbol = ""
     @State private var quote: StockQuote?
-    @State private var history: HistoryResponse?
+    @State private var loadedSymbol: String?
     @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var period = "1y"
-
-    private let periods = [("1mo", "1M"), ("3mo", "3M"), ("6mo", "6M"), ("1y", "1Y"), ("2y", "2Y"), ("5y", "5Y")]
 
     var body: some View {
         ScrollView {
@@ -32,13 +28,6 @@ struct TechnicalView: View {
                         .frame(width: 300)
                         .onSubmit { Task { await loadData() } }
 
-                    Picker("Period", selection: $period) {
-                        ForEach(periods, id: \.0) { val, label in
-                            Text(label).tag(val)
-                        }
-                    }
-                    .frame(width: 100)
-
                     Button("Load") { Task { await loadData() } }
                         .pythiaPrimaryButton()
                         .disabled(symbol.isEmpty)
@@ -48,14 +37,18 @@ struct TechnicalView: View {
                 .padding()
                 .pythiaCard()
 
+                if let error = errorMessage {
+                    ErrorMessageView(message: error)
+                }
+
                 if isLoading { LoadingView("Loading market data...") }
 
                 if let q = quote {
                     quoteCard(q)
                 }
 
-                if let h = history, !h.data.isEmpty {
-                    priceChart(h)
+                if let sym = loadedSymbol {
+                    TechnicalChartView(symbol: sym)
                 }
             }
             .padding(PythiaTheme.largeSpacing)
@@ -103,42 +96,6 @@ struct TechnicalView: View {
         .pythiaCard()
     }
 
-    private func priceChart(_ h: HistoryResponse) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Price History")
-                .font(PythiaTheme.headline())
-                .foregroundColor(PythiaTheme.textPrimary)
-
-            Chart(h.data) { bar in
-                LineMark(
-                    x: .value("Date", bar.date),
-                    y: .value("Close", bar.close)
-                )
-                .foregroundStyle(PythiaTheme.secondaryBlue)
-
-                AreaMark(
-                    x: .value("Date", bar.date),
-                    y: .value("Close", bar.close)
-                )
-                .foregroundStyle(PythiaTheme.secondaryBlue.opacity(0.08))
-            }
-            .chartYAxis {
-                AxisMarks { _ in
-                    AxisGridLine().foregroundStyle(PythiaTheme.textTertiary.opacity(0.3))
-                    AxisValueLabel().foregroundStyle(PythiaTheme.textSecondary)
-                }
-            }
-            .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: 6)) { _ in
-                    AxisValueLabel().foregroundStyle(PythiaTheme.textSecondary)
-                }
-            }
-            .frame(height: 300)
-        }
-        .padding()
-        .pythiaCard()
-    }
-
     private func numericMetric(_ label: String, _ value: Double?) -> some View {
         VStack(spacing: 2) {
             Text(label)
@@ -165,10 +122,8 @@ struct TechnicalView: View {
         guard !symbol.isEmpty else { return }
         isLoading = true; errorMessage = nil
         do {
-            async let q = db.fetchQuote(symbol: symbol)
-            async let h = db.fetchHistory(symbol: symbol, period: period)
-            quote = try await q
-            history = try await h
+            quote = try await db.fetchQuote(symbol: symbol)
+            loadedSymbol = symbol.uppercased()
         } catch {
             errorMessage = error.localizedDescription
         }

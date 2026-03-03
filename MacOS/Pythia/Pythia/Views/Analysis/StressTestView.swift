@@ -9,7 +9,6 @@ import Charts
 struct StressTestView: View {
     @EnvironmentObject var db: DatabaseService
 
-    @State private var portfolios: [Portfolio] = []
     @State private var selectedPortfolioId: String?
     @State private var allResults: StressTestAllResponse?
     @State private var detailResult: StressTestResponse?
@@ -24,18 +23,8 @@ struct StressTestView: View {
                     .font(PythiaTheme.title())
                     .foregroundColor(PythiaTheme.textPrimary)
 
-                // Controls
                 HStack(spacing: PythiaTheme.spacing) {
-                    Picker("Portfolio", selection: Binding(
-                        get: { selectedPortfolioId ?? "" },
-                        set: { selectedPortfolioId = $0.isEmpty ? nil : $0 }
-                    )) {
-                        Text("Select Portfolio").tag("")
-                        ForEach(portfolios) { p in
-                            Text(p.name).tag(p.portfolioId)
-                        }
-                    }
-                    .frame(width: 200)
+                    PortfolioPickerView(selectedId: $selectedPortfolioId)
 
                     Button("Run All Scenarios") {
                         Task { await runAll() }
@@ -52,12 +41,10 @@ struct StressTestView: View {
                     LoadingView("Running stress tests...")
                 }
 
-                // Summary
                 if let all = allResults {
                     scenarioSummaryCard(all)
                 }
 
-                // Detail
                 if let detail = detailResult {
                     scenarioDetailCard(detail)
                 }
@@ -65,7 +52,6 @@ struct StressTestView: View {
             .padding(PythiaTheme.largeSpacing)
         }
         .background(PythiaTheme.backgroundDark)
-        .task { await loadPortfolios() }
     }
 
     private func scenarioSummaryCard(_ all: StressTestAllResponse) -> some View {
@@ -95,6 +81,7 @@ struct StressTestView: View {
                 }
             }
             .frame(height: CGFloat(all.scenarios.count * 50 + 40))
+
 
             // Clickable rows
             ForEach(all.scenarios) { s in
@@ -148,13 +135,13 @@ struct StressTestView: View {
             }
 
             HStack(spacing: PythiaTheme.largeSpacing) {
-                stressMetric("Before", PythiaTheme.formatCurrency(d.portfolioValueBefore), PythiaTheme.textPrimary)
-                stressMetric("After", PythiaTheme.formatCurrency(d.portfolioValueAfter), PythiaTheme.profitLossColor(d.portfolioPnl))
-                stressMetric("P&L", PythiaTheme.formatCurrency(d.portfolioPnl), PythiaTheme.profitLossColor(d.portfolioPnl))
-                stressMetric("Impact", PythiaTheme.formatPercent(d.portfolioPnlPct), PythiaTheme.profitLossColor(d.portfolioPnlPct))
+                MetricBox("Before", PythiaTheme.formatCurrency(d.portfolioValueBefore), PythiaTheme.textPrimary, size: .medium)
+                MetricBox("After", PythiaTheme.formatCurrency(d.portfolioValueAfter), PythiaTheme.profitLossColor(d.portfolioPnl), size: .medium)
+                MetricBox("P&L", PythiaTheme.formatCurrency(d.portfolioPnl), PythiaTheme.profitLossColor(d.portfolioPnl), size: .medium)
+                MetricBox("Impact", PythiaTheme.formatPercent(d.portfolioPnlPct), PythiaTheme.profitLossColor(d.portfolioPnlPct), size: .medium)
             }
 
-            Divider().background(PythiaTheme.textTertiary)
+            PythiaDivider()
 
             Text("Asset-Level Impact")
                 .font(PythiaTheme.heading())
@@ -184,21 +171,6 @@ struct StressTestView: View {
         }
         .padding()
         .pythiaCard()
-    }
-
-    private func stressMetric(_ label: String, _ value: String, _ color: Color) -> some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundColor(color)
-            Text(label)
-                .font(PythiaTheme.caption())
-                .foregroundColor(PythiaTheme.textSecondary)
-        }
-    }
-
-    private func loadPortfolios() async {
-        do { portfolios = try await db.fetchPortfolios() } catch {}
     }
 
     private func runAll() async {

@@ -9,7 +9,6 @@ import Charts
 struct VaRView: View {
     @EnvironmentObject var db: DatabaseService
 
-    @State private var portfolios: [Portfolio] = []
     @State private var selectedPortfolioId: String?
     @State private var method = "historical"
     @State private var confidence = 0.95
@@ -38,7 +37,7 @@ struct VaRView: View {
                 if isLoading {
                     LoadingView("Calculating VaR...")
                 } else if let error = errorMessage {
-                    Text(error).foregroundColor(PythiaTheme.errorRed).padding()
+                    ErrorMessageView(message: error)
                 }
 
                 if let r = varResult, r.success {
@@ -52,21 +51,11 @@ struct VaRView: View {
             .padding(PythiaTheme.largeSpacing)
         }
         .background(PythiaTheme.backgroundDark)
-        .task { await loadPortfolios() }
     }
 
     private var controlsCard: some View {
         HStack(spacing: PythiaTheme.spacing) {
-            Picker("Portfolio", selection: Binding(
-                get: { selectedPortfolioId ?? "" },
-                set: { selectedPortfolioId = $0.isEmpty ? nil : $0 }
-            )) {
-                Text("Select Portfolio").tag("")
-                ForEach(portfolios) { p in
-                    Text(p.name).tag(p.portfolioId)
-                }
-            }
-            .frame(width: 200)
+            PortfolioPickerView(selectedId: $selectedPortfolioId)
 
             Picker("Method", selection: $method) {
                 ForEach(methods, id: \.0) { val, label in
@@ -110,11 +99,11 @@ struct VaRView: View {
             }
 
             HStack(spacing: PythiaTheme.largeSpacing) {
-                varMetric("Portfolio Value", PythiaTheme.formatCurrency(r.portfolioValue), PythiaTheme.textPrimary)
-                varMetric("VaR", PythiaTheme.formatCurrency(r.varValue), PythiaTheme.loss)
-                varMetric("VaR %", PythiaTheme.formatPercent(abs(r.varPercent)), PythiaTheme.loss)
-                varMetric("CVaR (ES)", PythiaTheme.formatCurrency(r.cvarValue), PythiaTheme.errorRed)
-                varMetric("CVaR %", PythiaTheme.formatPercent(abs(r.cvarPercent)), PythiaTheme.errorRed)
+                MetricBox("Portfolio Value", PythiaTheme.formatCurrency(r.portfolioValue), PythiaTheme.textPrimary, size: .medium)
+                MetricBox("VaR", PythiaTheme.formatCurrency(r.varValue), PythiaTheme.loss, size: .medium)
+                MetricBox("VaR %", PythiaTheme.formatPercent(abs(r.varPercent)), PythiaTheme.loss, size: .medium)
+                MetricBox("CVaR (ES)", PythiaTheme.formatCurrency(r.cvarValue), PythiaTheme.errorRed, size: .medium)
+                MetricBox("CVaR %", PythiaTheme.formatPercent(abs(r.cvarPercent)), PythiaTheme.errorRed, size: .medium)
             }
 
             // Gauge visualization
@@ -155,6 +144,7 @@ struct VaRView: View {
             }
             .frame(height: CGFloat(components.count * 35 + 40))
 
+
             // Table
             ForEach(components) { c in
                 HStack {
@@ -178,17 +168,6 @@ struct VaRView: View {
         .pythiaCard()
     }
 
-    private func varMetric(_ label: String, _ value: String, _ color: Color) -> some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundColor(color)
-            Text(label)
-                .font(PythiaTheme.caption())
-                .foregroundColor(PythiaTheme.textSecondary)
-        }
-    }
-
     private func riskGauge(_ label: String, _ value: Double, maxVal: Double) -> some View {
         VStack(spacing: 4) {
             Gauge(value: min(value, maxVal), in: 0...maxVal) {
@@ -202,10 +181,6 @@ struct VaRView: View {
             .scaleEffect(1.5)
         }
         .frame(width: 100, height: 100)
-    }
-
-    private func loadPortfolios() async {
-        do { portfolios = try await db.fetchPortfolios() } catch {}
     }
 
     private func calculate() async {

@@ -1,6 +1,6 @@
 //
 //  SentimentView.swift
-//  Pythia — AI Sentiment Analysis
+//  Pythia — AI Sentiment Analysis (Enhanced with News + LLM Narrative)
 //
 
 import SwiftUI
@@ -8,10 +8,11 @@ import SwiftUI
 struct SentimentView: View {
     @EnvironmentObject var db: DatabaseService
 
-    @State private var assets: [Asset] = []
     @State private var selectedAssetId: String?
     @State private var result: AISentimentResponse?
     @State private var isLoading = false
+    @State private var includeNews = true
+    @State private var includeNarrative = true
 
     var body: some View {
         ScrollView {
@@ -21,16 +22,15 @@ struct SentimentView: View {
                     .foregroundColor(PythiaTheme.textPrimary)
 
                 HStack(spacing: PythiaTheme.spacing) {
-                    Picker("Asset", selection: Binding(
-                        get: { selectedAssetId ?? "" },
-                        set: { selectedAssetId = $0.isEmpty ? nil : $0 }
-                    )) {
-                        Text("Select Asset").tag("")
-                        ForEach(assets) { a in
-                            Text(a.symbol).tag(a.assetId)
-                        }
-                    }
-                    .frame(width: 200)
+                    AssetPickerView(selectedId: $selectedAssetId)
+
+                    Toggle("News", isOn: $includeNews)
+                        .toggleStyle(.switch)
+                        .frame(width: 80)
+
+                    Toggle("AI Analysis", isOn: $includeNarrative)
+                        .toggleStyle(.switch)
+                        .frame(width: 120)
 
                     Button("Analyze") { Task { await analyze() } }
                         .pythiaPrimaryButton()
@@ -45,13 +45,24 @@ struct SentimentView: View {
 
                 if let r = result, r.success {
                     sentimentCard(r)
+
+                    // Score comparison bar (Technical vs News vs Combined)
+                    if r.technicalScore != nil || r.newsScore != nil {
+                        scoreComparisonCard(r)
+                    }
+
+                    // AI narrative card
+                    if let narrative = r.narrative, !narrative.isEmpty {
+                        narrativeCard(narrative, provider: r.llmProvider)
+                    }
+
                     signalsCard(r)
                 }
             }
             .padding(PythiaTheme.largeSpacing)
         }
         .background(PythiaTheme.backgroundDark)
-        .task { do { assets = try await db.fetchAssets() } catch {} }
+
     }
 
     private func sentimentCard(_ r: AISentimentResponse) -> some View {
@@ -72,7 +83,6 @@ struct SentimentView: View {
 
             HStack(spacing: PythiaTheme.largeSpacing) {
                 VStack(spacing: 4) {
-                    // Sentiment gauge
                     Gauge(value: (r.score + 1) / 2, in: 0...1) {
                         Text("Score")
                     } currentValueLabel: {
@@ -84,14 +94,96 @@ struct SentimentView: View {
                     .frame(width: 200)
                 }
 
-                metricCol("Momentum", PythiaTheme.formatPercent(r.priceMomentum),
-                          PythiaTheme.profitLossColor(r.priceMomentum))
-                metricCol("Volume", String(format: "%.2fx", r.volumeTrend), PythiaTheme.textPrimary)
-                metricCol("Volatility", r.volatilityRegime.capitalized,
-                          r.volatilityRegime == "high" ? PythiaTheme.loss : PythiaTheme.profit)
+                MetricBox("Momentum", PythiaTheme.formatPercent(r.priceMomentum),
+                          PythiaTheme.profitLossColor(r.priceMomentum), size: .small)
+                MetricBox("Volume", String(format: "%.2fx", r.volumeTrend), PythiaTheme.textPrimary, size: .small)
+                MetricBox("Volatility", r.volatilityRegime.capitalized,
+                          r.volatilityRegime == "high" ? PythiaTheme.loss : PythiaTheme.profit, size: .small)
             }
         }
         .padding()
+        .pythiaCard()
+    }
+
+    private func scoreComparisonCard(_ r: AISentimentResponse) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Score Breakdown")
+                .font(PythiaTheme.headline())
+                .foregroundColor(PythiaTheme.textPrimary)
+
+            if let tech = r.technicalScore {
+                scoreBar(label: "Technical", score: tech, color: PythiaTheme.secondaryBlue)
+            }
+            if let news = r.newsScore {
+                scoreBar(label: "News", score: news, color: PythiaTheme.accentGold)
+            }
+            if let combined = r.combinedScore {
+                scoreBar(label: "Combined", score: combined, color: sentimentColor(r.sentiment))
+            }
+        }
+        .padding()
+        .pythiaCard()
+    }
+
+    private func scoreBar(label: String, score: Double, color: Color) -> some View {
+        HStack(spacing: 12) {
+            Text(label)
+                .font(PythiaTheme.body())
+                .foregroundColor(PythiaTheme.textSecondary)
+                .frame(width: 80, alignment: .leading)
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(PythiaTheme.surfaceBackground)
+                        .frame(height: 8)
+
+                    let normalized = (score + 1) / 2  // -1..1 → 0..1
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(color)
+                        .frame(width: max(4, geo.size.width * normalized), height: 8)
+                }
+            }
+            .frame(height: 8)
+
+            Text(String(format: "%+.2f", score))
+                .font(PythiaTheme.monospace())
+                .foregroundColor(PythiaTheme.profitLossColor(score))
+                .frame(width: 60, alignment: .trailing)
+        }
+        .frame(height: 20)
+    }
+
+    private func narrativeCard(_ narrative: String, provider: String?) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "brain.head.profile")
+                    .foregroundColor(PythiaTheme.accentGold)
+                Text("AI Analysis")
+                    .font(PythiaTheme.headline())
+                    .foregroundColor(PythiaTheme.textPrimary)
+                Spacer()
+                if let p = provider {
+                    Text(p.uppercased())
+                        .font(PythiaTheme.caption())
+                        .foregroundColor(PythiaTheme.accentGold)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(PythiaTheme.accentGold.opacity(0.15))
+                        .cornerRadius(4)
+                }
+            }
+
+            Text(narrative)
+                .font(PythiaTheme.body())
+                .foregroundColor(PythiaTheme.textPrimary)
+                .lineSpacing(4)
+        }
+        .padding()
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(PythiaTheme.accentGold.opacity(0.3), lineWidth: 1)
+        )
         .pythiaCard()
     }
 
@@ -134,13 +226,6 @@ struct SentimentView: View {
         .pythiaCard()
     }
 
-    private func metricCol(_ label: String, _ value: String, _ color: Color) -> some View {
-        VStack(spacing: 4) {
-            Text(value).font(.system(size: 18, weight: .bold, design: .rounded)).foregroundColor(color)
-            Text(label).font(PythiaTheme.caption()).foregroundColor(PythiaTheme.textSecondary)
-        }
-    }
-
     private func sentimentColor(_ s: String) -> Color {
         switch s.lowercased() {
         case "bullish": return PythiaTheme.profit
@@ -162,7 +247,13 @@ struct SentimentView: View {
     private func analyze() async {
         guard let aid = selectedAssetId else { return }
         isLoading = true
-        do { result = try await db.getSentiment(assetId: aid) } catch {}
+        do {
+            result = try await db.getSentiment(
+                assetId: aid,
+                includeNews: includeNews,
+                includeNarrative: includeNarrative
+            )
+        } catch {}
         isLoading = false
     }
 }

@@ -86,7 +86,7 @@ async def analyze_distribution(
         "statistic": round(float(jb_stat), 4),
         "p_value": round(float(jb_p), 6),
         "conclusion": "Normal" if jb_p > 0.05 else "Non-normal",
-        "significant": jb_p < 0.05,
+        "significant": bool(jb_p < 0.05),
     })
 
     # 2. Shapiro-Wilk normality test (sample if too large)
@@ -97,12 +97,12 @@ async def analyze_distribution(
         "statistic": round(float(sw_stat), 4),
         "p_value": round(float(sw_p), 6),
         "conclusion": "Normal" if sw_p > 0.05 else "Non-normal",
-        "significant": sw_p < 0.05,
+        "significant": bool(sw_p < 0.05),
     })
 
     # 3. Anderson-Darling test
     ad_result = stats.anderson(returns, dist='norm')
-    ad_significant = ad_result.statistic > ad_result.critical_values[2]  # 5% level
+    ad_significant = bool(ad_result.statistic > ad_result.critical_values[2])  # 5% level
     test_results.append({
         "test_name": "Anderson-Darling",
         "statistic": round(float(ad_result.statistic), 4),
@@ -118,7 +118,7 @@ async def analyze_distribution(
         "statistic": round(float(ks_stat), 4),
         "p_value": round(float(ks_p), 6),
         "conclusion": "Normal" if ks_p > 0.05 else "Non-normal",
-        "significant": ks_p < 0.05,
+        "significant": bool(ks_p < 0.05),
     })
 
     # 5. Ljung-Box autocorrelation test (lag 10)
@@ -132,7 +132,7 @@ async def analyze_distribution(
             "statistic": round(float(Q), 4),
             "p_value": round(float(lb_p), 6),
             "conclusion": "No autocorrelation" if lb_p > 0.05 else "Autocorrelation detected",
-            "significant": lb_p < 0.05,
+            "significant": bool(lb_p < 0.05),
         })
 
     # Histogram data

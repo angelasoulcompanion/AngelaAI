@@ -173,18 +173,11 @@ async def fetch_and_store_prices(
     }
 
 
-@router.get("/watchlist-quotes")
-async def get_watchlist_quotes(watchlist_id: UUID = Query(None, description="Filter by watchlist ID"), conn=Depends(get_conn)):
-    """Get quotes for assets in active watchlists. Optionally filter by watchlist_id."""
-    try:
-        import yfinance as yf
-    except ImportError:
-        raise HTTPException(status_code=503, detail="yfinance not installed")
-
-    # Get unique symbols, optionally filtered by watchlist
+async def _get_watchlist_symbols(conn, watchlist_id: UUID = None) -> list:
+    """Get unique symbols from watchlists."""
     if watchlist_id is not None:
-        rows = await conn.fetch("""
-            SELECT DISTINCT a.symbol, a.name, a.asset_type::text, a.exchange
+        return await conn.fetch("""
+            SELECT DISTINCT a.symbol, a.name, a.asset_type::text, a.exchange, a.currency
             FROM watchlist_items wi
             JOIN watchlists w ON wi.watchlist_id = w.watchlist_id
             JOIN assets a ON wi.asset_id = a.asset_id
@@ -192,8 +185,8 @@ async def get_watchlist_quotes(watchlist_id: UUID = Query(None, description="Fil
             ORDER BY a.symbol
         """, watchlist_id)
     else:
-        rows = await conn.fetch("""
-            SELECT DISTINCT a.symbol, a.name, a.asset_type::text, a.exchange
+        return await conn.fetch("""
+            SELECT DISTINCT a.symbol, a.name, a.asset_type::text, a.exchange, a.currency
             FROM watchlist_items wi
             JOIN watchlists w ON wi.watchlist_id = w.watchlist_id
             JOIN assets a ON wi.asset_id = a.asset_id
@@ -201,45 +194,147 @@ async def get_watchlist_quotes(watchlist_id: UUID = Query(None, description="Fil
             ORDER BY a.symbol
         """)
 
+
+@router.get("/watchlist-quotes-cached")
+async def get_watchlist_quotes_cached(
+    watchlist_id: UUID = Query(None, description="Filter by watchlist ID"),
+    conn=Depends(get_conn),
+):
+    """Return watchlist quotes from DB cache only — no Yahoo calls. Always instant."""
+    rows = await _get_watchlist_symbols(conn, watchlist_id)
     if not rows:
         return []
 
+    symbols = [r["symbol"] for r in rows]
+    cached = await conn.fetch("""
+        SELECT symbol, metadata->'cached_quote' AS cq
+        FROM assets
+        WHERE symbol = ANY($1::text[])
+          AND metadata->'cached_quote' IS NOT NULL
+    """, symbols)
+
+    cache_map = {}
+    for c in cached:
+        cq = c["cq"]
+        if cq:
+            cache_map[c["symbol"]] = json.loads(cq) if isinstance(cq, str) else cq
+
     results = []
     for row in rows:
+        sym = row["symbol"]
+        if sym in cache_map:
+            results.append(cache_map[sym])
+        else:
+            # No cache — return skeleton with DB name
+            results.append({
+                "symbol": sym,
+                "name": row["name"],
+                "current_price": None,
+                "change": None,
+                "change_percent": None,
+                "sparkline": [],
+                "currency": row["currency"] or "",
+                "volume": None,
+            })
+    return results
+
+
+@router.get("/watchlist-quotes")
+async def get_watchlist_quotes(
+    watchlist_id: UUID = Query(None, description="Filter by watchlist ID"),
+    conn=Depends(get_conn),
+):
+    """Get quotes for watchlist assets using batch yf.download (fast for large lists)."""
+    try:
+        import yfinance as yf
+        import numpy as np
+    except ImportError:
+        raise HTTPException(status_code=503, detail="yfinance not installed")
+
+    rows = await _get_watchlist_symbols(conn, watchlist_id)
+    if not rows:
+        return []
+
+    # Build yahoo symbol mapping
+    sym_map = {}  # yahoo_sym -> row
+    for row in rows:
+        yahoo_sym = get_yahoo_symbol(row["symbol"], row["exchange"])
+        sym_map[yahoo_sym] = row
+
+    yahoo_symbols = list(sym_map.keys())
+
+    # Batch download — single HTTP batch for ALL symbols (5-10s for 173 vs 5+ min)
+    try:
+        data = yf.download(
+            yahoo_symbols,
+            period="5d",
+            interval="1d",
+            group_by="ticker",
+            threads=True,
+            progress=False,
+        )
+    except Exception:
+        data = None
+
+    results = []
+    for yahoo_sym, row in sym_map.items():
         symbol = row["symbol"]
         try:
-            yahoo_sym = get_yahoo_symbol(symbol, row["exchange"])
-            ticker = yf.Ticker(yahoo_sym)
-            info = ticker.info
+            if data is None or data.empty:
+                raise ValueError("no data")
 
-            curr = info.get("regularMarketPrice")
-            prev = info.get("previousClose")
+            if len(yahoo_symbols) == 1:
+                # Single ticker — columns are flat (Open, High, Low, Close, Volume)
+                closes = data["Close"].dropna().tolist()
+                volumes = data["Volume"].dropna().tolist()
+            else:
+                # Multi ticker — columns are (ticker, field)
+                ticker_data = data[yahoo_sym]
+                closes = ticker_data["Close"].dropna().tolist()
+                volumes = ticker_data["Volume"].dropna().tolist()
+
+            curr = closes[-1] if closes else None
+            prev = closes[-2] if len(closes) >= 2 else None
             change = round(curr - prev, 4) if curr and prev else None
             change_pct = round((curr - prev) / prev * 100, 2) if curr and prev else None
+            sparkline = [round(float(c), 2) for c in closes[-5:]]
+            volume = int(volumes[-1]) if volumes else None
 
-            # Sparkline: last 5 days close prices
-            hist = ticker.history(period="5d", interval="1d")
-            sparkline = [round(row_h.get("Close", 0), 2) for _, row_h in hist.iterrows()] if not hist.empty else []
-
-            results.append({
+            quote = {
                 "symbol": symbol,
-                "name": info.get("longName") or info.get("shortName") or row["name"],
-                "current_price": curr,
+                "name": row["name"],
+                "current_price": round(float(curr), 4) if curr else None,
                 "change": change,
                 "change_percent": change_pct,
                 "sparkline": sparkline,
-                "currency": info.get("currency", ""),
-            })
+                "currency": row["currency"] or "",
+                "volume": volume,
+            }
         except Exception:
-            results.append({
+            quote = {
                 "symbol": symbol,
                 "name": row["name"],
                 "current_price": None,
                 "change": None,
                 "change_percent": None,
                 "sparkline": [],
-                "currency": "",
-            })
+                "currency": row["currency"] or "",
+                "volume": None,
+            }
+
+        results.append(quote)
+
+        # Update DB cache
+        try:
+            await conn.execute("""
+                UPDATE assets
+                SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb,
+                    updated_at = NOW()
+                WHERE symbol = $2
+            """, json.dumps({"cached_quote": quote, "cached_quote_at": datetime.utcnow().isoformat()}),
+                symbol)
+        except Exception:
+            pass
 
     return results
 
