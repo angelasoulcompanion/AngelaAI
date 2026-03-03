@@ -56,10 +56,10 @@ class DatabaseService: ObservableObject {
 
     // MARK: - Generic HTTP Methods
 
-    func get<T: Decodable>(_ endpoint: String) async throws -> T {
+    func get<T: Decodable>(_ endpoint: String, timeout: TimeInterval = 30.0) async throws -> T {
         let url = URL(string: "\(baseURL)\(endpoint)")!
         var request = URLRequest(url: url)
-        request.timeoutInterval = 30.0
+        request.timeoutInterval = timeout
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
@@ -157,13 +157,42 @@ class DatabaseService: ObservableObject {
         try await get("/portfolios/\(portfolioId)/transactions?limit=\(limit)")
     }
 
+    func updatePortfolio(id: String, request: PortfolioUpdateRequest) async throws {
+        struct StatusResponse: Codable { let status: String }
+        let _: StatusResponse = try await put("/portfolios/\(id)", body: request)
+    }
+
+    func deletePortfolio(id: String) async throws {
+        try await delete("/portfolios/\(id)")
+    }
+
+    func addHolding(portfolioId: String, request: HoldingCreateRequest) async throws {
+        struct HoldingResponse: Codable {
+            let holdingId: String
+            enum CodingKeys: String, CodingKey { case holdingId = "holding_id" }
+        }
+        let _: HoldingResponse = try await post("/portfolios/\(portfolioId)/holdings", body: request)
+    }
+
+    func deleteHolding(portfolioId: String, assetId: String) async throws {
+        try await delete("/portfolios/\(portfolioId)/holdings/\(assetId)")
+    }
+
+    func addTransaction(portfolioId: String, request: TransactionCreateRequest) async throws {
+        struct TxnResponse: Codable {
+            let transactionId: String
+            enum CodingKeys: String, CodingKey { case transactionId = "transaction_id" }
+        }
+        let _: TxnResponse = try await post("/portfolios/\(portfolioId)/transactions", body: request)
+    }
+
     // MARK: - Asset Methods
 
     func fetchAssets(search: String? = nil) async throws -> [Asset] {
         if let search = search, !search.isEmpty {
-            return try await get("/assets/?search=\(search.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? search)")
+            return try await get("/assets/?limit=500&search=\(search.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? search)")
         }
-        return try await get("/assets/")
+        return try await get("/assets/?limit=500")
     }
 
     func createAssetFromYahoo(symbol: String) async throws -> AssetCreateResponse {
@@ -180,11 +209,20 @@ class DatabaseService: ObservableObject {
         try await get("/market/history/\(symbol)?period=\(period)")
     }
 
+    /// Fetch quotes from DB cache only — instant, no Yahoo calls
+    func fetchWatchlistQuotesCached(watchlistId: String? = nil) async throws -> [WatchlistQuote] {
+        if let wlId = watchlistId {
+            return try await get("/market/watchlist-quotes-cached?watchlist_id=\(wlId)")
+        }
+        return try await get("/market/watchlist-quotes-cached")
+    }
+
+    /// Fetch fresh quotes via batch Yahoo download (5-10s for large lists)
     func fetchWatchlistQuotes(watchlistId: String? = nil) async throws -> [WatchlistQuote] {
         if let wlId = watchlistId {
-            return try await get("/market/watchlist-quotes?watchlist_id=\(wlId)")
+            return try await get("/market/watchlist-quotes?watchlist_id=\(wlId)", timeout: 120.0)
         }
-        return try await get("/market/watchlist-quotes")
+        return try await get("/market/watchlist-quotes", timeout: 120.0)
     }
 
     func fetchFinancialOutlook(symbol: String) async throws -> FinancialOutlookResponse {
@@ -340,7 +378,7 @@ class DatabaseService: ObservableObject {
         try await get("/statistics/\(assetId)/distribution?days=\(days)")
     }
 
-    // MARK: - AI Advisor (Phase 4)
+    // MARK: - AI Advisor (Phase 4 + LLM Upgrade)
 
     func getAIAdvice(portfolioId: String, question: String? = nil) async throws -> AIAdvisorResponse {
         var url = "/ai/advisor/\(portfolioId)/analyze"
@@ -350,26 +388,51 @@ class DatabaseService: ObservableObject {
         return try await get(url)
     }
 
-    // MARK: - AI Sentiment (Phase 4)
-
-    func getSentiment(assetId: String, days: Int = 30) async throws -> AISentimentResponse {
-        try await get("/ai/sentiment/\(assetId)?days=\(days)")
+    func chatWithAdvisor(portfolioId: String, message: String, sessionId: String? = nil) async throws -> AIAdvisorResponse {
+        struct ChatBody: Encodable {
+            let message: String
+            let session_id: String?
+        }
+        return try await post("/ai/advisor/\(portfolioId)/chat", body: ChatBody(message: message, session_id: sessionId))
     }
 
-    // MARK: - AI Forecast (Phase 4)
+    // MARK: - AI Sentiment (Phase 4 + LLM Upgrade)
 
-    func getForecast(assetId: String, method: String = "moving_average", days: Int = 30) async throws -> AIForecastResponse {
-        try await get("/ai/forecast/\(assetId)?method=\(method)&forecast_days=\(days)")
+    func getSentiment(assetId: String, days: Int = 30, includeNews: Bool = false, includeNarrative: Bool = false) async throws -> AISentimentResponse {
+        try await get("/ai/sentiment/\(assetId)?days=\(days)&include_news=\(includeNews)&include_narrative=\(includeNarrative)")
     }
 
-    // MARK: - AI Research (Phase 4)
+    // MARK: - AI Forecast (Phase 4 + LLM Upgrade)
 
-    func searchResearch(query: String) async throws -> ResearchSearchResponse {
-        try await get("/ai/research/search?query=\(query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query)")
+    func getForecast(assetId: String, method: String = "prophet", days: Int = 30, includeInterpretation: Bool = false) async throws -> AIForecastResponse {
+        try await get("/ai/forecast/\(assetId)?method=\(method)&forecast_days=\(days)&include_interpretation=\(includeInterpretation)")
+    }
+
+    // MARK: - AI Research (Phase 4 + LLM Upgrade)
+
+    func searchResearch(query: String, method: String = "keyword") async throws -> ResearchSearchResponse {
+        let q = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        return try await get("/ai/research/search?query=\(q)&method=\(method)")
+    }
+
+    func askResearch(question: String) async throws -> ResearchAskResponse {
+        let q = question.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? question
+        return try await get("/ai/research/ask?question=\(q)")
     }
 
     func getResearchHistory() async throws -> [ResearchDoc] {
         try await get("/ai/research/history")
+    }
+
+    // MARK: - Market Breadth (Phase 5)
+
+    func fetchBreadthUniverses() async throws -> [BreadthUniverse] {
+        try await get("/breadth/universes")
+    }
+
+    func fetchBreadth(universe: String, period: String = "1y") async throws -> BreadthResponse {
+        let u = universe.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? universe
+        return try await get("/breadth/\(u)?period=\(period)")
     }
 }
 

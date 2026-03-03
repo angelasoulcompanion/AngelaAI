@@ -159,3 +159,50 @@ struct PortfolioCreateResponse: Codable {
         case createdAt = "created_at"
     }
 }
+
+struct PortfolioUpdateRequest: Codable {
+    let name: String?
+    let description: String?
+    let benchmarkSymbol: String?
+    let riskFreeRate: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case name, description
+        case benchmarkSymbol = "benchmark_symbol"
+        case riskFreeRate = "risk_free_rate"
+    }
+}
+
+struct HoldingCreateRequest: Codable {
+    let assetId: String
+    let weight: Double
+    let quantity: Double?
+    let averageCost: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case assetId = "asset_id"
+        case weight, quantity
+        case averageCost = "average_cost"
+    }
+}
+
+struct TransactionCreateRequest: Codable {
+    let assetId: String
+    let transactionType: String
+    let quantity: Double
+    let price: Double
+    let fees: Double
+    let taxes: Double
+    let totalAmount: Double
+    let transactionDate: String
+    let notes: String?
+
+    enum CodingKeys: String, CodingKey {
+        case assetId = "asset_id"
+        case transactionType = "transaction_type"
+        case quantity, price, fees, taxes
+        case totalAmount = "total_amount"
+        case transactionDate = "transaction_date"
+        case notes
+    }
+}

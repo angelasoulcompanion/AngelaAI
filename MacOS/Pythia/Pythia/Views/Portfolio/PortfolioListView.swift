@@ -53,7 +53,10 @@ struct PortfolioListView: View {
 
             // Detail pane
             if let portfolio = selectedPortfolio {
-                PortfolioDetailView(portfolioId: portfolio.portfolioId)
+                PortfolioDetailView(portfolioId: portfolio.portfolioId, onDelete: {
+                    selectedPortfolio = nil
+                    loadPortfolios()
+                })
             } else {
                 EmptyStateView(
                     icon: "briefcase",

@@ -7,12 +7,25 @@ import SwiftUI
 
 struct HoldingsView: View {
     let holdings: [Holding]
+    var onAdd: (() -> Void)?
+    var onDelete: ((Holding) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Holdings")
-                .font(PythiaTheme.headline())
-                .foregroundColor(PythiaTheme.textPrimary)
+            HStack {
+                Text("Holdings")
+                    .font(PythiaTheme.headline())
+                    .foregroundColor(PythiaTheme.textPrimary)
+                Spacer()
+                if let onAdd = onAdd {
+                    Button(action: onAdd) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(PythiaTheme.secondaryBlue)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
 
             if holdings.isEmpty {
                 Text("No holdings yet")
@@ -28,6 +41,9 @@ struct HoldingsView: View {
                     Text("Quantity").frame(width: 80, alignment: .trailing)
                     Text("Avg Cost").frame(width: 90, alignment: .trailing)
                     Text("Market Value").frame(width: 110, alignment: .trailing)
+                    if onDelete != nil {
+                        Spacer().frame(width: 36)
+                    }
                 }
                 .font(PythiaTheme.caption())
                 .foregroundColor(PythiaTheme.textTertiary)
@@ -62,6 +78,15 @@ struct HoldingsView: View {
                             .font(.system(size: 13, weight: .medium, design: .monospaced))
                             .foregroundColor(PythiaTheme.textPrimary)
                             .frame(width: 110, alignment: .trailing)
+                        if let onDelete = onDelete {
+                            Button { onDelete(holding) } label: {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(PythiaTheme.loss.opacity(0.7))
+                            }
+                            .buttonStyle(.plain)
+                            .frame(width: 36)
+                        }
                     }
                     .padding(.horizontal)
                     .padding(.vertical, 4)
