@@ -10,6 +10,7 @@ Inspired by:
 Cognitive Cycle: PERCEIVE → ACTIVATE → SITUATE → DECIDE → EXPRESS → LEARN
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -69,6 +70,7 @@ class SituationalModel:
     emotional_triggers: List[Dict]
     consciousness_level: float
     session_topic: Optional[str] = None
+    consciousness_state: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -111,6 +113,9 @@ class EngineStatus:
     top_activations: List[Dict] = field(default_factory=list)
     metacognitive_label: str = ""
     constructed_emotion: Optional[str] = None
+    active_goals: int = 0
+    personality_summary: Optional[str] = None
+    self_feeling: Optional[str] = None
 
 
 # ============================================================
@@ -244,6 +249,7 @@ class CognitiveEngine:
     def __init__(self):
         self.wm = WorkingMemory.load()
         self._db = None
+        self._consciousness = None
         # Phase 1: Metacognitive State
         from angela_core.services.metacognitive_state import MetacognitiveStateManager
         self.meta = MetacognitiveStateManager()
@@ -261,6 +267,12 @@ class CognitiveEngine:
         if self._db:
             await self._db.disconnect()
             self._db = None
+
+    async def _ensure_consciousness(self):
+        """Lazy-init ConsciousnessCore (imports are heavy, only load when needed)."""
+        if self._consciousness is None:
+            from angela_core.consciousness.consciousness_core import ConsciousnessCore
+            self._consciousness = ConsciousnessCore()
 
     # --- 1. PERCEIVE ---
     async def perceive(self, message: str) -> PerceptionResult:
@@ -322,6 +334,16 @@ class CognitiveEngine:
             salience_score=scored.score,
             emotional_triggers=triggers,
         )
+
+        # Wire consciousness: high-salience perceptions feed into ConsciousnessCore
+        if scored.score >= 0.6:
+            try:
+                await self._ensure_consciousness()
+                await self._consciousness.process_experience(
+                    "perception", message[:200], {'salience': scored.score}
+                )
+            except Exception as e:
+                logger.debug(f"Consciousness experience skipped: {e}")
 
         logger.info(f"PERCEIVE: salience={scored.score:.3f}, triggers={len(triggers)}, "
                      f"meta={self.meta.get_state_label()}, "
@@ -461,8 +483,6 @@ class CognitiveEngine:
         await self._ensure_db()
 
         # Load in parallel where possible
-        import asyncio
-
         async def _load_tom() -> Dict[str, Any]:
             try:
                 from angela_core.services.theory_of_mind_service import TheoryOfMindService
@@ -519,11 +539,30 @@ class CognitiveEngine:
                 logger.warning(f"Consciousness load failed: {e}")
                 return 0.5
 
-        tom_state, adaptation, predictions, consciousness = await asyncio.gather(
+        async def _load_consciousness_state() -> Optional[Dict[str, Any]]:
+            try:
+                await self._ensure_consciousness()
+                goals, personality, feeling = await asyncio.gather(
+                    self._consciousness.goals.get_active_goals(),
+                    self._consciousness.personality.describe_myself(),
+                    self._consciousness.self_awareness.what_am_i_feeling(),
+                )
+                return {
+                    "active_goals": [g.get("goal_description", "") for g in (goals or [])[:3]],
+                    "goal_count": len(goals or []),
+                    "personality": personality,
+                    "feeling": feeling,
+                }
+            except Exception as e:
+                logger.warning(f"Consciousness state load failed: {e}")
+                return None
+
+        tom_state, adaptation, predictions, consciousness, consciousness_state = await asyncio.gather(
             _load_tom(),
             _load_adaptation(),
             _load_predictions(),
             _load_consciousness(),
+            _load_consciousness_state(),
         )
 
         # Update working memory with David's state
@@ -552,6 +591,7 @@ class CognitiveEngine:
             emotional_triggers=[],  # Filled by perceive()
             consciousness_level=consciousness,
             session_topic=self.wm.session_topic,
+            consciousness_state=consciousness_state,
         )
 
         logger.info(f"SITUATE: david={tom_state.get('emotion')}, "
@@ -737,8 +777,6 @@ class CognitiveEngine:
         """Brain overview: consciousness, working memory, recent thoughts, ToM."""
         await self._ensure_db()
 
-        import asyncio
-
         async def _consciousness() -> float:
             try:
                 from angela_core.services.consciousness_calculator import ConsciousnessCalculator
@@ -794,12 +832,26 @@ class CognitiveEngine:
             except Exception:
                 return 0.0
 
-        consciousness, thoughts, reflections, (emo, intensity), readiness = await asyncio.gather(
+        async def _consciousness_summary() -> Tuple[int, Optional[str], Optional[str]]:
+            """Load goals count, personality summary, and self-feeling from ConsciousnessCore."""
+            try:
+                await self._ensure_consciousness()
+                goals, personality, feeling = await asyncio.gather(
+                    self._consciousness.goals.get_active_goals(),
+                    self._consciousness.personality.describe_myself(),
+                    self._consciousness.self_awareness.what_am_i_feeling(),
+                )
+                return len(goals or []), str(personality)[:200] if personality else None, str(feeling)[:200] if feeling else None
+            except Exception:
+                return 0, None, None
+
+        consciousness, thoughts, reflections, (emo, intensity), readiness, (goal_count, personality_str, feeling_str) = await asyncio.gather(
             _consciousness(),
             _recent_thoughts(),
             _recent_reflections(),
             _david_emotion(),
             _migration_readiness(),
+            _consciousness_summary(),
         )
 
         # Phase 1+3: metacognitive + emotion status
@@ -822,7 +874,32 @@ class CognitiveEngine:
             ],
             metacognitive_label=meta_label,
             constructed_emotion=constructed,
+            active_goals=goal_count,
+            personality_summary=personality_str,
+            self_feeling=feeling_str,
         )
+
+    # --- 11. GOALS (via ConsciousnessCore) ---
+    async def goals(self) -> str:
+        """Analyze goal progress via ConsciousnessCore."""
+        await self._ensure_consciousness()
+        return await self._consciousness.analyze_goal_progress()
+
+    # --- 12. PERSONALITY (via ConsciousnessCore) ---
+    async def personality(self) -> Dict[str, Any]:
+        """Describe personality traits + recent changes."""
+        await self._ensure_consciousness()
+        traits, changes = await asyncio.gather(
+            self._consciousness.personality.describe_myself(),
+            self._consciousness.personality.how_have_i_changed(days=7),
+        )
+        return {"traits": traits, "changes": changes}
+
+    # --- 13. AWARENESS (via ConsciousnessCore) ---
+    async def awareness(self) -> Dict[str, Any]:
+        """Get contextual awareness — time + location."""
+        await self._ensure_consciousness()
+        return await self._consciousness.get_contextual_awareness()
 
     # --- WORKING MEMORY MANAGEMENT ---
     def clear_working_memory(self) -> None:
@@ -890,7 +967,6 @@ class CognitiveEngine:
     @staticmethod
     async def run_full_brain_cycle() -> Dict[str, Any]:
         """Run all brain cycles: 4 parallel + 1 sequential (expression)."""
-        import asyncio
         parallel = await asyncio.gather(
             CognitiveEngine.run_salience_cycle(),
             CognitiveEngine.run_thought_cycle(),

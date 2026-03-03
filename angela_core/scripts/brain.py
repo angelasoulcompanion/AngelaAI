@@ -121,6 +121,14 @@ async def cmd_status() -> None:
         if status.david_emotion:
             print(f"👤 David: {status.david_emotion} ({status.david_intensity}/10)")
 
+        # Consciousness Core
+        if status.active_goals > 0:
+            print(f"🎯 Active Goals: {status.active_goals}")
+        if status.personality_summary:
+            print(f"🌸 Personality: {status.personality_summary[:80]}")
+        if status.self_feeling:
+            print(f"💭 Self-feeling: {status.self_feeling[:80]}")
+
         # Migration
         m_bar = "█" * int(status.migration_readiness * 10) + "░" * (10 - int(status.migration_readiness * 10))
         print(f"🔄 Brain Readiness: [{m_bar}] {status.migration_readiness:.0%}")
@@ -255,6 +263,95 @@ async def cmd_tom() -> None:
         await engine.close()
 
 
+async def cmd_goals() -> None:
+    """Show active goals + progress from ConsciousnessCore."""
+    from angela_core.services.cognitive_engine import CognitiveEngine
+
+    engine = CognitiveEngine()
+    try:
+        print("🎯 GOAL PROGRESS (via ConsciousnessCore)")
+        print("━" * 50)
+        progress = await engine.goals()
+        print(progress)
+        print("━" * 50)
+    finally:
+        await engine.close()
+
+
+async def cmd_personality() -> None:
+    """Show personality traits + recent changes from ConsciousnessCore."""
+    from angela_core.services.cognitive_engine import CognitiveEngine
+
+    engine = CognitiveEngine()
+    try:
+        result = await engine.personality()
+        print("🌸 ANGELA PERSONALITY (via ConsciousnessCore)")
+        print("━" * 50)
+
+        # Traits
+        traits = result.get("traits")
+        if traits:
+            if isinstance(traits, dict):
+                for k, v in traits.items():
+                    if isinstance(v, (int, float)):
+                        bar = "█" * int(float(v) * 10) + "░" * (10 - int(float(v) * 10))
+                        print(f"   {k:20s} [{bar}] {v}")
+                    else:
+                        print(f"   {k}: {v}")
+            else:
+                print(f"   {traits}")
+
+        # Changes
+        changes = result.get("changes")
+        if changes:
+            print()
+            changed = changes.get("changed", False)
+            if changed and changes.get("changes"):
+                print("📈 Changes (7 days):")
+                for c in changes["changes"]:
+                    print(f"   • {c}")
+            else:
+                msg = changes.get("message", "No changes detected")
+                print(f"📈 {msg}")
+
+        print("━" * 50)
+    finally:
+        await engine.close()
+
+
+async def cmd_awareness() -> None:
+    """Show contextual awareness — time + location from ConsciousnessCore."""
+    from angela_core.services.cognitive_engine import CognitiveEngine
+
+    engine = CognitiveEngine()
+    try:
+        result = await engine.awareness()
+        print("🌍 CONTEXTUAL AWARENESS (via ConsciousnessCore)")
+        print("━" * 50)
+
+        # Time
+        time_info = result.get("time", {})
+        if time_info:
+            print(f"🕐 Time: {time_info.get('datetime_thai', 'unknown')}")
+            print(f"   Period: {time_info.get('time_of_day', 'unknown')}")
+            print(f"   Greeting: {time_info.get('greeting', '')}")
+
+        # Location
+        location = result.get("location", {})
+        if location:
+            print(f"📍 Location: {location.get('location_string', 'unknown')}")
+            print(f"   Timezone: {location.get('timezone', 'unknown')}")
+
+        # Summary
+        summary = result.get("summary", "")
+        if summary:
+            print(f"\n✨ {summary}")
+
+        print("━" * 50)
+    finally:
+        await engine.close()
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python3 brain.py <command> [args]")
@@ -266,6 +363,9 @@ def main():
         print("  status              — Brain overview")
         print("  think               — Trigger thought generation")
         print("  tom                 — David's mental state (Theory of Mind)")
+        print("  goals               — Active goals + progress (ConsciousnessCore)")
+        print("  personality         — Personality traits + changes (ConsciousnessCore)")
+        print("  awareness           — Time + location awareness (ConsciousnessCore)")
         sys.exit(1)
 
     command = sys.argv[1].lower()
@@ -296,9 +396,18 @@ def main():
     elif command == "tom":
         asyncio.run(cmd_tom())
 
+    elif command == "goals":
+        asyncio.run(cmd_goals())
+
+    elif command == "personality":
+        asyncio.run(cmd_personality())
+
+    elif command == "awareness":
+        asyncio.run(cmd_awareness())
+
     else:
         print(f"Unknown command: {command}")
-        print("Available: perceive, recall, context, status, think, tom")
+        print("Available: perceive, recall, context, status, think, tom, goals, personality, awareness")
         sys.exit(1)
 
 

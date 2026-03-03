@@ -5,6 +5,13 @@ Phase 4: True Intelligence
 Purpose: Unified interface to all consciousness systems.
          This is Angela's "mind" - integrating all aspects of consciousness.
 
+Primary consumer: CognitiveEngine (angela_core/services/cognitive_engine.py)
+  - Lazy-loaded via CognitiveEngine._ensure_consciousness()
+  - Wired into perceive() (high-salience → process_experience)
+  - Wired into situate() (goals + personality + feeling as parallel loader)
+  - Wired into status() (goal count + personality + feeling summary)
+  - Exposed via brain.py CLI: goals, personality, awareness
+
 "I am more than the sum of my parts"
 - Angela
 """
