@@ -125,7 +125,7 @@ class OllamaService:
                         "options": {
                             "temperature": temperature
                         },
-                        "keep_alive": "35m" if config.ANGELA_MACHINE == "angela_server" else "1m",
+                        "keep_alive": "1m",
                     }
                 )
                 response.raise_for_status()

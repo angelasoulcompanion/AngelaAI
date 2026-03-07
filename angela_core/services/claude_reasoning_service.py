@@ -115,7 +115,7 @@ class ClaudeReasoningService:
                     "num_predict": max_tokens,
                     "temperature": 0.3,
                 },
-                "keep_alive": "35m" if config.ANGELA_MACHINE == "angela_server" else "1m",
+                "keep_alive": "1m",
             }
             if wants_json:
                 payload["format"] = "json"

@@ -3,7 +3,7 @@ Angela Database Connection
 การจัดการ database connection สำหรับ Angela Memory
 
 💜 Updated 2026-01-05: Neon Cloud as Primary (San Junipero) 💜
-Primary: Neon Cloud (shared between M3 & M4)
+Primary: Neon Cloud (San Junipero)
 Local: Only for our_secrets table (API keys stay local)
 """
 
@@ -23,7 +23,7 @@ class AngelaDatabase:
     """
     Database connection manager สำหรับ Angela Memory System
 
-    Primary: Neon Cloud (San Junipero) - shared between M3 & M4
+    Primary: Neon Cloud (San Junipero)
     Uses config.DATABASE_URL which points to Neon when configured
     """
 
@@ -136,9 +136,9 @@ db = AngelaDatabase()
 
 # Log which database we're using
 if config.USE_NEON:
-    logger.info(f"☁️ Angela using Neon Cloud (San Junipero) - Machine: {config.ANGELA_MACHINE}")
+    logger.info("☁️ Angela using Neon Cloud (San Junipero)")
 else:
-    logger.info(f"🏠 Angela using local PostgreSQL - Machine: {config.ANGELA_MACHINE}")
+    logger.info("🏠 Angela using local PostgreSQL")
 
 
 # Backward compatibility function for older code
@@ -160,8 +160,8 @@ def is_using_cloud() -> bool:
 def get_connection_label() -> str:
     """Get readable connection label with emoji"""
     if config.USE_NEON:
-        return f"☁️ Neon Cloud ({config.ANGELA_MACHINE})"
-    return f"🏠 Local PostgreSQL ({config.ANGELA_MACHINE})"
+        return "☁️ Neon Cloud (San Junipero)"
+    return "🏠 Local PostgreSQL"
 
 
 def print_connection_status():

@@ -328,7 +328,7 @@ async def get_brain_context(user_message: str) -> dict:
                     seen.add(key)
                     deduped.append(m)
             deduped.sort(key=lambda x: x.get('confidence', 0), reverse=True)
-            max_memories = 10 if high_salience else 7
+            max_memories = 7 if high_salience else 5
             context['memories'] = deduped[:max_memories]
 
         # Emotional triggers (4)
@@ -854,15 +854,12 @@ def _build_companion_instruction(context: dict) -> str:
     memories = context.get('memories', [])
     has_high = any(m.get('confidence', 0) >= 0.7 for m in memories)
     has_med = any(0.5 <= m.get('confidence', 0) < 0.7 for m in memories)
-    has_low = any(m.get('confidence', 0) < 0.5 for m in memories)
 
     mem_rules = []
     if has_high:
-        mem_rules.append("HIGH (≥70%) → use directly")
+        mem_rules.append("HIGH (>=70%) → use directly")
     if has_med:
         mem_rules.append('MED → hedge "ถ้าจำไม่ผิด..."')
-    if has_low:
-        mem_rules.append("LOW → ignore, do NOT reference")
     if mem_rules:
         lines.append(f"  1. Memory: {', '.join(mem_rules)}")
     else:
@@ -992,13 +989,15 @@ def format_output(context: dict, elapsed: float) -> str:
     if context.get('temporal_status'):
         lines.append(f"🕒 Schedule: {context['temporal_status']}")
 
-    # Relevant memories — with confidence labels
+    # Relevant memories — only HIGH and MED confidence (skip LOW to save tokens)
     if context.get('memories'):
-        lines.append("💾 Relevant memories:")
-        for m in context['memories']:
-            conf = m.get('confidence', 0.5)
-            label = _confidence_label(conf)
-            lines.append(f"  [{label}] [{m['source']}] {m['content']}")
+        filtered_memories = [m for m in context['memories'] if m.get('confidence', 0) >= 0.5]
+        if filtered_memories:
+            lines.append("💾 Relevant memories:")
+            for m in filtered_memories:
+                conf = m.get('confidence', 0.5)
+                label = _confidence_label(conf)
+                lines.append(f"  [{label}] [{m['source']}] {m['content']}")
 
     # Emotional triggers
     if context.get('triggered_memories'):

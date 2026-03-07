@@ -235,7 +235,7 @@ class EmbeddingService:
                             json={
                                 "model": model,
                                 "prompt": text,
-                                "keep_alive": "35m" if config.ANGELA_MACHINE == "angela_server" else "3m",
+                                "keep_alive": "3m",
                             }
                         )
                         response.raise_for_status()
