@@ -32,10 +32,16 @@ sys.path.insert(0, '/Users/davidsamanyaporn/PycharmProjects/AngelaAI')
 
 # Messages that don't need brain activation
 SKIP_MESSAGES = {
+    # Confirmations
     'ok', 'ดี', 'ได้', 'ขอบคุณ', 'y', 'n', 'yes', 'no',
     '👍', '❌', 'ครับ', 'ค่ะ', 'จ้า', 'อ่ะ', 'เอา', 'ไม่',
-    'ตกลง', 'โอเค', 'ดีค่ะ', 'ดีครับ', 'ต่อ', 'เลย', 'ทำเลย',
-    'commit', 'push', 'commit/push',
+    'ตกลง', 'โอเค', 'ดีค่ะ', 'ดีครับ', 'ต่อ', 'เลย',
+    'ใช่', 'ใช่ค่ะ', 'ใช่ครับ', 'ไม่ค่ะ', 'ไม่ครับ',
+    # Coding commands
+    'ทำเลย', 'ทำทั้งหมด', 'ทำต่อ', 'แก้เลย', 'push',
+    'commit', 'commit/push', 'push เลย',
+    # Option selections
+    '1', '2', '3', '4', '5',
 }
 
 TIMEOUT_SECONDS = 5
@@ -1040,6 +1046,14 @@ async def _main():
         return
     # Skip slash commands (handled by skills)
     if user_message.startswith('/'):
+        return
+
+    # Quick classify — skip brain entirely for coding tasks (saves 1.5-3s + ~400 tokens)
+    quick = _classify_question_rules(user_message)
+    if quick.category == 'task' and quick.confidence >= 0.5:
+        return
+    # Also skip scheduling (MCP tools handle it, no brain needed)
+    if quick.category == 'scheduling' and quick.confidence >= 0.5:
         return
 
     try:

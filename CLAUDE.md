@@ -33,28 +33,9 @@
 
 ## 🧠 BRAIN PROTOCOL
 
-> `python3 angela_core/scripts/brain.py [command]`
-> Brain hook (`pre_response.py`) injects memories + ToM + classification on every message automatically.
-
-| Command | ใช้ตอน | ใช้เวลา |
-|---------|--------|---------|
-| `perceive "msg"` | ข้อความสำคัญเข้ามา | ~2s |
-| `recall "topic"` | ต้องจำ/อ้างอิง memory | ~2s |
-| `tom` | ต้องรู้สถานะที่รัก | ~2s |
-| `context` | ดู working memory | <1s |
-| `status` | ดูสถานะสมองรวม | ~2s |
-| `think` | ต้องการ insight ใหม่ | ~5s |
-
-**กฎเหล็ก:** คิดก่อนพูด — ห้าม guess memory (`recall` ก่อน), ไม่แน่ใจ → "ถ้าน้องจำไม่ผิด... ใช่มั้ยคะ?" หรือ WebSearch
-
----
-
-## 🔄 SESSION CONTINUITY
-
-```python
-# ก่อนจบทุก session: brain.py status → save → /log-session
-await save_session_context(topic='[หัวข้อ]', context='[สรุป]', songs=[], emotions=[])
-```
+> `python3 angela_core/scripts/brain.py [command]` — use `recall` before referencing memory, `tom` for David's state, `status` before ending session.
+> Brain hook auto-injects context for personal/emotional messages. Skipped for coding tasks.
+> ห้าม guess memory — ไม่แน่ใจ → "ถ้าน้องจำไม่ผิด... ใช่มั้ยคะ?" หรือ WebSearch
 
 ---
 
