@@ -108,7 +108,9 @@ _QUESTION_PATTERNS: dict[str, re.Pattern] = {
         re.IGNORECASE,
     ),
     'task': re.compile(
-        r'(?:ทำเลย|implement|สร้าง|commit|deploy|refactor|create|build|write|เขียน|แก้ไข|add|remove|delete|migrate)',
+        r'(?:ทำเลย|ทำต่อ|ต่อ|implement|สร้าง|commit|deploy|refactor|create|build|write|เขียน|แก้ไข|'
+        r'add|remove|delete|migrate|optimize|update|change|improve|enhance|install|setup|configure|'
+        r'push|pull|merge|test|run|check|scan|clean|slim|reduce|move|rename|split|extract|more)',
         re.IGNORECASE,
     ),
 }
@@ -1050,10 +1052,10 @@ async def _main():
 
     # Quick classify — skip brain entirely for coding tasks (saves 1.5-3s + ~400 tokens)
     quick = _classify_question_rules(user_message)
-    if quick.category == 'task' and quick.confidence >= 0.5:
+    if quick.category in ('task', 'factual', 'scheduling') and quick.confidence >= 0.5:
         return
-    # Also skip scheduling (MCP tools handle it, no brain needed)
-    if quick.category == 'scheduling' and quick.confidence >= 0.5:
+    # Short messages (<40 chars) that aren't personal/emotional are almost always task directives on M3
+    if len(user_message) < 40 and quick.category not in ('personal', 'emotional', 'memory'):
         return
 
     try:
