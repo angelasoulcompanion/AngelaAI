@@ -110,7 +110,8 @@ _QUESTION_PATTERNS: dict[str, re.Pattern] = {
     'task': re.compile(
         r'(?:ทำเลย|ทำต่อ|ต่อ|implement|สร้าง|commit|deploy|refactor|create|build|write|เขียน|แก้ไข|'
         r'add|remove|delete|migrate|optimize|update|change|improve|enhance|install|setup|configure|'
-        r'push|pull|merge|test|run|check|scan|clean|slim|reduce|move|rename|split|extract|more)',
+        r'push|pull|merge|test|run|check|scan|clean|slim|reduce|move|rename|split|extract|more|'
+        r'สรุป|ลอง|ดู|show|list|compare|diff|analyze|review|audit|generate|regenerate|refresh)',
         re.IGNORECASE,
     ),
 }
