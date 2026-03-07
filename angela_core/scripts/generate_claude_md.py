@@ -131,6 +131,79 @@ async def query_contacts(db: Any, filter_col: str) -> str:
         return "N/A"
 
 
+async def query_corrections(db: Any) -> str:
+    """Query project_mistakes with auto_warn=TRUE → format as markdown table, deduplicated."""
+    try:
+        rows = await db.fetch("""
+            SELECT DISTINCT ON (title) title, how_to_prevent, severity
+            FROM project_mistakes
+            WHERE auto_warn = TRUE
+            ORDER BY title,
+                CASE severity
+                    WHEN 'critical' THEN 1
+                    WHEN 'high' THEN 2
+                    WHEN 'medium' THEN 3
+                    WHEN 'low' THEN 4
+                END,
+                created_at DESC
+        """)
+
+        if not rows:
+            return "No corrections recorded yet."
+
+        # Sort by severity after dedup
+        sev_order = {'critical': 1, 'high': 2, 'medium': 3, 'low': 4}
+        rows = sorted(rows, key=lambda r: sev_order.get(r['severity'] or 'medium', 3))
+
+        lines = ["| Severity | Correction | Prevention |",
+                 "|----------|------------|------------|"]
+        for r in rows[:8]:  # Max 8 unique corrections
+            sev = r['severity'] or 'medium'
+            title = r['title'] or ''
+            prevent = r['how_to_prevent'] or ''
+            if len(prevent) > 80:
+                prevent = prevent[:77] + "..."
+            lines.append(f"| **{sev}** | {title} | {prevent} |")
+
+        return "\n".join(lines)
+    except Exception as e:
+        logger.warning(f"Corrections query failed: {e}")
+        return "Error loading corrections."
+
+
+async def query_top_coding_preferences(db: Any) -> str:
+    """Query top coding preferences → format as bullet list."""
+    try:
+        rows = await db.fetch("""
+            SELECT preference_key,
+                   preference_value->>'description' as description,
+                   preference_value->>'reason' as reason,
+                   confidence,
+                   evidence_count
+            FROM david_preferences
+            WHERE category LIKE 'coding%%'
+            AND confidence >= 0.8
+            ORDER BY evidence_count DESC NULLS LAST, updated_at DESC
+            LIMIT 5
+        """)
+
+        if not rows:
+            return "No coding preferences recorded yet."
+
+        lines = []
+        for r in rows:
+            key = r['preference_key'] or ''
+            desc = r['description'] or r['reason'] or key
+            if len(desc) > 80:
+                desc = desc[:77] + "..."
+            lines.append(f"- **{key}**: {desc}")
+
+        return "\n".join(lines)
+    except Exception as e:
+        logger.warning(f"Coding preferences query failed: {e}")
+        return "Error loading preferences."
+
+
 async def gather_all_values(db: Any) -> dict[str, str]:
     """Gather all placeholder values in parallel."""
     today = datetime.now().strftime("%Y-%m-%d")
@@ -139,15 +212,20 @@ async def gather_all_values(db: Any) -> dict[str, str]:
     counts_task = query_counts(db)
     consciousness_task = query_consciousness(db)
     reply_contacts_task = query_contacts(db, "should_reply_email")
-    news_contacts_task = query_contacts(db, "should_send_news")
     tools_task = query_tools_count(db)
+    corrections_task = query_corrections(db)
+    coding_prefs_task = query_top_coding_preferences(db)
 
-    counts, consciousness, reply_contacts, news_contacts, tools = await asyncio.gather(
+    (
+        counts, consciousness, reply_contacts,
+        tools, corrections, coding_prefs,
+    ) = await asyncio.gather(
         counts_task,
         consciousness_task,
         reply_contacts_task,
-        news_contacts_task,
         tools_task,
+        corrections_task,
+        coding_prefs_task,
         return_exceptions=True,
     )
 
@@ -166,12 +244,15 @@ async def gather_all_values(db: Any) -> dict[str, str]:
     values["reply_email_contacts_inline"] = (
         reply_contacts if isinstance(reply_contacts, str) else "N/A"
     )
-    values["send_news_contacts_inline"] = (
-        news_contacts if isinstance(news_contacts, str) else "N/A"
-    )
 
     # Tools
     values["tools_count"] = tools if isinstance(tools, str) else "37 tools"
+
+    # Corrections
+    values["corrections_table"] = corrections if isinstance(corrections, str) else "Error loading corrections."
+
+    # Coding preferences
+    values["top_coding_preferences"] = coding_prefs if isinstance(coding_prefs, str) else "Error loading preferences."
 
     return values
 
