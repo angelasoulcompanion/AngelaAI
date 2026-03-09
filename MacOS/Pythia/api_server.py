@@ -38,6 +38,8 @@ from routers import (
     ai_research,
     # Phase 5: Market Breadth
     market_breadth,
+    # Phase 6: Global Monitor
+    global_monitor,
 )
 
 app = FastAPI(
@@ -100,6 +102,9 @@ app.include_router(ai_research.router)
 
 # ── Phase 5: Market Breadth ───────────────────────────────
 app.include_router(market_breadth.router)
+
+# ── Phase 6: Global Monitor ──────────────────────────────
+app.include_router(global_monitor.router)
 
 
 if __name__ == "__main__":

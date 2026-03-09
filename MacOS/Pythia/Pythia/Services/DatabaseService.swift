@@ -424,6 +424,12 @@ class DatabaseService: ObservableObject {
         try await get("/ai/research/history")
     }
 
+    // MARK: - Global Monitor (Phase 6)
+
+    func fetchGlobalMonitor() async throws -> GlobalMonitorResponse {
+        try await get("/global-monitor/", timeout: 60.0)
+    }
+
     // MARK: - Market Breadth (Phase 5)
 
     func fetchBreadthUniverses() async throws -> [BreadthUniverse] {

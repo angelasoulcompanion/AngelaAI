@@ -27,6 +27,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case research
 
     // Market
+    case globalMonitor
     case marketOverview
     case marketBreadth
     case optionsChain
@@ -57,6 +58,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .sentiment: return "Sentiment"
         case .forecast: return "Forecast"
         case .research: return "Research RAG"
+        case .globalMonitor: return "Global Monitor"
         case .marketOverview: return "Market Overview"
         case .marketBreadth: return "Market Breadth"
         case .optionsChain: return "Options Chain"
@@ -83,6 +85,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .sentiment: return "newspaper.fill"
         case .forecast: return "chart.line.flattrend.xyaxis"
         case .research: return "books.vertical.fill"
+        case .globalMonitor: return "globe.americas.fill"
         case .marketOverview: return "globe"
         case .marketBreadth: return "chart.bar.doc.horizontal.fill"
         case .optionsChain: return "rectangle.split.3x3.fill"
@@ -101,7 +104,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .portfolios, .transactions: return "PORTFOLIO"
         case .mpt, .valueAtRisk, .stressTest, .performance, .correlation: return "ANALYSIS"
         case .aiAdvisor, .sentiment, .forecast, .research: return "AI INSIGHTS"
-        case .marketOverview, .marketBreadth, .optionsChain, .watchlist: return "MARKET"
+        case .globalMonitor, .marketOverview, .marketBreadth, .optionsChain, .watchlist: return "MARKET"
         case .backtest, .monteCarlo, .technical, .statistics: return "TOOLS"
         case .settings: return "SETTINGS"
         }
@@ -112,7 +115,7 @@ struct Sidebar: View {
     @Binding var selectedItem: SidebarItem
 
     private let groups: [(String, [SidebarItem])] = [
-        ("DASHBOARD", [.marketOverview, .marketBreadth, .dashboard]),
+        ("DASHBOARD", [.globalMonitor, .marketOverview, .marketBreadth, .dashboard]),
         ("PORTFOLIO", [.portfolios, .transactions]),
         ("ANALYSIS", [.mpt, .valueAtRisk, .stressTest, .performance, .correlation, .optionsChain]),
         ("AI INSIGHTS", [.aiAdvisor, .sentiment, .forecast, .research]),

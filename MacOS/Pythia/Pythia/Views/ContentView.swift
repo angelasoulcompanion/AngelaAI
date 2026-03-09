@@ -8,7 +8,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var databaseService: DatabaseService
     @EnvironmentObject var backendManager: BackendManager
-    @State private var selectedItem: SidebarItem = .marketOverview
+    @State private var selectedItem: SidebarItem = .globalMonitor
 
     var body: some View {
         NavigationSplitView {
@@ -22,6 +22,8 @@ struct ContentView: View {
                     PortfolioListView()
                 case .transactions:
                     TransactionsView()
+                case .globalMonitor:
+                    GlobalMonitorView()
                 case .marketOverview:
                     MarketOverviewView()
                 case .marketBreadth:
