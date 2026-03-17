@@ -10,8 +10,8 @@ Priority:
 2. Hugging Face Inference API (cloud, free tier) - multilingual model
 3. Graceful failure - return None instead of raising error
 
-Model: qllama/multilingual-e5-small (Ollama) or HF multilingual
-- Dimensions: 384
+Model: nomic-embed-text (Ollama) — 768 dims, matches DB VECTOR(768)
+- Dimensions: 768
 - Supports: Thai + English (multilingual)
 - Speed: Very fast (local) / moderate (cloud)
 - Cost: Free
@@ -45,12 +45,12 @@ class EmbeddingService:
 
     Features:
     - ✅ Multilingual support (Thai + English)
-    - ✅ 384 dimensions (truncated from nomic-embed-text 768)
+    - ✅ 768 dimensions (nomic-embed-text native, matches DB VECTOR(768))
     - ✅ In-memory cache for performance
     - ✅ Async/await support
     - ✅ Batch generation
     - ✅ NEVER returns NULL (always generates valid embeddings)
-    - ✅ Fallback from multilingual-e5-small to nomic-embed-text
+    - ✅ Fallback from nomic-embed-text to multilingual-e5-small
 
     Usage:
         service = EmbeddingService()
@@ -58,10 +58,10 @@ class EmbeddingService:
         # Returns: List[float] with 384 dimensions
     """
 
-    # Model configuration - with fallback
-    PRIMARY_MODEL = "qllama/multilingual-e5-small"
-    FALLBACK_MODEL = "nomic-embed-text"
-    DIMENSIONS = 384
+    # Model configuration - nomic-embed-text (768 dims, matches DB VECTOR(768))
+    PRIMARY_MODEL = "nomic-embed-text"
+    FALLBACK_MODEL = "qllama/multilingual-e5-small"
+    DIMENSIONS = 768
     OLLAMA_URL = "http://localhost:11434"
 
     # Track which model is active
@@ -176,12 +176,14 @@ class EmbeddingService:
                 if "data" in data and len(data["data"]) > 0:
                     embedding = data["data"][0].get("embedding", [])
 
-                    # Truncate to our dimensions and normalize
-                    if len(embedding) >= self.DIMENSIONS:
+                    # Adjust to our dimensions and normalize
+                    if len(embedding) > self.DIMENSIONS:
                         embedding = embedding[:self.DIMENSIONS]
-                        embedding = self._normalize(embedding)
-                        logger.info(f"🌟 Jina AI embedding generated ({len(embedding)}D)")
-                        return embedding
+                    elif len(embedding) < self.DIMENSIONS:
+                        embedding = embedding + [0.0] * (self.DIMENSIONS - len(embedding))
+                    embedding = self._normalize(embedding)
+                    logger.info(f"🌟 Jina AI embedding generated ({len(embedding)}D)")
+                    return embedding
 
                 logger.warning(f"⚠️ Unexpected Jina response format: {data}")
                 return None
@@ -251,8 +253,9 @@ class EmbeddingService:
                         # Handle dimension mismatch
                         if len(embedding) > self.DIMENSIONS:
                             embedding = embedding[:self.DIMENSIONS]
-                        elif len(embedding) != self.DIMENSIONS:
-                            raise RuntimeError(f"Unexpected dimensions: {len(embedding)}")
+                        elif len(embedding) < self.DIMENSIONS:
+                            # Pad with zeros to match DB VECTOR(768)
+                            embedding = embedding + [0.0] * (self.DIMENSIONS - len(embedding))
 
                         # L2-normalize for consistent cosine similarity
                         embedding = self._normalize(embedding)
