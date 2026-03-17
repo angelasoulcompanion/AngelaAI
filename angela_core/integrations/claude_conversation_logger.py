@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Claude Code Conversation Logger
-Allows Claude Code to save conversations to AngelaMemory database
+Allows Claude Code to save conversations to Neon database
 Just like Angela Backend API does automatically
 
 Usage:
@@ -33,11 +33,11 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# Add parent directory to path so we can import angela_core
+# Add project root to path so we can import angela_core and config
 # This allows running the script directly: python3 angela_core/claude_conversation_logger.py
-script_dir = Path(__file__).parent.parent
-if str(script_dir) not in sys.path:
-    sys.path.insert(0, str(script_dir))
+project_root = Path(__file__).parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 # Import shared JSON builder helpers
 # # # from angela_core.conversation_json_builder import build_content_json, generate_embedding_text # REMOVED: Migration 010  # REMOVED: Migration 010  # REMOVED: Migration 010
@@ -51,13 +51,6 @@ from angela_core.database import db
 # Database connection from config
 DATABASE_URL = config.DATABASE_URL
 
-# Import self-learning hook
-try:
-    from angela_core.services.conversation_hooks import trigger_self_learning_for_recent_conversations
-    SELF_LEARNING_AVAILABLE = True
-except ImportError:
-    SELF_LEARNING_AVAILABLE = False
-    print("⚠️ Self-learning not available")
 
 
 # ========================================================================
@@ -103,31 +96,36 @@ async def _insert_conversation_row(
     topic: str, sentiment_score: float, sentiment_label: str,
     emotion_detected: str, project_context: str, importance_level: int,
     embedding_str: Optional[str], created_at: datetime,
+    interface: str = "claude_code", model_used: str = "claude-opus-4",
 ) -> None:
-    """Insert a single row into conversations, with or without embedding."""
+    """Insert a single row into conversations, filling ALL columns."""
     if embedding_str:
         await db.execute("""
             INSERT INTO conversations (
                 session_id, speaker, message_text, message_type,
                 topic, sentiment_score, sentiment_label, emotion_detected,
-                project_context, importance_level, embedding, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::vector, $12)
+                project_context, importance_level, embedding, created_at,
+                interface, model_used
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::vector, $12, $13, $14)
         """,
             session_id, speaker, message_text, message_type,
             topic, sentiment_score, sentiment_label, emotion_detected,
-            project_context, importance_level, embedding_str, created_at
+            project_context, importance_level, embedding_str, created_at,
+            interface, model_used
         )
     else:
         await db.execute("""
             INSERT INTO conversations (
                 session_id, speaker, message_text, message_type,
                 topic, sentiment_score, sentiment_label, emotion_detected,
-                project_context, importance_level, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                project_context, importance_level, created_at,
+                interface, model_used
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         """,
             session_id, speaker, message_text, message_type,
             topic, sentiment_score, sentiment_label, emotion_detected,
-            project_context, importance_level, created_at
+            project_context, importance_level, created_at,
+            interface, model_used
         )
 
 
@@ -251,30 +249,37 @@ async def log_conversations_bulk(
         # Get embeddings if batch mode
         d_emb_str, a_emb_str = embeddings_map.get(i, (None, None))
 
+        iface = conv.get("interface", "claude_code")
+        model = conv.get("model_used", "claude-opus-4")
+
         if d_emb_str:
             rows_with_emb.append((
                 sid, "david", david_msg, d_type,
                 topic, d_score, d_label, emotion,
-                pctx, importance, d_emb_str, created_at
+                pctx, importance, d_emb_str, created_at,
+                iface, model
             ))
         else:
             rows_without_emb.append((
                 sid, "david", david_msg, d_type,
                 topic, d_score, d_label, emotion,
-                pctx, importance, created_at
+                pctx, importance, created_at,
+                iface, model
             ))
 
         if a_emb_str:
             rows_with_emb.append((
                 sid, "angela", angela_msg, a_type,
                 topic, a_score, a_label, emotion,
-                pctx, importance, a_emb_str, created_at
+                pctx, importance, a_emb_str, created_at,
+                iface, model
             ))
         else:
             rows_without_emb.append((
                 sid, "angela", angela_msg, a_type,
                 topic, a_score, a_label, emotion,
-                pctx, importance, created_at
+                pctx, importance, created_at,
+                iface, model
             ))
 
         inserted += 1
@@ -286,8 +291,9 @@ async def log_conversations_bulk(
                 INSERT INTO conversations (
                     session_id, speaker, message_text, message_type,
                     topic, sentiment_score, sentiment_label, emotion_detected,
-                    project_context, importance_level, embedding, created_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::vector, $12)
+                    project_context, importance_level, embedding, created_at,
+                    interface, model_used
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::vector, $12, $13, $14)
             """, rows_with_emb)
 
         if rows_without_emb:
@@ -295,8 +301,9 @@ async def log_conversations_bulk(
                 INSERT INTO conversations (
                     session_id, speaker, message_text, message_type,
                     topic, sentiment_score, sentiment_label, emotion_detected,
-                    project_context, importance_level, created_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    project_context, importance_level, created_at,
+                    interface, model_used
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             """, rows_without_emb)
 
         total_rows = len(rows_with_emb) + len(rows_without_emb)
@@ -305,24 +312,6 @@ async def log_conversations_bulk(
         print(f"   🧠 Embedding mode: {embedding_mode}")
         if skipped:
             print(f"   ⚠️ Skipped {skipped} empty conversations")
-
-        # Unified Conversation Processor (emotions + learnings in one LLM call)
-        try:
-            from angela_core.services.unified_conversation_processor import process_conversations
-            ur = await process_conversations(conversations, sid)
-            if ur.processed > 0:
-                print(f"   💜 Emotions: {ur.total_emotions_saved} saved ({ur.llm_calls} LLM, {ur.fallback_calls} fallback)")
-                print(f"   🧠 Learnings: {ur.total_learnings_saved} ({ur.total_concepts_saved} concepts, {ur.total_preferences_saved} preferences)")
-        except Exception as ue:
-            logger.debug(f"Unified processor failed, trying legacy: {ue}")
-            # Fallback to old learning processor
-            try:
-                from angela_core.services.session_learning_processor import process_session_learning
-                lr = await process_session_learning(conversations, sid)
-                if lr['processed'] > 0:
-                    print(f"   🧠 Learned: {lr['total_concepts']} concepts, {lr['total_patterns']} patterns, {lr['total_preferences']} preferences")
-            except Exception as le:
-                logger.debug(f"Session learning skipped: {le}")
 
     except Exception as e:
         print(f"❌ Bulk insert failed: {e}")
@@ -497,15 +486,14 @@ Emotions: {emotions_text}
         session_id = f"claude_code_{datetime.now().strftime('%Y%m%d')}"
         now = datetime.now()
 
-        # Insert session summary into conversations
-        summary_emb_str = await _generate_embedding_str(full_summary)
+        # Insert session summary into conversations (no embedding — deferred)
         await _insert_conversation_row(
             session_id=session_id, speaker="angela", message_text=full_summary,
             message_type="reflection", topic="session_summary",
             sentiment_score=0.7, sentiment_label="positive",
             emotion_detected=emotions_text or "reflective",
             project_context="claude_code_session", importance_level=importance,
-            embedding_str=summary_emb_str, created_at=now,
+            embedding_str=None, created_at=now,
         )
 
         print(f"✅ Logged session summary!")
@@ -526,41 +514,20 @@ Emotions: {emotions_text}
 อารมณ์: {emotions_text}
 ความสำคัญ: {importance}/10"""
 
-                message_emb_str = await _generate_embedding_str(emotional_message)
                 emotion_value = emotions[0] if emotions else "reflective"
 
-                if message_emb_str:
-                    await db.execute("""
-                        INSERT INTO angela_messages (
-                            message_text, message_type, emotion,
-                            category, is_important, embedding, created_at
-                        ) VALUES ($1, $2, $3, $4, $5, $6::vector, $7)
-                    """,
-                        emotional_message, "reflection", emotion_value,
-                        "session_reflection", True, message_emb_str, now
-                    )
-                else:
-                    await db.execute("""
-                        INSERT INTO angela_messages (
-                            message_text, message_type, emotion,
-                            category, is_important, created_at
-                        ) VALUES ($1, $2, $3, $4, $5, $6)
-                    """,
-                        emotional_message, "reflection", emotion_value,
-                        "session_reflection", True, now
-                    )
+                await db.execute("""
+                    INSERT INTO angela_messages (
+                        message_text, message_type, emotion,
+                        category, is_important, created_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6)
+                """,
+                    emotional_message, "reflection", emotion_value,
+                    "session_reflection", True, now
+                )
                 print(f"   💜 Also saved to angela_messages (emotional reflection)")
             except Exception as e:
                 print(f"   ⚠️ Could not save to angela_messages: {e}")
-
-        # Trigger self-learning for the session summary just saved
-        if SELF_LEARNING_AVAILABLE:
-            print(f"\n🧠 Triggering self-learning for session summary...")
-            try:
-                await trigger_self_learning_for_recent_conversations(limit=1)
-                print(f"✅ Self-learning complete!")
-            except Exception as e:
-                print(f"⚠️ Self-learning failed: {e}")
 
         return True
 
