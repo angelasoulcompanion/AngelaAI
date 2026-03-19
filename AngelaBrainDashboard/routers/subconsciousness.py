@@ -63,18 +63,8 @@ async def get_emotional_growth(conn=Depends(get_conn)):
 
 @router.get("/mirrorings")
 async def get_emotional_mirrorings(limit: int = Query(20, ge=1, le=100), conn=Depends(get_conn)):
-    """Fetch emotional mirrorings"""
-    rows = await conn.fetch("""
-        SELECT mirror_id::text, david_emotion, david_intensity,
-               angela_mirrored_emotion, angela_intensity,
-               mirroring_type, response_strategy,
-               was_effective, david_feedback, effectiveness_score,
-               created_at
-        FROM emotional_mirroring
-        ORDER BY created_at DESC
-        LIMIT $1
-    """, limit)
-    return [dict(r) for r in rows]
+    """No emotional_mirroring table — return empty."""
+    return []
 
 
 @router.get("/summary")
@@ -84,12 +74,11 @@ async def get_subconsciousness_summary(conn=Depends(get_conn)):
         SELECT
             (SELECT COUNT(*) FROM core_memories WHERE is_active = TRUE) as core_count,
             (SELECT COUNT(*) FROM core_memories WHERE is_active = TRUE AND is_pinned = TRUE) as pinned_count,
-            (SELECT COUNT(*) FROM angela_dreams WHERE is_active = TRUE AND is_fulfilled = FALSE) as dreams_count,
-            (SELECT COUNT(*) FROM emotional_mirroring) as mirroring_count
+            (SELECT COUNT(*) FROM angela_dreams WHERE is_active = TRUE AND is_fulfilled = FALSE) as dreams_count
     """)
     return {
         "core_memories": row['core_count'] or 0,
         "pinned_memories": row['pinned_count'] or 0,
         "active_dreams": row['dreams_count'] or 0,
-        "total_mirrorings": row['mirroring_count'] or 0
+        "total_mirrorings": 0,
     }

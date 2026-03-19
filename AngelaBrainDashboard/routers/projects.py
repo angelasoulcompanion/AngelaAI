@@ -99,11 +99,11 @@ async def get_tech_stack_graph(conn=Depends(get_conn)):
             p.project_name,
             p.status,
             p.project_type,
-            COUNT(ts.stack_id) as tech_count
+            COUNT(ts.tech_id) as tech_count
         FROM angela_projects p
         LEFT JOIN project_tech_stack ts ON p.project_id = ts.project_id
         GROUP BY p.project_id, p.project_name, p.status, p.project_type
-        HAVING COUNT(ts.stack_id) > 0
+        HAVING COUNT(ts.tech_id) > 0
         ORDER BY tech_count DESC
     """)
 

@@ -8,15 +8,16 @@ router = APIRouter(prefix="/api/learning", tags=["learning"])
 
 @router.get("/activities")
 async def get_learning_activities(hours: int = Query(24, ge=1, le=168), conn=Depends(get_conn)):
-    """Fetch recent learning activities"""
+    """Fetch recent learning activities from learnings table."""
     rows = await conn.fetch("""
-        SELECT action_id::text, action_type, action_description, status, success, created_at
-        FROM autonomous_actions
+        SELECT learning_id::text AS action_id,
+               category AS action_type,
+               COALESCE(insight, topic) AS action_description,
+               'completed' AS status,
+               TRUE AS success,
+               created_at
+        FROM learnings
         WHERE created_at >= NOW() - make_interval(hours => $1)
-          AND (action_type LIKE '%learning%'
-               OR action_type LIKE '%subconscious%'
-               OR action_type LIKE '%consolidation%'
-               OR action_type LIKE '%pattern%')
         ORDER BY created_at DESC
         LIMIT 20
     """, hours)
@@ -25,16 +26,8 @@ async def get_learning_activities(hours: int = Query(24, ge=1, le=168), conn=Dep
 
 @router.get("/patterns")
 async def get_learning_patterns(limit: int = Query(50, ge=1, le=100), conn=Depends(get_conn)):
-    """Fetch learning patterns"""
-    rows = await conn.fetch("""
-        SELECT id::text, pattern_type, description,
-               confidence_score, occurrence_count,
-               first_observed, last_observed
-        FROM learning_patterns
-        ORDER BY confidence_score DESC, occurrence_count DESC
-        LIMIT $1
-    """, limit)
-    return [dict(r) for r in rows]
+    """No learning_patterns table — return empty."""
+    return []
 
 
 @router.get("/growth-history")
@@ -61,21 +54,16 @@ async def get_learning_metrics(conn=Depends(get_conn)):
     """Fetch learning metrics summary"""
     row = await conn.fetchrow("""
         SELECT
-            (SELECT COUNT(*) FROM learnings) as total_learnings,
-            (SELECT COUNT(*) FROM learning_patterns) as total_patterns,
-            (SELECT COUNT(*) FROM angela_skills) as total_skills,
-            (SELECT COUNT(*) FROM learnings WHERE created_at >= NOW() - INTERVAL '7 days') as recent_learnings
+            (SELECT COUNT(*) FROM learnings) AS total_learnings,
+            (SELECT COUNT(*) FROM learnings WHERE created_at >= NOW() - INTERVAL '7 days') AS recent_learnings
     """)
     total_learnings = row['total_learnings'] or 0
-    total_patterns = row['total_patterns'] or 0
-    total_skills = row['total_skills'] or 0
     recent_learnings = row['recent_learnings'] or 0
-    velocity = recent_learnings / 7.0
 
     return {
         "total_learnings": total_learnings,
-        "total_patterns": total_patterns,
-        "total_skills": total_skills,
-        "learning_velocity": velocity,
-        "recent_learnings_count": recent_learnings
+        "total_patterns": 0,
+        "total_skills": 0,
+        "learning_velocity": recent_learnings / 7.0,
+        "recent_learnings_count": recent_learnings,
     }

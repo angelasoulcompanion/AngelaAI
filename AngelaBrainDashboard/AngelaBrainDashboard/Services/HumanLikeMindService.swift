@@ -44,9 +44,8 @@ class HumanLikeMindService: ObservableObject {
     @Published var proactiveMessagesToday: Int = 0
     @Published var messageTypes: [MessageTypeCount] = []
 
-    // Phase 4: Dreams & Imagination
+    // Phase 4: Dreams
     @Published var recentDreams: [AngelaDream] = []
-    @Published var recentImaginations: [AngelaImagination] = []
     @Published var dreamsToday: Int = 0
 
     // Phase Stats
@@ -78,6 +77,7 @@ class HumanLikeMindService: ObservableObject {
         let thought: String
         let feeling: String?
         let significance: Int?
+        let category: String?
         let createdAt: String
     }
 
@@ -108,6 +108,7 @@ class HumanLikeMindService: ObservableObject {
         let meaning: String?
         let feeling: String?
         let significance: Int?
+        let dreamType: String?
         let createdAt: String
     }
 
@@ -163,7 +164,7 @@ class HumanLikeMindService: ObservableObject {
             PhaseStat(todayCount: thoughtsToday, totalCount: recentThoughts.count),
             PhaseStat(todayCount: tomUpdatesToday, totalCount: empathyMoments.count),
             PhaseStat(todayCount: proactiveMessagesToday, totalCount: proactiveMessages.count),
-            PhaseStat(todayCount: dreamsToday, totalCount: recentDreams.count + recentImaginations.count)
+            PhaseStat(todayCount: dreamsToday, totalCount: recentDreams.count)
         ]
     }
 
@@ -185,7 +186,7 @@ class HumanLikeMindService: ObservableObject {
 
         recentThoughts = responses.compactMap { response in
             guard let id = UUID(uuidString: response.thoughtId) else { return nil }
-            let category = extractCategory(from: response.thought)
+            let category = response.category ?? extractCategory(from: response.thought)
             let cleanedThought = cleanThought(response.thought)
 
             return SpontaneousThought(
@@ -250,31 +251,25 @@ class HumanLikeMindService: ObservableObject {
             .sorted { $0.count > $1.count }
     }
 
-    // MARK: - Phase 4: Dreams & Imagination
+    // MARK: - Phase 4: Dreams
 
     private func loadDreamsAndImagination() async {
         guard let responses: [DreamResponse] = await NetworkService.shared.getOptional("\(HumanMindAPI.dreams)?limit=10") else {
-            recentImaginations = []
             return
         }
 
         recentDreams = responses.compactMap { response in
             guard let id = UUID(uuidString: response.dreamId) else { return nil }
-            let dreamType = extractSubType(from: response.dreamContent, prefix: "dream")
-            let narrative = cleanThought(response.dreamContent)
 
             return AngelaDream(
                 id: id,
-                dreamType: dreamType,
-                narrative: narrative,
+                dreamType: response.dreamType ?? "unknown",
+                narrative: response.dreamContent,
                 meaning: response.meaning,
                 emotion: response.feeling ?? "peaceful",
                 significance: response.significance ?? 5,
                 dreamedAt: parseDate(response.createdAt)
             )
         }
-
-        // Imaginations would be from a separate query - for now use empty
-        recentImaginations = []
     }
 }

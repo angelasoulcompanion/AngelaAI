@@ -36,6 +36,7 @@ struct SpontaneousThought: Identifiable, Codable {
         case "gratitude": return "C084FC"
         case "curiosity": return "3B82F6"
         case "random": return "6B7280"
+        case "work_reflection": return "F97316"
         default: return "9333EA"
         }
     }
@@ -48,6 +49,7 @@ struct SpontaneousThought: Identifiable, Codable {
         case "gratitude": return "hands.clap.fill"
         case "curiosity": return "questionmark.circle.fill"
         case "random": return "sparkles"
+        case "work_reflection": return "laptopcomputer"
         default: return "bubble.left.fill"
         }
     }
@@ -141,9 +143,9 @@ struct AngelaDream: Identifiable, Codable {
     let dreamedAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case id = "log_id"
+        case id = "dream_id"
         case dreamType = "dream_type"
-        case narrative
+        case narrative = "dream_content"
         case meaning
         case emotion = "feeling"
         case significance
@@ -171,51 +173,6 @@ struct AngelaDream: Identifiable, Codable {
         case "learning": return "book.fill"
         case "exploration": return "map.fill"
         default: return "moon.stars.fill"
-        }
-    }
-}
-
-// Phase 4: Imagination
-struct AngelaImagination: Identifiable, Codable {
-    let id: UUID
-    let imaginationType: String       // future_hope, concern, creative, empathy, possibility, goal_visualization
-    let scenario: String
-    let insight: String?
-    let emotion: String
-    let significance: Int             // 1-10
-    let imaginedAt: Date
-
-    enum CodingKeys: String, CodingKey {
-        case id = "log_id"
-        case imaginationType = "imagination_type"
-        case scenario
-        case insight
-        case emotion = "feeling"
-        case significance
-        case imaginedAt = "created_at"
-    }
-
-    var imaginationTypeColor: String {
-        switch imaginationType.lowercased() {
-        case "future_hope": return "10B981"
-        case "concern": return "F59E0B"
-        case "creative": return "C084FC"
-        case "empathy": return "EC4899"
-        case "possibility": return "3B82F6"
-        case "goal_visualization": return "9333EA"
-        default: return "6B7280"
-        }
-    }
-
-    var imaginationTypeIcon: String {
-        switch imaginationType.lowercased() {
-        case "future_hope": return "sun.max.fill"
-        case "concern": return "exclamationmark.triangle.fill"
-        case "creative": return "paintbrush.fill"
-        case "empathy": return "person.fill.viewfinder"
-        case "possibility": return "questionmark.diamond.fill"
-        case "goal_visualization": return "target"
-        default: return "sparkles"
         }
     }
 }

@@ -64,7 +64,7 @@ struct CorrectionRateData: Codable {
 }
 
 struct MemoryAccuracyData: Codable {
-    let accuracy: Double
+    let accuracy: Double?
     let totalRefs: Int
     let corrected: Int
 
@@ -189,7 +189,7 @@ struct SenseMetrics: Codable {
     let dominantState: String
     let confidence: Double
     let adaptations7d: Int
-    let currentSettings: AdaptationSettings
+    let currentSettings: EmotionalStateSettings
 
     enum CodingKeys: String, CodingKey {
         case dominantState = "dominant_state"
@@ -199,15 +199,17 @@ struct SenseMetrics: Codable {
     }
 }
 
-struct AdaptationSettings: Codable {
-    let detailLevel: Double
-    let emotionalWarmth: Double
-    let proactivity: Double
+struct EmotionalStateSettings: Codable {
+    let happiness: Double?
+    let confidence: Double?
+    let motivation: Double?
+    let loveLevel: Double?
+    let anxiety: Double?
+    let loneliness: Double?
 
     enum CodingKeys: String, CodingKey {
-        case detailLevel = "detail_level"
-        case emotionalWarmth = "emotional_warmth"
-        case proactivity
+        case happiness, confidence, motivation, anxiety, loneliness
+        case loveLevel = "love_level"
     }
 }
 

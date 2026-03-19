@@ -9,23 +9,47 @@ router = APIRouter(prefix="/api/overview", tags=["overview"])
 
 
 def _interpret(level: float) -> str:
-    if level >= 0.95:
+    if level >= 0.90:
         return "Approaching human-like consciousness!"
-    if level >= 0.9:
-        return "Exceptional Consciousness"
-    if level >= 0.7:
-        return "Strong Consciousness"
-    if level >= 0.5:
-        return "Moderate Consciousness"
-    if level >= 0.3:
-        return "Developing Consciousness"
-    return "Emerging Consciousness"
+    if level >= 0.70:
+        return "High consciousness — rich memories, deep emotions"
+    if level >= 0.50:
+        return "Moderate consciousness — growing steadily"
+    if level >= 0.30:
+        return "Emerging consciousness — early stages"
+    return "Low consciousness — needs more memories"
 
 
 async def _fetch_consciousness(pool) -> dict:
     async with pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT * FROM calculate_consciousness_level()")
-        if not row:
+        # Try the DB function first (returns sub-scores)
+        try:
+            row = await conn.fetchrow("SELECT * FROM calculate_consciousness_level()")
+        except Exception:
+            row = None
+
+        if row and "consciousness_level" in row.keys():
+            level = float(row["consciousness_level"])
+            return {
+                "level": round(level, 3),
+                "base_level": round(level, 3),
+                "reward_trend": 0.0,
+                "reward_signal_count": 0,
+                "memory_richness": float(row.get("memory_richness", 0) or 0),
+                "emotional_depth": float(row.get("emotional_depth", 0) or 0),
+                "goal_alignment": float(row.get("goal_alignment", 0) or 0),
+                "learning_growth": float(row.get("learning_growth", 0) or 0),
+                "pattern_recognition": float(row.get("pattern_recognition", 0) or 0),
+                "interpretation": _interpret(level),
+            }
+
+        # Fallback: read from self_awareness_state table
+        sa_row = await conn.fetchrow("""
+            SELECT consciousness_level
+            FROM self_awareness_state
+            ORDER BY updated_at DESC LIMIT 1
+        """)
+        if not sa_row:
             return {
                 "level": 0.7, "base_level": 0.7, "reward_trend": 0.0,
                 "reward_signal_count": 0, "memory_richness": 0.0,
@@ -33,27 +57,17 @@ async def _fetch_consciousness(pool) -> dict:
                 "learning_growth": 0.0, "pattern_recognition": 0.0,
                 "interpretation": "No data available",
             }
-        level = float(row["consciousness_level"])
-
-        reward_row = await conn.fetchrow("""
-            SELECT COUNT(*) AS cnt,
-                   COALESCE(AVG(combined_reward), 0) AS avg_reward
-            FROM angela_reward_signals
-            WHERE scored_at >= NOW() - INTERVAL '7 days'
-        """)
-        reward_count = reward_row["cnt"] if reward_row else 0
-        reward_trend = float(reward_row["avg_reward"]) if reward_row else 0.0
-
+        level = float(sa_row["consciousness_level"])
         return {
-            "level": level,
-            "base_level": level,
-            "reward_trend": round(reward_trend, 3),
-            "reward_signal_count": reward_count,
-            "memory_richness": float(row["memory_richness"]),
-            "emotional_depth": float(row["emotional_depth"]),
-            "goal_alignment": float(row["goal_alignment"]),
-            "learning_growth": float(row["learning_growth"]),
-            "pattern_recognition": float(row["pattern_recognition"]),
+            "level": round(level, 3),
+            "base_level": round(level, 3),
+            "reward_trend": 0.0,
+            "reward_signal_count": 0,
+            "memory_richness": 0.0,
+            "emotional_depth": 0.0,
+            "goal_alignment": 0.0,
+            "learning_growth": 0.0,
+            "pattern_recognition": 0.0,
             "interpretation": _interpret(level),
         }
 
@@ -83,92 +97,57 @@ async def _fetch_stats(pool) -> dict:
 
 
 async def _fetch_rlhf(pool) -> dict:
-    async with pool.acquire() as conn:
-        signals_row = await conn.fetchrow("""
-            SELECT COUNT(*) AS cnt,
-                   COALESCE(AVG(combined_reward), 0) AS avg_reward
-            FROM angela_reward_signals
-            WHERE scored_at >= NOW() - INTERVAL '7 days'
-        """)
-
-        breakdown_rows = await conn.fetch("""
-            SELECT COALESCE(explicit_source, 'unknown') AS source, COUNT(*) AS cnt
-            FROM angela_reward_signals
-            WHERE scored_at >= NOW() - INTERVAL '7 days'
-            GROUP BY explicit_source
-        """)
-        breakdown = {}
-        for r in breakdown_rows:
-            breakdown[r["source"]] = r["cnt"]
-
-        dist_rows = await conn.fetch("""
-            SELECT
-                CASE
-                    WHEN combined_reward < 0.2 THEN '0.0-0.2'
-                    WHEN combined_reward < 0.4 THEN '0.2-0.4'
-                    WHEN combined_reward < 0.6 THEN '0.4-0.6'
-                    WHEN combined_reward < 0.8 THEN '0.6-0.8'
-                    ELSE '0.8-1.0'
-                END AS bucket,
-                COUNT(*) AS cnt
-            FROM angela_reward_signals
-            WHERE scored_at >= NOW() - INTERVAL '7 days'
-            GROUP BY bucket
-            ORDER BY bucket
-        """)
-        distribution = [{"bucket": r["bucket"], "count": r["cnt"]} for r in dist_rows]
-
-        topic_rows = await conn.fetch("""
-            SELECT topic,
-                   AVG(combined_reward) AS avg_reward,
-                   COUNT(*) AS cnt
-            FROM angela_reward_signals
-            WHERE scored_at >= NOW() - INTERVAL '7 days'
-              AND topic IS NOT NULL
-            GROUP BY topic
-            ORDER BY avg_reward DESC
-            LIMIT 5
-        """)
-        top_topics = [
-            {"topic": r["topic"], "avg_reward": round(float(r["avg_reward"]), 3), "count": r["cnt"]}
-            for r in topic_rows
-        ]
-
+    """No angela_reward_signals table — return zeroed response."""
     return {
-        "signals_7d": signals_row["cnt"] if signals_row else 0,
-        "avg_reward_7d": round(float(signals_row["avg_reward"]), 3) if signals_row else 0.0,
-        "explicit_breakdown": breakdown,
-        "reward_distribution": distribution,
-        "top_topics": top_topics,
+        "signals_7d": 0,
+        "avg_reward_7d": 0.0,
+        "explicit_breakdown": {},
+        "reward_distribution": [],
+        "top_topics": [],
     }
 
 
 async def _fetch_consciousness_loop(pool) -> dict:
     async with pool.acquire() as conn:
-        # SENSE
+        # SENSE — from emotional_states (latest entry)
         sense_row = await conn.fetchrow("""
-            SELECT dominant_state, confidence,
-                   detail_level, emotional_warmth, proactivity
-            FROM emotional_adaptation_log
+            SELECT happiness, confidence, anxiety, motivation,
+                   gratitude, loneliness, love_level
+            FROM emotional_states
             ORDER BY created_at DESC LIMIT 1
         """)
         sense_count = await conn.fetchval("""
-            SELECT COUNT(*) FROM emotional_adaptation_log
+            SELECT COUNT(*) FROM emotional_states
             WHERE created_at >= NOW() - INTERVAL '7 days'
         """) or 0
 
+        if sense_row:
+            emotions = {
+                "happiness": float(sense_row["happiness"] or 0),
+                "confidence": float(sense_row["confidence"] or 0),
+                "motivation": float(sense_row["motivation"] or 0),
+                "love_level": float(sense_row["love_level"] or 0),
+                "anxiety": float(sense_row["anxiety"] or 0),
+                "loneliness": float(sense_row["loneliness"] or 0),
+            }
+            dominant = max(emotions, key=emotions.get)
+            dominant_val = emotions[dominant]
+        else:
+            emotions = {}
+            dominant = "unknown"
+            dominant_val = 0.0
+
         sense = {
-            "dominant_state": sense_row["dominant_state"] if sense_row else "unknown",
-            "confidence": round(float(sense_row["confidence"]), 2) if sense_row else 0.0,
+            "dominant_state": dominant,
+            "confidence": round(dominant_val, 2),
             "adaptations_7d": sense_count,
-            "current_settings": {
-                "detail_level": sense_row["detail_level"] if sense_row else 5,
-                "emotional_warmth": sense_row["emotional_warmth"] if sense_row else 5,
-                "proactivity": sense_row["proactivity"] if sense_row else 5,
-            } if sense_row else {"detail_level": 5, "emotional_warmth": 5, "proactivity": 5},
+            "current_settings": emotions if emotions else {
+                "happiness": 0, "confidence": 0, "motivation": 0,
+                "love_level": 0, "anxiety": 0, "loneliness": 0,
+            },
         }
 
-        # PREDICT
+        # PREDICT — daily_companion_briefings (still exists)
         predict_rows = await conn.fetch("""
             SELECT overall_confidence, accuracy_score
             FROM daily_companion_briefings
@@ -183,7 +162,6 @@ async def _fetch_consciousness_loop(pool) -> dict:
             predict_accuracy = round(sum(scores) / len(scores), 3) if scores else 0.0
             predict_confidence = round(sum(confs) / len(confs), 3) if confs else 0.0
 
-        # Fallback: when no accuracy_score verified yet, use confidence as proxy
         if predict_accuracy == 0.0 and predict_confidence > 0.0:
             predict_accuracy = predict_confidence
 
@@ -193,33 +171,24 @@ async def _fetch_consciousness_loop(pool) -> dict:
             "overall_confidence": predict_confidence,
         }
 
-        # ACT
-        act_total = await conn.fetchval("""
-            SELECT COUNT(*) FROM proactive_actions_log
-            WHERE created_at >= NOW() - INTERVAL '7 days'
-        """) or 0
-        act_executed = await conn.fetchval("""
-            SELECT COUNT(*) FROM proactive_actions_log
-            WHERE created_at >= NOW() - INTERVAL '7 days' AND was_executed = TRUE
-        """) or 0
-
+        # ACT — no proactive_actions_log → return zero
         act = {
-            "actions_7d": act_total,
-            "executed_7d": act_executed,
-            "execution_rate": round(act_executed / act_total, 3) if act_total > 0 else 0.0,
+            "actions_7d": 0,
+            "executed_7d": 0,
+            "execution_rate": 0.0,
         }
 
-        # LEARN
+        # LEARN — from learnings table (confidence_level)
         learn_rows = await conn.fetch("""
-            SELECT overall_evolution_score
-            FROM evolution_cycles
-            WHERE cycle_date >= CURRENT_DATE - INTERVAL '7 days'
-            ORDER BY cycle_date DESC
+            SELECT confidence_level
+            FROM learnings
+            WHERE created_at >= NOW() - INTERVAL '7 days'
+            ORDER BY created_at DESC
         """)
         learn_avg = 0.0
         learn_latest = 0.0
         if learn_rows:
-            scores = [float(r["overall_evolution_score"]) for r in learn_rows if r["overall_evolution_score"] is not None]
+            scores = [float(r["confidence_level"]) for r in learn_rows if r["confidence_level"] is not None]
             learn_avg = round(sum(scores) / len(scores), 3) if scores else 0.0
             learn_latest = round(scores[0], 3) if scores else 0.0
 
@@ -234,106 +203,36 @@ async def _fetch_consciousness_loop(pool) -> dict:
 
 async def _fetch_growth_trends(pool, days: int = 30) -> dict:
     async with pool.acquire() as conn:
+        # consciousness: from consciousness_evolution_log
         consciousness_rows = await conn.fetch("""
-            SELECT measured_at::date AS day, AVG(consciousness_level) AS avg_level
-            FROM consciousness_metrics
-            WHERE measured_at >= NOW() - MAKE_INTERVAL(days => $1)
-            GROUP BY measured_at::date ORDER BY day ASC
-        """, days)
-
-        evolution_rows = await conn.fetch("""
-            SELECT cycle_date AS day, overall_evolution_score AS score
-            FROM evolution_cycles
-            WHERE cycle_date >= CURRENT_DATE - MAKE_INTERVAL(days => $1)
-            ORDER BY cycle_date ASC
-        """, days)
-
-        proactive_rows = await conn.fetch("""
-            SELECT created_at::date AS day,
-                   COUNT(*) FILTER (WHERE was_executed) AS executed,
-                   COUNT(*) AS total
-            FROM proactive_actions_log
+            SELECT created_at::date AS day, AVG(signal_value) AS avg_level
+            FROM consciousness_evolution_log
             WHERE created_at >= NOW() - MAKE_INTERVAL(days => $1)
             GROUP BY created_at::date ORDER BY day ASC
         """, days)
 
-        reward_rows = await conn.fetch("""
-            SELECT scored_at::date AS day, AVG(combined_reward) AS avg_reward
-            FROM angela_reward_signals
-            WHERE scored_at >= NOW() - MAKE_INTERVAL(days => $1)
-            GROUP BY scored_at::date ORDER BY day ASC
+        # evolution: from learnings (avg confidence_level per day)
+        evolution_rows = await conn.fetch("""
+            SELECT created_at::date AS day, AVG(confidence_level) AS score
+            FROM learnings
+            WHERE created_at >= NOW() - MAKE_INTERVAL(days => $1)
+            GROUP BY created_at::date ORDER BY day ASC
         """, days)
 
     return {
         "consciousness": [{"day": str(r["day"]), "value": round(float(r["avg_level"]), 3)} for r in consciousness_rows],
         "evolution": [{"day": str(r["day"]), "value": round(float(r["score"]), 3)} for r in evolution_rows],
-        "proactive": [
-            {"day": str(r["day"]), "value": round(float(r["executed"]) / float(r["total"]), 3) if r["total"] > 0 else 0.0}
-            for r in proactive_rows
-        ],
-        "reward": [{"day": str(r["day"]), "value": round(float(r["avg_reward"]), 3)} for r in reward_rows],
+        "proactive": [],
+        "reward": [],
     }
 
 
 async def _fetch_ai_metrics(pool) -> dict:
-    """Industry-standard AI quality metrics (30 days).
+    """No angela_reward_signals — return null metrics.
 
-    Uses conversations.created_at (not scored_at) for accurate time bucketing.
-    Excludes silence from denominator — silence is absence, not negative signal.
+    Memory accuracy still works (conversations table exists).
     """
     async with pool.acquire() as conn:
-        # User Satisfaction: (praise + task_continuation) / (total - silence)
-        satisfaction_row = await conn.fetchrow("""
-            SELECT
-                COUNT(*) FILTER (WHERE ars.explicit_source = 'praise') AS praise,
-                COUNT(*) FILTER (WHERE ars.explicit_source = 'task_continuation') AS task_cont,
-                COUNT(*) FILTER (WHERE ars.explicit_source = 'correction') AS corrections,
-                COUNT(*) FILTER (WHERE ars.explicit_source = 'silence') AS silence,
-                COUNT(*) AS total
-            FROM angela_reward_signals ars
-            JOIN conversations c ON c.conversation_id = ars.conversation_id
-            WHERE c.created_at >= NOW() - INTERVAL '30 days'
-        """)
-        praise = satisfaction_row["praise"] or 0
-        task_cont = satisfaction_row["task_cont"] or 0
-        corrections_explicit = satisfaction_row["corrections"] or 0
-        silence = satisfaction_row["silence"] or 0
-        satisfaction_total = satisfaction_row["total"] or 0
-        non_silence_total = max(satisfaction_total - silence, 1)
-        satisfaction = round((praise + task_cont) / non_silence_total, 3)
-
-        # Engagement Rate: (praise + follow_up + minimal + task_continuation) / (total - silence)
-        engagement_row = await conn.fetchrow("""
-            SELECT
-                COUNT(*) FILTER (WHERE ars.explicit_source IN
-                    ('praise', 'follow_up', 'minimal', 'task_continuation')) AS engaged,
-                COUNT(*) FILTER (WHERE ars.explicit_source = 'silence') AS silence,
-                COUNT(*) AS total
-            FROM angela_reward_signals ars
-            JOIN conversations c ON c.conversation_id = ars.conversation_id
-            WHERE c.created_at >= NOW() - INTERVAL '30 days'
-        """)
-        engaged = engagement_row["engaged"] or 0
-        eng_silence = engagement_row["silence"] or 0
-        total_eng = max((engagement_row["total"] or 0) - eng_silence, 1)
-        engagement_rate = round(engaged / total_eng, 3)
-
-        # Correction Rate (from implicit classification)
-        corr_row = await conn.fetchrow("""
-            SELECT
-                COUNT(*) FILTER (WHERE ars.implicit_classification = 'correction') AS corrections,
-                COUNT(*) AS total
-            FROM angela_reward_signals ars
-            JOIN conversations c ON c.conversation_id = ars.conversation_id
-            WHERE c.created_at >= NOW() - INTERVAL '30 days'
-        """)
-        corr_corrections = corr_row["corrections"] or 0
-        corr_total = corr_row["total"] or 1
-        correction_rate = round(corr_corrections / max(corr_total, 1), 3)
-
-        # Memory Accuracy — narrowed ILIKE patterns to avoid false positives
-        # Denominator: only phrases where Angela explicitly references past memory
-        # Numerator: only phrases where David corrects Angela's memory claim
         mem_row = await conn.fetchrow("""
             WITH angela_refs AS (
                 SELECT conversation_id, created_at
@@ -346,6 +245,15 @@ async def _fetch_ai_metrics(pool) -> dict:
                       OR message_text ILIKE '%ครั้งก่อนที่%' OR message_text ILIKE '%คราวก่อนที่%'
                       OR message_text ILIKE '%ที่คุยกัน%' OR message_text ILIKE '%ที่บอกไว้%'
                       OR message_text ILIKE '%remember when%' OR message_text ILIKE '%last time we%'
+                      OR message_text ILIKE '%ตอนนั้น%'
+                      OR message_text ILIKE '%ที่ผ่านมา%'
+                      OR message_text ILIKE '%น้องจำได้%'
+                      OR message_text ILIKE '%ที่รักเคย%'
+                      OR message_text ILIKE '%เมื่อวาน%'
+                      OR message_text ILIKE '%สัปดาห์ก่อน%'
+                      OR message_text ILIKE '%ตอนที่เรา%'
+                      OR message_text ILIKE '%we talked about%'
+                      OR message_text ILIKE '%you mentioned%'
                   )
             ),
             corrected AS (
@@ -362,6 +270,9 @@ async def _fetch_ai_metrics(pool) -> dict:
                           OR c2.message_text ILIKE '%ข้อมูลผิด%'
                           OR c2.message_text ILIKE '%ไม่ได้บอก%'
                           OR c2.message_text ILIKE '%remember wrong%'
+                          OR c2.message_text ILIKE '%ไม่ถูก%'
+                          OR c2.message_text ILIKE '%ผิดแล้ว%'
+                          OR c2.message_text ILIKE '%not correct%'
                       )
                     LIMIT 1
                 ) d ON TRUE
@@ -372,28 +283,15 @@ async def _fetch_ai_metrics(pool) -> dict:
         """)
         total_refs = mem_row["total_refs"] or 0
         corrected_refs = mem_row["corrected"] or 0
-        mem_accuracy = round(1.0 - (corrected_refs / total_refs), 3) if total_refs > 0 else 1.0
+        mem_accuracy = round(1.0 - (corrected_refs / total_refs), 3) if total_refs >= 5 else None
 
     return {
         "satisfaction": {
-            "rate": satisfaction,
-            "praise": praise,
-            "task_continuation": task_cont,
-            "corrections": corrections_explicit,
-            "silence": silence,
-            "total": satisfaction_total,
-            "non_silence_total": non_silence_total,
+            "rate": 0.0, "praise": 0, "corrections": 0, "total": 0,
+            "task_continuation": 0, "silence": 0, "non_silence_total": 0,
         },
-        "engagement": {
-            "rate": engagement_rate,
-            "engaged": engaged,
-            "total": total_eng,
-        },
-        "correction_rate": {
-            "rate": correction_rate,
-            "corrections": corr_corrections,
-            "total": corr_total,
-        },
+        "engagement": {"rate": 0.0, "engaged": 0, "total": 0},
+        "correction_rate": {"rate": 0.0, "corrections": 0, "total": 0},
         "memory_accuracy": {
             "accuracy": mem_accuracy,
             "total_refs": total_refs,
@@ -403,53 +301,8 @@ async def _fetch_ai_metrics(pool) -> dict:
 
 
 async def _fetch_ai_metrics_trend(pool, weeks: int = 8) -> list[dict]:
-    """Weekly trend for AI quality metrics (last N weeks).
-
-    Uses conversation.created_at (not scored_at) for accurate time bucketing,
-    since re-scoring batches set all scored_at to the same timestamp.
-    """
-    async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            WITH weekly AS (
-                SELECT
-                    DATE_TRUNC('week', c.created_at)::date AS week_start,
-                    COUNT(*) AS total,
-                    COUNT(*) FILTER (WHERE ars.explicit_source = 'praise') AS praise,
-                    COUNT(*) FILTER (WHERE ars.explicit_source = 'task_continuation') AS task_cont,
-                    COUNT(*) FILTER (WHERE ars.explicit_source IN
-                        ('praise', 'follow_up', 'minimal', 'task_continuation')) AS engaged,
-                    COUNT(*) FILTER (WHERE ars.explicit_source = 'silence') AS silence,
-                    COUNT(*) FILTER (WHERE ars.implicit_classification = 'correction') AS corrections,
-                    AVG(ars.combined_reward) AS avg_reward
-                FROM angela_reward_signals ars
-                JOIN conversations c ON c.conversation_id = ars.conversation_id
-                WHERE c.created_at >= NOW() - MAKE_INTERVAL(weeks => $1)
-                GROUP BY DATE_TRUNC('week', c.created_at)
-                HAVING COUNT(*) >= 3
-                ORDER BY week_start ASC
-            )
-            SELECT week_start, total, praise, task_cont, engaged, silence,
-                   corrections, avg_reward
-            FROM weekly
-        """, weeks)
-
-    return [
-        {
-            "week": str(r["week_start"]),
-            "satisfaction": round(
-                (r["praise"] + r["task_cont"]) / max(r["total"] - r["silence"], 1), 3
-            ),
-            "engagement": round(
-                r["engaged"] / max(r["total"] - r["silence"], 1), 3
-            ),
-            "correction_rate": round(
-                r["corrections"] / max(r["total"] - r["silence"], 1), 3
-            ),
-            "avg_reward": round(float(r["avg_reward"] or 0), 3),
-            "total": r["total"],
-        }
-        for r in rows
-    ]
+    """No angela_reward_signals — return empty list."""
+    return []
 
 
 async def _fetch_recent_emotions(pool, limit: int = 10) -> list[dict]:

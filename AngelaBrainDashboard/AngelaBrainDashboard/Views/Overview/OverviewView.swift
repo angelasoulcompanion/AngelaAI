@@ -65,12 +65,17 @@ private enum Benchmark {
         return ("D", DT.rose)
     }
 
-    static func overallGrade(sat: Double, eng: Double, corr: Double, mem: Double) -> (letter: String, color: Color) {
+    static func overallGrade(sat: Double, eng: Double, corr: Double, mem: Double?) -> (letter: String, color: Color) {
         let satScore = sat / satisfaction
         let engScore = eng / engagement
         let corrScore = correctionRate / max(corr, 0.001)
-        let memScore = mem / memoryAccuracy
-        let avg = (satScore + engScore + corrScore + memScore) / 4.0
+        let avg: Double
+        if let mem = mem {
+            let memScore = mem / memoryAccuracy
+            avg = (satScore + engScore + corrScore + memScore) / 4.0
+        } else {
+            avg = (satScore + engScore + corrScore) / 3.0
+        }
         if avg >= 0.90 { return ("A", DT.emerald) }
         if avg >= 0.70 { return ("B", DT.blue) }
         if avg >= 0.50 { return ("C", DT.gold) }
@@ -946,7 +951,7 @@ struct OverviewView: View {
                     icon: "eye.fill",
                     label: "SENSE",
                     value: loop?.sense.dominantState.capitalized ?? "-",
-                    detail: "\(loop?.sense.adaptations7d ?? 0) adaptations",
+                    detail: "\(loop?.sense.adaptations7d ?? 0) emotions/7d",
                     color: DT.cyan,
                     index: 0
                 )
@@ -1031,7 +1036,7 @@ struct OverviewView: View {
             .frame(width: 16)
     }
 
-    // MARK: - Growth Trends Card (Full Width)
+    // MARK: - Growth Trends Card (Single Mixed Chart)
 
     private var growthTrendsCard: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -1061,31 +1066,60 @@ struct OverviewView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.vertical, 20)
             } else {
-                Chart(viewModel.chartData) { point in
-                    LineMark(
-                        x: .value("Date", point.date),
-                        y: .value("Score", point.value * 100)
-                    )
-                    .foregroundStyle(by: .value("Series", point.series))
-                    .interpolationMethod(.monotone)
-                    .lineStyle(StrokeStyle(lineWidth: 2))
+                Chart {
+                    // Layer 1: Consciousness — Area fill (very subtle background)
+                    ForEach(viewModel.chartData.filter { $0.series == "Consciousness" }) { point in
+                        AreaMark(
+                            x: .value("Date", point.date),
+                            y: .value("Score", point.value * 100)
+                        )
+                        .foregroundStyle(DT.purple.opacity(0.08))
+                        .interpolationMethod(.monotone)
+                    }
 
-                    AreaMark(
-                        x: .value("Date", point.date),
-                        y: .value("Score", point.value * 100)
-                    )
-                    .foregroundStyle(by: .value("Series", point.series))
-                    .opacity(0.06)
+                    // Layer 2: Proactive — Thin bars
+                    ForEach(viewModel.chartData.filter { $0.series == "Proactive" }) { point in
+                        BarMark(
+                            x: .value("Date", point.date, unit: .day),
+                            y: .value("Score", point.value * 100),
+                            width: .ratio(0.35)
+                        )
+                        .foregroundStyle(DT.cyan.opacity(0.2))
+                        .cornerRadius(1)
+                    }
+
+                    // Layer 3: All lines + points via foregroundStyle(by:)
+                    ForEach(viewModel.chartData.filter { $0.series != "Proactive" }) { point in
+                        LineMark(
+                            x: .value("Date", point.date),
+                            y: .value("Score", point.value * 100)
+                        )
+                        .foregroundStyle(by: .value("Series", point.series))
+                        .interpolationMethod(.monotone)
+                        .lineStyle(StrokeStyle(
+                            lineWidth: point.series == "Consciousness" ? 2.5 : 2,
+                            dash: point.series == "Consciousness" ? [] : [6, 3]
+                        ))
+                    }
+
+                    // Layer 4: Self-Learning dots
+                    ForEach(viewModel.chartData.filter { $0.series == "Self-Learning" }) { point in
+                        PointMark(
+                            x: .value("Date", point.date),
+                            y: .value("Score", point.value * 100)
+                        )
+                        .foregroundStyle(DT.emerald)
+                        .symbolSize(50)
+                    }
                 }
                 .chartForegroundStyleScale([
                     "Consciousness": DT.purple,
-                    "Self-Learning": DT.emerald,
-                    "Proactive": DT.cyan,
-                    "Reward": DT.orange
+                    "Reward": DT.gold,
+                    "Self-Learning": DT.emerald
                 ])
                 .chartYScale(domain: 0...105)
                 .chartYAxis {
-                    AxisMarks(values: [0, 50, 100]) { value in
+                    AxisMarks(values: [0, 25, 50, 75, 100]) { value in
                         AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [3, 3]))
                             .foregroundStyle(DT.borderSubtle)
                         AxisValueLabel {
@@ -1112,12 +1146,12 @@ struct OverviewView: View {
                 .opacity(showChart ? 1 : 0)
                 .offset(y: showChart ? 0 : 10)
 
-                // Legend
-                HStack(spacing: 14) {
-                    chartDot(DT.purple, "Consciousness")
-                    chartDot(DT.emerald, "Self-Learning")
-                    chartDot(DT.cyan, "Proactive")
-                    chartDot(DT.orange, "Reward")
+                // Legend with chart type icons
+                HStack(spacing: 16) {
+                    chartLegendItem(icon: "line.diagonal", color: DT.purple, label: "Consciousness")
+                    chartLegendItem(icon: "line.diagonal", color: DT.gold, label: "Reward")
+                    chartLegendItem(icon: "square.fill", color: DT.cyan.opacity(0.4), label: "Proactive")
+                    chartLegendItem(icon: "circle.fill", color: DT.emerald, label: "Self-Learning")
                 }
                 .opacity(showChart ? 1 : 0)
             }
@@ -1131,6 +1165,18 @@ struct OverviewView: View {
         HStack(spacing: 5) {
             Circle().fill(color).frame(width: 5, height: 5)
             Text(label).font(.system(size: 10, weight: .medium)).foregroundColor(DT.textTertiary)
+        }
+    }
+
+    private func chartLegendItem(icon: String, color: Color, label: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 7, weight: .bold))
+                .foregroundColor(color)
+                .frame(width: 10, height: 10)
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(DT.textTertiary)
         }
     }
 

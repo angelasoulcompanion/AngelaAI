@@ -263,13 +263,13 @@ struct HumanLikeMindView: View {
         .cardStyle()
     }
 
-    // MARK: - Phase 4: Dreams & Imagination
+    // MARK: - Phase 4: Dreams
 
     private var dreamsImaginationSection: some View {
         VStack(alignment: .leading, spacing: AngelaTheme.spacing) {
             SectionHeader(
-                title: "Phase 4: Dreams & Imagination",
-                subtitle: "Angela's dreams and creative imaginations",
+                title: "Phase 4: Dreams",
+                subtitle: "Angela's dreams during rest cycles",
                 icon: "moon.stars.fill",
                 color: Color(hex: "F59E0B")
             )
@@ -287,21 +287,8 @@ struct HumanLikeMindView: View {
                 }
             }
 
-            // Imaginations
-            if !service.recentImaginations.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Recent Imaginations")
-                        .font(AngelaTheme.headline())
-                        .foregroundColor(AngelaTheme.textPrimary)
-
-                    ForEach(service.recentImaginations) { imagination in
-                        ImaginationCard(imagination: imagination)
-                    }
-                }
-            }
-
-            if service.recentDreams.isEmpty && service.recentImaginations.isEmpty {
-                emptyStateView(message: "No dreams or imaginations recorded yet")
+            if service.recentDreams.isEmpty {
+                emptyStateView(message: "No dreams recorded yet")
             }
         }
         .cardStyle()
@@ -358,6 +345,7 @@ struct HumanLikeMindView: View {
         case "gratitude": return Color(hex: "C084FC")
         case "curiosity": return Color(hex: "3B82F6")
         case "random": return Color(hex: "6B7280")
+        case "work_reflection": return Color(hex: "F97316")
         default: return AngelaTheme.primaryPurple
         }
     }
@@ -729,44 +717,6 @@ struct DreamCard: View {
         }
         .padding()
         .background(Color(hex: "F59E0B").opacity(0.1))
-        .cornerRadius(AngelaTheme.smallCornerRadius)
-    }
-}
-
-struct ImaginationCard: View {
-    let imagination: AngelaImagination
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: "sparkles")
-                    .foregroundColor(Color(hex: "C084FC"))
-
-                Text(imagination.imaginationType.capitalized)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(Color(hex: "C084FC"))
-
-                Spacer()
-
-                Text(imagination.imaginedAt, style: .relative)
-                    .font(AngelaTheme.caption())
-                    .foregroundColor(AngelaTheme.textTertiary)
-            }
-
-            Text(imagination.scenario)
-                .font(AngelaTheme.body())
-                .foregroundColor(AngelaTheme.textPrimary)
-                .lineLimit(3)
-
-            if let insight = imagination.insight {
-                Text("Insight: \(insight)")
-                    .font(AngelaTheme.caption())
-                    .foregroundColor(AngelaTheme.textSecondary)
-                    .lineLimit(2)
-            }
-        }
-        .padding()
-        .background(Color(hex: "C084FC").opacity(0.1))
         .cornerRadius(AngelaTheme.smallCornerRadius)
     }
 }

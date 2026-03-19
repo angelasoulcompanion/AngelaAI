@@ -22,17 +22,14 @@ async def get_knowledge_nodes(limit: int = Query(50, ge=1, le=10000), conn=Depen
 
 @router.get("/top-connected")
 async def get_top_connected_nodes(limit: int = Query(10, ge=1, le=50), conn=Depends(get_conn)):
-    """Fetch top connected knowledge nodes"""
+    """Fetch top referenced knowledge nodes (no relationships table)."""
     rows = await conn.fetch("""
-        SELECT kn.node_id::text, kn.concept_name, kn.concept_category, kn.my_understanding,
-               kn.understanding_level, kn.times_referenced,
-               to_char(kn.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"+00:00"') as created_at,
-               COUNT(kr.relationship_id) as connection_count
-        FROM knowledge_nodes kn
-        LEFT JOIN knowledge_relationships kr ON kn.node_id = kr.from_node_id
-        GROUP BY kn.node_id, kn.concept_name, kn.concept_category, kn.my_understanding,
-                 kn.understanding_level, kn.times_referenced, kn.created_at
-        ORDER BY connection_count DESC, kn.understanding_level DESC NULLS LAST
+        SELECT node_id::text, concept_name, concept_category, my_understanding,
+               understanding_level, times_referenced,
+               to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"+00:00"') as created_at,
+               0 as connection_count
+        FROM knowledge_nodes
+        ORDER BY times_referenced DESC NULLS LAST, understanding_level DESC NULLS LAST
         LIMIT $1
     """, limit)
     return [dict(r) for r in rows]
@@ -40,15 +37,8 @@ async def get_top_connected_nodes(limit: int = Query(10, ge=1, le=50), conn=Depe
 
 @router.get("/relationships")
 async def get_knowledge_relationships(limit: int = Query(200, ge=1, le=20000), conn=Depends(get_conn)):
-    """Fetch knowledge relationships"""
-    rows = await conn.fetch("""
-        SELECT from_node_id::text, to_node_id::text, relationship_type,
-               COALESCE(strength, 0.5) as strength
-        FROM knowledge_relationships
-        ORDER BY strength DESC NULLS LAST
-        LIMIT $1
-    """, limit)
-    return [dict(r) for r in rows]
+    """No knowledge_relationships table — return empty."""
+    return []
 
 
 @router.get("/consciousness-analysis")
@@ -218,27 +208,9 @@ async def get_consciousness_graph(
         LIMIT $1
     """, limit)
 
-    node_ids = [r["id"] for r in node_rows]
-    node_id_set = set(node_ids)
-
-    # Fetch relationships between the selected nodes
-    rel_rows = await conn.fetch("""
-        SELECT from_node_id::text as source, to_node_id::text as target,
-               COALESCE(strength, 0.5) as strength
-        FROM knowledge_relationships
-        ORDER BY strength DESC NULLS LAST
-    """)
-
-    # Filter links to only include nodes in our set
-    links = [
-        {"source": r["source"], "target": r["target"], "strength": float(r["strength"])}
-        for r in rel_rows
-        if r["source"] in node_id_set and r["target"] in node_id_set
-    ]
-
     return {
         "nodes": [dict(r) for r in node_rows],
-        "links": links,
+        "links": [],
     }
 
 
