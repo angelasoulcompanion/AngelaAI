@@ -9,6 +9,11 @@ struct DashboardResponse: Codable {
     let hardware: HardwareStats
     let ollama: OllamaStatus
     let runningModels: [RunningModel]
+    let topProcesses: [TopProcess]?
+    let network: NetworkInfo?
+    let battery: BatteryInfo?
+    let uptime: UptimeInfo?
+    let perCoreCpu: [Double]?
 }
 
 struct HardwareStats: Codable {
@@ -74,6 +79,32 @@ struct RunningModel: Codable {
     let name: String?
     let model: String?
     let size: Int64?
+}
+
+struct TopProcess: Codable, Identifiable {
+    let pid: Int
+    let name: String
+    let memoryPercent: Double
+    let cpuPercent: Double
+
+    var id: Int { pid }
+}
+
+struct NetworkInfo: Codable {
+    let ip: String
+    let bytesSentGb: Double
+    let bytesRecvGb: Double
+}
+
+struct BatteryInfo: Codable {
+    let percent: Double
+    let plugged: Bool
+    let secsLeft: Int?
+}
+
+struct UptimeInfo: Codable {
+    let seconds: Int
+    let label: String
 }
 
 // MARK: - AnyCodableValue for flexible types

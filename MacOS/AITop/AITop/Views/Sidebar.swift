@@ -6,6 +6,7 @@
 import SwiftUI
 
 enum SidebarItem: String, CaseIterable, Identifiable {
+    case angelaBrain
     case dashboard
     case models
     case fineTune
@@ -17,6 +18,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .angelaBrain: return "Angela Brain"
         case .dashboard: return "Dashboard"
         case .models: return "Models"
         case .fineTune: return "Fine-Tune"
@@ -28,6 +30,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
+        case .angelaBrain: return "brain.fill"
         case .dashboard: return "gauge.with.dots.needle.33percent"
         case .models: return "cpu.fill"
         case .fineTune: return "wand.and.stars"
@@ -39,6 +42,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 
     var group: String {
         switch self {
+        case .angelaBrain: return "ANGELA"
         case .dashboard: return "MONITOR"
         case .models, .fineTune: return "AI STUDIO"
         case .chat, .rag: return "INFERENCE"
@@ -52,6 +56,7 @@ struct Sidebar: View {
     @EnvironmentObject var backendManager: BackendManager
 
     private let groups: [(String, [SidebarItem])] = [
+        ("ANGELA", [.angelaBrain]),
         ("MONITOR", [.dashboard]),
         ("AI STUDIO", [.models, .fineTune]),
         ("INFERENCE", [.chat, .rag]),

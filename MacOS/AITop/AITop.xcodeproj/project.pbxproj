@@ -25,6 +25,8 @@
 		9906D3CF6ECA4DFCBA401B91 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E74294E9964A4AB0B2E513 /* ChatView.swift */; };
 		36541B00BA214EF5B95DE603 /* RAGView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DA3F2C43DD843E69D943BFE /* RAGView.swift */; };
 		0349921B546A47099CF06A30 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EC503AB029B439F83522D4C /* SettingsView.swift */; };
+		A1B2C3D4E5F647A8B9C0D1E2 /* AngelaBrainModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E4D5C6B7A8490192837465 /* AngelaBrainModels.swift */; };
+		C4D5E6F7A8B9401C2D3E4F50 /* AngelaBrainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61728394A5B6C7D8E9F0A1B2 /* AngelaBrainView.swift */; };
 		65AA41A5AD3C4C68B6DA2C7A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 741CBE4DB1A94C79ADF40C56 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -47,6 +49,8 @@
 		C5E74294E9964A4AB0B2E513 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChatView.swift"; sourceTree = "<group>"; };
 		7DA3F2C43DD843E69D943BFE /* RAGView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RAGView.swift"; sourceTree = "<group>"; };
 		2EC503AB029B439F83522D4C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView.swift"; sourceTree = "<group>"; };
+		F3E4D5C6B7A8490192837465 /* AngelaBrainModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AngelaBrainModels.swift"; sourceTree = "<group>"; };
+		61728394A5B6C7D8E9F0A1B2 /* AngelaBrainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AngelaBrainView.swift"; sourceTree = "<group>"; };
 		741CBE4DB1A94C79ADF40C56 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A22EABB376E740B284AE0BE2 /* AITop.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AITop.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -99,6 +103,7 @@
 				D75F29BD209F47FF9215BA18 /* ChatModels.swift */,
 				B0207C6E613D4B51903D4AA1 /* FineTuneModels.swift */,
 				DE623ECDD12B436EB5DC2748 /* RAGModels.swift */,
+				F3E4D5C6B7A8490192837465 /* AngelaBrainModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -132,6 +137,7 @@
 				C5E74294E9964A4AB0B2E513 /* ChatView.swift */,
 				7DA3F2C43DD843E69D943BFE /* RAGView.swift */,
 				2EC503AB029B439F83522D4C /* SettingsView.swift */,
+				61728394A5B6C7D8E9F0A1B2 /* AngelaBrainView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -218,6 +224,8 @@
 				9906D3CF6ECA4DFCBA401B91 /* ChatView.swift in Sources */,
 				36541B00BA214EF5B95DE603 /* RAGView.swift in Sources */,
 				0349921B546A47099CF06A30 /* SettingsView.swift in Sources */,
+				A1B2C3D4E5F647A8B9C0D1E2 /* AngelaBrainModels.swift in Sources */,
+				C4D5E6F7A8B9401C2D3E4F50 /* AngelaBrainView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

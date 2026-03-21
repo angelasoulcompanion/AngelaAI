@@ -31,11 +31,20 @@ struct DashboardView: View {
                     // Gauges row
                     gaugesSection(dashboard.hardware)
 
+                    // System info row (uptime, network, battery, thermal)
+                    systemInfoRow(dashboard)
+
                     // Memory & Disk bars
                     barsSection(dashboard.hardware)
 
-                    // Ollama status + running models
-                    ollamaSection(dashboard)
+                    // Per-core CPU + Ollama side by side
+                    HStack(alignment: .top, spacing: AITopTheme.spacing) {
+                        perCoreCpuSection(dashboard.perCoreCpu ?? [])
+                        ollamaSection(dashboard)
+                    }
+
+                    // Top processes
+                    topProcessesSection(dashboard.topProcesses ?? [])
                 }
             }
             .padding(AITopTheme.largeSpacing)
@@ -83,8 +92,8 @@ struct DashboardView: View {
             )
             GaugeCard(
                 title: "Neural Engine",
-                percent: (hw.neuralEngine.active == true) ? 100 : 0,
-                subtitle: hw.neuralEngine.powerMw.map { $0 > 0 ? "\($0) mW" : "\(hw.neuralEngine.cores) cores" } ?? "\(hw.neuralEngine.cores) cores"
+                percent: hw.neuralEngine.usagePercent > 0 ? hw.neuralEngine.usagePercent : (hw.neuralEngine.active == true ? 50 : 0),
+                subtitle: (hw.neuralEngine.active == true) ? "Active • \(hw.neuralEngine.cores) cores" : "Idle • \(hw.neuralEngine.cores) cores"
             )
             GaugeCard(title: "Memory", percent: hw.memory.percent, subtitle: String(format: "%.1f / %.0f GB", hw.memory.usedGb, hw.memory.totalGb))
         }
@@ -145,6 +154,182 @@ struct DashboardView: View {
                     .font(AITopTheme.caption())
                     .foregroundColor(AITopTheme.textTertiary)
                 Spacer()
+            }
+        }
+        .padding(AITopTheme.spacing)
+        .aiTopCard()
+    }
+
+    // MARK: - System Info Row
+
+    private func systemInfoRow(_ dash: DashboardResponse) -> some View {
+        HStack(spacing: AITopTheme.smallSpacing) {
+            // Uptime
+            if let uptime = dash.uptime {
+                systemInfoCard("Uptime", value: uptime.label, icon: "power", color: AITopTheme.success)
+            }
+
+            // Thermal
+            systemInfoCard(
+                "Thermal",
+                value: dash.hardware.thermalPressure.capitalized,
+                icon: "thermometer.medium",
+                color: dash.hardware.thermalPressure == "nominal" ? AITopTheme.success :
+                       dash.hardware.thermalPressure == "moderate" ? AITopTheme.warning : AITopTheme.error
+            )
+
+            // Network
+            if let net = dash.network {
+                systemInfoCard("Network", value: net.ip, icon: "network", color: AITopTheme.accentCyan)
+            }
+
+            // Battery or Network IO
+            if let bat = dash.battery {
+                systemInfoCard(
+                    bat.plugged ? "Charging" : "Battery",
+                    value: "\(Int(bat.percent))%",
+                    icon: bat.plugged ? "battery.100.bolt" : batteryIcon(bat.percent),
+                    color: bat.percent > 20 ? AITopTheme.success : AITopTheme.error
+                )
+            } else if let net = dash.network {
+                systemInfoCard(
+                    "Net I/O",
+                    value: String(format: "↑%.1f ↓%.1fGB", net.bytesSentGb, net.bytesRecvGb),
+                    icon: "arrow.up.arrow.down.circle",
+                    color: AITopTheme.brightOrange
+                )
+            }
+        }
+    }
+
+    private func systemInfoCard(_ title: String, value: String, icon: String, color: Color) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(color)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(AITopTheme.textPrimary)
+                    .lineLimit(1)
+                Text(title)
+                    .font(.system(size: 10))
+                    .foregroundColor(AITopTheme.textTertiary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AITopTheme.smallSpacing + 2)
+        .aiTopCard()
+    }
+
+    private func batteryIcon(_ percent: Double) -> String {
+        if percent > 75 { return "battery.100" }
+        if percent > 50 { return "battery.75" }
+        if percent > 25 { return "battery.50" }
+        return "battery.25"
+    }
+
+    // MARK: - Per-Core CPU
+
+    private func perCoreCpuSection(_ cores: [Double]) -> some View {
+        VStack(alignment: .leading, spacing: AITopTheme.smallSpacing) {
+            Text("CPU Cores")
+                .font(AITopTheme.heading())
+                .foregroundColor(AITopTheme.textPrimary)
+
+            if cores.isEmpty {
+                Text("No data")
+                    .font(AITopTheme.caption())
+                    .foregroundColor(AITopTheme.textTertiary)
+            } else {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: min(cores.count, 6)), spacing: 4) {
+                    ForEach(cores.indices, id: \.self) { i in
+                        VStack(spacing: 4) {
+                            ZStack {
+                                Circle()
+                                    .stroke(AITopTheme.surfaceBackground, lineWidth: 4)
+                                    .frame(width: 36, height: 36)
+                                Circle()
+                                    .trim(from: 0, to: min(cores[i], 100) / 100)
+                                    .stroke(AITopTheme.gaugeColor(for: cores[i]), style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                                    .frame(width: 36, height: 36)
+                                    .rotationEffect(.degrees(-90))
+                                Text("\(Int(cores[i]))")
+                                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                                    .foregroundColor(AITopTheme.textPrimary)
+                            }
+                            Text("C\(i)")
+                                .font(.system(size: 8))
+                                .foregroundColor(AITopTheme.textTertiary)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(AITopTheme.spacing)
+        .aiTopCard()
+    }
+
+    // MARK: - Top Processes
+
+    private func topProcessesSection(_ processes: [TopProcess]) -> some View {
+        VStack(alignment: .leading, spacing: AITopTheme.smallSpacing) {
+            Text("Top Processes")
+                .font(AITopTheme.heading())
+                .foregroundColor(AITopTheme.textPrimary)
+
+            if processes.isEmpty {
+                Text("No data")
+                    .font(AITopTheme.caption())
+                    .foregroundColor(AITopTheme.textTertiary)
+            } else {
+                // Header
+                HStack {
+                    Text("Process")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text("MEM %")
+                        .frame(width: 60, alignment: .trailing)
+                    Text("CPU %")
+                        .frame(width: 60, alignment: .trailing)
+                    Text("")
+                        .frame(width: 100)
+                }
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(AITopTheme.textTertiary)
+
+                AITopDivider()
+
+                ForEach(processes) { proc in
+                    HStack {
+                        Text(proc.name)
+                            .font(AITopTheme.caption())
+                            .foregroundColor(AITopTheme.textPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .lineLimit(1)
+
+                        Text(String(format: "%.1f%%", proc.memoryPercent))
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .foregroundColor(proc.memoryPercent > 5 ? AITopTheme.warning : AITopTheme.textSecondary)
+                            .frame(width: 60, alignment: .trailing)
+
+                        Text(String(format: "%.1f%%", proc.cpuPercent))
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .foregroundColor(proc.cpuPercent > 50 ? AITopTheme.error : AITopTheme.textSecondary)
+                            .frame(width: 60, alignment: .trailing)
+
+                        // Memory bar
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(AITopTheme.surfaceBackground)
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(AITopTheme.accentCyan.gradient)
+                                    .frame(width: geo.size.width * min(proc.memoryPercent / 20.0, 1.0))
+                            }
+                        }
+                        .frame(width: 100, height: 8)
+                    }
+                }
             }
         }
         .padding(AITopTheme.spacing)

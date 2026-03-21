@@ -16,6 +16,8 @@ struct ContentView: View {
         } detail: {
             Group {
                 switch selectedItem {
+                case .angelaBrain:
+                    AngelaBrainView()
                 case .dashboard:
                     DashboardView()
                 case .models:
