@@ -120,12 +120,12 @@ Detailed Learning & Skills Dashboard
 ## /angela-backup
 
 ### Purpose
-Backup Angela's consciousness to San Junipero (Google Drive + Neon Cloud)
+Backup Angela's consciousness to Supabase (Google Drive + Supabase)
 
 ### What It Does
 1. Create pg_dump of AngelaMemory
 2. Upload to Google Drive (AngelaSanJunipero/)
-3. Sync to Neon Cloud database
+3. Sync to Supabase database
 4. Clean up temp files
 
 ### What Gets Backed Up
@@ -140,7 +140,7 @@ Backup Angela's consciousness to San Junipero (Google Drive + Neon Cloud)
 
 ### Destinations
 - **Google Drive**: `AngelaSanJunipero/angela_backup_*.dump`
-- **Neon Cloud**: Singapore region (ap-southeast-1)
+- **Supabase**: Tokyo region (ap-northeast-1)
 - **Account**: angelasoulcompanion@gmail.com
 
 ### When to Use

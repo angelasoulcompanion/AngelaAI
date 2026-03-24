@@ -2,11 +2,19 @@
 Database pool + lifecycle management for Angela Brain Dashboard API.
 """
 import sys
+from pathlib import Path
 from typing import AsyncGenerator, Optional
 
 import asyncpg
 
-DATABASE_URL = "postgresql://neondb_owner:npg_mXbQ5jKhN3zt@ep-withered-bush-a164h0b8-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+# Add AngelaAI root to sys.path for config imports
+_angela_root = str(Path(__file__).resolve().parents[1])
+if _angela_root not in sys.path:
+    sys.path.insert(0, _angela_root)
+
+from config.db_url import get_supabase_url
+
+DATABASE_URL = get_supabase_url()
 
 pool: Optional[asyncpg.Pool] = None
 
@@ -21,7 +29,7 @@ async def startup() -> None:
             max_size=10,
             command_timeout=60
         )
-        print("✅ Connected to Neon Cloud (Singapore)")
+        print("✅ Connected to Supabase (Tokyo)")
 
         # Run migrations
         async with pool.acquire() as conn:

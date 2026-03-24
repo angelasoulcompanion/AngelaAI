@@ -6,13 +6,20 @@ Port: 8767
 
 import argparse
 import logging
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import dashboard, models, finetune, chat, rag, angela_brain
+# Add AngelaAI root to sys.path for angela_core imports
+_angela_root = str(Path(__file__).resolve().parents[2])
+if _angela_root not in sys.path:
+    sys.path.insert(0, _angela_root)
+
+from routers import dashboard, models, finetune, chat, rag, angela_brain, model_hub
 from services.db_service import init_pool, close_pool, MACHINE_TAG
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
@@ -23,15 +30,15 @@ async def lifespan(app: FastAPI):
     print(f"AI TOP backend starting... (machine={MACHINE_TAG})")
     try:
         await init_pool()
-        print("Neon DB pool connected")
-        # Sync data from Neon
-        from services.finetune_service import sync_from_neon as sync_ft
-        from services.rag_service import sync_from_neon as sync_rag
+        print("Supabase pool connected")
+        # Sync data from Supabase
+        from services.finetune_service import sync_from_cloud as sync_ft
+        from services.rag_service import sync_from_cloud as sync_rag
         await sync_ft()
         await sync_rag()
-        print("Neon sync complete")
+        print("Supabase sync complete")
     except Exception as e:
-        print(f"WARNING: Neon DB not available ({e}) — running in local-only mode")
+        print(f"WARNING: Supabase DB not available ({e}) — running in local-only mode")
     yield
     await close_pool()
     print("AI TOP backend shutting down...")
@@ -54,6 +61,7 @@ app.include_router(finetune.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(rag.router, prefix="/api")
 app.include_router(angela_brain.router, prefix="/api")
+app.include_router(model_hub.router, prefix="/api")
 
 
 @app.get("/api/health")

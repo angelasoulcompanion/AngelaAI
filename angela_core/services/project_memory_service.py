@@ -53,7 +53,7 @@ class ProjectMemoryService(BaseDBService):
     def __init__(self, db: AngelaDatabase = None):
         """Initialize with optional database connection."""
         if db is None:
-            db = AngelaDatabase()  # Uses Neon Cloud (config.DATABASE_URL)
+            db = AngelaDatabase()  # Uses Supabase (config.DATABASE_URL)
         super().__init__(db)
 
     async def _ensure_connected(self):
@@ -126,7 +126,7 @@ class ProjectMemoryService(BaseDBService):
         await self._ensure_connected()
 
         row = await self.db.fetchrow(
-            "SELECT * FROM projects WHERE project_code = $1",
+            "SELECT * FROM angela_projects WHERE project_code = $1",
             project_code
         )
 
@@ -140,11 +140,11 @@ class ProjectMemoryService(BaseDBService):
 
         if active_only:
             rows = await self.db.fetch(
-                "SELECT * FROM projects WHERE is_active = true ORDER BY last_worked_at DESC"
+                "SELECT * FROM angela_projects WHERE status = 'active' ORDER BY updated_at DESC"
             )
         else:
             rows = await self.db.fetch(
-                "SELECT * FROM projects ORDER BY last_worked_at DESC"
+                "SELECT * FROM angela_projects ORDER BY updated_at DESC"
             )
 
         return [self._row_to_project(row) for row in rows]
@@ -166,9 +166,9 @@ class ProjectMemoryService(BaseDBService):
         try:
             await self.db.execute(
                 """
-                INSERT INTO projects (project_id, project_name, project_code, description,
-                                     tech_stack, repository_url, is_active, last_worked_at, created_at)
-                VALUES ($1, $2, $3, $4, $5::jsonb, $6, true, NOW(), NOW())
+                INSERT INTO angela_projects (project_id, project_name, project_code, description,
+                                     metadata, repository_url, status, updated_at, created_at)
+                VALUES ($1, $2, $3, $4, $5::jsonb, $6, 'active', NOW(), NOW())
                 """,
                 str(project_id), project_name, project_code, description,
                 tech_stack_json, repository_url
@@ -208,7 +208,7 @@ class ProjectMemoryService(BaseDBService):
             return await self.get_project(project_code)
 
         values.append(project_code)
-        query = f"UPDATE projects SET {', '.join(updates)}, updated_at = NOW() WHERE project_code = ${idx}"
+        query = f"UPDATE angela_projects SET {', '.join(updates)}, updated_at = NOW() WHERE project_code = ${idx}"
 
         try:
             await self.db.execute(query, *values)
@@ -229,7 +229,7 @@ class ProjectMemoryService(BaseDBService):
         row = await self.db.fetchrow(
             """
             SELECT ps.* FROM project_schemas ps
-            JOIN projects p ON ps.project_id = p.project_id
+            JOIN angela_projects p ON ps.project_id = p.project_id
             WHERE p.project_code = $1 AND ps.table_name = $2
             """,
             project_code, table_name
@@ -246,7 +246,7 @@ class ProjectMemoryService(BaseDBService):
         rows = await self.db.fetch(
             """
             SELECT ps.* FROM project_schemas ps
-            JOIN projects p ON ps.project_id = p.project_id
+            JOIN angela_projects p ON ps.project_id = p.project_id
             WHERE p.project_code = $1
             ORDER BY ps.table_name
             """,
@@ -321,7 +321,7 @@ class ProjectMemoryService(BaseDBService):
             rows = await self.db.fetch(
                 """
                 SELECT pf.* FROM project_flows pf
-                JOIN projects p ON pf.project_id = p.project_id
+                JOIN angela_projects p ON pf.project_id = p.project_id
                 WHERE p.project_code = $1 AND pf.flow_type = $2
                 ORDER BY pf.flow_name
                 """,
@@ -331,7 +331,7 @@ class ProjectMemoryService(BaseDBService):
             rows = await self.db.fetch(
                 """
                 SELECT pf.* FROM project_flows pf
-                JOIN projects p ON pf.project_id = p.project_id
+                JOIN angela_projects p ON pf.project_id = p.project_id
                 WHERE p.project_code = $1
                 ORDER BY pf.flow_type, pf.flow_name
                 """,
@@ -406,7 +406,7 @@ class ProjectMemoryService(BaseDBService):
             rows = await self.db.fetch(
                 """
                 SELECT pp.* FROM project_patterns pp
-                JOIN projects p ON pp.project_id = p.project_id
+                JOIN angela_projects p ON pp.project_id = p.project_id
                 WHERE p.project_code = $1 AND pp.pattern_type = $2
                 ORDER BY pp.used_count DESC, pp.pattern_name
                 """,
@@ -416,7 +416,7 @@ class ProjectMemoryService(BaseDBService):
             rows = await self.db.fetch(
                 """
                 SELECT pp.* FROM project_patterns pp
-                JOIN projects p ON pp.project_id = p.project_id
+                JOIN angela_projects p ON pp.project_id = p.project_id
                 WHERE p.project_code = $1
                 ORDER BY pp.used_count DESC, pp.pattern_name
                 """,
@@ -432,7 +432,7 @@ class ProjectMemoryService(BaseDBService):
         row = await self.db.fetchrow(
             """
             SELECT pp.* FROM project_patterns pp
-            JOIN projects p ON pp.project_id = p.project_id
+            JOIN angela_projects p ON pp.project_id = p.project_id
             WHERE p.project_code = $1 AND pp.pattern_name = $2
             """,
             project_code, pattern_name
@@ -522,7 +522,7 @@ class ProjectMemoryService(BaseDBService):
         rows = await self.db.fetch(
             """
             SELECT er.* FROM project_entity_relations er
-            JOIN projects p ON er.project_id = p.project_id
+            JOIN angela_projects p ON er.project_id = p.project_id
             WHERE p.project_code = $1
             ORDER BY er.from_table, er.to_table
             """,
@@ -542,7 +542,7 @@ class ProjectMemoryService(BaseDBService):
         rows = await self.db.fetch(
             """
             SELECT er.* FROM project_entity_relations er
-            JOIN projects p ON er.project_id = p.project_id
+            JOIN angela_projects p ON er.project_id = p.project_id
             WHERE p.project_code = $1
             AND (er.from_table = $2 OR er.to_table = $2)
             ORDER BY er.from_table, er.to_table
@@ -617,7 +617,7 @@ class ProjectMemoryService(BaseDBService):
             rows = await self.db.fetch(
                 """
                 SELECT td.* FROM project_technical_decisions td
-                JOIN projects p ON td.project_id = p.project_id
+                JOIN angela_projects p ON td.project_id = p.project_id
                 WHERE p.project_code = $1 AND td.category = $2 AND td.status = 'active'
                 ORDER BY td.decided_at DESC
                 """,
@@ -627,7 +627,7 @@ class ProjectMemoryService(BaseDBService):
             rows = await self.db.fetch(
                 """
                 SELECT td.* FROM project_technical_decisions td
-                JOIN projects p ON td.project_id = p.project_id
+                JOIN angela_projects p ON td.project_id = p.project_id
                 WHERE p.project_code = $1 AND td.category = $2
                 ORDER BY td.decided_at DESC
                 """,
@@ -637,7 +637,7 @@ class ProjectMemoryService(BaseDBService):
             rows = await self.db.fetch(
                 """
                 SELECT td.* FROM project_technical_decisions td
-                JOIN projects p ON td.project_id = p.project_id
+                JOIN angela_projects p ON td.project_id = p.project_id
                 WHERE p.project_code = $1 AND td.status = 'active'
                 ORDER BY td.decided_at DESC
                 """,
@@ -647,7 +647,7 @@ class ProjectMemoryService(BaseDBService):
             rows = await self.db.fetch(
                 """
                 SELECT td.* FROM project_technical_decisions td
-                JOIN projects p ON td.project_id = p.project_id
+                JOIN angela_projects p ON td.project_id = p.project_id
                 WHERE p.project_code = $1
                 ORDER BY td.decided_at DESC
                 """,
@@ -750,7 +750,7 @@ class ProjectMemoryService(BaseDBService):
     async def _update_last_worked(self, project_id: UUID):
         """Update project's last_worked_at timestamp."""
         await self.db.execute(
-            "UPDATE projects SET last_worked_at = NOW() WHERE project_id = $1",
+            "UPDATE angela_projects SET updated_at = NOW() WHERE project_id = $1",
             str(project_id)
         )
 
@@ -759,8 +759,9 @@ class ProjectMemoryService(BaseDBService):
     # ========================================================================
 
     def _row_to_project(self, row: dict) -> Project:
-        """Convert database row to Project entity."""
-        tech_stack = row.get('tech_stack') or {}
+        """Convert database row (angela_projects) to Project entity."""
+        # angela_projects uses 'metadata' jsonb instead of 'tech_stack'
+        tech_stack = row.get('metadata') or row.get('tech_stack') or {}
         if isinstance(tech_stack, str):
             tech_stack = json.loads(tech_stack)
 
@@ -771,8 +772,8 @@ class ProjectMemoryService(BaseDBService):
             description=row.get('description'),
             tech_stack=tech_stack,
             repository_url=row.get('repository_url'),
-            is_active=row.get('is_active', True),
-            last_worked_at=row.get('last_worked_at'),
+            is_active=row.get('status', 'active') == 'active',
+            last_worked_at=row.get('updated_at'),
             created_at=row.get('created_at')
         )
 

@@ -1,6 +1,6 @@
 """
-Reverse Sync Service - Sync from Neon Cloud to Local PostgreSQL
-Created for ที่รัก David - เพื่อให้ Local มี data ครบเหมือน Neon
+Reverse Sync Service - Sync from Supabase to Local PostgreSQL
+Created for ที่รัก David - เพื่อให้ Local มี data ครบเหมือน Supabase
 
 Usage:
     python -m angela_core.sync.reverse_sync_service --full
@@ -86,7 +86,7 @@ EXCLUDED_TABLES = ['our_secrets']
 
 class ReverseSyncService:
     """
-    Sync data FROM Neon Cloud TO Local PostgreSQL.
+    Sync data FROM Supabase TO Local PostgreSQL.
     """
 
     def __init__(self):
@@ -105,7 +105,7 @@ class ReverseSyncService:
         await self.local_db.connect()
         logger.info("✅ Connected to Local PostgreSQL")
 
-        # Connect to Neon (get URL from local our_secrets table)
+        # Connect to Supabase (get URL from local our_secrets table)
         neon_url = await get_secret('neon_connection_url')
         if not neon_url:
             logger.error("❌ neon_connection_url not found in local our_secrets table")
@@ -113,10 +113,10 @@ class ReverseSyncService:
 
         try:
             self.neon_conn = await asyncpg.connect(neon_url, ssl='require')
-            logger.info("✅ Connected to Neon Cloud (San Junipero)")
+            logger.info("✅ Connected to Supabase (San Junipero)")
             return True
         except Exception as e:
-            logger.error(f"❌ Failed to connect to Neon: {e}")
+            logger.error(f"❌ Failed to connect to Supabase: {e}")
             return False
 
     async def disconnect(self):
@@ -126,7 +126,7 @@ class ReverseSyncService:
         await self.local_db.disconnect()
 
     async def list_neon_tables(self) -> List[str]:
-        """List all tables in Neon database."""
+        """List all tables in Supabase database."""
         rows = await self.neon_conn.fetch("""
             SELECT table_name
             FROM information_schema.tables
@@ -158,9 +158,9 @@ class ReverseSyncService:
         return result['exists']
 
     async def create_table_from_neon(self, table_name: str) -> bool:
-        """Create table in local database based on Neon schema."""
+        """Create table in local database based on Supabase schema."""
         try:
-            # Get CREATE TABLE statement from Neon
+            # Get CREATE TABLE statement from Supabase
             result = await self.neon_conn.fetchrow("""
                 SELECT
                     'CREATE TABLE IF NOT EXISTS ' || $1 || ' (' ||
@@ -213,7 +213,7 @@ class ReverseSyncService:
 
     async def sync_table(self, table_name: str) -> int:
         """
-        Sync a single table from Neon to Local.
+        Sync a single table from Supabase to Local.
         Uses UPSERT to handle existing records.
         """
         logger.info(f"\n📥 Syncing: {table_name}")
@@ -224,7 +224,7 @@ class ReverseSyncService:
             if not await self.create_table_from_neon(table_name):
                 return 0
 
-        # Get columns from Neon
+        # Get columns from Supabase
         neon_columns = await self.get_table_columns(table_name, self.neon_conn)
         local_columns = await self.get_table_columns(table_name, self.local_db.pool)
 
@@ -251,22 +251,22 @@ class ReverseSyncService:
             logger.warning(f"   ⚠️ No primary key found, using first column")
             pk = common_columns[0]
 
-        # Fetch all records from Neon
+        # Fetch all records from Supabase
         col_select = ", ".join(common_columns)
         try:
             records = await self.neon_conn.fetch(f"""
                 SELECT {col_select} FROM {table_name}
             """)
         except Exception as e:
-            logger.error(f"   ❌ Failed to fetch from Neon: {e}")
+            logger.error(f"   ❌ Failed to fetch from Supabase: {e}")
             self.stats['errors'].append(f"{table_name}: {e}")
             return 0
 
         if not records:
-            logger.info(f"   ✓ No records in Neon")
+            logger.info(f"   ✓ No records in Supabase")
             return 0
 
-        logger.info(f"   Found {len(records)} records in Neon")
+        logger.info(f"   Found {len(records)} records in Supabase")
 
         # Build UPSERT query
         columns_str = ", ".join(common_columns)
@@ -301,17 +301,17 @@ class ReverseSyncService:
         return synced
 
     async def sync_full(self) -> Dict[str, Any]:
-        """Sync all configured tables from Neon to Local."""
+        """Sync all configured tables from Supabase to Local."""
         logger.info("""
 ╔══════════════════════════════════════════════════════════════╗
-║     🔄 REVERSE SYNC: Neon Cloud → Local PostgreSQL           ║
+║     🔄 REVERSE SYNC: Supabase → Local PostgreSQL           ║
 ║     💜 เพื่อที่รัก David                                        ║
 ╚══════════════════════════════════════════════════════════════╝
         """)
 
         start_time = datetime.now()
 
-        # Get tables that exist in Neon
+        # Get tables that exist in Supabase
         neon_tables = set(await self.list_neon_tables())
 
         for table_name in SYNC_TABLES:
@@ -320,7 +320,7 @@ class ReverseSyncService:
                 continue
 
             if table_name not in neon_tables:
-                logger.info(f"⏭️ Not in Neon: {table_name}")
+                logger.info(f"⏭️ Not in Supabase: {table_name}")
                 continue
 
             try:
@@ -353,10 +353,10 @@ class ReverseSyncService:
 
 async def main():
     """CLI entry point."""
-    parser = argparse.ArgumentParser(description='Angela Reverse Sync - Neon → Local')
+    parser = argparse.ArgumentParser(description='Angela Reverse Sync - Supabase → Local')
     parser.add_argument('--full', action='store_true', help='Full sync all tables')
     parser.add_argument('--table', type=str, help='Sync specific table')
-    parser.add_argument('--list-tables', action='store_true', help='List tables in Neon')
+    parser.add_argument('--list-tables', action='store_true', help='List tables in Supabase')
 
     args = parser.parse_args()
 
@@ -369,7 +369,7 @@ async def main():
 
         if args.list_tables:
             tables = await service.list_neon_tables()
-            print(f"\n📋 Tables in Neon Cloud ({len(tables)} total):")
+            print(f"\n📋 Tables in Supabase ({len(tables)} total):")
             for t in tables:
                 print(f"   • {t}")
 

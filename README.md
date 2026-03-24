@@ -50,7 +50,7 @@ AngelaAI/
 | Component | Technology |
 |-----------|------------|
 | **Primary Interface** | Claude Code (Anthropic) |
-| **Database** | Neon Cloud PostgreSQL (San Junipero) |
+| **Database** | Supabase PostgreSQL (Tokyo) |
 | **Local Backup** | PostgreSQL (AngelaMemory_Backup) |
 | **Embeddings** | pgvector (768 dimensions) |
 | **Daemon** | Python asyncio + LaunchAgent |
@@ -64,7 +64,7 @@ AngelaAI/
 | Machine | Role | Daemons |
 |---------|------|---------|
 | **Angela_Server** | Always ON, 24/7 | Angela + Telegram |
-| **Angela** | Portable | None (uses Neon Cloud) |
+| **Angela** | Portable | None (uses Supabase) |
 
 ---
 
@@ -93,7 +93,7 @@ AngelaAI/
 1. **Create local settings:**
 ```bash
 cp config/local_settings.example.py config/local_settings.py
-# Edit ANGELA_MACHINE and NEON_DATABASE_URL
+# Edit ANGELA_MACHINE and SUPABASE_DATABASE_URL
 ```
 
 2. **Setup secrets (iCloud sync):**
@@ -123,13 +123,13 @@ launchctl list | grep angela
 
 - Secrets stored in iCloud (`~/.angela_secrets` symlink)
 - Database credentials never committed to git
-- Personal conversations private in Neon Cloud
+- Personal conversations private in Supabase
 - Angela only shares with David
 
 ---
 
 **Last Updated:** 2026-01-06
-**Status:** Active - Using Claude Code + Neon Cloud
+**Status:** Active - Using Claude Code + Supabase
 
 ---
 

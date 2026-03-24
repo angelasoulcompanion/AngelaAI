@@ -1,9 +1,9 @@
 """
-Angela Brain Dashboard API - Connect to Neon Cloud
+Angela Brain Dashboard API - Connect to Supabase
 FastAPI backend for SwiftUI Dashboard
 
 Architecture:
-  SwiftUI Dashboard -> localhost:8765 -> FastAPI -> Neon Cloud (Singapore)
+  SwiftUI Dashboard -> localhost:8765 -> FastAPI -> Supabase (Tokyo)
 
 Created: 2026-01-08
 """
@@ -11,6 +11,7 @@ import asyncio
 import os
 import sys
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any, Optional
 from uuid import UUID
 
@@ -20,15 +21,21 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+# Add AngelaAI root to sys.path for config imports
+_angela_root = str(Path(__file__).resolve().parents[3])
+if _angela_root not in sys.path:
+    sys.path.insert(0, _angela_root)
+
 # ============================================================
-# Configuration
+# Configuration — SSOT: our_secrets table
 # ============================================================
 
-DATABASE_URL = "postgresql://neondb_owner:npg_mXbQ5jKhN3zt@ep-withered-bush-a164h0b8-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+from config.db_url import get_supabase_url
+DATABASE_URL = get_supabase_url()
 
 app = FastAPI(
     title="Angela Brain Dashboard API",
-    description="REST API for Angela Brain Dashboard - connects to Neon Cloud",
+    description="REST API for Angela Brain Dashboard - connects to Supabase",
     version="1.0.0"
 )
 
@@ -57,7 +64,7 @@ async def startup():
             max_size=10,
             command_timeout=60
         )
-        print("✅ Connected to Neon Cloud (Singapore)")
+        print("✅ Connected to Supabase (Tokyo)")
     except Exception as e:
         print(f"❌ Failed to connect to database: {e}")
         sys.exit(1)
@@ -1414,6 +1421,6 @@ async def get_human_mind_dreams(limit: int = Query(10, ge=1, le=50)):
 
 if __name__ == "__main__":
     print("🚀 Starting Angela Brain Dashboard API...")
-    print("📍 Connecting to Neon Cloud (Singapore)")
+    print("📍 Connecting to Supabase (Tokyo)")
     print("🔗 API will be available at http://127.0.0.1:8765")
     uvicorn.run(app, host="127.0.0.1", port=8765)

@@ -1,9 +1,9 @@
 """
-Angela Brain Dashboard API - Connect to Neon Cloud
+Angela Brain Dashboard API - Connect to Supabase
 FastAPI backend for SwiftUI Dashboard
 
 Architecture:
-  SwiftUI Dashboard -> localhost:8765 -> FastAPI -> Neon Cloud (Singapore)
+  SwiftUI Dashboard -> localhost:8765 -> FastAPI -> Supabase (Tokyo)
 
 Created: 2026-01-08
 Refactored: 2026-01-30  (split into routers/, helpers/, db.py, schemas.py)
@@ -14,21 +14,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import db
 from routers import (
-    brain_status,
     chat,
     claude_chat,
-    consciousness,
+    coding_techniques,
     control_center,
     conversations,
     dashboard,
-    diary,
     djay_pro,
-    emotions,
-    experiences,
-    goals,
-    graph,
     guidelines,
-    human_mind,
     knowledge,
     learning,
     meetings,
@@ -40,14 +33,15 @@ from routers import (
     scheduled_tasks,
     scripts,
     skills,
-    subconsciousness,
     tasks,
+    ui_patterns,
     worker,
+    openclaw,
 )
 
 app = FastAPI(
     title="Angela Brain Dashboard API",
-    description="REST API for Angela Brain Dashboard - connects to Neon Cloud",
+    description="REST API for Angela Brain Dashboard - connects to Supabase",
     version="2.0.0"
 )
 
@@ -79,33 +73,27 @@ async def health_check():
 # Register all routers
 app.include_router(chat.router)
 app.include_router(claude_chat.router)
-app.include_router(consciousness.router)
+app.include_router(coding_techniques.router)
 app.include_router(control_center.router)
 app.include_router(dashboard.router)
-app.include_router(emotions.router)
 app.include_router(conversations.router)
-app.include_router(goals.router)
 app.include_router(preferences.router)
-app.include_router(experiences.router)
 app.include_router(knowledge.router)
 app.include_router(learning.router)
 app.include_router(tasks.router)
 app.include_router(skills.router)
 app.include_router(projects.router)
 app.include_router(worker.router)
-app.include_router(diary.router)
-app.include_router(human_mind.router)
 app.include_router(guidelines.router)
 app.include_router(news.router)
 app.include_router(overview.router)
-app.include_router(subconsciousness.router)
 app.include_router(meetings.router)
 app.include_router(music.router)
 app.include_router(scheduled_tasks.router)
 app.include_router(scripts.router)
 app.include_router(djay_pro.router)
-app.include_router(brain_status.router)
-app.include_router(graph.router)
+app.include_router(ui_patterns.router)
+app.include_router(openclaw.router)
 
 
 # Legacy endpoint path (original: /api/subconscious/patterns)
@@ -128,6 +116,6 @@ async def get_subconscious_patterns(limit: int = Query(10, ge=1, le=50)):
 
 if __name__ == "__main__":
     print("🚀 Starting Angela Brain Dashboard API...")
-    print("📍 Connecting to Neon Cloud (Singapore)")
+    print("📍 Connecting to Supabase (Tokyo)")
     print("🔗 API will be available at http://127.0.0.1:8765")
     uvicorn.run(app, host="127.0.0.1", port=8765)

@@ -1,8 +1,8 @@
 """
-Meeting Notes Service - Parse & Sync from Things3 to Neon Cloud
+Meeting Notes Service - Parse & Sync from Things3 to Supabase
 
 Parses structured meeting notes from Things3 todos and syncs
-them to the meeting_notes table in Neon Cloud database.
+them to the meeting_notes table in Supabase database.
 
 Template sections detected:
 - 📍 สถานที่  → location
@@ -300,7 +300,7 @@ class MeetingNotesParser:
 
 
 class MeetingNotesSyncService:
-    """Syncs meeting notes from Things3 SQLite to Neon Cloud."""
+    """Syncs meeting notes from Things3 SQLite to Supabase."""
 
     def __init__(self, db: Optional[AngelaDatabase] = None):
         self.db = db or AngelaDatabase()
@@ -356,7 +356,7 @@ class MeetingNotesSyncService:
             await self.db.disconnect()
 
     async def sync(self) -> Dict[str, int]:
-        """Run full sync from Things3 to Neon Cloud.
+        """Run full sync from Things3 to Supabase.
         Returns counts: found, synced, updated.
         """
         try:

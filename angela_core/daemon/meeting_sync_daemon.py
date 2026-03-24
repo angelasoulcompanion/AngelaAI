@@ -2,7 +2,7 @@
 """
 Angela Meeting Notes Sync Daemon
 ==================================
-Sync meeting notes from Things3 → Neon Cloud database.
+Sync meeting notes from Things3 → Supabase database.
 
 Schedule: Daily at 19:00 (after work hours)
 Trigger: launchd daemon or manual run

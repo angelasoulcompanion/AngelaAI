@@ -1,7 +1,7 @@
 """
 Dynamic context-enriched system prompt builder for Angela Chat.
 
-Loads data from 11 Neon Cloud tables to build a rich, personalised prompt
+Loads data from 11 Supabase tables to build a rich, personalised prompt
 so Gemini knows Angela's memories, emotions, dreams, songs, and relationship context.
 
 Tables used:

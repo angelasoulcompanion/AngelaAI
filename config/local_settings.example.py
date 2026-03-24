@@ -1,8 +1,8 @@
 """
 Angela Local Settings Template
-Copy this file to local_settings.py and set your Neon database URL
+Copy this file to local_settings.py and set your Supabase database URL
 """
 
-# Neon Cloud Database URL (San Junipero)
-# Get from: https://console.neon.tech -> Your Project -> Connect
-NEON_DATABASE_URL = "postgresql://neondb_owner:YOUR_PASSWORD@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+# Supabase Database URL (Tokyo)
+# Get from: https://supabase.com/dashboard -> Your Project -> Settings -> Database
+SUPABASE_DATABASE_URL = "postgresql://postgres.YOUR_PROJECT:YOUR_PASSWORD@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require"

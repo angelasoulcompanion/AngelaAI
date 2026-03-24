@@ -360,6 +360,10 @@ class DatabaseService: ObservableObject {
         try await get("/options/implied-volatility?option_type=\(type)&market_price=\(price)&spot=\(spot)&strike=\(strike)&time_to_expiry=\(expiry)")
     }
 
+    func analyzeOption(assetId: String, strike: Double = 0, expiry: Double = 0.25) async throws -> OptionAnalysisResponse {
+        try await get("/options/analyze?asset_id=\(assetId)&strike=\(strike)&time_to_expiry=\(expiry)", timeout: 30.0)
+    }
+
     // MARK: - Backtest (Phase 3)
 
     func runBacktest(assetId: String, shortWindow: Int = 20, longWindow: Int = 50, capital: Double = 1_000_000, days: Int = 730) async throws -> BacktestResponse {

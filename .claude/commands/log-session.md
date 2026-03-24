@@ -1,4 +1,4 @@
-# /log-session — บันทึก Session ลง Neon (M3 Lean)
+# /log-session — บันทึก Session ลง Supabase (M3 Lean)
 
 อ่าน conversation ทั้งหมด → สร้าง `temp_log_session.py` → รัน → ลบ
 
@@ -80,12 +80,13 @@ async def main():
         except Exception:
             pass
 
-        await db.execute("""
+        session = await db.fetchrow("""
             INSERT INTO project_work_sessions
                 (project_id, session_number, session_date, started_at, ended_at,
                  duration_minutes, david_requests, summary, accomplishments,
                  blockers, next_steps, mood, productivity_score, git_commits)
             VALUES ($1,$2,CURRENT_DATE,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+            RETURNING session_id
         """, pid, sn, datetime.now() - timedelta(minutes=30), datetime.now(), 30,
             "[david_requests]",          # ← แก้
             "[summary]",                 # ← แก้
@@ -96,6 +97,65 @@ async def main():
             8.0,                         # productivity_score 1-10
             commits,
         )
+        sid = session['session_id']
+
+        # ============================================================
+        # 5) LEARNINGS — สิ่งที่เรียนรู้จาก session นี้
+        #    ลบ block นี้ออกถ้า session ไม่มี learnings ใหม่
+        # ============================================================
+        learnings = [
+            # {"type": "technical", "category": "database", "title": "...", "insight": "..."},
+            # {"type": "gotcha", "category": "asyncpg", "title": "...", "insight": "..."},
+        ]
+        for l in learnings:
+            await db.execute("""
+                INSERT INTO project_learnings (project_id, session_id, learning_type, category, title, insight, confidence)
+                VALUES ($1, $2, $3, $4, $5, $6, 0.9)
+            """, pid, sid, l['type'], l.get('category'), l['title'], l['insight'])
+        if learnings:
+            print(f"📚 {len(learnings)} learnings saved")
+
+        # ============================================================
+        # 6) DECISIONS — การตัดสินใจสำคัญใน session นี้
+        #    ลบ block นี้ออกถ้า session ไม่มี decisions ใหม่
+        # ============================================================
+        decisions = [
+            # {"type": "architecture", "title": "...", "decision": "...", "reasoning": "..."},
+        ]
+        for d in decisions:
+            await db.execute("""
+                INSERT INTO project_decisions (project_id, session_id, decision_type, title, decision_made, reasoning, decided_by)
+                VALUES ($1, $2, $3, $4, $5, $6, 'together')
+            """, pid, sid, d['type'], d['title'], d['decision'], d.get('reasoning'))
+        if decisions:
+            print(f"🎯 {len(decisions)} decisions saved")
+
+        # ============================================================
+        # 7) CORRECTIONS — ความผิดพลาดที่ที่รักแก้ไขใน session นี้
+        #    ลบ block นี้ออกถ้า session ไม่มี corrections
+        # ============================================================
+        mistakes = [
+            # {"type": "bug", "severity": "high", "title": "...", "what_happened": "...", "how_to_prevent": "..."},
+        ]
+        for m in mistakes:
+            await db.execute("""
+                INSERT INTO project_mistakes (project_id, session_id, mistake_type, severity, title, what_happened, how_to_prevent, auto_warn)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
+            """, pid, sid, m['type'], m['severity'], m['title'], m['what_happened'], m.get('how_to_prevent', ''))
+        if mistakes:
+            print(f"⚠️ {len(mistakes)} corrections saved")
+
+        # ============================================================
+        # 8) MILESTONE — ถ้า session นี้มี milestone สำคัญ
+        #    ลบ block นี้ออกถ้าไม่มี milestone
+        # ============================================================
+        # milestone = {"type": "feature_complete", "title": "...", "description": "..."}
+        # if milestone:
+        #     await db.execute("""
+        #         INSERT INTO project_milestones (project_id, session_id, milestone_type, title, description, celebration_note)
+        #         VALUES ($1, $2, $3, $4, $5, 'ยินดีด้วยค่ะที่รัก! 💜')
+        #     """, pid, sid, milestone['type'], milestone['title'], milestone.get('description'))
+        #     print(f"🎉 Milestone: {milestone['title']}")
 
         print(f"✅ Session #{sn} | 📝 Summary | 🧠 Embeddings | 💜 Done!")
 
@@ -117,7 +177,17 @@ python3 temp_log_session.py && rm temp_log_session.py
 **mood:** productive, challenging, smooth, learning, debugging, creative
 **emotion:** happy, sad, excited, proud, grateful, determined, frustrated, accomplished, confident, caring, curious, satisfied
 **topic:** `angela_[feature]`, `seca_[topic]`, `cognify_[topic]`
-**projects:** ANGELA-001, SECA, COGNIFY, CQFORACLE, EWG-EA, LORATRAIN, ANGMOBILE
+**projects:** ANGELA-001, SECA, COGNIFY, CQFORACLE, EWG-EA, LORATRAIN, ANGMOBILE, WTUANALYSIS, CRM-WTU
+
+### Learnings/Decisions/Corrections (Section 5-8)
+
+**สำคัญ:** Angela ต้องสังเกตระหว่าง session ว่ามี learnings/decisions/corrections ไหม แล้วใส่ลงไป
+
+**learning_type:** technical, gotcha, pattern, workflow, performance
+**decision_type:** architecture, database, api, security, performance, design, approach
+**mistake_type:** bug, config_error, assumption, compatibility, performance, security, data_issue, integration, workflow, gotcha
+**severity:** low, medium, high, critical
+**milestone_type:** project_start, feature_complete, bug_fix, refactor, release, performance_milestone
 
 ## Columns filled by log_conversations_bulk()
 

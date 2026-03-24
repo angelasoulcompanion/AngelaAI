@@ -28,7 +28,7 @@ from mcp.types import Tool, TextContent
 from mcp.server.stdio import stdio_server
 
 from shared.logging_config import setup_logging
-from shared.secrets import get_secret, get_neon_url
+from shared.secrets import get_secret, get_supabase_url
 
 # Setup logging
 logger = setup_logging("angela-music")
@@ -49,7 +49,7 @@ async def _get_pool():
     if _db_pool is None:
         import asyncpg
         _db_pool = await asyncpg.create_pool(
-            get_neon_url(),
+            get_supabase_url(),
             min_size=1,
             max_size=5,
         )

@@ -25,6 +25,19 @@ SET50_SYMBOLS = [
     "TRUE.BK", "TTB.BK", "TU.BK", "WHA.BK", "TIDLOR.BK",
 ]
 
+SET100_SYMBOLS = SET50_SYMBOLS + [
+    "AEONTS.BK", "AMATA.BK", "AP.BK", "BAM.BK", "BCH.BK",
+    "BCP.BK", "BCPG.BK", "BTG.BK", "BTSG.BK", "CHG.BK",
+    "CK.BK", "CKP.BK", "CPAXT.BK", "DOHOME.BK", "DTAC.BK",
+    "GGC.BK", "GFPT.BK", "GUNKUL.BK", "IRPC.BK", "JAS.BK",
+    "JMART.BK", "JMT.BK", "KLINIQ.BK", "KKP.BK", "MAKRO.BK",
+    "MC.BK", "MEGA.BK", "NER.BK", "ORI.BK",
+    "PLANB.BK", "PRM.BK", "PSH.BK", "PSL.BK", "RBF.BK",
+    "RS.BK", "SCG.BK", "SINGER.BK", "SIRI.BK", "SPALI.BK",
+    "SPRC.BK", "STA.BK", "STEC.BK", "SUPER.BK", "TASCO.BK",
+    "TCAP.BK", "THANI.BK", "TPIPP.BK", "VGI.BK", "WPH.BK", "WHAUP.BK",
+]
+
 SP100_SYMBOLS = [
     "AAPL", "ABBV", "ABT", "ACN", "ADBE", "AIG", "AMD", "AMGN", "AMT", "AMZN",
     "AVGO", "AXP", "BA", "BAC", "BK", "BKNG", "BLK", "BMY", "BRK-B", "C",
@@ -40,6 +53,7 @@ SP100_SYMBOLS = [
 
 UNIVERSES = {
     "SET50": {"name": "SET50 Index", "symbols": SET50_SYMBOLS, "type": "index"},
+    "SET100": {"name": "SET100 Index", "symbols": SET100_SYMBOLS, "type": "index"},
     "SP100": {"name": "S&P 100", "symbols": SP100_SYMBOLS, "type": "index"},
 }
 

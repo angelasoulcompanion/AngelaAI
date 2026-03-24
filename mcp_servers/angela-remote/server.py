@@ -31,7 +31,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "mcp_servers"))
 
-from shared.secrets import get_secret, get_neon_url
+from shared.secrets import get_secret, get_supabase_url
 from shared.google_auth import get_google_service
 from shared.async_helpers import google_api_call
 from shared.logging_config import setup_logging
@@ -51,7 +51,7 @@ async def get_pool():
     global _db_pool
     if _db_pool is None:
         import asyncpg
-        url = get_neon_url()
+        url = get_supabase_url()
         _db_pool = await asyncpg.create_pool(url, min_size=2, max_size=5, ssl="require")
         logger.info("Database pool connected")
     return _db_pool

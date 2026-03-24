@@ -3,12 +3,14 @@ Pythia Router — Options Pricing (Black-Scholes)
 """
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from db import get_conn
 from services.black_scholes_service import (
     price_option,
     implied_volatility,
     generate_greeks_surface,
+    analyze_option,
 )
 
 router = APIRouter(prefix="/api/options", tags=["Options"])
@@ -41,6 +43,33 @@ async def option_price(
             "rho": result.rho,
         },
     }
+
+
+@router.get("/analyze")
+async def option_analyze(
+    asset_id: str = Query(..., description="Asset UUID"),
+    strike: float = Query(0, description="Strike price (0 = auto ATM)"),
+    time_to_expiry: float = Query(0.25, description="Time to expiry in years"),
+    risk_free_rate: float = Query(0.0225, ge=0, le=0.5),
+    conn=Depends(get_conn),
+):
+    """Full option analysis: live market data + BS pricing + AI suggestion."""
+    # Resolve asset_id → symbol
+    row = await conn.fetchrow(
+        "SELECT symbol, exchange FROM assets WHERE asset_id = $1::uuid", asset_id
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail=f"Asset {asset_id} not found")
+
+    symbol = row["symbol"]
+    exchange = row["exchange"]
+    if exchange and exchange.upper() in ("SET", "MAI"):
+        symbol = f"{symbol}.BK" if not symbol.endswith(".BK") else symbol
+
+    result = analyze_option(symbol, strike, time_to_expiry, risk_free_rate)
+    if not result.get("success"):
+        raise HTTPException(status_code=500, detail=result.get("error", "Analysis failed"))
+    return result
 
 
 @router.get("/implied-volatility")

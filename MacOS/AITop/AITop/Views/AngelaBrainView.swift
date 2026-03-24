@@ -2,7 +2,7 @@
 //  AngelaBrainView.swift
 //  AITop
 //
-//  Angela Brain dashboard — visualizes Angela's Neon DB data.
+//  Angela Brain dashboard — visualizes Angela's Supabase DB data.
 //
 
 import SwiftUI

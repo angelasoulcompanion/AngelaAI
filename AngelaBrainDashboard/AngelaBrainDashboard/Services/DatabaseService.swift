@@ -2,10 +2,10 @@
 //  DatabaseService.swift
 //  Angela Brain Dashboard
 //
-//  REST API Client - Connects to FastAPI backend (Neon Cloud)
+//  REST API Client - Connects to FastAPI backend (Supabase)
 //
 //  Architecture:
-//    SwiftUI → DatabaseService → BackendManager → FastAPI → Neon Cloud
+//    SwiftUI → DatabaseService → BackendManager → FastAPI → Supabase
 //
 //  Updated: 2026-01-08 (REST API version)
 //

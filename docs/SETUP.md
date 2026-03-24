@@ -6,7 +6,7 @@
 
 - macOS with Homebrew
 - Python 3.11+
-- PostgreSQL (local backup) or Neon Cloud access
+- PostgreSQL (local backup) or Supabase access
 - iCloud Drive for secrets sync
 
 ## Steps
@@ -32,7 +32,7 @@ iCloud auto-syncs secrets across machines.
 ### 3. Verify
 
 ```bash
-python3 -c "from angela_core.config import config; print(f'Machine: {config.ANGELA_MACHINE}, Neon: {config.USE_NEON}')"
+python3 -c "from angela_core.config import config; print(f'Machine: {config.ANGELA_MACHINE}, Supabase: {config.USE_SUPABASE}')"
 ```
 
 ### 4. SSH Access (M3 → M4)

@@ -132,13 +132,13 @@ struct Sidebar: View {
 
     private var connectionStatus: some View {
         VStack(spacing: 6) {
-            // ☁️ Neon Cloud indicator
+            // ☁️ Supabase indicator
             HStack(spacing: 6) {
                 Image(systemName: "cloud.fill")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.cyan)
 
-                Text("☁️ Neon Cloud")
+                Text("☁️ Supabase")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.cyan)
 

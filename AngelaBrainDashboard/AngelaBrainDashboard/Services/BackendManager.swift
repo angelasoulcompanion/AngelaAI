@@ -169,7 +169,7 @@ class BackendManager: ObservableObject {
                 }
 
                 self?.isConnected = true
-                self?.statusMessage = "Connected to Neon Cloud"
+                self?.statusMessage = "Connected to Supabase"
                 self?.lastError = nil
             }
         }.resume()

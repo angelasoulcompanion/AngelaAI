@@ -1,6 +1,6 @@
 """
 Sync Service - Main Orchestrator
-Handles syncing from Local PostgreSQL to Neon Cloud.
+Handles syncing from Local PostgreSQL to Supabase.
 
 Usage:
     python -m angela_core.sync.sync_service --full
@@ -79,7 +79,7 @@ def _convert_datetime_strings(record: Dict[str, Any]) -> Dict[str, Any]:
 class SyncService:
     """
     Main sync orchestrator.
-    Syncs data from Local PostgreSQL to Neon Cloud.
+    Syncs data from Local PostgreSQL to Supabase.
     """
 
     def __init__(self, cloud_url: Optional[str] = None):
@@ -87,10 +87,10 @@ class SyncService:
         Initialize sync service.
 
         Args:
-            cloud_url: Neon PostgreSQL connection URL
+            cloud_url: Supabase PostgreSQL connection URL
                       If not provided, reads from environment
         """
-        self.cloud_url = cloud_url or os.getenv('NEON_DB_URL', '')
+        self.cloud_url = cloud_url or os.getenv('SUPABASE_DATABASE_URL', '')
         self.cloud: Optional[SupabaseClient] = None  # Reusing client class
         self.queue_manager = QueueManager()
         self.stats = {
@@ -106,17 +106,17 @@ class SyncService:
         await db.connect()
         logger.info("✅ Connected to Local PostgreSQL")
 
-        # Connect to Neon Cloud
+        # Connect to Supabase
         if not self.cloud_url:
-            logger.error("❌ NEON_DB_URL not configured")
+            logger.error("❌ SUPABASE_DATABASE_URL not configured")
             return False
 
         self.cloud = SupabaseClient(self.cloud_url)
         if not await self.cloud.connect():
-            logger.error("❌ Failed to connect to Neon")
+            logger.error("❌ Failed to connect to Supabase")
             return False
 
-        logger.info("✅ Connected to Neon Cloud")
+        logger.info("✅ Connected to Supabase (Tokyo)")
         return True
 
     async def disconnect(self):
@@ -132,7 +132,7 @@ class SyncService:
         Returns:
             Sync statistics
         """
-        logger.info("🚀 Starting FULL SYNC to Neon Cloud...")
+        logger.info("🚀 Starting FULL SYNC to Supabase...")
         start_time = datetime.now()
         
         tables = get_tables_by_priority()

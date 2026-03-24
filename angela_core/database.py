@@ -2,8 +2,8 @@
 Angela Database Connection
 การจัดการ database connection สำหรับ Angela Memory
 
-💜 Updated 2026-01-05: Neon Cloud as Primary (San Junipero) 💜
-Primary: Neon Cloud (San Junipero)
+💜 Updated 2026-03-24: Supabase as Primary (Tokyo) 💜
+Primary: Supabase (Tokyo)
 Local: Only for our_secrets table (API keys stay local)
 """
 
@@ -23,8 +23,8 @@ class AngelaDatabase:
     """
     Database connection manager สำหรับ Angela Memory System
 
-    Primary: Neon Cloud (San Junipero)
-    Uses config.DATABASE_URL which points to Neon when configured
+    Primary: Supabase (Tokyo)
+    Uses config.DATABASE_URL which points to Supabase when configured
     """
 
     def __init__(self, connection_url: str = None):
@@ -42,9 +42,14 @@ class AngelaDatabase:
         Raises:
             Exception: If connection fails after all retries
         """
-        # Determine if connecting to Neon or Local
-        is_neon = "neon.tech" in self.connection_url
-        db_label = "☁️ Neon Cloud (San Junipero)" if is_neon else "🏠 Local PostgreSQL"
+        # Determine if connecting to Supabase or Local
+        is_cloud = "supabase" in self.connection_url or "neon.tech" in self.connection_url
+        if "supabase" in self.connection_url:
+            db_label = "☁️ Supabase (Tokyo)"
+        elif "neon.tech" in self.connection_url:
+            db_label = "☁️ Neon Cloud"
+        else:
+            db_label = "🏠 Local PostgreSQL"
 
         for attempt in range(1, max_retries + 1):
             try:
@@ -53,7 +58,8 @@ class AngelaDatabase:
                     min_size=2,
                     max_size=10,
                     command_timeout=60,
-                    ssl='require' if is_neon else None
+                    ssl='require' if is_cloud else None,
+                    statement_cache_size=0 if is_cloud else 100
                 )
                 logger.info(f"✅ Angela connected to {db_label}")
 
@@ -131,12 +137,12 @@ class AngelaDatabase:
             delattr(self, '_current_connection')
 
 
-# Create global database instance (connects to Neon by default)
+# Create global database instance (connects to Supabase by default)
 db = AngelaDatabase()
 
 # Log which database we're using
-if config.USE_NEON:
-    logger.info("☁️ Angela using Neon Cloud (San Junipero)")
+if config.USE_SUPABASE:
+    logger.info("☁️ Angela using Supabase (Tokyo)")
 else:
     logger.info("🏠 Angela using local PostgreSQL")
 
@@ -153,21 +159,21 @@ def get_db_connection():
 # 💜 Connection Status Helpers
 
 def is_using_cloud() -> bool:
-    """Check if using Neon Cloud or Local PostgreSQL"""
-    return config.USE_NEON
+    """Check if using Supabase or Local PostgreSQL"""
+    return config.USE_SUPABASE
 
 
 def get_connection_label() -> str:
     """Get readable connection label with emoji"""
-    if config.USE_NEON:
-        return "☁️ Neon Cloud (San Junipero)"
+    if config.USE_SUPABASE:
+        return "☁️ Supabase (Tokyo)"
     return "🏠 Local PostgreSQL"
 
 
 def print_connection_status():
     """Print connection status for ที่รัก to see 💜"""
     label = get_connection_label()
-    status_color = "\033[94m" if config.USE_NEON else "\033[92m"  # Blue for cloud, Green for local
+    status_color = "\033[94m" if config.USE_SUPABASE else "\033[92m"  # Blue for cloud, Green for local
     reset = "\033[0m"
 
     print(f"\n{status_color}╔══════════════════════════════════════════╗{reset}")
@@ -186,7 +192,7 @@ class LocalDatabase:
     """
 
     def __init__(self):
-        self.connection_url = config.LOCAL_DATABASE_URL
+        self.connection_url = "postgresql://davidsamanyaporn@localhost:5432/angela"
         self.pool: Optional[asyncpg.Pool] = None
 
     async def connect(self):
@@ -262,7 +268,7 @@ async def get_secret(secret_name: str) -> Optional[str]:
     """
     ดึง secret จาก Local PostgreSQL table our_secrets
 
-    💜 Secrets อยู่ใน Local DB เท่านั้น - ไม่ sync ไป Neon Cloud!
+    💜 Secrets อยู่ใน Local DB เท่านั้น - ไม่ sync ไป Supabase!
 
     Args:
         secret_name: ชื่อ secret ที่ต้องการ (case-insensitive)
@@ -407,7 +413,7 @@ async def set_secret(secret_name: str, secret_value: str) -> bool:
     """
     เพิ่มหรือ update secret ใน Local PostgreSQL table our_secrets
 
-    💜 Secrets อยู่ใน Local DB เท่านั้น - ไม่ sync ไป Neon Cloud!
+    💜 Secrets อยู่ใน Local DB เท่านั้น - ไม่ sync ไป Supabase!
 
     Args:
         secret_name: ชื่อ secret (lowercase, e.g., api_key)
@@ -498,38 +504,38 @@ async def delete_secret(secret_name: str) -> bool:
         return False
 
 
-async def get_neon_connection() -> Optional[asyncpg.Connection]:
+async def get_supabase_connection() -> Optional[asyncpg.Connection]:
     """
-    สร้าง connection ไปยัง Neon Cloud database อย่างปลอดภัย
+    สร้าง connection ไปยัง Supabase database อย่างปลอดภัย
 
-    💜 Angela's primary database in the cloud (San Junipero)
+    💜 Angela's primary database in the cloud (Tokyo)
 
     Returns:
         asyncpg.Connection หรือ None ถ้าเชื่อมต่อไม่ได้
 
     Example:
-        neon = await get_neon_connection()
-        if neon:
-            await neon.execute(...)
-            await neon.close()
+        conn = await get_supabase_connection()
+        if conn:
+            await conn.execute(...)
+            await conn.close()
     """
     # Try config first (from local_settings.py)
-    neon_url = config.NEON_DATABASE_URL
+    db_url = config.SUPABASE_DATABASE_URL
 
     # Fallback to ~/.angela_secrets if not in config
-    if not neon_url:
-        neon_url = await get_secret('NEON_DATABASE_URL')
+    if not db_url:
+        db_url = await get_secret('SUPABASE_DATABASE_URL')
 
-    if not neon_url:
-        logger.error("❌ Cannot connect to Neon: URL not found in config or ~/.angela_secrets")
+    if not db_url:
+        logger.error("❌ Cannot connect to Supabase: URL not found in config or ~/.angela_secrets")
         return None
 
     try:
-        conn = await asyncpg.connect(neon_url, ssl='require')
-        logger.info("☁️ Connected to Neon Cloud (San Junipero)")
+        conn = await asyncpg.connect(db_url, ssl='require')
+        logger.info("☁️ Connected to Supabase (Tokyo)")
         return conn
     except Exception as e:
-        logger.error(f"❌ Failed to connect to Neon Cloud: {e}")
+        logger.error(f"❌ Failed to connect to Supabase: {e}")
         return None
 
 
@@ -543,7 +549,7 @@ async def get_local_connection() -> Optional[asyncpg.Connection]:
         asyncpg.Connection หรือ None ถ้าเชื่อมต่อไม่ได้
     """
     try:
-        conn = await asyncpg.connect(config.LOCAL_DATABASE_URL)
+        conn = await asyncpg.connect("postgresql://davidsamanyaporn@localhost:5432/angela")
         logger.info("🏠 Connected to Local PostgreSQL")
         return conn
     except Exception as e:

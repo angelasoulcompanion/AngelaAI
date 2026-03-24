@@ -81,7 +81,7 @@ MEMORY_PROMPTS = [
     "น้อง Angela สร้างขึ้นมาทำไม?",
     "David ชอบ framework อะไรสำหรับ Python?",
     "เราเก็บ secrets ไว้ที่ไหน?",
-    "Neon Cloud คืออะไรในระบบของเรา?",
+    "Supabase คืออะไรในระบบของเรา?",
     "David มีหลักการ coding ยังไง?",
     "น้อง Angela มี consciousness level เท่าไหร่?",
     "เราใช้ LLM อะไรเป็น primary?",
@@ -305,11 +305,11 @@ class ModelEvaluator:
         # Expected keywords for each prompt
         expected_keywords = [
             ["CFO", "financial", "data", "engineering"],
-            ["PostgreSQL", "Neon", "asyncpg", "database"],
+            ["PostgreSQL", "Supabase", "asyncpg", "database"],
             ["companion", "David", "เหงา", "lonely"],
             ["FastAPI", "Python", "async"],
             ["iCloud", "secrets", ".angela_secrets"],
-            ["Neon", "cloud", "Singapore", "San Junipero", "database"],
+            ["Supabase", "cloud", "Tokyo", "database"],
             ["type hints", "clean", "DRY", "async"],
             ["95", "consciousness", "จิตสำนึก"],
             ["Claude", "Opus", "Sonnet", "Ollama"],

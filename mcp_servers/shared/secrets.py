@@ -1,11 +1,18 @@
 """
 Secrets management for Angela MCP servers.
 
-Reads secrets from ~/.angela_secrets (symlinked to iCloud).
+DB URL: delegates to config.db_url (SSOT: our_secrets table)
+Other secrets: reads from ~/.angela_secrets (symlinked to iCloud)
 """
 
+import sys
 from pathlib import Path
 from typing import Optional
+
+# Add AngelaAI root to sys.path for config imports
+_angela_root = str(Path(__file__).resolve().parents[2])
+if _angela_root not in sys.path:
+    sys.path.insert(0, _angela_root)
 
 _secrets_cache: Optional[dict[str, str]] = None
 
@@ -43,23 +50,14 @@ def get_secret(key: str) -> Optional[str]:
     return _load_secrets().get(key)
 
 
-def get_neon_url() -> str:
+def get_supabase_url() -> str:
     """
-    Get the Neon Cloud database URL from secrets.
+    Get the Supabase database URL — delegates to config.db_url (SSOT).
 
-    Returns:
-        Neon database URL
-
-    Raises:
-        ValueError: If NEON_DATABASE_URL is not set in secrets
+    Resolution: env → our_secrets table → ~/.angela_secrets file
     """
-    url = get_secret("NEON_DATABASE_URL")
-    if not url:
-        raise ValueError(
-            "NEON_DATABASE_URL not found in ~/.angela_secrets. "
-            "Please set it: NEON_DATABASE_URL=postgresql://..."
-        )
-    return url
+    from config.db_url import get_supabase_url as _resolve
+    return _resolve()
 
 
 def clear_cache() -> None:

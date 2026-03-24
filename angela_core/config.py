@@ -5,32 +5,22 @@ Centralized configuration for all services
 
 import os
 
+from config.db_url import get_supabase_url
+
 try:
-    from config import NEON_DATABASE_URL
-except ImportError:
-    NEON_DATABASE_URL = os.getenv("NEON_DATABASE_URL", "")
+    _SUPABASE_URL = get_supabase_url()
+except RuntimeError:
+    _SUPABASE_URL = ""
 
 
 class AngelaConfig:
     """Configuration for Angela Memory System"""
 
-    # Primary Database: Neon Cloud (San Junipero)
-    NEON_DATABASE_URL: str = NEON_DATABASE_URL
-    USE_NEON: bool = bool(NEON_DATABASE_URL)
+    # Primary Database: Supabase (Tokyo) — SSOT: our_secrets table
+    SUPABASE_DATABASE_URL: str = _SUPABASE_URL
+    USE_SUPABASE: bool = bool(_SUPABASE_URL)
 
-    DATABASE_URL: str = os.getenv(
-        "ANGELA_DATABASE_URL",
-        NEON_DATABASE_URL if NEON_DATABASE_URL else "postgresql://davidsamanyaporn@localhost:5432/AngelaMemory"
-    )
-
-    # Local Database (for our_secrets)
-    LOCAL_DATABASE_URL: str = "postgresql://davidsamanyaporn@localhost:5432/angela"
-
-    # Local DB connection details (compatibility)
-    DATABASE_HOST: str = "localhost"
-    DATABASE_PORT: int = 5432
-    DATABASE_NAME: str = "AngelaMemory"
-    DATABASE_USER: str = "davidsamanyaporn"
+    DATABASE_URL: str = _SUPABASE_URL if _SUPABASE_URL else os.getenv("ANGELA_DATABASE_URL", "")
 
     # Service URLs
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -75,10 +65,9 @@ class AngelaConfig:
     NEO4J_PASSWORD: str = os.getenv("NEO4J_PASSWORD", "angela_graph_2026")
     NEO4J_DATABASE: str = os.getenv("NEO4J_DATABASE", "neo4j")
 
-    # Supabase Cloud Configuration (for backup sync)
+    # Supabase Cloud API (for backup sync / REST)
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
     SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
-    SUPABASE_DB_URL: str = os.getenv("SUPABASE_DB_URL", "")
 
     @classmethod
     def validate(cls) -> bool:

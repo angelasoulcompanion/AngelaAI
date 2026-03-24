@@ -7,7 +7,7 @@ Provides unified Google OAuth, async helpers, logging, and secrets management.
 from .google_auth import get_google_service
 from .async_helpers import run_in_thread, with_retry, google_api_call
 from .logging_config import setup_logging
-from .secrets import get_secret, get_neon_url
+from .secrets import get_secret, get_supabase_url
 
 ANGELA_EMAIL = "angelasoulcompanion@gmail.com"
 
@@ -19,5 +19,5 @@ __all__ = [
     "google_api_call",
     "setup_logging",
     "get_secret",
-    "get_neon_url",
+    "get_supabase_url",
 ]

@@ -15,7 +15,7 @@ from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 
 
-# Local database connection (NOT Neon Cloud)
+# Local database connection (NOT Supabase)
 LOCAL_DB_URL = "postgresql://postgres@localhost:5432/angela"
 
 

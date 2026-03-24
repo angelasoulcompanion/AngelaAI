@@ -124,6 +124,240 @@ def implied_volatility(
         }
 
 
+def analyze_option(
+    symbol: str,
+    strike: float,
+    time_to_expiry: float,
+    risk_free_rate: float = 0.0225,
+) -> dict:
+    """
+    Full option analysis: fetch market data, price call+put, generate AI suggestion.
+    Uses yfinance for live data + technical indicators.
+    """
+    import yfinance as yf
+
+    ticker = yf.Ticker(symbol)
+    hist = ticker.history(period="1y", interval="1d")
+    if hist.empty:
+        return {"success": False, "error": f"No data for {symbol}"}
+
+    info = ticker.info or {}
+    spot = info.get("regularMarketPrice") or info.get("currentPrice") or float(hist["Close"].iloc[-1])
+    if not spot or spot <= 0:
+        return {"success": False, "error": f"Cannot get price for {symbol}"}
+
+    name = info.get("shortName") or info.get("longName") or symbol
+    prev_close = info.get("regularMarketPreviousClose") or info.get("previousClose") or spot
+    change_pct = (spot - prev_close) / prev_close if prev_close else 0
+
+    # Historical volatility (30-day annualized)
+    returns = np.log(hist["Close"] / hist["Close"].shift(1)).dropna()
+    vol_std = returns[-30:].std() if len(returns) >= 30 else returns.std()
+    hist_vol = float(vol_std * np.sqrt(252)) if vol_std and vol_std > 0 else 0.20
+
+    # Auto strike = spot rounded if not provided meaningfully
+    if strike <= 0:
+        strike = round(spot, 0)
+    if strike <= 0:
+        strike = spot
+
+    # Price BOTH call and put
+    call = price_option("call", spot, strike, time_to_expiry, risk_free_rate, hist_vol)
+    put = price_option("put", spot, strike, time_to_expiry, risk_free_rate, hist_vol)
+
+    # --- Technical Signal Analysis ---
+    closes = hist["Close"].values
+    score = 0
+    signals = []
+
+    # 1. MA Trend (50 & 200)
+    if len(closes) >= 50:
+        ma50 = float(np.mean(closes[-50:]))
+        above_50 = spot > ma50
+    else:
+        ma50 = None
+        above_50 = None
+
+    if len(closes) >= 200:
+        ma200 = float(np.mean(closes[-200:]))
+        above_200 = spot > ma200
+    else:
+        ma200 = None
+        above_200 = None
+
+    if above_50 is not None and above_200 is not None:
+        if above_50 and above_200:
+            score += 2
+            signals.append({"name": "MA Trend", "value": "Bullish", "detail": f"Price above 50MA ({ma50:.2f}) & 200MA ({ma200:.2f})", "signal": "bullish"})
+        elif above_50:
+            score += 1
+            signals.append({"name": "MA Trend", "value": "Mixed", "detail": f"Above 50MA ({ma50:.2f}), below 200MA ({ma200:.2f})", "signal": "neutral"})
+        else:
+            score -= 2
+            signals.append({"name": "MA Trend", "value": "Bearish", "detail": f"Price below 50MA ({ma50:.2f}) & 200MA ({ma200:.2f})", "signal": "bearish"})
+    elif above_50 is not None:
+        if above_50:
+            score += 1
+            signals.append({"name": "MA Trend", "value": "Bullish", "detail": f"Price above 50MA ({ma50:.2f})", "signal": "bullish"})
+        else:
+            score -= 1
+            signals.append({"name": "MA Trend", "value": "Bearish", "detail": f"Price below 50MA ({ma50:.2f})", "signal": "bearish"})
+
+    # 2. RSI (14)
+    if len(returns) >= 14:
+        deltas = hist["Close"].diff().dropna().values[-14:]
+        gains = np.where(deltas > 0, deltas, 0)
+        losses = np.where(deltas < 0, -deltas, 0)
+        avg_gain = np.mean(gains)
+        avg_loss = np.mean(losses)
+        rs = avg_gain / avg_loss if avg_loss > 0 else 100
+        rsi = 100 - (100 / (1 + rs))
+        rsi = round(float(rsi), 1)
+
+        if rsi > 70:
+            score -= 1
+            signals.append({"name": "RSI (14)", "value": rsi, "detail": "Overbought — reversal risk", "signal": "bearish"})
+        elif rsi < 30:
+            score += 1
+            signals.append({"name": "RSI (14)", "value": rsi, "detail": "Oversold — bounce expected", "signal": "bullish"})
+        else:
+            signals.append({"name": "RSI (14)", "value": rsi, "detail": "Neutral range", "signal": "neutral"})
+
+    # 3. MACD (12, 26, 9)
+    if len(closes) >= 26:
+        ema12 = _ema_calc(closes, 12)
+        ema26 = _ema_calc(closes, 26)
+        macd_line = ema12 - ema26
+        signal_line = _ema_calc(macd_line[-9:], 9) if len(macd_line) >= 9 else np.array([0])
+
+        macd_val = float(macd_line[-1])
+        sig_val = float(signal_line[-1])
+        if macd_val > sig_val:
+            score += 1
+            signals.append({"name": "MACD", "value": f"{macd_val:.3f}", "detail": "Bullish crossover (MACD > Signal)", "signal": "bullish"})
+        else:
+            score -= 1
+            signals.append({"name": "MACD", "value": f"{macd_val:.3f}", "detail": "Bearish crossover (MACD < Signal)", "signal": "bearish"})
+
+    # 4. 1-Month momentum
+    if len(closes) >= 22:
+        ret_1m = (closes[-1] / closes[-22] - 1) * 100
+        ret_1m = round(float(ret_1m), 1)
+        if ret_1m > 0:
+            score += 1
+            signals.append({"name": "Momentum 1M", "value": f"+{ret_1m}%", "detail": "Positive short-term trend", "signal": "bullish"})
+        else:
+            score -= 1
+            signals.append({"name": "Momentum 1M", "value": f"{ret_1m}%", "detail": "Negative short-term trend", "signal": "bearish"})
+
+    # Direction & confidence
+    if score >= 2:
+        direction, confidence = "call", "high"
+    elif score == 1:
+        direction, confidence = "call", "medium"
+    elif score == 0:
+        direction, confidence = "neutral", "low"
+    elif score == -1:
+        direction, confidence = "put", "medium"
+    else:
+        direction, confidence = "put", "high"
+
+    # Summary
+    if direction == "call":
+        summary = f"Technical signals lean bullish (score {score}) — แนะนำ Call"
+    elif direction == "put":
+        summary = f"Technical signals lean bearish (score {score}) — แนะนำ Put"
+    else:
+        summary = f"Mixed signals (score {score}) — ไม่มีแนวโน้มชัดเจน consider Straddle"
+
+    # --- Recommended Contract ---
+    # OTM strike ~5% away for directional bet, ATM for neutral
+    if direction == "call":
+        rec_strike = round(spot * 1.05, 2)  # 5% OTM call
+        rec_option = price_option("call", spot, rec_strike, time_to_expiry, risk_free_rate, hist_vol)
+        rec_premium = rec_option.price
+        rec_breakeven = rec_strike + rec_premium
+        rec_profit_target = round(spot * 1.10, 2)  # 10% up from spot
+        rec_max_loss = rec_premium
+        rec_type = "call"
+    elif direction == "put":
+        rec_strike = round(spot * 0.95, 2)  # 5% OTM put
+        rec_option = price_option("put", spot, rec_strike, time_to_expiry, risk_free_rate, hist_vol)
+        rec_premium = rec_option.price
+        rec_breakeven = rec_strike - rec_premium
+        rec_profit_target = round(spot * 0.90, 2)  # 10% down from spot
+        rec_max_loss = rec_premium
+        rec_type = "put"
+    else:
+        # Neutral — ATM straddle
+        rec_strike = strike
+        rec_premium = call.price + put.price
+        rec_breakeven = strike  # simplified
+        rec_profit_target = spot
+        rec_max_loss = rec_premium
+        rec_type = "straddle"
+
+    contract = {
+        "type": rec_type,
+        "strike": round(rec_strike, 2),
+        "expiry_years": time_to_expiry,
+        "premium": round(rec_premium, 4),
+        "breakeven": round(rec_breakeven, 4),
+        "profit_target": round(rec_profit_target, 2),
+        "max_loss": round(rec_max_loss, 4),
+        "risk_reward": round((abs(rec_profit_target - rec_breakeven) / rec_premium), 2) if rec_premium > 0 else 0,
+    }
+
+    def _option_dict(op: OptionPrice) -> dict:
+        return {
+            "price": op.price,
+            "intrinsic_value": op.intrinsic_value,
+            "time_value": op.time_value,
+            "greeks": {
+                "delta": op.delta, "gamma": op.gamma,
+                "theta": op.theta, "vega": op.vega, "rho": op.rho,
+            },
+        }
+
+    return {
+        "success": True,
+        "symbol": symbol,
+        "spot": round(spot, 4),
+        "historical_vol": round(hist_vol, 4),
+        "quote": {
+            "current_price": round(spot, 4),
+            "change_percent": round(change_pct, 4),
+            "name": name,
+        },
+        "strike": strike,
+        "time_to_expiry": time_to_expiry,
+        "risk_free_rate": risk_free_rate,
+        "call": _option_dict(call),
+        "put": _option_dict(put),
+        "suggestion": {
+            "direction": direction,
+            "confidence": confidence,
+            "score": score,
+            "signals": signals,
+            "summary": summary,
+            "contract": contract,
+        },
+    }
+
+
+def _ema_calc(data, period: int):
+    """Simple EMA calculation for numpy array."""
+    arr = np.asarray(data, dtype=float)
+    if len(arr) < period:
+        return arr
+    k = 2.0 / (period + 1)
+    result = np.empty_like(arr)
+    result[0] = arr[0]
+    for i in range(1, len(arr)):
+        result[i] = arr[i] * k + result[i - 1] * (1 - k)
+    return result
+
+
 def generate_greeks_surface(
     option_type: str,
     spot: float,

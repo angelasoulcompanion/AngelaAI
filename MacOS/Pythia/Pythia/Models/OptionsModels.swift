@@ -47,6 +47,127 @@ struct ImpliedVolResponse: Codable {
     }
 }
 
+// MARK: - Option Analysis (Asset Picker + AI Suggestion)
+
+struct OptionAnalysisResponse: Codable {
+    let success: Bool
+    let symbol: String
+    let spot: Double
+    let historicalVol: Double
+    let quote: AnalysisQuote
+    let strike: Double
+    let timeToExpiry: Double
+    let riskFreeRate: Double
+    let call: OptionSide
+    let put: OptionSide
+    let suggestion: OptionSuggestion
+
+    enum CodingKeys: String, CodingKey {
+        case success, symbol, spot
+        case historicalVol = "historical_vol"
+        case quote, strike
+        case timeToExpiry = "time_to_expiry"
+        case riskFreeRate = "risk_free_rate"
+        case call, put, suggestion
+    }
+}
+
+struct AnalysisQuote: Codable {
+    let currentPrice: Double
+    let changePercent: Double
+    let name: String
+
+    enum CodingKeys: String, CodingKey {
+        case currentPrice = "current_price"
+        case changePercent = "change_percent"
+        case name
+    }
+}
+
+struct OptionSide: Codable {
+    let price: Double
+    let intrinsicValue: Double
+    let timeValue: Double
+    let greeks: OptionGreeks
+
+    enum CodingKeys: String, CodingKey {
+        case price
+        case intrinsicValue = "intrinsic_value"
+        case timeValue = "time_value"
+        case greeks
+    }
+}
+
+struct OptionSuggestion: Codable {
+    let direction: String       // "call", "put", "neutral"
+    let confidence: String      // "high", "medium", "low"
+    let score: Int
+    let signals: [TechSignal]
+    let summary: String
+    let contract: RecommendedContract?
+}
+
+struct RecommendedContract: Codable {
+    let type: String            // "call", "put", "straddle"
+    let strike: Double
+    let expiryYears: Double
+    let premium: Double
+    let breakeven: Double
+    let profitTarget: Double
+    let maxLoss: Double
+    let riskReward: Double
+
+    enum CodingKeys: String, CodingKey {
+        case type, strike
+        case expiryYears = "expiry_years"
+        case premium, breakeven
+        case profitTarget = "profit_target"
+        case maxLoss = "max_loss"
+        case riskReward = "risk_reward"
+    }
+}
+
+struct TechSignal: Codable, Identifiable {
+    let name: String
+    let value: AnyCodableValue
+    let detail: String
+    let signal: String          // "bullish", "bearish", "neutral"
+
+    var id: String { name }
+}
+
+/// Handles mixed JSON types (String or Number) for signal values
+enum AnyCodableValue: Codable {
+    case string(String)
+    case double(Double)
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let d = try? container.decode(Double.self) {
+            self = .double(d)
+        } else if let s = try? container.decode(String.self) {
+            self = .string(s)
+        } else {
+            self = .string("")
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .string(let s): try container.encode(s)
+        case .double(let d): try container.encode(d)
+        }
+    }
+
+    var displayString: String {
+        switch self {
+        case .string(let s): return s
+        case .double(let d): return String(format: "%.1f", d)
+        }
+    }
+}
+
 // MARK: - Backtest
 
 struct BacktestResponse: Codable {

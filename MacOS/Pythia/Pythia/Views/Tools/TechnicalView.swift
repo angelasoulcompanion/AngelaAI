@@ -8,11 +8,16 @@ import SwiftUI
 struct TechnicalView: View {
     @EnvironmentObject var db: DatabaseService
 
-    @State private var symbol = ""
+    @State private var selectedAssetId: String?
+    @State private var assets: [Asset] = []
     @State private var quote: StockQuote?
     @State private var loadedSymbol: String?
     @State private var isLoading = false
     @State private var errorMessage: String?
+
+    private var selectedSymbol: String? {
+        assets.first(where: { $0.assetId == selectedAssetId })?.symbol
+    }
 
     var body: some View {
         ScrollView {
@@ -21,16 +26,13 @@ struct TechnicalView: View {
                     .font(PythiaTheme.title())
                     .foregroundColor(PythiaTheme.textPrimary)
 
-                // Search bar
+                // Search bar — Asset Picker
                 HStack(spacing: PythiaTheme.spacing) {
-                    TextField("Enter Symbol (e.g. ADVANC.BK, AAPL)", text: $symbol)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 300)
-                        .onSubmit { Task { await loadData() } }
+                    AssetPickerView(selectedId: $selectedAssetId)
 
                     Button("Load") { Task { await loadData() } }
                         .pythiaPrimaryButton()
-                        .disabled(symbol.isEmpty)
+                        .disabled(selectedAssetId == nil)
 
                     Spacer()
                 }
@@ -54,6 +56,9 @@ struct TechnicalView: View {
             .padding(PythiaTheme.largeSpacing)
         }
         .background(PythiaTheme.backgroundDark)
+        .task {
+            do { assets = try await db.fetchAssets() } catch {}
+        }
     }
 
     private func quoteCard(_ q: StockQuote) -> some View {
@@ -119,11 +124,11 @@ struct TechnicalView: View {
     }
 
     private func loadData() async {
-        guard !symbol.isEmpty else { return }
+        guard let sym = selectedSymbol, !sym.isEmpty else { return }
         isLoading = true; errorMessage = nil
         do {
-            quote = try await db.fetchQuote(symbol: symbol)
-            loadedSymbol = symbol.uppercased()
+            quote = try await db.fetchQuote(symbol: sym)
+            loadedSymbol = sym.uppercased()
         } catch {
             errorMessage = error.localizedDescription
         }

@@ -1,19 +1,22 @@
 """
 Database pool + lifecycle management for Pythia API.
 Connects to Neon Cloud — Pythia database (Singapore).
+SSOT: our_secrets table (key: pythia_database_url)
 """
-import os
+import importlib.util
 import sys
 from pathlib import Path
 from typing import AsyncGenerator, Optional
 
 import asyncpg
 
-# Pythia Neon database URL (set via env or fallback)
-DATABASE_URL = os.environ.get(
-    "PYTHIA_DATABASE_URL",
-    "postgresql://neondb_owner:npg_mXbQ5jKhN3zt@ep-withered-bush-a164h0b8-pooler.ap-southeast-1.aws.neon.tech/pythia?sslmode=require"
-)
+# Load config.db_url directly (avoid clash with local config.py)
+_db_url_path = Path(__file__).resolve().parents[2] / "config" / "db_url.py"
+_spec = importlib.util.spec_from_file_location("angela_db_url", _db_url_path)
+_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+
+DATABASE_URL = _mod.get_pythia_url()
 
 pool: Optional[asyncpg.Pool] = None
 

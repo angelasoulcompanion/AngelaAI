@@ -17,7 +17,7 @@ import asyncpg
 
 # Add mcp_servers to path for shared imports
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
-from shared.secrets import get_neon_url
+from shared.secrets import get_supabase_url
 
 logger = logging.getLogger("angela-news")
 
@@ -28,7 +28,7 @@ class NewsHistoryService:
     def __init__(self):
         self.pool: Optional[asyncpg.Pool] = None
         try:
-            self.db_url = get_neon_url()
+            self.db_url = get_supabase_url()
         except ValueError:
             self.db_url = os.getenv(
                 "DATABASE_URL",

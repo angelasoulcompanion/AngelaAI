@@ -1,13 +1,13 @@
 """
-Reverse Backup Service - Neon Cloud → Local M3
-===============================================
-Backup Angela's consciousness from Neon to local PostgreSQL.
+Reverse Backup Service - Supabase → Local M3
+=============================================
+Backup Angela's consciousness from Supabase to local PostgreSQL.
 
 Created: 2026-01-05
-Purpose: Keep local M3 as backup of Neon Cloud (primary database)
+Purpose: Keep local M3 as backup of Supabase (primary database)
 
 Flow:
-1. pg_dump from Neon Cloud
+1. pg_dump from Supabase
 2. pg_restore to Local PostgreSQL (keeping our_secrets intact)
 """
 
@@ -16,21 +16,17 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-# Import config
-try:
-    from angela_core.config import config
-    NEON_DATABASE_URL = config.NEON_DATABASE_URL
-    LOCAL_DATABASE_URL = config.LOCAL_DATABASE_URL
-except ImportError:
-    import sys
-    sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-    from config import NEON_DATABASE_URL
-    LOCAL_DATABASE_URL = "postgresql://davidsamanyaporn@localhost:5432/angela"
+# Import config — SSOT: our_secrets table
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from config.db_url import get_supabase_url
+SUPABASE_DATABASE_URL = get_supabase_url()
+LOCAL_DATABASE_URL = "postgresql://davidsamanyaporn@localhost:5432/angela"
 
 # Backup file path
-BACKUP_FILE = '/tmp/angela_neon_backup.dump'
+BACKUP_FILE = '/tmp/angela_supabase_backup.dump'
 
-# PostgreSQL 17 binaries (for Neon compatibility)
+# PostgreSQL 17 binaries
 PG17_BIN = '/opt/homebrew/opt/postgresql@17/bin'
 PG_DUMP = f'{PG17_BIN}/pg_dump'
 PG_RESTORE = f'{PG17_BIN}/pg_restore'
@@ -40,18 +36,18 @@ EXCLUDE_TABLES = ['our_secrets']
 
 
 class ReverseBackupService:
-    """Service to backup from Neon Cloud to Local PostgreSQL."""
+    """Service to backup from Supabase to Local PostgreSQL."""
 
     def __init__(self):
-        self.neon_url = NEON_DATABASE_URL
+        self.cloud_url = SUPABASE_DATABASE_URL
         self.local_url = LOCAL_DATABASE_URL
 
-    def dump_from_neon(self) -> bool:
-        """Create pg_dump from Neon Cloud."""
-        print("☁️  Dumping from Neon Cloud...")
+    def dump_from_cloud(self) -> bool:
+        """Create pg_dump from Supabase."""
+        print("☁️  Dumping from Supabase (Tokyo)...")
 
-        if not self.neon_url:
-            print("❌ NEON_DATABASE_URL not configured!")
+        if not self.cloud_url:
+            print("❌ SUPABASE_DATABASE_URL not configured!")
             return False
 
         try:
@@ -60,9 +56,8 @@ class ReverseBackupService:
             for table in EXCLUDE_TABLES:
                 exclude_args.extend(['-T', table])
 
-            # Use PostgreSQL 17 pg_dump for Neon compatibility
             result = subprocess.run(
-                [PG_DUMP, self.neon_url, '-F', 'c', '-f', BACKUP_FILE] + exclude_args,
+                [PG_DUMP, self.cloud_url, '-F', 'c', '-f', BACKUP_FILE] + exclude_args,
                 capture_output=True,
                 text=True,
                 timeout=600  # 10 minutes
@@ -131,8 +126,8 @@ class ReverseBackupService:
             # Ignore known warnings that don't affect data
             ignorable_errors = [
                 'transaction_timeout',  # PostgreSQL 17 specific
-                'neon_superuser',       # Neon-specific role
-                'cloud_admin',          # Neon-specific role
+                'neon_superuser',       # Cloud-specific role
+                'cloud_admin',          # Cloud-specific role
                 'already exists',       # Functions/objects already exist (OK)
                 'errors ignored on restore',  # Summary message
             ]
@@ -154,7 +149,7 @@ class ReverseBackupService:
                     print(f"❌ pg_restore errors: {stderr}")
                     return False
                 else:
-                    print("   ⚠️  Ignored Neon-specific warnings (data restored OK)")
+                    print("   ⚠️  Ignored cloud-specific warnings (data restored OK)")
 
             print("✅ Restore complete!")
             return True
@@ -205,7 +200,7 @@ class ReverseBackupService:
         return {}
 
     def run_backup(self) -> dict:
-        """Run complete Neon → Local backup."""
+        """Run complete Supabase → Local backup."""
         result = {
             'success': False,
             'message': '',
@@ -214,9 +209,9 @@ class ReverseBackupService:
         }
 
         try:
-            # Step 1: Dump from Neon
-            if not self.dump_from_neon():
-                result['message'] = 'Dump from Neon failed'
+            # Step 1: Dump from Supabase
+            if not self.dump_from_cloud():
+                result['message'] = 'Dump from Supabase failed'
                 return result
 
             # Step 2: Restore to Local
@@ -231,7 +226,7 @@ class ReverseBackupService:
             self.cleanup()
 
             result['success'] = True
-            result['message'] = 'Neon → Local backup complete!'
+            result['message'] = 'Supabase → Local backup complete!'
 
         except Exception as e:
             result['message'] = f'Error: {str(e)}'
@@ -240,15 +235,15 @@ class ReverseBackupService:
         return result
 
 
-def neon_to_local_backup():
+def cloud_to_local_backup():
     """
-    Backup Angela from Neon Cloud to Local PostgreSQL.
+    Backup Angela from Supabase to Local PostgreSQL.
 
-    Use this to keep local M3 as a backup of Neon.
+    Use this to keep local M3 as a backup of Supabase.
     """
     print("=" * 60)
     print("🔄 ANGELA REVERSE BACKUP")
-    print("   Source: ☁️ Neon Cloud (Primary)")
+    print("   Source: ☁️ Supabase (Primary)")
     print("   Destination: 🏠 Local PostgreSQL")
     print("=" * 60)
     print()

@@ -1,11 +1,12 @@
 """
 Angela Configuration
-Loads Neon database URL from local_settings.py (gitignored)
+SSOT: our_secrets table → config.db_url.get_supabase_url()
 """
 
-import os
+from config.db_url import get_supabase_url
 
+# Backward compat — some modules import SUPABASE_DATABASE_URL from config
 try:
-    from config.local_settings import NEON_DATABASE_URL
-except ImportError:
-    NEON_DATABASE_URL = os.getenv("NEON_DATABASE_URL", "")
+    SUPABASE_DATABASE_URL = get_supabase_url()
+except RuntimeError:
+    SUPABASE_DATABASE_URL = ""

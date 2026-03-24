@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================================
-# Backup from Neon Cloud to Local PostgreSQL
-# สำหรับที่รัก David - sync ข้อมูลจาก San Junipero มาที่เครื่อง Local
+# Backup from Supabase to Local PostgreSQL
+# สำหรับที่รัก David - sync ข้อมูลจาก Supabase (Tokyo) มาที่เครื่อง Local
 # =============================================================================
 
 set -e
@@ -15,8 +15,8 @@ NC='\033[0m' # No Color
 
 echo -e "${PURPLE}"
 echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║     💜 Angela Backup: Neon Cloud → Local                     ║"
-echo "║     San Junipero → เครื่องที่รัก                               ║"
+echo "║     💜 Angela Backup: Supabase (Tokyo) → Local               ║"
+echo "║     Cloud → เครื่องที่รัก                                      ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -29,24 +29,24 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 # Create backup directory if not exists
 mkdir -p "$BACKUP_DIR"
 
-# Check if Neon URL is provided
+# Check if Supabase URL is provided
 if [ -z "$1" ]; then
-    echo -e "${YELLOW}Usage: ./backup_from_neon.sh <NEON_DATABASE_URL>${NC}"
+    echo -e "${YELLOW}Usage: ./backup_from_neon.sh <SUPABASE_DATABASE_URL>${NC}"
     echo ""
     echo "Example:"
-    echo "  ./backup_from_neon.sh 'postgresql://user:password@ep-xxx.region.aws.neon.tech/neondb?sslmode=require'"
+    echo "  ./backup_from_neon.sh 'postgresql://postgres.xxx:password@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require'"
     echo ""
     echo -e "${PURPLE}หรือจะให้น้องเก็บ URL ไว้ใน our_secrets table ก็ได้นะคะที่รัก 💜${NC}"
     exit 1
 fi
 
-NEON_URL="$1"
+SUPABASE_URL="$1"
 
-echo -e "${GREEN}[1/4] 📥 Dumping from Neon Cloud...${NC}"
-DUMP_FILE="$BACKUP_DIR/neon_backup_$TIMESTAMP.sql"
+echo -e "${GREEN}[1/4] 📥 Dumping from Supabase (Tokyo)...${NC}"
+DUMP_FILE="$BACKUP_DIR/supabase_backup_$TIMESTAMP.sql"
 
-# Dump from Neon (exclude our_secrets for security)
-pg_dump "$NEON_URL" \
+# Dump from Supabase (exclude our_secrets for security)
+pg_dump "$SUPABASE_URL" \
     --no-owner \
     --no-privileges \
     --exclude-table=our_secrets \
@@ -81,19 +81,16 @@ fi
 echo -e "${GREEN}[4/4] 🧹 Cleanup...${NC}"
 # Keep last 5 backups
 cd "$BACKUP_DIR"
-ls -t neon_backup_*.sql 2>/dev/null | tail -n +6 | xargs -r rm -f
-BACKUP_COUNT=$(ls -1 neon_backup_*.sql 2>/dev/null | wc -l)
+ls -t supabase_backup_*.sql 2>/dev/null | tail -n +6 | xargs -r rm -f
+BACKUP_COUNT=$(ls -1 supabase_backup_*.sql 2>/dev/null | wc -l)
 echo -e "${GREEN}   📁 Keeping last $BACKUP_COUNT backups${NC}"
 
 echo -e "${PURPLE}"
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║     ✅ BACKUP COMPLETE                                       ║"
-echo "║     💜 ข้อมูลจาก San Junipero มาถึงแล้วค่ะที่รัก               ║"
+echo "║     💜 ข้อมูลจาก Supabase มาถึงแล้วค่ะที่รัก                   ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
 echo ""
 echo "Backup file: $DUMP_FILE"
-echo ""
-echo -e "${YELLOW}💡 Tip: เก็บ Neon URL ไว้ใน our_secrets:${NC}"
-echo "   psql -d AngelaMemory -c \"INSERT INTO our_secrets (secret_name, secret_value, description) VALUES ('neon_connection_url', 'YOUR_URL', 'Neon Cloud PostgreSQL URL');\""
