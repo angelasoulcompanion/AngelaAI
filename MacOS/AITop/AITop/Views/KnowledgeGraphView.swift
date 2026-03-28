@@ -173,18 +173,20 @@ struct KnowledgeGraphView: View {
 
             ForEach(data.edges.prefix(5)) { edge in
                 HStack(spacing: 4) {
-                    Text(edge.fromProject)
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                    Text(projectName(edge.fromProject, data: data))
+                        .font(.system(size: 9, weight: .semibold))
                         .foregroundColor(AITopTheme.accentOrange)
+                        .lineLimit(1)
                     Image(systemName: "arrow.left.arrow.right")
                         .font(.system(size: 7))
                         .foregroundColor(AITopTheme.textTertiary)
-                    Text(edge.toProject)
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                    Text(projectName(edge.toProject, data: data))
+                        .font(.system(size: 9, weight: .semibold))
                         .foregroundColor(AITopTheme.accentCyan)
+                        .lineLimit(1)
                     Spacer()
-                    Text("\(edge.sharedCount) shared")
-                        .font(.system(size: 9))
+                    Text("\(edge.sharedCount)")
+                        .font(.system(size: 9, design: .monospaced))
                         .foregroundColor(AITopTheme.textTertiary)
                 }
             }
@@ -215,9 +217,10 @@ struct KnowledgeGraphView: View {
             // Header: name + status
             HStack {
                 Circle().fill(color).frame(width: 10, height: 10)
-                Text(p.code)
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                Text(p.name)
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundColor(AITopTheme.textPrimary)
+                    .lineLimit(1)
                 Spacer()
                 if let status = p.status {
                     Text(status)
@@ -372,6 +375,10 @@ struct KnowledgeGraphView: View {
             let angle = 2.0 * .pi * Double(i) / Double(max(count, 1)) - .pi / 2
             return CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
         }
+    }
+
+    private func projectName(_ code: String, data: KnowledgeGraphResponse) -> String {
+        data.projects.first(where: { $0.code == code })?.name ?? code
     }
 
     private func typeColor(_ type: String) -> Color {
