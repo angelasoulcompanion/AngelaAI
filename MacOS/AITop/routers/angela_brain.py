@@ -478,17 +478,30 @@ async def knowledge_graph():
     try:
         pool = await get_pool()
 
-        projects_rows, categories_rows, edges_rows, type_rows = await asyncio.gather(
-            # Projects with KB entry counts
+        projects_rows, categories_rows, edges_rows, type_rows, tech_rows = await asyncio.gather(
+            # Projects with KB entry counts + dates + sessions
             pool.fetch("""
                 SELECT p.project_id::text AS id, p.project_code AS code,
                        p.project_name AS name,
+                       COALESCE(p.description, '') AS description,
+                       COALESCE(p.status, 'unknown') AS status,
+                       COALESCE(p.project_type, '') AS project_type,
                        COALESCE(p.total_hours, 0) AS hours,
-                       COUNT(kb.kb_id) AS kb_count
+                       COALESCE(p.total_sessions, 0) AS sessions,
+                       p.created_at,
+                       COUNT(kb.kb_id) AS kb_count,
+                       MAX(kb.created_at) AS last_knowledge_at,
+                       COUNT(kb.kb_id) FILTER (WHERE kb.knowledge_type = 'learning') AS learning_count,
+                       COUNT(kb.kb_id) FILTER (WHERE kb.knowledge_type = 'gotcha') AS gotcha_count,
+                       COUNT(kb.kb_id) FILTER (WHERE kb.knowledge_type = 'pattern') AS pattern_count,
+                       COUNT(kb.kb_id) FILTER (WHERE kb.knowledge_type = 'decision') AS decision_count,
+                       COUNT(kb.kb_id) FILTER (WHERE kb.knowledge_type = 'standard') AS standard_count,
+                       COUNT(kb.kb_id) FILTER (WHERE kb.knowledge_type = 'preference') AS preference_count
                 FROM public.angela_projects p
                 LEFT JOIN public.unified_knowledge_base kb
                     ON kb.source_project_code = p.project_code
-                GROUP BY p.project_id, p.project_code, p.project_name, p.total_hours
+                GROUP BY p.project_id, p.project_code, p.project_name, p.description,
+                         p.status, p.project_type, p.total_hours, p.total_sessions, p.created_at
                 ORDER BY kb_count DESC
             """),
             # Categories with their project associations
@@ -525,12 +538,35 @@ async def knowledge_graph():
                 GROUP BY knowledge_type
                 ORDER BY count DESC
             """),
+            # Tech stack: shared technologies between projects
+            pool.fetch("""
+                SELECT ts.tech_name, ts.tech_type,
+                       array_agg(DISTINCT p.project_code ORDER BY p.project_code) AS projects,
+                       COUNT(DISTINCT p.project_code) AS project_count
+                FROM public.project_tech_stack ts
+                JOIN public.angela_projects p ON p.project_id = ts.project_id
+                GROUP BY ts.tech_name, ts.tech_type
+                ORDER BY project_count DESC, ts.tech_name
+            """),
         )
 
         return {
             "projects": [
                 {"id": r["id"], "code": r["code"], "name": r["name"],
-                 "kb_count": int(r["kb_count"]), "hours": float(r["hours"])}
+                 "description": r["description"], "status": r["status"],
+                 "project_type": r["project_type"],
+                 "kb_count": int(r["kb_count"]), "hours": float(r["hours"]),
+                 "sessions": int(r["sessions"]),
+                 "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+                 "last_knowledge_at": r["last_knowledge_at"].isoformat() if r["last_knowledge_at"] else None,
+                 "type_breakdown": {
+                     "learning": int(r["learning_count"]),
+                     "gotcha": int(r["gotcha_count"]),
+                     "pattern": int(r["pattern_count"]),
+                     "decision": int(r["decision_count"]),
+                     "standard": int(r["standard_count"]),
+                     "preference": int(r["preference_count"]),
+                 }}
                 for r in projects_rows
             ],
             "categories": [
@@ -547,6 +583,12 @@ async def knowledge_graph():
             "type_breakdown": [
                 {"id": r["type"], "type": r["type"], "count": int(r["count"])}
                 for r in type_rows
+            ],
+            "tech_stack": [
+                {"name": r["tech_name"], "tech_type": r["tech_type"],
+                 "projects": [p for p in (r["projects"] or []) if p],
+                 "project_count": int(r["project_count"])}
+                for r in tech_rows
             ],
         }
     except Exception as e:

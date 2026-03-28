@@ -167,14 +167,31 @@ struct KnowledgeGraphResponse: Codable {
     let categories: [GraphCategory]
     let edges: [GraphEdge]
     let typeBreakdown: [TypeCount]
+    let techStack: [TechStackItem]?
+}
+
+struct TechStackItem: Codable, Identifiable {
+    let name: String
+    let techType: String
+    let projects: [String]
+    let projectCount: Int
+
+    var id: String { name }
 }
 
 struct GraphProject: Codable, Identifiable {
     let id: String
     let code: String
     let name: String
+    let description: String?
+    let status: String?
+    let projectType: String?
     let kbCount: Int
     let hours: Double
+    let sessions: Int?
+    let createdAt: String?
+    let lastKnowledgeAt: String?
+    let typeBreakdown: [String: Int]?
 }
 
 struct GraphCategory: Codable, Identifiable {

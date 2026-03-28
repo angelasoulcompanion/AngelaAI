@@ -2,207 +2,60 @@
 //  KnowledgeGraphView.swift
 //  AITop
 //
-//  Interactive force-directed knowledge graph showing projects,
-//  categories, and cross-project knowledge connections.
+//  Cross-project knowledge overview with compact network graph
+//  and detailed project cards.
 //
 
 import SwiftUI
-
-// MARK: - Graph Node
-
-struct GraphNode: Identifiable {
-    let id: String
-    let label: String
-    let detail: String
-    let kind: NodeKind
-    let size: CGFloat
-    let color: Color
-    var position: CGPoint
-    var velocity: CGPoint = .zero
-    var pinned: Bool = false
-
-    enum NodeKind { case project, category }
-}
-
-// MARK: - Graph Link
-
-struct GraphLink: Identifiable {
-    let id: String
-    let sourceId: String
-    let targetId: String
-    let weight: Double
-}
-
-// MARK: - Force Simulation
-
-class GraphSimulation: ObservableObject {
-    @Published var nodes: [GraphNode] = []
-    @Published var links: [GraphLink] = []
-    @Published var isSettled = false
-
-    private var timer: Timer?
-    private var ticks = 0
-    private let maxTicks = 300
-    private var alpha: CGFloat = 1.0
-
-    func start() {
-        ticks = 0
-        alpha = 1.0
-        isSettled = false
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
-            self?.tick()
-        }
-    }
-
-    func stop() {
-        timer?.invalidate()
-        timer = nil
-    }
-
-    private func tick() {
-        guard !nodes.isEmpty else { return }
-        ticks += 1
-        alpha = max(0.001, alpha * 0.99)
-
-        if ticks >= maxTicks {
-            stop()
-            isSettled = true
-            return
-        }
-
-        let center = CGPoint(x: 500, y: 400)
-
-        for i in nodes.indices {
-            if nodes[i].pinned { continue }
-            var fx: CGFloat = 0
-            var fy: CGFloat = 0
-
-            // Repulsion from all other nodes
-            for j in nodes.indices where i != j {
-                let dx = nodes[i].position.x - nodes[j].position.x
-                let dy = nodes[i].position.y - nodes[j].position.y
-                let dist = max(sqrt(dx * dx + dy * dy), 1)
-                let repulse: CGFloat = nodes[i].kind == .project ? 8000 : 3000
-                fx += (dx / dist) * repulse / (dist * dist) * alpha
-                fy += (dy / dist) * repulse / (dist * dist) * alpha
-            }
-
-            // Center gravity
-            fx += (center.x - nodes[i].position.x) * 0.01 * alpha
-            fy += (center.y - nodes[i].position.y) * 0.01 * alpha
-
-            nodes[i].velocity.x = (nodes[i].velocity.x + fx) * 0.6
-            nodes[i].velocity.y = (nodes[i].velocity.y + fy) * 0.6
-        }
-
-        // Spring attraction along links
-        for link in links {
-            guard let si = nodes.firstIndex(where: { $0.id == link.sourceId }),
-                  let ti = nodes.firstIndex(where: { $0.id == link.targetId }) else { continue }
-
-            let dx = nodes[ti].position.x - nodes[si].position.x
-            let dy = nodes[ti].position.y - nodes[si].position.y
-            let dist = max(sqrt(dx * dx + dy * dy), 1)
-            let targetDist: CGFloat = nodes[si].kind == .project && nodes[ti].kind == .project ? 250 : 120
-            let force = (dist - targetDist) * 0.005 * alpha * CGFloat(link.weight)
-
-            let fdx = (dx / dist) * force
-            let fdy = (dy / dist) * force
-
-            if !nodes[si].pinned {
-                nodes[si].velocity.x += fdx
-                nodes[si].velocity.y += fdy
-            }
-            if !nodes[ti].pinned {
-                nodes[ti].velocity.x -= fdx
-                nodes[ti].velocity.y -= fdy
-            }
-        }
-
-        // Apply velocity
-        for i in nodes.indices {
-            if nodes[i].pinned { continue }
-            nodes[i].position.x += nodes[i].velocity.x
-            nodes[i].position.y += nodes[i].velocity.y
-        }
-    }
-
-    deinit { stop() }
-}
+import Charts
 
 // MARK: - Knowledge Graph View
 
 struct KnowledgeGraphView: View {
     @EnvironmentObject var apiService: APIService
-    @StateObject private var simulation = GraphSimulation()
     @State private var graphData: KnowledgeGraphResponse?
     @State private var isLoading = true
     @State private var error: String?
-    @State private var scale: CGFloat = 1.0
-    @State private var offset: CGSize = .zero
-    @State private var draggedNodeId: String?
-    @State private var hoveredNodeId: String?
     @State private var selectedProjectCode: String?
 
-    // Project colors
     private let projectColors: [Color] = [
-        AITopTheme.accentOrange,
-        AITopTheme.accentCyan,
-        Color(hex: "EC4899"),
-        AITopTheme.success,
-        AITopTheme.warning,
-        AITopTheme.info,
-        Color(hex: "8B5CF6"),
-        Color(hex: "F97316"),
-        Color(hex: "14B8A6"),
-        Color(hex: "EF4444"),
+        AITopTheme.accentOrange, AITopTheme.accentCyan,
+        Color(hex: "EC4899"), AITopTheme.success,
+        AITopTheme.warning, AITopTheme.info,
+        Color(hex: "8B5CF6"), Color(hex: "F97316"),
+        Color(hex: "14B8A6"), Color(hex: "EF4444"),
     ]
 
     var body: some View {
-        ZStack {
-            AITopTheme.backgroundDark.ignoresSafeArea()
-
-            VStack(spacing: 0) {
+        ScrollView {
+            VStack(spacing: AITopTheme.spacing) {
                 headerSection
-                    .padding(AITopTheme.largeSpacing)
 
                 if isLoading {
-                    Spacer()
                     ProgressView("Loading knowledge graph...")
                         .foregroundColor(AITopTheme.textSecondary)
-                    Spacer()
+                        .frame(maxWidth: .infinity, minHeight: 200)
                 } else if let error {
-                    Spacer()
-                    VStack(spacing: 12) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 32))
-                            .foregroundColor(AITopTheme.warning)
-                        Text(error)
-                            .font(AITopTheme.body())
-                            .foregroundColor(AITopTheme.textSecondary)
-                        Button("Retry") { loadData() }
-                            .aiTopPrimaryButton()
-                    }
-                    Spacer()
-                } else {
-                    HStack(spacing: 0) {
-                        graphCanvas
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    errorView(error)
+                } else if let data = graphData {
+                    // Row 1: Summary stats
+                    summaryRow(data)
 
-                        legendPanel
-                            .frame(width: 240)
+                    // Row 2: Network graph (compact) + Knowledge types
+                    HStack(alignment: .top, spacing: AITopTheme.spacing) {
+                        networkGraphCard(data)
+                        knowledgeTypesCard(data)
                     }
+                    .frame(height: 360)
+
+                    // Row 3: Project cards grid
+                    projectCardsSection(data)
                 }
             }
+            .padding(AITopTheme.largeSpacing)
         }
+        .background(AITopTheme.backgroundDark)
         .onAppear { loadData() }
-        .sheet(item: Binding(
-            get: { selectedProjectCode.map { ProjectInfo(projectCode: $0, projectName: "", status: "", category: "", totalSessions: 0, totalHours: 0) } },
-            set: { selectedProjectCode = $0?.projectCode }
-        )) { project in
-            ProjectDetailSheet(apiService: apiService, projectCode: project.projectCode)
-        }
     }
 
     // MARK: - Header
@@ -214,39 +67,12 @@ struct KnowledgeGraphView: View {
                     .font(AITopTheme.title())
                     .foregroundColor(AITopTheme.textPrimary)
                 if let data = graphData {
-                    Text("\(data.projects.count) projects  |  \(data.categories.count) categories  |  \(data.edges.count) connections")
+                    Text("\(data.projects.count) projects  |  \(totalKB(data)) knowledge entries  |  \(data.edges.count) cross-project links")
                         .font(AITopTheme.body())
                         .foregroundColor(AITopTheme.textSecondary)
                 }
             }
             Spacer()
-
-            // Zoom controls
-            HStack(spacing: 8) {
-                Button(action: { withAnimation { scale = max(0.3, scale - 0.2) } }) {
-                    Image(systemName: "minus.magnifyingglass")
-                }
-                .buttonStyle(.plain)
-                .foregroundColor(AITopTheme.textSecondary)
-
-                Text("\(Int(scale * 100))%")
-                    .font(AITopTheme.caption())
-                    .foregroundColor(AITopTheme.textTertiary)
-                    .frame(width: 40)
-
-                Button(action: { withAnimation { scale = min(3.0, scale + 0.2) } }) {
-                    Image(systemName: "plus.magnifyingglass")
-                }
-                .buttonStyle(.plain)
-                .foregroundColor(AITopTheme.textSecondary)
-
-                Button(action: { withAnimation { scale = 1.0; offset = .zero } }) {
-                    Image(systemName: "arrow.counterclockwise")
-                }
-                .buttonStyle(.plain)
-                .foregroundColor(AITopTheme.textSecondary)
-            }
-
             Button(action: { loadData() }) {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 16, weight: .medium))
@@ -256,204 +82,259 @@ struct KnowledgeGraphView: View {
         }
     }
 
-    // MARK: - Graph Canvas
+    // MARK: - Summary Row
 
-    private var graphCanvas: some View {
-        Canvas { context, size in
-            let tx = offset.width + size.width / 2 - 500 * scale
-            let ty = offset.height + size.height / 2 - 400 * scale
+    private func summaryRow(_ data: KnowledgeGraphResponse) -> some View {
+        HStack(spacing: AITopTheme.smallSpacing) {
+            summaryCard("Total KB", value: "\(totalKB(data))", icon: "brain.fill", color: AITopTheme.accentCyan)
+            summaryCard("Projects", value: "\(data.projects.count)", icon: "folder.fill", color: AITopTheme.accentOrange)
+            summaryCard("Categories", value: "\(data.categories.count)", icon: "tag.fill", color: AITopTheme.success)
+            summaryCard("Cross Links", value: "\(data.edges.count)", icon: "link", color: AITopTheme.info)
+            summaryCard("Types", value: "\(data.typeBreakdown.count)", icon: "square.grid.2x2.fill", color: Color(hex: "8B5CF6"))
+            summaryCard("Total Hours", value: String(format: "%.0f", data.projects.map(\.hours).reduce(0, +)), icon: "clock.fill", color: AITopTheme.warning)
+        }
+    }
 
-            // Draw links
-            for link in simulation.links {
-                guard let source = simulation.nodes.first(where: { $0.id == link.sourceId }),
-                      let target = simulation.nodes.first(where: { $0.id == link.targetId }) else { continue }
+    private func summaryCard(_ title: String, value: String, icon: String, color: Color) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(color)
+            Text(value)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(LinearGradient(colors: [color, color.opacity(0.7)], startPoint: .top, endPoint: .bottom))
+            Text(title)
+                .font(AITopTheme.caption())
+                .foregroundColor(AITopTheme.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(AITopTheme.smallSpacing)
+        .aiTopCard()
+    }
 
-                let x1 = source.position.x * scale + tx
-                let y1 = source.position.y * scale + ty
-                let x2 = target.position.x * scale + tx
-                let y2 = target.position.y * scale + ty
+    // MARK: - Network Graph Card (projects + tech stack with animation)
 
-                var path = Path()
-                path.move(to: CGPoint(x: x1, y: y1))
-                path.addLine(to: CGPoint(x: x2, y: y2))
-
-                let opacity = min(0.6, Double(link.weight) * 0.1 + 0.1)
-                context.stroke(path, with: .color(AITopTheme.accentOrange.opacity(opacity)), lineWidth: max(1, CGFloat(link.weight) * 0.5))
+    private func networkGraphCard(_ data: KnowledgeGraphResponse) -> some View {
+        VStack(alignment: .leading, spacing: AITopTheme.smallSpacing) {
+            HStack {
+                Text("Project × Tech Stack Network")
+                    .font(AITopTheme.heading())
+                    .foregroundColor(AITopTheme.textPrimary)
+                Spacer()
+                Text("\(data.techStack?.filter { $0.projectCount >= 2 }.count ?? 0) shared techs")
+                    .font(.system(size: 10))
+                    .foregroundColor(AITopTheme.textTertiary)
             }
 
-            // Draw nodes
-            for node in simulation.nodes {
-                let x = node.position.x * scale + tx
-                let y = node.position.y * scale + ty
-                let r = node.size * scale
-                let isHovered = node.id == hoveredNodeId
+            AnimatedNetworkGraph(data: data, projectColors: projectColors, selectedProjectCode: $selectedProjectCode)
+        }
+        .padding(AITopTheme.spacing)
+        .aiTopCard()
+        .frame(maxWidth: .infinity)
+    }
 
-                let rect = CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)
+    // MARK: - Knowledge Types Card
 
-                // Glow for hovered
-                if isHovered {
-                    let glowRect = rect.insetBy(dx: -4, dy: -4)
-                    context.fill(Path(ellipseIn: glowRect), with: .color(node.color.opacity(0.3)))
+    private func knowledgeTypesCard(_ data: KnowledgeGraphResponse) -> some View {
+        VStack(alignment: .leading, spacing: AITopTheme.smallSpacing) {
+            Text("Knowledge Types")
+                .font(AITopTheme.heading())
+                .foregroundColor(AITopTheme.textPrimary)
+
+            Chart(data.typeBreakdown) { item in
+                BarMark(
+                    x: .value("Count", item.count),
+                    y: .value("Type", item.type)
+                )
+                .foregroundStyle(typeColor(item.type).gradient)
+                .cornerRadius(3)
+                .annotation(position: .trailing, spacing: 4) {
+                    Text("\(item.count)")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundColor(AITopTheme.textTertiary)
                 }
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis {
+                AxisMarks { value in
+                    AxisValueLabel()
+                        .font(.system(size: 11))
+                        .foregroundStyle(AITopTheme.textSecondary)
+                }
+            }
+            .frame(maxHeight: .infinity)
 
-                // Node circle
-                context.fill(Path(ellipseIn: rect), with: .color(node.color.opacity(isHovered ? 1.0 : 0.85)))
+            // Top cross-project links
+            AITopDivider()
 
-                // Border
-                context.stroke(Path(ellipseIn: rect), with: .color(node.color), lineWidth: isHovered ? 2 : 1)
+            Text("Top Cross-Project Links")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(AITopTheme.textPrimary)
 
-                // Label for project nodes (always) and hovered category nodes
-                if node.kind == .project || isHovered {
-                    let label = node.kind == .project ? node.label : "\(node.label) (\(node.detail))"
-                    let text = Text(label)
-                        .font(.system(size: node.kind == .project ? 11 : 9, weight: .semibold))
-                        .foregroundColor(.white)
-                    context.draw(text, at: CGPoint(x: x, y: y + r + 10))
+            ForEach(data.edges.prefix(5)) { edge in
+                HStack(spacing: 4) {
+                    Text(edge.fromProject)
+                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                        .foregroundColor(AITopTheme.accentOrange)
+                    Image(systemName: "arrow.left.arrow.right")
+                        .font(.system(size: 7))
+                        .foregroundColor(AITopTheme.textTertiary)
+                    Text(edge.toProject)
+                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                        .foregroundColor(AITopTheme.accentCyan)
+                    Spacer()
+                    Text("\(edge.sharedCount) shared")
+                        .font(.system(size: 9))
+                        .foregroundColor(AITopTheme.textTertiary)
                 }
             }
         }
-        .background(AITopTheme.backgroundMedium)
-        .clipShape(RoundedRectangle(cornerRadius: AITopTheme.cornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: AITopTheme.cornerRadius)
-                .stroke(AITopTheme.textTertiary.opacity(0.3), lineWidth: 1)
-        )
-        .padding([.leading, .bottom], AITopTheme.largeSpacing)
-        .gesture(
-            DragGesture()
-                .onChanged { value in
-                    // Check if dragging a node
-                    if let nodeId = draggedNodeId {
-                        if let idx = simulation.nodes.firstIndex(where: { $0.id == nodeId }) {
-                            simulation.nodes[idx].position.x += value.translation.width / scale
-                            simulation.nodes[idx].position.y += value.translation.height / scale
-                            simulation.nodes[idx].pinned = true
-                        }
-                    } else {
-                        offset = CGSize(
-                            width: offset.width + value.translation.width * 0.1,
-                            height: offset.height + value.translation.height * 0.1
-                        )
-                    }
+        .padding(AITopTheme.spacing)
+        .aiTopCard()
+        .frame(width: 300)
+    }
+
+    // MARK: - Project Cards Grid
+
+    private func projectCardsSection(_ data: KnowledgeGraphResponse) -> some View {
+        VStack(alignment: .leading, spacing: AITopTheme.smallSpacing) {
+            Text("Projects")
+                .font(AITopTheme.heading())
+                .foregroundColor(AITopTheme.textPrimary)
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: AITopTheme.smallSpacing) {
+                ForEach(Array(data.projects.enumerated()), id: \.element.id) { idx, project in
+                    projectCard(project, color: projectColors[idx % projectColors.count])
                 }
-                .onEnded { _ in
-                    if let nodeId = draggedNodeId,
-                       let idx = simulation.nodes.firstIndex(where: { $0.id == nodeId }) {
-                        simulation.nodes[idx].pinned = false
-                    }
-                    draggedNodeId = nil
-                }
-        )
-        .onContinuousHover { phase in
-            switch phase {
-            case .active(let location):
-                hoveredNodeId = hitTest(location)
-            case .ended:
-                hoveredNodeId = nil
-            }
-        }
-        .gesture(
-            MagnificationGesture()
-                .onChanged { value in
-                    scale = max(0.3, min(3.0, value))
-                }
-        )
-        .onTapGesture { location in
-            if let nodeId = hitTest(location),
-               let node = simulation.nodes.first(where: { $0.id == nodeId }),
-               node.kind == .project {
-                selectedProjectCode = node.id
             }
         }
     }
 
-    // MARK: - Legend Panel
-
-    private var legendPanel: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: AITopTheme.spacing) {
-                Text("Projects")
-                    .font(AITopTheme.heading())
+    private func projectCard(_ p: GraphProject, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Header: name + status
+            HStack {
+                Circle().fill(color).frame(width: 10, height: 10)
+                Text(p.code)
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
                     .foregroundColor(AITopTheme.textPrimary)
+                Spacer()
+                if let status = p.status {
+                    Text(status)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(status == "active" ? AITopTheme.success : AITopTheme.textTertiary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background((status == "active" ? AITopTheme.success : AITopTheme.textTertiary).opacity(0.15))
+                        .cornerRadius(3)
+                }
+            }
 
-                if let data = graphData {
-                    ForEach(Array(data.projects.enumerated()), id: \.element.id) { idx, project in
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(projectColors[idx % projectColors.count])
-                                .frame(width: 12, height: 12)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(project.code)
-                                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                                    .foregroundColor(AITopTheme.textPrimary)
-                                Text("\(project.kbCount) entries")
-                                    .font(.system(size: 10))
+            Text(p.name)
+                .font(.system(size: 11))
+                .foregroundColor(AITopTheme.textSecondary)
+                .lineLimit(1)
+
+            // Stats row
+            HStack(spacing: 12) {
+                Label("\(p.kbCount)", systemImage: "brain.fill")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(AITopTheme.accentCyan)
+                Label("\(p.sessions ?? 0)", systemImage: "square.stack.fill")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(AITopTheme.accentOrange)
+                Label(String(format: "%.0fh", p.hours), systemImage: "clock.fill")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(AITopTheme.warning)
+                Spacer()
+            }
+
+            // Knowledge breakdown mini bar
+            if let breakdown = p.typeBreakdown {
+                let items = breakdown.sorted { $0.value > $1.value }.filter { $0.value > 0 }
+                let total = max(items.map(\.value).reduce(0, +), 1)
+
+                if !items.isEmpty {
+                    GeometryReader { geo in
+                        HStack(spacing: 1) {
+                            ForEach(items, id: \.key) { type, count in
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(typeColor(type))
+                                    .frame(width: max(4, geo.size.width * CGFloat(count) / CGFloat(total)))
+                            }
+                        }
+                    }
+                    .frame(height: 6)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+
+                    // Type labels
+                    HStack(spacing: 8) {
+                        ForEach(items.prefix(4), id: \.key) { type, count in
+                            HStack(spacing: 3) {
+                                Circle().fill(typeColor(type)).frame(width: 5, height: 5)
+                                Text("\(type) \(count)")
+                                    .font(.system(size: 8))
                                     .foregroundColor(AITopTheme.textTertiary)
                             }
-                            Spacer()
                         }
-                        .padding(.vertical, 2)
-                        .contentShape(Rectangle())
-                        .onTapGesture { selectedProjectCode = project.code }
-                    }
-
-                    AITopDivider()
-                        .padding(.vertical, 4)
-
-                    Text("Knowledge Types")
-                        .font(AITopTheme.heading())
-                        .foregroundColor(AITopTheme.textPrimary)
-
-                    ForEach(data.typeBreakdown) { item in
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(typeColor(item.type))
-                                .frame(width: 10, height: 10)
-                            Text(item.type)
-                                .font(AITopTheme.caption())
-                                .foregroundColor(AITopTheme.textSecondary)
-                            Spacer()
-                            Text("\(item.count)")
-                                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                                .foregroundColor(AITopTheme.textTertiary)
-                        }
-                    }
-
-                    AITopDivider()
-                        .padding(.vertical, 4)
-
-                    Text("Cross-Project Links")
-                        .font(AITopTheme.heading())
-                        .foregroundColor(AITopTheme.textPrimary)
-
-                    ForEach(data.edges.prefix(10)) { edge in
-                        HStack(spacing: 4) {
-                            Text(edge.fromProject)
-                                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                                .foregroundColor(AITopTheme.accentOrange)
-                            Image(systemName: "arrow.left.arrow.right")
-                                .font(.system(size: 8))
-                                .foregroundColor(AITopTheme.textTertiary)
-                            Text(edge.toProject)
-                                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                                .foregroundColor(AITopTheme.accentCyan)
-                            Spacer()
-                            Text("\(edge.sharedCount)")
-                                .font(.system(size: 10, design: .monospaced))
-                                .foregroundColor(AITopTheme.textTertiary)
-                        }
+                        Spacer()
                     }
                 }
             }
-            .padding(AITopTheme.spacing)
+
+            // Dates
+            HStack(spacing: 12) {
+                if let created = p.createdAt {
+                    HStack(spacing: 3) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 8))
+                        Text(formatDate(created))
+                            .font(.system(size: 9, design: .monospaced))
+                    }
+                    .foregroundColor(AITopTheme.textTertiary)
+                }
+                if let lastKB = p.lastKnowledgeAt {
+                    HStack(spacing: 3) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 8))
+                        Text(formatDate(lastKB))
+                            .font(.system(size: 9, design: .monospaced))
+                    }
+                    .foregroundColor(AITopTheme.textTertiary)
+                }
+                Spacer()
+            }
         }
-        .background(AITopTheme.backgroundDark)
+        .padding(AITopTheme.smallSpacing + 4)
+        .background(selectedProjectCode == p.code ? color.opacity(0.08) : AITopTheme.cardBackground)
+        .cornerRadius(AITopTheme.cornerRadius)
         .overlay(
-            Rectangle()
-                .fill(AITopTheme.textTertiary.opacity(0.3))
-                .frame(width: 1),
-            alignment: .leading
+            RoundedRectangle(cornerRadius: AITopTheme.cornerRadius)
+                .stroke(selectedProjectCode == p.code ? color.opacity(0.5) : Color.clear, lineWidth: 1)
         )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedProjectCode = selectedProjectCode == p.code ? nil : p.code
+            }
+        }
+    }
+
+    // MARK: - Error
+
+    private func errorView(_ msg: String) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 32))
+                .foregroundColor(AITopTheme.warning)
+            Text(msg)
+                .font(AITopTheme.body())
+                .foregroundColor(AITopTheme.textSecondary)
+            Button("Retry") { loadData() }
+                .aiTopPrimaryButton()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(40)
     }
 
     // MARK: - Helpers
@@ -467,7 +348,6 @@ struct KnowledgeGraphView: View {
                 await MainActor.run {
                     graphData = result
                     isLoading = false
-                    buildGraph(from: result)
                 }
             } catch {
                 await MainActor.run {
@@ -478,77 +358,20 @@ struct KnowledgeGraphView: View {
         }
     }
 
-    private func buildGraph(from data: KnowledgeGraphResponse) {
-        var nodes: [GraphNode] = []
-        var links: [GraphLink] = []
-
-        // Project nodes — arranged in a circle
-        let projectCount = data.projects.count
-        for (i, project) in data.projects.enumerated() {
-            let angle = 2.0 * .pi * Double(i) / Double(max(projectCount, 1))
-            let radius: Double = 200
-            let x = 500 + radius * cos(angle)
-            let y = 400 + radius * sin(angle)
-
-            nodes.append(GraphNode(
-                id: project.code,
-                label: project.code,
-                detail: "\(project.kbCount) entries",
-                kind: .project,
-                size: max(16, min(35, CGFloat(project.kbCount) / 50.0 + 16)),
-                color: projectColors[i % projectColors.count],
-                position: CGPoint(x: x, y: y)
-            ))
-        }
-
-        // Category nodes — placed near their primary project
-        for cat in data.categories {
-            let primaryProject = cat.projects.first ?? ""
-            let basePos = nodes.first(where: { $0.id == primaryProject })?.position ?? CGPoint(x: 500, y: 400)
-
-            let jitterX = CGFloat.random(in: -80...80)
-            let jitterY = CGFloat.random(in: -80...80)
-
-            nodes.append(GraphNode(
-                id: "cat_\(cat.name)",
-                label: cat.name,
-                detail: "\(cat.count)",
-                kind: .category,
-                size: max(5, min(14, CGFloat(cat.count) / 20.0 + 5)),
-                color: typeColor(cat.name).opacity(0.7),
-                position: CGPoint(x: basePos.x + jitterX, y: basePos.y + jitterY)
-            ))
-
-            // Link category to each of its projects
-            for projectCode in cat.projects {
-                links.append(GraphLink(
-                    id: "link_\(projectCode)_\(cat.name)",
-                    sourceId: projectCode,
-                    targetId: "cat_\(cat.name)",
-                    weight: min(Double(cat.count) / 20.0, 3.0)
-                ))
-            }
-        }
-
-        // Project-to-project edges
-        for edge in data.edges {
-            links.append(GraphLink(
-                id: "edge_\(edge.fromProject)_\(edge.toProject)",
-                sourceId: edge.fromProject,
-                targetId: edge.toProject,
-                weight: Double(edge.sharedCount)
-            ))
-        }
-
-        simulation.nodes = nodes
-        simulation.links = links
-        simulation.start()
+    private func totalKB(_ data: KnowledgeGraphResponse) -> Int {
+        data.typeBreakdown.map(\.count).reduce(0, +)
     }
 
-    private func hitTest(_ location: CGPoint) -> String? {
-        // Simple hit test against node positions
-        // Note: Canvas coordinates — approximate mapping
-        return nil // Hit testing on Canvas is complex; hover works via onContinuousHover position
+    private func formatDate(_ iso: String?) -> String {
+        guard let iso, iso.count >= 10 else { return "-" }
+        return String(iso.prefix(10))
+    }
+
+    private func circleLayout(count: Int, center: CGPoint, radius: CGFloat) -> [CGPoint] {
+        (0..<count).map { i in
+            let angle = 2.0 * .pi * Double(i) / Double(max(count, 1)) - .pi / 2
+            return CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
+        }
     }
 
     private func typeColor(_ type: String) -> Color {
@@ -562,11 +385,179 @@ struct KnowledgeGraphView: View {
         case "preference": return Color(hex: "EC4899")
         case "technique": return AITopTheme.accentOrange
         case "ui_pattern": return Color(hex: "14B8A6")
-        case let s where s.contains("database"): return AITopTheme.accentCyan
-        case let s where s.contains("architect"): return Color(hex: "8B5CF6")
-        case let s where s.contains("swift"): return AITopTheme.accentOrange
-        case let s where s.contains("async"): return AITopTheme.warning
         default: return AITopTheme.textTertiary
+        }
+    }
+}
+
+// MARK: - Animated Network Graph
+
+struct AnimatedNetworkGraph: View {
+    let data: KnowledgeGraphResponse
+    let projectColors: [Color]
+    @Binding var selectedProjectCode: String?
+
+    private let techTypeColors: [String: Color] = [
+        "language": Color(hex: "3B82F6"),
+        "framework": Color(hex: "8B5CF6"),
+        "database": Color(hex: "14B8A6"),
+        "library": Color(hex: "6B7280"),
+        "ai": Color(hex: "F97316"),
+        "embedding": Color(hex: "EC4899"),
+        "auth": Color(hex: "EF4444"),
+        "frontend": Color(hex: "22C55E"),
+        "styling": Color(hex: "06B6D4"),
+        "tool": Color(hex: "A3A3A3"),
+        "ocr": Color(hex: "D97706"),
+    ]
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+            GeometryReader { geo in
+                let time = timeline.date.timeIntervalSinceReferenceDate
+                let size = geo.size
+                let cx = size.width / 2
+                let cy = size.height / 2
+
+                let activeProjects = data.projects.filter { $0.kbCount > 0 || $0.hours > 0 }
+                let sharedTechs = (data.techStack ?? []).filter { $0.projectCount >= 2 }
+
+                // Layout: projects in outer ring, tech in inner ring
+                let pRadius = min(cx, cy) * 0.75
+                let tRadius = min(cx, cy) * 0.35
+                let pPositions = circleLayout(count: activeProjects.count, center: CGPoint(x: cx, y: cy), radius: pRadius)
+                let tPositions = circleLayout(count: sharedTechs.count, center: CGPoint(x: cx, y: cy), radius: tRadius)
+
+                Canvas { context, _ in
+                    // 1. Draw tech-to-project links (animated pulse)
+                    for (ti, tech) in sharedTechs.enumerated() {
+                        let tPos = tPositions[ti]
+                        for projectCode in tech.projects {
+                            guard let pi = activeProjects.firstIndex(where: { $0.code == projectCode }) else { continue }
+                            let pPos = pPositions[pi]
+
+                            // Animated dash phase
+                            let phase = CGFloat(time.truncatingRemainder(dividingBy: 3.0)) * 8.0
+                            var path = Path()
+                            path.move(to: tPos)
+                            path.addLine(to: pPos)
+
+                            let isHighlighted = selectedProjectCode == projectCode
+                            let baseOpacity = isHighlighted ? 0.4 : 0.12
+                            let color = techTypeColors[tech.techType] ?? AITopTheme.textTertiary
+
+                            context.stroke(
+                                path,
+                                with: .color(color.opacity(baseOpacity)),
+                                style: StrokeStyle(lineWidth: isHighlighted ? 1.5 : 0.7, dash: [4, 4], dashPhase: phase)
+                            )
+                        }
+                    }
+
+                    // 2. Draw project-to-project edges (solid, shared knowledge)
+                    for edge in data.edges {
+                        guard let si = activeProjects.firstIndex(where: { $0.code == edge.fromProject }),
+                              let ti = activeProjects.firstIndex(where: { $0.code == edge.toProject }) else { continue }
+                        var path = Path()
+                        path.move(to: pPositions[si])
+                        path.addLine(to: pPositions[ti])
+                        let w = max(1.5, min(4, CGFloat(edge.sharedCount) * 0.4))
+                        let opacity = min(0.4, Double(edge.sharedCount) * 0.05 + 0.08)
+                        context.stroke(path, with: .color(AITopTheme.accentOrange.opacity(opacity)), lineWidth: w)
+                    }
+
+                    // 3. Draw tech nodes (inner ring, small with pulse)
+                    for (ti, tech) in sharedTechs.enumerated() {
+                        let pos = tPositions[ti]
+                        let baseR: CGFloat = max(4, min(10, CGFloat(tech.projectCount) * 2.5))
+                        // Gentle pulse animation
+                        let pulse = CGFloat(sin(time * 2.0 + Double(ti) * 0.5)) * 1.5
+                        let r = baseR + pulse
+                        let color = techTypeColors[tech.techType] ?? AITopTheme.textTertiary
+
+                        // Glow
+                        context.fill(
+                            Path(ellipseIn: CGRect(x: pos.x - r - 3, y: pos.y - r - 3, width: (r + 3) * 2, height: (r + 3) * 2)),
+                            with: .color(color.opacity(0.15))
+                        )
+                        // Node
+                        context.fill(
+                            Path(ellipseIn: CGRect(x: pos.x - r, y: pos.y - r, width: r * 2, height: r * 2)),
+                            with: .color(color.opacity(0.85))
+                        )
+                        // Label
+                        let label = Text(tech.name)
+                            .font(.system(size: 7, weight: .medium))
+                            .foregroundColor(color)
+                        context.draw(label, at: CGPoint(x: pos.x, y: pos.y + r + 7))
+                    }
+
+                    // 4. Draw project nodes (outer ring, large with breathing)
+                    for (i, project) in activeProjects.enumerated() {
+                        let pos = pPositions[i]
+                        let baseR = max(14, min(32, CGFloat(project.kbCount) / 6.0 + 12))
+                        let breath = CGFloat(sin(time * 1.2 + Double(i) * 0.8)) * 1.5
+                        let r = baseR + breath
+                        let color = projectColors[i % projectColors.count]
+                        let isSelected = selectedProjectCode == project.code
+
+                        // Outer glow (stronger for selected)
+                        let glowR = r + (isSelected ? 8 : 4)
+                        context.fill(
+                            Path(ellipseIn: CGRect(x: pos.x - glowR, y: pos.y - glowR, width: glowR * 2, height: glowR * 2)),
+                            with: .color(color.opacity(isSelected ? 0.25 : 0.1))
+                        )
+
+                        // Node
+                        context.fill(
+                            Path(ellipseIn: CGRect(x: pos.x - r, y: pos.y - r, width: r * 2, height: r * 2)),
+                            with: .color(color.opacity(isSelected ? 1.0 : 0.85))
+                        )
+
+                        // Border ring
+                        context.stroke(
+                            Path(ellipseIn: CGRect(x: pos.x - r, y: pos.y - r, width: r * 2, height: r * 2)),
+                            with: .color(color), lineWidth: isSelected ? 2 : 0.5
+                        )
+
+                        // Label below
+                        let nameLabel = Text(project.code)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                        context.draw(nameLabel, at: CGPoint(x: pos.x, y: pos.y + r + 12))
+
+                        // KB count inside
+                        if r >= 16 {
+                            let countLabel = Text("\(project.kbCount)")
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundColor(.white.opacity(0.9))
+                            context.draw(countLabel, at: pos)
+                        }
+                    }
+                }
+                .onTapGesture { location in
+                    for (i, project) in activeProjects.enumerated() {
+                        let pos = pPositions[i]
+                        let r = max(14, min(32, CGFloat(project.kbCount) / 6.0 + 12)) + 8
+                        let dx = location.x - pos.x
+                        let dy = location.y - pos.y
+                        if dx * dx + dy * dy <= r * r {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedProjectCode = selectedProjectCode == project.code ? nil : project.code
+                            }
+                            return
+                        }
+                    }
+                    selectedProjectCode = nil
+                }
+            }
+        }
+    }
+
+    private func circleLayout(count: Int, center: CGPoint, radius: CGFloat) -> [CGPoint] {
+        (0..<count).map { i in
+            let angle = 2.0 * .pi * Double(i) / Double(max(count, 1)) - .pi / 2
+            return CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
         }
     }
 }
