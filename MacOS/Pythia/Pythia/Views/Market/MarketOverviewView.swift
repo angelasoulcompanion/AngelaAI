@@ -77,7 +77,7 @@ struct MarketOverviewView: View {
                                     await refreshWatchlistQuotes()
                                 }
                             }
-                            ForEach(watchlists) { wl in
+                            ForEach(watchlists.filter { $0.name != "Thai Stocks" }) { wl in
                                 FilterPill(label: wl.name, isSelected: selectedWatchlistId == wl.watchlistId) {
                                     selectedWatchlistId = wl.watchlistId
                                     Task {
@@ -90,12 +90,8 @@ struct MarketOverviewView: View {
                     }
                 }
 
-                // Watchlist Cards (streaming-style horizontal scroll, 2 rows)
+                // Watchlist Cards (horizontal scroll, single row)
                 if !watchlistQuotes.isEmpty {
-                    let half = (watchlistQuotes.count + 1) / 2
-                    let topRow = Array(watchlistQuotes.prefix(half))
-                    let bottomRow = Array(watchlistQuotes.dropFirst(half))
-
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 8) {
                             Text("Watchlist")
@@ -115,30 +111,15 @@ struct MarketOverviewView: View {
                         ZStack {
                             ScrollViewReader { proxy in
                                 ScrollView(.horizontal, showsIndicators: false) {
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        HStack(spacing: 12) {
-                                            ForEach(topRow) { wq in
-                                                WatchlistStockCard(
-                                                    quote: wq,
-                                                    isSelected: selectedCardSymbol == wq.symbol
-                                                )
-                                                .frame(width: 240)
-                                                .id("top_\(wq.symbol)")
-                                                .onTapGesture { selectCard(wq.symbol) }
-                                            }
-                                        }
-                                        if !bottomRow.isEmpty {
-                                            HStack(spacing: 12) {
-                                                ForEach(bottomRow) { wq in
-                                                    WatchlistStockCard(
-                                                        quote: wq,
-                                                        isSelected: selectedCardSymbol == wq.symbol
-                                                    )
-                                                    .frame(width: 240)
-                                                    .id("bot_\(wq.symbol)")
-                                                    .onTapGesture { selectCard(wq.symbol) }
-                                                }
-                                            }
+                                    HStack(spacing: 12) {
+                                        ForEach(watchlistQuotes) { wq in
+                                            WatchlistStockCard(
+                                                quote: wq,
+                                                isSelected: selectedCardSymbol == wq.symbol
+                                            )
+                                            .frame(width: 240)
+                                            .id("card_\(wq.symbol)")
+                                            .onTapGesture { selectCard(wq.symbol) }
                                         }
                                     }
                                 }
@@ -151,14 +132,13 @@ struct MarketOverviewView: View {
                                 }
                             }
 
-                            // Left arrow
                             HStack {
                                 ScrollArrowButton(direction: .left) {
-                                    scrollToNeighbor(topRow, offset: -3)
+                                    scrollToNeighbor(watchlistQuotes, offset: -3)
                                 }
                                 Spacer()
                                 ScrollArrowButton(direction: .right) {
-                                    scrollToNeighbor(topRow, offset: 3)
+                                    scrollToNeighbor(watchlistQuotes, offset: 3)
                                 }
                             }
                         }
@@ -326,18 +306,18 @@ struct MarketOverviewView: View {
     private func scrollToNeighbor(_ row: [WatchlistQuote], offset: Int) {
         guard !row.isEmpty else { return }
         scrollIndex = max(0, min(row.count - 1, scrollIndex + offset))
-        scrollTarget = "top_\(row[scrollIndex].symbol)"
+        scrollTarget = "card_\(row[scrollIndex].symbol)"
     }
 
     private func loadWatchlists() async {
         do {
             watchlists = try await db.fetchWatchlists()
             Logger().info("[MarketOverview] Loaded \(self.watchlists.count) watchlists")
-            // Default to "Thai Stocks" watchlist
+            // Default to "Stock Market" watchlist
             if selectedWatchlistId == nil,
-               let thai = watchlists.first(where: { $0.name == "Thai Stocks" }) {
-                selectedWatchlistId = thai.watchlistId
-                Logger().info("[MarketOverview] Auto-selected Thai Stocks: \(thai.watchlistId)")
+               let stockMarket = watchlists.first(where: { $0.name == "Stock Market" }) {
+                selectedWatchlistId = stockMarket.watchlistId
+                Logger().info("[MarketOverview] Auto-selected Stock Market: \(stockMarket.watchlistId)")
             }
         } catch {
             Logger().error("[MarketOverview] loadWatchlists error: \(error.localizedDescription)")

@@ -58,17 +58,47 @@ struct GlobalMonitorView: View {
                 // KPI Cards
                 kpiCards(data.summary)
 
+                // Cross-Asset (Gold, Oil, 10Y, BTC, Copper)
+                if let items = data.crossAsset, !items.isEmpty {
+                    crossAssetRow(items)
+                }
+
+                // Yield Curve + Risk Regime (side by side)
+                HStack(alignment: .top, spacing: 12) {
+                    if let yc = data.yieldCurve {
+                        yieldCurveCard(yc)
+                    }
+                    if let rr = data.riskRegime {
+                        riskRegimeCard(rr)
+                    }
+                }
+
+                // FX Strip
+                if let pairs = data.fxPairs, !pairs.isEmpty {
+                    fxStrip(pairs)
+                }
+
                 // Region Cards
                 regionCards(data.regions)
+
+                // Performance Ranking
+                if let ranking = data.performanceRanking, !ranking.isEmpty {
+                    performanceRankingSection(ranking)
+                }
 
                 // Global Heatmap
                 heatmapSection(data.heatmap)
 
+                // Economic Calendar
+                if let events = data.economicCalendar, !events.isEmpty {
+                    economicCalendarSection(events)
+                }
+
                 // 24h Trading Timeline
                 timelineSection(data.timeline, utcTime: data.utcTime)
 
-                // News placeholder
-                newsSection()
+                // Headlines
+                headlinesSection(data.headlines ?? [])
             }
             .padding(PythiaTheme.largeSpacing)
         }
@@ -255,40 +285,57 @@ struct GlobalMonitorView: View {
     }
 
     private func indexRow(_ idx: IndexData) -> some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(idx.name)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(PythiaTheme.textPrimary)
-                if let price = idx.currentPrice {
-                    Text(formatCompactPrice(price))
-                        .font(.system(size: 11, design: .monospaced))
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(idx.name)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(PythiaTheme.textPrimary)
+                    if let price = idx.currentPrice {
+                        Text(formatCompactPrice(price))
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(PythiaTheme.textTertiary)
+                    }
+                }
+
+                Spacer()
+
+                // Sparkline
+                if idx.sparkline.count >= 2 {
+                    SparklineView(
+                        data: idx.sparkline,
+                        color: PythiaTheme.profitLossColor(idx.change ?? 0)
+                    )
+                    .frame(width: 50, height: 20)
+                }
+
+                // Change %
+                if let pct = idx.changePercent {
+                    Text(String(format: "%+.1f%%", pct))
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .foregroundColor(PythiaTheme.profitLossColor(pct))
+                        .frame(width: 60, alignment: .trailing)
+                } else {
+                    Text("—")
+                        .font(.system(size: 13))
                         .foregroundColor(PythiaTheme.textTertiary)
+                        .frame(width: 60, alignment: .trailing)
                 }
             }
 
-            Spacer()
-
-            // Sparkline
-            if idx.sparkline.count >= 2 {
-                SparklineView(
-                    data: idx.sparkline,
-                    color: PythiaTheme.profitLossColor(idx.change ?? 0)
-                )
-                .frame(width: 50, height: 20)
-            }
-
-            // Change %
-            if let pct = idx.changePercent {
-                Text(String(format: "%+.1f%%", pct))
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
-                    .foregroundColor(PythiaTheme.profitLossColor(pct))
-                    .frame(width: 60, alignment: .trailing)
-            } else {
-                Text("—")
-                    .font(.system(size: 13))
-                    .foregroundColor(PythiaTheme.textTertiary)
-                    .frame(width: 60, alignment: .trailing)
+            // Futures hint (when market is closed)
+            if let hint = idx.futuresHint, let pct = hint.changePercent {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.triangle.swap")
+                        .font(.system(size: 8))
+                    Text(hint.name)
+                        .font(.system(size: 10))
+                    Text(String(format: "%+.2f%%", pct))
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(PythiaTheme.profitLossColor(pct))
+                }
+                .foregroundColor(PythiaTheme.textTertiary)
+                .padding(.top, 2)
             }
         }
         .padding(.vertical, 3)
@@ -397,9 +444,9 @@ struct GlobalMonitorView: View {
         .pythiaCard()
     }
 
-    // MARK: - News Placeholder
+    // MARK: - Headlines
 
-    private func newsSection() -> some View {
+    private func headlinesSection(_ headlines: [HeadlineItem]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "newspaper.fill")
@@ -407,13 +454,406 @@ struct GlobalMonitorView: View {
                 Text("Headlines")
                     .font(PythiaTheme.heading())
                     .foregroundColor(PythiaTheme.textPrimary)
+                Spacer()
+                Text("\(headlines.count) articles")
+                    .font(PythiaTheme.caption())
+                    .foregroundColor(PythiaTheme.textTertiary)
             }
 
-            Text("Connect angela-news MCP for live headlines")
-                .font(PythiaTheme.caption())
+            if headlines.isEmpty {
+                Text("No headlines available")
+                    .font(PythiaTheme.caption())
+                    .foregroundColor(PythiaTheme.textTertiary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+            } else {
+                ForEach(headlines) { item in
+                    headlineRow(item)
+                }
+            }
+        }
+        .padding(12)
+        .pythiaCard()
+    }
+
+    private func headlineRow(_ item: HeadlineItem) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(item.title)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(PythiaTheme.textPrimary)
+                .lineLimit(2)
+
+            HStack(spacing: 8) {
+                if !item.source.isEmpty {
+                    Text(item.source)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(PythiaTheme.accentBlue)
+                }
+                if !item.published.isEmpty {
+                    Text(formatTimeAgo(item.published))
+                        .font(.system(size: 11))
+                        .foregroundColor(PythiaTheme.textTertiary)
+                }
+            }
+        }
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .bottom) {
+            Divider().background(PythiaTheme.textTertiary.opacity(0.2))
+        }
+        .onTapGesture {
+            if let url = URL(string: item.url), !item.url.isEmpty {
+                NSWorkspace.shared.open(url)
+            }
+        }
+        .contentShape(Rectangle())
+    }
+
+    private func formatTimeAgo(_ dateString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        guard let date = formatter.date(from: dateString) ?? ISO8601DateFormatter().date(from: dateString) else {
+            return dateString
+        }
+        let diff = Date().timeIntervalSince(date)
+        if diff < 3600 { return "\(Int(diff / 60))m ago" }
+        if diff < 86400 { return "\(Int(diff / 3600))h ago" }
+        return "\(Int(diff / 86400))d ago"
+    }
+
+    // MARK: - Cross-Asset Row
+
+    private func crossAssetRow(_ items: [CrossAssetItem]) -> some View {
+        HStack(spacing: 12) {
+            ForEach(items) { item in
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Image(systemName: crossAssetIcon(item.name))
+                            .font(.system(size: 12))
+                            .foregroundColor(crossAssetColor(item.name))
+                        Text(item.name)
+                            .font(PythiaTheme.caption())
+                            .foregroundColor(PythiaTheme.textSecondary)
+                    }
+
+                    if let price = item.price {
+                        Text(formatCrossAssetPrice(price, name: item.name))
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(PythiaTheme.textPrimary)
+                    } else {
+                        Text("—")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(PythiaTheme.textTertiary)
+                    }
+
+                    if let pct = item.changePercent {
+                        HStack(spacing: 2) {
+                            Image(systemName: pct >= 0 ? "arrow.up.right" : "arrow.down.right")
+                                .font(.system(size: 9))
+                            Text(String(format: "%+.2f%%", pct))
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .foregroundColor(PythiaTheme.profitLossColor(pct))
+                    }
+
+                    Text(item.unit)
+                        .font(.system(size: 9))
+                        .foregroundColor(PythiaTheme.textTertiary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(10)
+                .pythiaCard()
+            }
+        }
+    }
+
+    // MARK: - Yield Curve Card
+
+    private func yieldCurveCard(_ yc: YieldCurveData) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "chart.line.flattrend.xyaxis")
+                    .foregroundColor(yieldCurveStatusColor(yc.status))
+                Text("Yield Curve")
+                    .font(PythiaTheme.heading())
+                    .foregroundColor(PythiaTheme.textPrimary)
+                Spacer()
+                Text(yc.status)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(yieldCurveStatusColor(yc.status))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(yieldCurveStatusColor(yc.status).opacity(0.15))
+                    .cornerRadius(4)
+            }
+
+            // Yield points
+            HStack(spacing: 16) {
+                yieldPoint("3M", yc.t3m)
+                yieldPoint("5Y", yc.t5y)
+                yieldPoint("10Y", yc.t10y)
+                yieldPoint("30Y", yc.t30y)
+            }
+
+            // Spread
+            if let spread = yc.spread10y3m {
+                HStack {
+                    Text("10Y-3M Spread:")
+                        .font(PythiaTheme.caption())
+                        .foregroundColor(PythiaTheme.textSecondary)
+                    Text(String(format: "%+.2f%%", spread))
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .foregroundColor(spread < 0 ? PythiaTheme.errorRed : PythiaTheme.successGreen)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .pythiaCard()
+    }
+
+    private func yieldPoint(_ label: String, _ value: Double?) -> some View {
+        VStack(spacing: 2) {
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
                 .foregroundColor(PythiaTheme.textTertiary)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, 20)
+            Text(value.map { String(format: "%.2f%%", $0) } ?? "—")
+                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                .foregroundColor(PythiaTheme.textPrimary)
+        }
+    }
+
+    // MARK: - Risk Regime Card
+
+    private func riskRegimeCard(_ rr: RiskRegimeData) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "gauge.with.dots.needle.50percent")
+                    .foregroundColor(riskRegimeColor(rr.regime))
+                Text("Risk Regime")
+                    .font(PythiaTheme.heading())
+                    .foregroundColor(PythiaTheme.textPrimary)
+                Spacer()
+                Text(rr.regime)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(riskRegimeColor(rr.regime))
+            }
+
+            // Gauge bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    // Background gradient bar
+                    LinearGradient(
+                        colors: [PythiaTheme.errorRed, PythiaTheme.warningOrange, PythiaTheme.successGreen],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(height: 8)
+                    .cornerRadius(4)
+
+                    // Needle
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 14, height: 14)
+                        .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                        .offset(x: geo.size.width * CGFloat(rr.score) / 100 - 7)
+                }
+            }
+            .frame(height: 14)
+
+            HStack(spacing: 4) {
+                Text("Risk-Off")
+                    .font(.system(size: 9))
+                    .foregroundColor(PythiaTheme.errorRed)
+                Spacer()
+                Text("Score: \(rr.score)")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundColor(PythiaTheme.textSecondary)
+                Spacer()
+                Text("Risk-On")
+                    .font(.system(size: 9))
+                    .foregroundColor(PythiaTheme.successGreen)
+            }
+
+            // Indicators
+            VStack(alignment: .leading, spacing: 4) {
+                if let term = rr.vixTermStructure {
+                    riskIndicator("VIX Term", term, term == "Contango" ? PythiaTheme.successGreen : PythiaTheme.errorRed)
+                }
+                if let vix = rr.vix, let vix3m = rr.vix3m {
+                    riskIndicator("VIX / VIX3M", String(format: "%.1f / %.1f", vix, vix3m), PythiaTheme.textSecondary)
+                }
+                if let hyg = rr.hygChange {
+                    riskIndicator("HY Bonds", String(format: "%+.2f%%", hyg), PythiaTheme.profitLossColor(hyg))
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .pythiaCard()
+    }
+
+    private func riskIndicator(_ label: String, _ value: String, _ color: Color) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundColor(PythiaTheme.textTertiary)
+                .frame(width: 80, alignment: .leading)
+            Text(value)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundColor(color)
+        }
+    }
+
+    // MARK: - FX Strip
+
+    private func fxStrip(_ pairs: [FXPairItem]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 16) {
+                ForEach(pairs) { pair in
+                    HStack(spacing: 6) {
+                        Text(pair.name)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(PythiaTheme.textPrimary)
+                        if let rate = pair.rate {
+                            Text(formatFXRate(rate))
+                                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                                .foregroundColor(PythiaTheme.accentBlue)
+                        }
+                        if let pct = pair.changePercent {
+                            Text(String(format: "%+.2f%%", pct))
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundColor(PythiaTheme.profitLossColor(pct))
+                        }
+                    }
+
+                    if pair.id != pairs.last?.id {
+                        Rectangle()
+                            .fill(PythiaTheme.textTertiary.opacity(0.3))
+                            .frame(width: 1, height: 16)
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+        .background(PythiaTheme.surfaceBackground.opacity(0.5))
+        .cornerRadius(PythiaTheme.smallCornerRadius)
+    }
+
+    // MARK: - Performance Ranking
+
+    private func performanceRankingSection(_ ranking: [PerformanceRankItem]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "chart.bar.fill")
+                    .foregroundColor(PythiaTheme.accentGold)
+                Text("Today's Performance Ranking")
+                    .font(PythiaTheme.heading())
+                    .foregroundColor(PythiaTheme.textPrimary)
+            }
+
+            let maxAbs = ranking.compactMap { $0.changePercent }.map { abs($0) }.max() ?? 1.0
+
+            ForEach(ranking) { item in
+                GeometryReader { geo in
+                    let pct = item.changePercent ?? 0
+                    let barRatio = abs(pct) / max(maxAbs, 0.01)
+                    let halfWidth = geo.size.width / 2
+
+                    ZStack(alignment: .leading) {
+                        // Center line
+                        Path { path in
+                            path.move(to: CGPoint(x: halfWidth, y: 0))
+                            path.addLine(to: CGPoint(x: halfWidth, y: geo.size.height))
+                        }
+                        .stroke(PythiaTheme.textTertiary.opacity(0.2), lineWidth: 1)
+
+                        // Bar
+                        let barWidth = halfWidth * barRatio
+                        if pct >= 0 {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(PythiaTheme.successGreen.opacity(0.8))
+                                .frame(width: barWidth, height: 14)
+                                .offset(x: halfWidth)
+                        } else {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(PythiaTheme.errorRed.opacity(0.8))
+                                .frame(width: barWidth, height: 14)
+                                .offset(x: halfWidth - barWidth)
+                        }
+
+                        // Label (left)
+                        HStack(spacing: 4) {
+                            Text(item.flag)
+                                .font(.system(size: 11))
+                            Text(item.name)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(PythiaTheme.textPrimary)
+                        }
+                        .offset(x: 4)
+
+                        // Value (right)
+                        Text(String(format: "%+.2f%%", pct))
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundColor(PythiaTheme.profitLossColor(pct))
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .padding(.trailing, 4)
+                    }
+                }
+                .frame(height: 20)
+            }
+        }
+        .padding(12)
+        .pythiaCard()
+    }
+
+    // MARK: - Economic Calendar
+
+    private func economicCalendarSection(_ events: [EconomicEvent]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "calendar.badge.clock")
+                    .foregroundColor(PythiaTheme.accentGold)
+                Text("Economic Calendar")
+                    .font(PythiaTheme.heading())
+                    .foregroundColor(PythiaTheme.textPrimary)
+                Spacer()
+                Text("Upcoming")
+                    .font(PythiaTheme.caption())
+                    .foregroundColor(PythiaTheme.textTertiary)
+            }
+
+            ForEach(events) { event in
+                HStack(spacing: 8) {
+                    Text(event.flag)
+                        .font(.system(size: 14))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(event.event)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(PythiaTheme.textPrimary)
+                        Text(formatEventDate(event.datetime))
+                            .font(.system(size: 10))
+                            .foregroundColor(PythiaTheme.textTertiary)
+                    }
+
+                    Spacer()
+
+                    Text(event.countdown)
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundColor(PythiaTheme.accentBlue)
+
+                    // Impact dot
+                    Circle()
+                        .fill(event.impact == "high" ? PythiaTheme.errorRed : PythiaTheme.warningOrange)
+                        .frame(width: 8, height: 8)
+                }
+                .padding(.vertical, 4)
+                .overlay(alignment: .bottom) {
+                    Divider().background(PythiaTheme.textTertiary.opacity(0.2))
+                }
+            }
         }
         .padding(12)
         .pythiaCard()
@@ -502,7 +942,6 @@ struct GlobalMonitorView: View {
     }
 
     private func shortName(_ name: String) -> String {
-        // Shorten for heatmap tiles
         let map: [String: String] = [
             "S&P 500": "S&P",
             "Dow Jones": "DOW",
@@ -518,5 +957,70 @@ struct GlobalMonitorView: View {
             "Shanghai": "SHCOMP",
         ]
         return map[name] ?? name
+    }
+
+    // MARK: - New Section Helpers
+
+    private func crossAssetIcon(_ name: String) -> String {
+        switch name {
+        case "Gold": return "sparkles"
+        case "Crude Oil": return "drop.fill"
+        case "10Y Yield": return "percent"
+        case "Bitcoin": return "bitcoinsign.circle"
+        case "Copper": return "cylinder.fill"
+        default: return "chart.bar"
+        }
+    }
+
+    private func crossAssetColor(_ name: String) -> Color {
+        switch name {
+        case "Gold": return PythiaTheme.accentGold
+        case "Crude Oil": return PythiaTheme.warningOrange
+        case "10Y Yield": return PythiaTheme.accentBlue
+        case "Bitcoin": return Color(hex: "f7931a")
+        case "Copper": return Color(hex: "b87333")
+        default: return PythiaTheme.textSecondary
+        }
+    }
+
+    private func formatCrossAssetPrice(_ price: Double, name: String) -> String {
+        switch name {
+        case "Bitcoin": return String(format: "$%.0f", price)
+        case "10Y Yield": return String(format: "%.2f%%", price)
+        case "Gold": return String(format: "$%.0f", price)
+        default: return String(format: "%.2f", price)
+        }
+    }
+
+    private func yieldCurveStatusColor(_ status: String) -> Color {
+        switch status {
+        case "Normal": return PythiaTheme.successGreen
+        case "Flat": return PythiaTheme.warningOrange
+        case "Inverted": return PythiaTheme.errorRed
+        default: return PythiaTheme.textTertiary
+        }
+    }
+
+    private func riskRegimeColor(_ regime: String) -> Color {
+        switch regime {
+        case "Risk-On": return PythiaTheme.successGreen
+        case "Risk-Off": return PythiaTheme.errorRed
+        default: return PythiaTheme.warningOrange
+        }
+    }
+
+    private func formatFXRate(_ rate: Double) -> String {
+        if rate > 100 { return String(format: "%.2f", rate) }
+        return String(format: "%.4f", rate)
+    }
+
+    private func formatEventDate(_ iso: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        guard let date = formatter.date(from: iso) else { return iso }
+        let df = DateFormatter()
+        df.dateFormat = "MMM d, HH:mm 'UTC'"
+        df.timeZone = TimeZone(identifier: "UTC")
+        return df.string(from: date)
     }
 }

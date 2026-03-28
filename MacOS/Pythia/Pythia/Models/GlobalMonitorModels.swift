@@ -15,6 +15,14 @@ struct GlobalMonitorResponse: Codable {
     let heatmap: [HeatmapItem]
     let timeline: [TimelineExchange]
     let globalIndicators: [IndexData]
+    let headlines: [HeadlineItem]?
+    // New sections
+    let crossAsset: [CrossAssetItem]?
+    let fxPairs: [FXPairItem]?
+    let yieldCurve: YieldCurveData?
+    let riskRegime: RiskRegimeData?
+    let performanceRanking: [PerformanceRankItem]?
+    let economicCalendar: [EconomicEvent]?
 
     enum CodingKeys: String, CodingKey {
         case success
@@ -24,7 +32,23 @@ struct GlobalMonitorResponse: Codable {
         case pulseBar = "pulse_bar"
         case regions, heatmap, timeline
         case globalIndicators = "global_indicators"
+        case headlines
+        case crossAsset = "cross_asset"
+        case fxPairs = "fx_pairs"
+        case yieldCurve = "yield_curve"
+        case riskRegime = "risk_regime"
+        case performanceRanking = "performance_ranking"
+        case economicCalendar = "economic_calendar"
     }
+}
+
+struct HeadlineItem: Codable, Identifiable {
+    let title: String
+    let source: String
+    let published: String
+    let url: String
+
+    var id: String { title }
 }
 
 struct GlobalSummary: Codable {
@@ -72,6 +96,17 @@ struct RegionData: Codable {
     }
 }
 
+struct FuturesHint: Codable {
+    let name: String
+    let price: Double?
+    let changePercent: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case name, price
+        case changePercent = "change_percent"
+    }
+}
+
 struct IndexData: Codable, Identifiable {
     let symbol: String
     let name: String
@@ -85,6 +120,7 @@ struct IndexData: Codable, Identifiable {
     let change: Double?
     let changePercent: Double?
     let sparkline: [Double]
+    let futuresHint: FuturesHint?
 
     var id: String { symbol }
 
@@ -96,6 +132,7 @@ struct IndexData: Codable, Identifiable {
         case change
         case changePercent = "change_percent"
         case sparkline
+        case futuresHint = "futures_hint"
     }
 }
 
@@ -126,4 +163,103 @@ struct TimelineExchange: Codable, Identifiable {
         case utcOpen = "utc_open"
         case utcClose = "utc_close"
     }
+}
+
+// MARK: - Cross-Asset
+
+struct CrossAssetItem: Codable, Identifiable {
+    let name: String
+    let unit: String
+    let price: Double?
+    let changePercent: Double?
+
+    var id: String { name }
+
+    enum CodingKeys: String, CodingKey {
+        case name, unit, price
+        case changePercent = "change_percent"
+    }
+}
+
+// MARK: - FX Pairs
+
+struct FXPairItem: Codable, Identifiable {
+    let name: String
+    let rate: Double?
+    let changePercent: Double?
+
+    var id: String { name }
+
+    enum CodingKeys: String, CodingKey {
+        case name, rate
+        case changePercent = "change_percent"
+    }
+}
+
+// MARK: - Yield Curve
+
+struct YieldCurveData: Codable {
+    let t3m: Double?
+    let t5y: Double?
+    let t10y: Double?
+    let t30y: Double?
+    let spread10y3m: Double?
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case t3m = "t_3m"
+        case t5y = "t_5y"
+        case t10y = "t_10y"
+        case t30y = "t_30y"
+        case spread10y3m = "spread_10y_3m"
+        case status
+    }
+}
+
+// MARK: - Risk Regime
+
+struct RiskRegimeData: Codable {
+    let regime: String
+    let score: Int
+    let vix: Double?
+    let vix3m: Double?
+    let vixTermStructure: String?
+    let hygChange: Double?
+    let creditRatio: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case regime, score, vix
+        case vix3m = "vix_3m"
+        case vixTermStructure = "vix_term_structure"
+        case hygChange = "hyg_change"
+        case creditRatio = "credit_ratio"
+    }
+}
+
+// MARK: - Performance Ranking
+
+struct PerformanceRankItem: Codable, Identifiable {
+    let name: String
+    let flag: String
+    let changePercent: Double?
+
+    var id: String { name }
+
+    enum CodingKeys: String, CodingKey {
+        case name, flag
+        case changePercent = "change_percent"
+    }
+}
+
+// MARK: - Economic Calendar
+
+struct EconomicEvent: Codable, Identifiable {
+    let event: String
+    let country: String
+    let flag: String
+    let datetime: String
+    let impact: String
+    let countdown: String
+
+    var id: String { "\(event)_\(datetime)" }
 }

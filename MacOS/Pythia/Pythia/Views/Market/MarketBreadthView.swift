@@ -32,12 +32,14 @@ struct MarketBreadthView: View {
                 if let b = breadth, b.success {
                     regimeBadge(b.current)
                     summaryCards(b.current)
+                    marketSummary(b.current)
                     adLineChart(b)
                     pctAboveMAChart(b)
                     mcclEllanChart(b)
                     newHighsLowsChart(b)
                     trinChart(b)
                     divergenceAlerts(b.current)
+                    breadthTheorySection
                 }
             }
             .padding(PythiaTheme.largeSpacing)
@@ -60,7 +62,7 @@ struct MarketBreadthView: View {
                         Text("\(u.name) (\(u.size))").tag(u.id)
                     }
                 }
-                .frame(width: 200)
+                .frame(width: 320)
 
                 ForEach(periods, id: \.0) { value, label in
                     Button(label) {
@@ -147,6 +149,138 @@ struct MarketBreadthView: View {
                 (current.trin ?? 1) < 1 ? PythiaTheme.profit : PythiaTheme.loss,
                 size: .medium
             )
+        }
+    }
+
+    // MARK: - Market Summary
+
+    private func marketSummary(_ current: BreadthCurrent) -> some View {
+        let adRatio = current.adRatio ?? 1.0
+        let pctAbove200 = current.pctAbove200ma ?? 50.0
+        let mcclellan = current.mcclEllanOscillator ?? 0.0
+        let trin = current.trin ?? 1.0
+        let regime = current.regime
+
+        // Score: count bullish/bearish signals
+        var bullCount = 0
+        var bearCount = 0
+
+        if adRatio > 1.0 { bullCount += 1 } else { bearCount += 1 }
+        if pctAbove200 > 50 { bullCount += 1 } else { bearCount += 1 }
+        if mcclellan > 0 { bullCount += 1 } else { bearCount += 1 }
+        if trin < 1.0 { bullCount += 1 } else { bearCount += 1 }
+
+        // A/D Ratio interpretation
+        let adText: String = {
+            if adRatio > 1.5 { return "A/D Ratio สูงที่ \(String(format: "%.2f", adRatio)) หุ้นขึ้นมากกว่าลงอย่างชัดเจน" }
+            if adRatio > 1.0 { return "A/D Ratio อยู่ที่ \(String(format: "%.2f", adRatio)) หุ้นขึ้นมากกว่าลงเล็กน้อย" }
+            if adRatio > 0.7 { return "A/D Ratio อยู่ที่ \(String(format: "%.2f", adRatio)) หุ้นลงมากกว่าขึ้นเล็กน้อย" }
+            return "A/D Ratio ต่ำที่ \(String(format: "%.2f", adRatio)) หุ้นส่วนใหญ่ปรับตัวลง"
+        }()
+
+        // % Above 200MA interpretation
+        let maText: String = {
+            if pctAbove200 > 70 { return "หุ้น \(String(format: "%.1f", pctAbove200))% เทรดเหนือ 200MA แสดงถึงตลาดกระทิงที่แข็งแกร่ง" }
+            if pctAbove200 > 50 { return "หุ้น \(String(format: "%.1f", pctAbove200))% เทรดเหนือ 200MA ตลาดยังมีแนวโน้มเป็นบวก" }
+            if pctAbove200 > 30 { return "หุ้นเพียง \(String(format: "%.1f", pctAbove200))% เทรดเหนือ 200MA ตลาดเริ่มอ่อนแอ" }
+            return "หุ้นเพียง \(String(format: "%.1f", pctAbove200))% เทรดเหนือ 200MA อยู่ในโซน Oversold"
+        }()
+
+        // McClellan interpretation
+        let mccText: String = {
+            if mcclellan > 50 { return "McClellan Oscillator สูงที่ \(String(format: "%.1f", mcclellan)) โมเมนตัมเร่งตัวแรง" }
+            if mcclellan > 0 { return "McClellan Oscillator เป็นบวกที่ \(String(format: "%.1f", mcclellan)) โมเมนตัมยังเป็นขาขึ้น" }
+            if mcclellan > -50 { return "McClellan Oscillator ติดลบที่ \(String(format: "%.1f", mcclellan)) โมเมนตัมชะลอตัว" }
+            return "McClellan Oscillator ต่ำมากที่ \(String(format: "%.1f", mcclellan)) แรงขายกระจายตัวหนัก"
+        }()
+
+        // TRIN interpretation
+        let trinText: String = {
+            if trin < 0.75 { return "TRIN ต่ำที่ \(String(format: "%.2f", trin)) volume ไหลเข้าหุ้นขาขึ้นอย่างแข็งแกร่ง" }
+            if trin < 1.0 { return "TRIN อยู่ที่ \(String(format: "%.2f", trin)) volume เอนเอียงไปทางฝั่งซื้อ" }
+            if trin < 1.25 { return "TRIN อยู่ที่ \(String(format: "%.2f", trin)) volume เอนเอียงไปทางฝั่งขาย" }
+            return "TRIN สูงที่ \(String(format: "%.2f", trin)) แรงขายหนัก volume ไหลเข้าหุ้นขาลง"
+        }()
+
+        // Overall verdict
+        let verdict: String = {
+            switch regime {
+            case "strong_bull": return "ตลาดอยู่ในภาวะกระทิงแข็งแกร่ง — Breadth กว้าง หุ้นส่วนใหญ่มีส่วนร่วมในขาขึ้น เหมาะกับกลยุทธ์ตาม Trend"
+            case "bull": return "ตลาดอยู่ในภาวะกระทิง — Breadth ค่อนข้างดี แต่ควรเฝ้าระวัง Divergence ที่อาจเกิดขึ้น"
+            case "neutral":
+                if bullCount > bearCount {
+                    return "ตลาดอยู่ในภาวะทรงตัว แต่มีสัญญาณบวกมากกว่าลบ — อาจเริ่มฟื้นตัว ควรรอยืนยันจาก Breadth ก่อนเข้า"
+                } else {
+                    return "ตลาดอยู่ในภาวะทรงตัว สัญญาณผสม — ควรระมัดระวังและรอความชัดเจนก่อนตัดสินใจ"
+                }
+            case "bear": return "ตลาดอยู่ในภาวะหมี — Breadth อ่อนแอ หุ้นส่วนน้อยที่ยังยืนได้ ควรลดความเสี่ยงหรือรอสัญญาณกลับตัว"
+            case "strong_bear": return "ตลาดอยู่ในภาวะหมีรุนแรง — แรงขายกระจายตัวทั่วทั้งตลาด ควร Defensive หรือถือเงินสด"
+            default: return "ไม่สามารถระบุภาวะตลาดได้ชัดเจน"
+            }
+        }()
+
+        let summaryColor: Color = {
+            if bullCount >= 3 { return PythiaTheme.profit }
+            if bearCount >= 3 { return PythiaTheme.loss }
+            return PythiaTheme.accentGold
+        }()
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "chart.bar.doc.horizontal.fill")
+                    .foregroundColor(summaryColor)
+                Text("สรุปภาพรวมตลาด")
+                    .font(PythiaTheme.headline())
+                    .foregroundColor(PythiaTheme.textPrimary)
+                Spacer()
+                Text("Bullish \(bullCount) / Bearish \(bearCount)")
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .foregroundColor(summaryColor)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(summaryColor.opacity(0.12))
+                    .cornerRadius(8)
+            }
+
+            Text(verdict)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(PythiaTheme.textPrimary)
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(summaryColor.opacity(0.06))
+                .cornerRadius(8)
+
+            VStack(alignment: .leading, spacing: 6) {
+                summaryBullet(adText, bullish: adRatio > 1.0)
+                summaryBullet(maText, bullish: pctAbove200 > 50)
+                summaryBullet(mccText, bullish: mcclellan > 0)
+                summaryBullet(trinText, bullish: trin < 1.0)
+            }
+
+            if !current.divergences.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(PythiaTheme.warningOrange)
+                    Text("พบ Divergence \(current.divergences.count) รายการ — ควรระวังการกลับตัวของตลาด")
+                        .font(PythiaTheme.caption())
+                        .foregroundColor(PythiaTheme.warningOrange)
+                }
+            }
+        }
+        .padding()
+        .pythiaCard()
+    }
+
+    private func summaryBullet(_ text: String, bullish: Bool) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: bullish ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                .font(.system(size: 11))
+                .foregroundColor(bullish ? PythiaTheme.profit : PythiaTheme.loss)
+                .padding(.top, 2)
+            Text(text)
+                .font(PythiaTheme.body())
+                .foregroundColor(PythiaTheme.textSecondary)
         }
     }
 
@@ -384,6 +518,99 @@ struct MarketBreadthView: View {
             .background(PythiaTheme.warningOrange.opacity(0.05))
             .overlay(RoundedRectangle(cornerRadius: PythiaTheme.cornerRadius).stroke(PythiaTheme.warningOrange.opacity(0.3), lineWidth: 1))
             .cornerRadius(PythiaTheme.cornerRadius)
+        }
+    }
+
+    // MARK: - Breadth Theory
+
+    private var breadthTheorySection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 8) {
+                Image(systemName: "book.fill")
+                    .foregroundColor(PythiaTheme.accentGold)
+                Text("Market Breadth Analysis Guide")
+                    .font(PythiaTheme.headline())
+                    .foregroundColor(PythiaTheme.textPrimary)
+            }
+
+            VStack(alignment: .leading, spacing: 14) {
+                theoryItem(
+                    title: "Advance/Decline Line",
+                    description: "ผลรวมสะสมของ (หุ้นขึ้น - หุ้นลง) ถ้า A/D Line ขึ้นตามดัชนี แสดงว่าหุ้นส่วนใหญ่มีส่วนร่วมในขาขึ้น แต่ถ้าดัชนีขึ้นแต่ A/D Line ลง เป็นสัญญาณเตือนว่าหุ้นน้อยตัวลงเรื่อยๆ ที่หนุนตลาด",
+                    bullish: "ขึ้นพร้อมดัชนี = หุ้นมีส่วนร่วมกว้าง",
+                    bearish: "ลงขณะดัชนีขึ้น = ผู้นำแคบลง เสี่ยงกลับตัว"
+                )
+                Divider().background(PythiaTheme.textTertiary.opacity(0.2))
+
+                theoryItem(
+                    title: "% Above Moving Average",
+                    description: "สัดส่วนหุ้นที่เทรดเหนือเส้น MA 50 วัน หรือ 200 วัน ใช้วัด Overbought/Oversold ของทั้งตลาด",
+                    bullish: "> 70% เหนือ 200MA = ตลาดกระทิงแข็งแกร่ง",
+                    bearish: "< 30% เหนือ 200MA = Oversold อาจเด้งหรืออ่อนตัวต่อ"
+                )
+                Divider().background(PythiaTheme.textTertiary.opacity(0.2))
+
+                theoryItem(
+                    title: "McClellan Oscillator",
+                    description: "ผลต่างระหว่าง EMA 19 วัน กับ 39 วัน ของ (หุ้นขึ้น - หุ้นลง) วัดโมเมนตัมของ breadth ว่าการมีส่วนร่วมเร่งตัวหรือชะลอ",
+                    bullish: "> 0 และเพิ่มขึ้น = โมเมนตัม breadth เร่งตัว",
+                    bearish: "< 0 และลดลง = การมีส่วนร่วมลดลง แรงขายกระจายตัว"
+                )
+                Divider().background(PythiaTheme.textTertiary.opacity(0.2))
+
+                theoryItem(
+                    title: "New 52-Week Highs vs Lows",
+                    description: "นับหุ้นที่ทำ New High/Low รอบ 52 สัปดาห์ ตลาดกระทิงที่แข็งแรงจะมี New Highs มากกว่า New Lows อย่างสม่ำเสมอ",
+                    bullish: "Highs >> Lows = เทรนด์แข็ง หุ้นทำ breakout กว้าง",
+                    bearish: "Lows >> Highs = หุ้นหลุดแนวรับทั่วตัว เข้าสู่ช่วง distribution"
+                )
+                Divider().background(PythiaTheme.textTertiary.opacity(0.2))
+
+                theoryItem(
+                    title: "TRIN (Arms Index)",
+                    description: "อัตราส่วนของ (หุ้นขึ้น/หุ้นลง) ต่อ (volume ขึ้น/volume ลง) วัดว่า volume ไหลเข้าหุ้นขาขึ้นหรือขาลงมากกว่า",
+                    bullish: "< 1.0 = volume ไหลเข้าหุ้นขาขึ้น (แรงซื้อ)",
+                    bearish: "> 1.0 = volume ไหลเข้าหุ้นขาลง (แรงขาย)"
+                )
+            }
+        }
+        .padding()
+        .pythiaCard()
+    }
+
+    private func theoryItem(title: String, description: String, bullish: String, bearish: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(PythiaTheme.accentGold)
+
+            Text(description)
+                .font(PythiaTheme.body())
+                .foregroundColor(PythiaTheme.textSecondary)
+
+            HStack(alignment: .top, spacing: 16) {
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(PythiaTheme.profit)
+                        .padding(.top, 2)
+                    Text(bullish)
+                        .font(PythiaTheme.caption())
+                        .foregroundColor(PythiaTheme.profit.opacity(0.8))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(PythiaTheme.loss)
+                        .padding(.top, 2)
+                    Text(bearish)
+                        .font(PythiaTheme.caption())
+                        .foregroundColor(PythiaTheme.loss.opacity(0.8))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 
