@@ -273,7 +273,7 @@ class PreferenceLearningService:
         tech_hours = Counter()
 
         for hour, topics in hour_topics.items():
-            tech_count = sum(1 for topic in topics if any(t in topic.lower() for t in tech_topics))
+            tech_count = sum(1 for topic in topics if topic and any(t in topic.lower() for t in tech_topics))
             if tech_count > 0:
                 tech_hours[hour] = tech_count
 

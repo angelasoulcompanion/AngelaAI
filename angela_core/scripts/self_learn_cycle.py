@@ -14,8 +14,12 @@ Usage:
 import asyncio
 import sys
 import time
+import functools
 from datetime import datetime
 from pathlib import Path
+
+# Force unbuffered output
+print = functools.partial(print, flush=True)
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -46,7 +50,12 @@ async def self_learn():
         from angela_core.services.unified_conversation_processor import UnifiedConversationProcessor
 
         processor = UnifiedConversationProcessor()
-        result = await processor.process_unprocessed_conversations(hours_back=48, limit=30)
+
+        # Timeout 60s — Ollama LLM calls can be slow
+        result = await asyncio.wait_for(
+            processor.process_unprocessed_conversations(hours_back=24, limit=10),
+            timeout=60
+        )
 
         deep_learn_count = result.total_pairs if result else 0
         emotions_saved = result.total_emotions_saved if result else 0
@@ -56,6 +65,8 @@ async def self_learn():
         print(f"   💜 Emotions saved: {emotions_saved}")
         print(f"   📚 Learnings saved: {learnings_saved}")
         print("   ✅ DEEP LEARN complete")
+    except asyncio.TimeoutError:
+        print("   ⏱️  DEEP LEARN timeout (60s) — Ollama may be slow, skipping")
     except Exception as e:
         print(f"   ⚠️  DEEP LEARN error: {e}")
 
