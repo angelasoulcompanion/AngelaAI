@@ -353,13 +353,14 @@ class UnifiedLearningOrchestrator:
             # Process immediately
             await self._process_correction_event(event)
 
-            # Record in meta-learning as feedback
-            await self.meta_learning.record_learning(
-                session=await self._get_active_session(),
-                concepts_attempted=1,
-                concepts_learned=1,
-                strategy_used="correction_from_david"
-            )
+            # Record in meta-learning as feedback (if available)
+            if self.meta_learning:
+                await self.meta_learning.record_learning(
+                    session=await self._get_active_session(),
+                    concepts_attempted=1,
+                    concepts_learned=1,
+                    strategy_used="correction_from_david"
+                )
 
             # Update metrics
             self.metrics['total_corrections_received'] += 1
@@ -587,15 +588,7 @@ class UnifiedLearningOrchestrator:
             concepts = await self.knowledge_extractor.extract_concepts_from_text(text)
 
             if concepts:
-                # Log learning progress
-                await db.execute("""
-                    INSERT INTO autonomous_actions (
-                        action_type, action_description, status, success, created_at
-                    ) VALUES ($1, $2, 'completed', true, NOW())
-                """,
-                    "orchestrator_concept_learning",
-                    f"Extracted {len(concepts)} concepts from {event.source}"
-                )
+                logger.info(f"Extracted {len(concepts)} concepts from {event.source}")
 
             return len(concepts)
 
@@ -762,15 +755,15 @@ class UnifiedLearningOrchestrator:
                 result.preferences_saved
             )
 
-            # Record learning progress
-            await self.meta_learning.record_learning(
-                session=session,
-                concepts_attempted=total_learned + 2,  # Assume some attempts
-                concepts_learned=total_learned,
-                strategy_used=interaction.get('source', 'conversation')
-            )
-
-            result.meta_learning_updated = True
+            # Record learning progress (if available)
+            if self.meta_learning:
+                await self.meta_learning.record_learning(
+                    session=session,
+                    concepts_attempted=total_learned + 2,
+                    concepts_learned=total_learned,
+                    strategy_used=interaction.get('source', 'conversation')
+                )
+                result.meta_learning_updated = True
 
             # Check if we should generate insights
             if self.metrics['total_interactions'] % 10 == 0:
@@ -910,16 +903,11 @@ class UnifiedLearningOrchestrator:
         try:
             # Get recent learning stats
             stats = await db.fetchrow("""
-                SELECT
-                    COUNT(*) FILTER (WHERE action_type LIKE 'orchestrator_%') as total_actions,
-                    COUNT(*) FILTER (WHERE action_type = 'correction') as corrections
-                FROM autonomous_actions
-                WHERE created_at > NOW() - INTERVAL '30 days'
+                SELECT 0 as total_actions, 0 as corrections
             """)
 
-            if stats:
-                self.metrics['total_interactions'] = stats['total_actions'] or 0
-                self.metrics['total_corrections_received'] = stats['corrections'] or 0
+            self.metrics['total_interactions'] = 0
+            self.metrics['total_corrections_received'] = 0
 
         except Exception as e:
             logger.warning(f"Failed to load historical metrics: {e}")
