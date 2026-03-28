@@ -660,48 +660,41 @@ class PreferenceLearningService:
             return {"error": str(e)}
 
     async def _get_project_learnings(self, days: int) -> List[Dict]:
-        """ดึง project learnings ที่เกี่ยวกับ coding"""
+        """ดึง project learnings ที่เกี่ยวกับ coding (from unified_knowledge_base)"""
         query = f"""
             SELECT
-                pl.learning_id,
-                pl.learning_type,
-                pl.category,
-                pl.title,
-                pl.insight,
-                pl.context,
-                pl.confidence,
-                pl.learned_at,
-                p.project_name,
-                p.project_code
-            FROM project_learnings pl
-            JOIN angela_projects p ON pl.project_id = p.project_id
-            WHERE pl.learned_at >= NOW() - INTERVAL '{days} days'
-            AND pl.learning_type IN ('technical', 'pattern', 'best_practice', 'mistake', 'optimization')
-            ORDER BY pl.learned_at DESC
+                kb_id as learning_id,
+                knowledge_type as learning_type,
+                category,
+                title,
+                content as insight,
+                confidence,
+                source_project_code as project_code,
+                created_at as learned_at
+            FROM unified_knowledge_base
+            WHERE created_at >= NOW() - INTERVAL '{days} days'
+            AND knowledge_type IN ('learning', 'pattern', 'gotcha', 'workflow', 'technique')
+            ORDER BY created_at DESC
         """
         rows = await db.fetch(query)
         return [dict(row) for row in rows]
 
     async def _get_project_decisions(self, days: int) -> List[Dict]:
-        """ดึง project decisions ที่เกี่ยวกับ coding"""
+        """ดึง project decisions ที่เกี่ยวกับ coding (from unified_knowledge_base)"""
         query = f"""
             SELECT
-                pd.decision_id,
-                pd.decision_type,
-                pd.title,
-                pd.context,
-                pd.decision_made,
-                pd.reasoning,
-                pd.decided_by,
-                pd.outcome,
-                pd.decided_at,
-                p.project_name,
-                p.project_code
-            FROM project_decisions pd
-            JOIN angela_projects p ON pd.project_id = p.project_id
-            WHERE pd.decided_at >= NOW() - INTERVAL '{days} days'
-            AND pd.decision_type IN ('architecture', 'technology', 'approach', 'design')
-            ORDER BY pd.decided_at DESC
+                kb_id as decision_id,
+                category as decision_type,
+                title,
+                reasoning,
+                content as decision_made,
+                source_project_code as project_code,
+                created_at as decided_at
+            FROM unified_knowledge_base
+            WHERE knowledge_type = 'decision'
+            AND created_at >= NOW() - INTERVAL '{days} days'
+            AND category IN ('architecture', 'technology', 'approach', 'design')
+            ORDER BY created_at DESC
         """
         rows = await db.fetch(query)
         return [dict(row) for row in rows]
@@ -823,34 +816,31 @@ class PreferenceLearningService:
         examples: str,
         anti_patterns: str
     ) -> bool:
-        """เพิ่ม technical standard ใหม่ (ถ้ายังไม่มี)"""
+        """เพิ่ม technical standard ใหม่ → unified_knowledge_base"""
         try:
             # Check if exists
-            check_query = """
-                SELECT 1 FROM angela_technical_standards
-                WHERE technique_name = $1
-            """
-            existing = await db.fetchval(check_query, technique_name)
+            existing = await db.fetchval(
+                "SELECT 1 FROM unified_knowledge_base WHERE knowledge_type = 'standard' AND title = $1",
+                technique_name
+            )
 
             if existing:
                 logger.debug(f"Technical standard already exists: {technique_name}")
                 return False
 
-            # Insert new
-            insert_query = """
-                INSERT INTO angela_technical_standards
-                (technique_name, category, description, importance_level, why_important, examples, anti_patterns)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
-            """
-            await db.execute(
-                insert_query,
-                technique_name,
-                category,
-                description,
-                importance_level,
-                why_important,
-                examples,
-                anti_patterns
+            # Insert via KnowledgeBaseService
+            from angela_core.services.knowledge_base_service import KnowledgeBaseService
+            kb = KnowledgeBaseService()
+            await kb.add_knowledge(
+                title=technique_name,
+                content=description,
+                knowledge_type='standard',
+                category=category,
+                is_universal=True,
+                confidence=min(importance_level / 10.0, 1.0),
+                code_snippet=examples,
+                prevention_rule=anti_patterns,
+                metadata={'importance_level': importance_level, 'why_important': why_important},
             )
 
             logger.info(f"✅ Added technical standard: {technique_name}")

@@ -64,11 +64,15 @@ async def get_recent_project_learnings(limit: int = Query(10, ge=1, le=50), conn
     """Fetch recent project learnings"""
     rows = await conn.fetch("""
         SELECT
-            learning_id::text, project_id::text, session_id::text,
-            learning_type, category, title, insight, context,
-            applicable_to, confidence, learned_at
-        FROM project_learnings
-        ORDER BY learned_at DESC
+            kb_id::text as learning_id,
+            source_project_id::text as project_id,
+            source_session_id::text as session_id,
+            knowledge_type as learning_type,
+            category, title, content as insight,
+            applicable_to, confidence, created_at as learned_at
+        FROM unified_knowledge_base
+        WHERE knowledge_type IN ('learning', 'gotcha', 'pattern', 'workflow', 'technique')
+        ORDER BY created_at DESC
         LIMIT $1
     """, limit)
     return [dict(r) for r in rows]

@@ -157,6 +157,58 @@ async def main():
         #     """, pid, sid, milestone['type'], milestone['title'], milestone.get('description'))
         #     print(f"🎉 Milestone: {milestone['title']}")
 
+        # ============================================================
+        # 9) UNIFIED KNOWLEDGE BASE — dual-write learnings/decisions/corrections
+        #    ข้อมูลจะถูกเขียนทั้ง table เดิม + unified_knowledge_base
+        # ============================================================
+        from angela_core.services.knowledge_base_service import KnowledgeBaseService
+        kb = KnowledgeBaseService()
+        kb_count = 0
+
+        for l in learnings:
+            await kb.add_knowledge(
+                title=l['title'],
+                content=l['insight'],
+                knowledge_type=l['type'],
+                category=l.get('category'),
+                source_project_code='ANGELA-001',  # ← เปลี่ยนตาม project
+                source_project_id=pid,
+                source_session_id=sid,
+                confidence=0.9,
+            )
+            kb_count += 1
+
+        for d in decisions:
+            await kb.add_knowledge(
+                title=d['title'],
+                content=d['decision'],
+                knowledge_type='decision',
+                category=d['type'],
+                source_project_code='ANGELA-001',
+                source_project_id=pid,
+                source_session_id=sid,
+                reasoning=d.get('reasoning'),
+            )
+            kb_count += 1
+
+        for m in mistakes:
+            await kb.add_knowledge(
+                title=m['title'],
+                content=m['what_happened'],
+                knowledge_type='gotcha',
+                category=m.get('category', m['type']),
+                source_project_code='ANGELA-001',
+                source_project_id=pid,
+                source_session_id=sid,
+                severity=m['severity'],
+                prevention_rule=m.get('how_to_prevent'),
+                auto_warn=True,
+            )
+            kb_count += 1
+
+        if kb_count:
+            print(f"📚 {kb_count} entries → unified_knowledge_base")
+
         print(f"✅ Session #{sn} | 📝 Summary | 🧠 Embeddings | 💜 Done!")
 
     finally:

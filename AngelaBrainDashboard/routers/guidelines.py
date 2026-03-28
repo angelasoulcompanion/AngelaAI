@@ -43,16 +43,17 @@ async def get_design_principles(conn=Depends(get_conn)):
     """Fetch design principles (importance >= 9)"""
     rows = await conn.fetch("""
         SELECT
-            standard_id::text,
-            technique_name,
-            description,
+            kb_id::text as standard_id,
+            title as technique_name,
+            content as description,
             category,
-            importance_level,
-            why_important,
-            examples,
-            anti_patterns
-        FROM angela_technical_standards
-        WHERE importance_level >= 9
-        ORDER BY importance_level DESC, category
+            COALESCE((metadata->>'importance_level')::int, ROUND(confidence * 10)::int) as importance_level,
+            metadata->>'why_important' as why_important,
+            code_snippet as examples,
+            prevention_rule as anti_patterns
+        FROM unified_knowledge_base
+        WHERE knowledge_type = 'standard'
+        AND confidence >= 0.9
+        ORDER BY confidence DESC, category
     """)
     return [dict(r) for r in rows]

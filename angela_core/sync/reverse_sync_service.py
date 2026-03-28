@@ -68,7 +68,6 @@ SYNC_TABLES = [
     'empathy_moments',
 
     # Sessions & actions
-    'work_sessions',
     'session_actions',
     'autonomous_actions',
 

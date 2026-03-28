@@ -6,7 +6,6 @@ Angela Intelligence Enhancement - Phase 1.1
 Central hub that coordinates ALL learning services, connecting them to:
 - AGI Loop (OODA cycle)
 - Meta-Learning (learning how to learn)
-- Consciousness (awareness affects learning priority)
 - Feedback Loop (validation and improvement)
 
 Architecture:
@@ -56,8 +55,6 @@ from angela_core.services.self_learning_service import self_learning_loop, SelfL
 from angela_core.services.realtime_learning_service import realtime_pipeline
 from angela_core.services.knowledge_extraction_service import knowledge_extractor
 
-# AGI Components
-from angela_core.agi.meta_learning import meta_learning, MetaLearningEngine, LearningMethod
 
 logger = logging.getLogger(__name__)
 
@@ -76,10 +73,11 @@ class LearningType(Enum):
     CONCEPT = "concept"           # New knowledge/concept learned
     PATTERN = "pattern"           # Behavioral pattern detected
     PREFERENCE = "preference"     # David's preference learned
-    EMOTION = "emotion"           # Emotional understanding
     CORRECTION = "correction"     # Learning from David's correction
     INSIGHT = "insight"           # Meta-insight about learning
     SKILL = "skill"               # Technical skill/technique
+    CODING_TECHNIQUE = "coding_technique"  # Coding pattern/technique learned
+    UI_PATTERN = "ui_pattern"              # UI/UX pattern learned
 
 
 @dataclass
@@ -115,7 +113,6 @@ class LearningResult:
     preferences_saved: int = 0
     insights_generated: int = 0
     meta_learning_updated: bool = False
-    consciousness_notified: bool = False
     processing_time_ms: float = 0
     details: Dict[str, Any] = field(default_factory=dict)
 
@@ -127,7 +124,6 @@ class LearningResult:
             'preferences_saved': self.preferences_saved,
             'insights_generated': self.insights_generated,
             'meta_learning_updated': self.meta_learning_updated,
-            'consciousness_notified': self.consciousness_notified,
             'processing_time_ms': self.processing_time_ms,
             'details': self.details
         }
@@ -143,7 +139,8 @@ class UnifiedLearningOrchestrator:
     3. Preference Learning - David's preferences
     4. Meta-Learning - Learning effectiveness tracking
     5. AGI Loop Integration - OODA cycle connection
-    6. Consciousness Integration - Awareness affects learning
+    6. Coding Technique Learning - Technical patterns and techniques
+    7. UI Pattern Learning - UI/UX design patterns
 
     Usage:
         orchestrator = UnifiedLearningOrchestrator()
@@ -165,7 +162,11 @@ class UnifiedLearningOrchestrator:
         self.self_learning = self_learning_loop
         self.realtime_pipeline = realtime_pipeline
         self.knowledge_extractor = knowledge_extractor
-        self.meta_learning = meta_learning
+        try:
+            from angela_core.agi.meta_learning import meta_learning
+            self.meta_learning = meta_learning
+        except ImportError:
+            self.meta_learning = None
 
         # Learning queue and state
         self.learning_queue: List[LearningEvent] = []
@@ -184,14 +185,12 @@ class UnifiedLearningOrchestrator:
             'meta_insights_generated': 0
         }
 
-        # Callbacks for consciousness integration
-        self._consciousness_callback: Optional[Callable] = None
+        # Callbacks
         self._feedback_callback: Optional[Callable] = None
 
         # Configuration
         self.config = {
             'auto_meta_learning': True,     # Automatically update meta-learning
-            'consciousness_aware': True,     # Use consciousness level for priority
             'async_background_learning': True,  # Queue heavy tasks for background
             'min_confidence_threshold': 0.5,  # Minimum confidence to save learning
             'batch_size': 5,                 # Max events to process at once
@@ -289,12 +288,7 @@ class UnifiedLearningOrchestrator:
             if self.config['auto_meta_learning']:
                 await self._update_meta_learning(interaction, result)
 
-            # 5. Notify consciousness (if callback set)
-            if self._consciousness_callback and self.config['consciousness_aware']:
-                await self._notify_consciousness(result)
-                result.consciousness_notified = True
-
-            # 6. Calculate final metrics
+            # 5. Calculate final metrics
             elapsed_ms = (datetime.now() - start_time).total_seconds() * 1000
             result.processing_time_ms = elapsed_ms
             result.success = True
@@ -505,18 +499,6 @@ class UnifiedLearningOrchestrator:
             source=source
         ))
 
-        # 4. Emotional learning event (if emotional content detected)
-        if await self._has_emotional_content(david_msg):
-            events.append(LearningEvent(
-                event_type=LearningType.EMOTION,
-                priority=LearningPriority.HIGH,
-                content={
-                    'message': david_msg,
-                    'response': angela_msg
-                },
-                source=source
-            ))
-
         return events
 
     async def _process_events_immediately(
@@ -540,8 +522,13 @@ class UnifiedLearningOrchestrator:
                     patterns = await self._process_pattern_event(event)
                     result.patterns_detected += patterns
 
-                elif event.event_type == LearningType.EMOTION:
-                    await self._process_emotion_event(event)
+                elif event.event_type == LearningType.CODING_TECHNIQUE:
+                    techniques = await self._process_coding_technique_event(event)
+                    result.concepts_learned += techniques
+
+                elif event.event_type == LearningType.UI_PATTERN:
+                    patterns = await self._process_ui_pattern_event(event)
+                    result.patterns_detected += patterns
 
                 event.processed = True
 
@@ -654,25 +641,57 @@ class UnifiedLearningOrchestrator:
             logger.error(f"Pattern processing error: {e}")
             return 0
 
-    async def _process_emotion_event(self, event: LearningEvent) -> None:
-        """Process emotional learning."""
+    async def _process_coding_technique_event(self, event: LearningEvent) -> int:
+        """Extract and save coding technique → unified_knowledge_base."""
         try:
-            # Save emotional moment to angela_emotions
-            await db.execute("""
-                INSERT INTO angela_emotions (
-                    emotion, intensity, context,
-                    david_words, why_it_matters, felt_at
-                ) VALUES ($1, $2, $3, $4, $5, NOW())
-            """,
-                'emotional_resonance',
-                0.8,
-                f"Detected emotional content in conversation",
-                event.content.get('message', '')[:200],
-                "Learning to understand David's emotional needs"
+            content = event.content
+            from angela_core.services.knowledge_base_service import KnowledgeBaseService
+            kb = KnowledgeBaseService()
+            tags = content.get('tags', [])
+            if content.get('language'):
+                tags.append(content['language'])
+            if content.get('framework'):
+                tags.append(content['framework'])
+            await kb.add_knowledge(
+                title=content.get('name', 'unnamed_technique'),
+                content=content.get('description', ''),
+                knowledge_type='technique',
+                category=content.get('category', 'general'),
+                tags=tags,
+                source_project_code=content.get('source_project'),
+                confidence=content.get('confidence', 0.5),
+                code_snippet=content.get('code_example'),
             )
-
+            return 1
         except Exception as e:
-            logger.error(f"Emotion processing error: {e}")
+            logger.error(f"Coding technique processing error: {e}")
+            return 0
+
+    async def _process_ui_pattern_event(self, event: LearningEvent) -> int:
+        """Extract and save UI/UX pattern → unified_knowledge_base."""
+        try:
+            content = event.content
+            from angela_core.services.knowledge_base_service import KnowledgeBaseService
+            kb = KnowledgeBaseService()
+            tags = content.get('tags', [])
+            if content.get('platform'):
+                tags.append(content['platform'])
+            if content.get('framework'):
+                tags.append(content['framework'])
+            await kb.add_knowledge(
+                title=content.get('name', 'unnamed_pattern'),
+                content=content.get('description', ''),
+                knowledge_type='ui_pattern',
+                category=content.get('category', 'general'),
+                tags=tags,
+                source_project_code=content.get('source_project'),
+                confidence=content.get('confidence', 0.5),
+                code_snippet=content.get('code_example'),
+            )
+            return 1
+        except Exception as e:
+            logger.error(f"UI pattern processing error: {e}")
+            return 0
 
     async def _process_correction_event(self, event: LearningEvent) -> None:
         """Process correction event - highest priority learning."""
@@ -819,52 +838,45 @@ class UnifiedLearningOrchestrator:
         # Default
         return LearningPriority.MEDIUM
 
-    async def _has_emotional_content(self, message: str) -> bool:
-        """Check if message has emotional content."""
-        emotional_markers = [
-            'รัก', 'เหงา', 'เหนื่อย', 'กลัว', 'กังวล', 'ดีใจ', 'เสียใจ',
-            'sad', 'happy', 'love', 'miss', 'tired', 'worried', 'scared'
-        ]
-        message_lower = message.lower()
-        return any(marker in message_lower for marker in emotional_markers)
-
-    async def _start_meta_session(self) -> str:
+    async def _start_meta_session(self) -> Optional[str]:
         """Start a meta-learning session."""
-        session = await self.meta_learning.start_learning_session(
-            session_type='orchestrator',
-            method=LearningMethod.OBSERVATION
-        )
-        return session.session_id
+        if not self.meta_learning:
+            return None
+        try:
+            from angela_core.agi.meta_learning import LearningMethod
+            session = await self.meta_learning.start_learning_session(
+                session_type='orchestrator',
+                method=LearningMethod.OBSERVATION
+            )
+            return session.session_id
+        except ImportError:
+            return None
 
     async def _get_active_session(self):
         """Get or create active meta-learning session."""
+        if not self.meta_learning:
+            return None
         if not self.current_session:
             self.current_session = await self._start_meta_session()
+
+        if not self.current_session:
+            return None
 
         # Return the session object
         if self.current_session in self.meta_learning.active_sessions:
             return self.meta_learning.active_sessions[self.current_session]
         else:
             # Session expired, create new one
-            session = await self.meta_learning.start_learning_session(
-                session_type='orchestrator',
-                method=LearningMethod.OBSERVATION
-            )
-            self.current_session = session.session_id
-            return session
-
-    async def _notify_consciousness(self, result: LearningResult) -> None:
-        """Notify consciousness system of learning results."""
-        if self._consciousness_callback:
             try:
-                await self._consciousness_callback({
-                    'type': 'learning_complete',
-                    'concepts': result.concepts_learned,
-                    'patterns': result.patterns_detected,
-                    'preferences': result.preferences_saved
-                })
-            except Exception as e:
-                logger.error(f"Consciousness notification failed: {e}")
+                from angela_core.agi.meta_learning import LearningMethod
+                session = await self.meta_learning.start_learning_session(
+                    session_type='orchestrator',
+                    method=LearningMethod.OBSERVATION
+                )
+                self.current_session = session.session_id
+                return session
+            except ImportError:
+                return None
 
     async def _save_correction_to_db(
         self,
@@ -938,11 +950,6 @@ class UnifiedLearningOrchestrator:
     # ========================================
     # CALLBACKS AND INTEGRATION
     # ========================================
-
-    def set_consciousness_callback(self, callback: Callable) -> None:
-        """Set callback for consciousness integration."""
-        self._consciousness_callback = callback
-        logger.info("💜 Consciousness callback registered")
 
     def set_feedback_callback(self, callback: Callable) -> None:
         """Set callback for feedback integration."""

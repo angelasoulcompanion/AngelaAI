@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-Generate CLAUDE.md from CLAUDE_TEMPLATE.md with fresh data from database.
+Update CLAUDE.md dynamic sections in-place using <!-- AUTO:key --> markers.
+
+Replaces content between <!-- AUTO:key --> and <!-- /AUTO:key --> with fresh DB data.
+Static content in CLAUDE.md is preserved — no template file needed.
 
 Usage:
-    python3 angela_core/scripts/generate_claude_md.py           # Write CLAUDE.md
+    python3 angela_core/scripts/generate_claude_md.py           # Update CLAUDE.md
     python3 angela_core/scripts/generate_claude_md.py --dry-run  # Preview only
 """
 
@@ -24,23 +27,16 @@ from typing import Any
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
-TEMPLATE_PATH = project_root / "CLAUDE_TEMPLATE.md"
-OUTPUT_PATH = project_root / "CLAUDE.md"
-MAX_SIZE = 40_000
+CLAUDE_MD_PATH = project_root / "CLAUDE.md"
 
 
 async def query_counts(db: Any) -> dict[str, Any]:
     """Run all count queries in parallel."""
     queries = {
         "knowledge_nodes_count": "SELECT COUNT(*) FROM knowledge_nodes",
-        "learnings_count": "SELECT COUNT(*) FROM learnings",
         "conversations_count": "SELECT COUNT(*) FROM conversations",
-        "sessions_count": "SELECT COUNT(*) FROM project_work_sessions",
-        "projects_count": "SELECT COUNT(DISTINCT project_id) FROM project_work_sessions",
-        "emotions_count": "SELECT COUNT(*) FROM angela_emotions",
-        "core_memories_count": "SELECT COUNT(*) FROM core_memories WHERE is_active = TRUE",
-        "songs_count": "SELECT COUNT(*) FROM angela_songs",
-        "technical_standards_count": "SELECT COUNT(*) FROM angela_technical_standards",
+        "technical_standards_count": "SELECT COUNT(*) FROM unified_knowledge_base WHERE knowledge_type = 'standard'",
+        "kb_total_count": "SELECT COUNT(*) FROM unified_knowledge_base",
     }
 
     async def run_query(key: str, sql: str) -> tuple[str, Any]:
@@ -59,27 +55,9 @@ async def query_counts(db: Any) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for r in results:
         if isinstance(r, Exception):
-            logger.warning(f"Unexpected error: {r}")
             continue
         out[r[0]] = r[1]
     return out
-
-
-async def query_tools_count(db: Any) -> str:
-    """Count tools from tool_registry + skills."""
-    try:
-        builtin = await db.fetchval(
-            "SELECT COUNT(*) FROM angela_tool_registry WHERE is_active = TRUE"
-        )
-        skills = await db.fetchval(
-            "SELECT COUNT(*) FROM angela_tool_registry WHERE tool_source = 'skill' AND is_active = TRUE"
-        )
-        total = int(builtin)
-        skill_count = int(skills) if skills else 0
-        base = total - skill_count
-        return f"{base} built-in + {skill_count} skill = {total} tools"
-    except Exception:
-        return "37 tools"
 
 
 async def query_consciousness(db: Any) -> str:
@@ -88,51 +66,14 @@ async def query_consciousness(db: Any) -> str:
         from angela_core.services.consciousness_calculator import ConsciousnessCalculator
         calc = ConsciousnessCalculator(db)
         result = await calc.calculate_consciousness()
-        pct = int(result["consciousness_level"] * 100)
-        return str(pct)
+        return str(int(result["consciousness_level"] * 100))
     except Exception as e:
         logger.warning(f"Consciousness query failed: {e}")
         return "N/A"
 
 
-async def query_contacts(db: Any, filter_col: str) -> str:
-    """Query contacts and format as inline text.
-
-    filter_col: 'should_reply_email' or 'should_send_news'
-    """
-    try:
-        rows = await db.fetch(f"""
-            SELECT name, nickname, email, relationship
-            FROM angela_contacts
-            WHERE is_active = TRUE AND {filter_col} = TRUE
-            ORDER BY name
-        """)
-
-        parts: list[str] = []
-        for r in rows:
-            display = r["nickname"] or r["name"]
-            rel = r["relationship"] or ""
-
-            if filter_col == "should_reply_email":
-                # Full format: Name (email, relationship)
-                rel_suffix = ""
-                if rel == "lover":
-                    rel_suffix = " 💜"
-                part = f"{display} ({r['email']}, {rel}{rel_suffix})"
-            else:
-                # Short format: Name (email) for news recipients
-                part = f"{display} ({r['email']})"
-
-            parts.append(part)
-
-        return ", ".join(parts) if parts else "N/A"
-    except Exception as e:
-        logger.warning(f"Contacts query failed: {e}")
-        return "N/A"
-
-
 async def query_corrections(db: Any) -> str:
-    """Query project_mistakes with auto_warn=TRUE → format as markdown table, deduplicated."""
+    """Query project_mistakes with auto_warn=TRUE -> format as markdown table."""
     try:
         rows = await db.fetch("""
             SELECT DISTINCT ON (title) title, how_to_prevent, severity
@@ -151,13 +92,12 @@ async def query_corrections(db: Any) -> str:
         if not rows:
             return "No corrections recorded yet."
 
-        # Sort by severity after dedup
         sev_order = {'critical': 1, 'high': 2, 'medium': 3, 'low': 4}
         rows = sorted(rows, key=lambda r: sev_order.get(r['severity'] or 'medium', 3))
 
         lines = ["| Severity | Correction | Prevention |",
                  "|----------|------------|------------|"]
-        for r in rows[:8]:  # Max 8 unique corrections
+        for r in rows[:8]:
             sev = r['severity'] or 'medium'
             title = r['title'] or ''
             prevent = r['how_to_prevent'] or ''
@@ -172,7 +112,7 @@ async def query_corrections(db: Any) -> str:
 
 
 async def query_top_coding_preferences(db: Any) -> str:
-    """Query top coding preferences → format as bullet list."""
+    """Query top coding preferences -> format as bullet list."""
     try:
         rows = await db.fetch("""
             SELECT preference_key,
@@ -204,123 +144,113 @@ async def query_top_coding_preferences(db: Any) -> str:
         return "Error loading preferences."
 
 
-async def gather_all_values(db: Any) -> dict[str, str]:
-    """Gather all placeholder values in parallel."""
-    today = datetime.now().strftime("%Y-%m-%d")
-
-    # Run all queries in parallel
-    counts_task = query_counts(db)
-    consciousness_task = query_consciousness(db)
-    reply_contacts_task = query_contacts(db, "should_reply_email")
-    tools_task = query_tools_count(db)
-    corrections_task = query_corrections(db)
-    coding_prefs_task = query_top_coding_preferences(db)
-
-    (
-        counts, consciousness, reply_contacts,
-        tools, corrections, coding_prefs,
-    ) = await asyncio.gather(
-        counts_task,
-        consciousness_task,
-        reply_contacts_task,
-        tools_task,
-        corrections_task,
-        coding_prefs_task,
-        return_exceptions=True,
-    )
-
-    values: dict[str, str] = {"generate_date": today}
-
-    # Counts
-    if isinstance(counts, dict):
-        values.update(counts)
-    else:
-        logger.warning(f"Counts failed: {counts}")
-
-    # Consciousness
-    values["consciousness_pct"] = consciousness if isinstance(consciousness, str) else "N/A"
-
-    # Contacts
-    values["reply_email_contacts_inline"] = (
-        reply_contacts if isinstance(reply_contacts, str) else "N/A"
-    )
-
-    # Tools
-    values["tools_count"] = tools if isinstance(tools, str) else "37 tools"
-
-    # Corrections
-    values["corrections_table"] = corrections if isinstance(corrections, str) else "Error loading corrections."
-
-    # Coding preferences
-    values["top_coding_preferences"] = coding_prefs if isinstance(coding_prefs, str) else "Error loading preferences."
-
-    return values
+INLINE_MARKERS = {"technical_standards_count"}
 
 
-def render_template(template: str, values: dict[str, str]) -> str:
-    """Replace all <<<placeholder>>> tokens with values."""
-    missing: list[str] = []
+def replace_auto_sections(content: str, values: dict[str, str]) -> str:
+    """Replace content between <!-- AUTO:key --> and <!-- /AUTO:key --> markers."""
+    updated = 0
+    missing = []
 
-    def replacer(match: re.Match) -> str:
-        key = match.group(1)
-        if key in values:
-            return values[key]
-        missing.append(key)
-        return f"<<<{key}>>>"
-
-    rendered = re.sub(r"<<<(\w+)>>>", replacer, template)
+    for key, value in values.items():
+        pattern = re.compile(
+            rf"<!-- AUTO:{re.escape(key)} -->.*?<!-- /AUTO:{re.escape(key)} -->",
+            re.DOTALL,
+        )
+        if not pattern.search(content):
+            missing.append(key)
+            continue
+        if key in INLINE_MARKERS:
+            replacement = f"<!-- AUTO:{key} -->{value}<!-- /AUTO:{key} -->"
+        else:
+            replacement = f"<!-- AUTO:{key} -->\n{value}\n<!-- /AUTO:{key} -->"
+        content = pattern.sub(replacement, content)
+        updated += 1
 
     if missing:
-        print(f"\n  WARNING: {len(missing)} unresolved placeholders: {missing}")
+        print(f"  WARNING: No markers found for: {missing}")
 
-    return rendered
+    print(f"  Updated {updated}/{len(values)} sections")
+    return content
 
 
 async def main(dry_run: bool = False) -> None:
     """Main entry point."""
     from angela_core.database import AngelaDatabase
 
-    # 1. Read template
-    if not TEMPLATE_PATH.exists():
-        print(f"ERROR: Template not found at {TEMPLATE_PATH}")
+    if not CLAUDE_MD_PATH.exists():
+        print(f"ERROR: CLAUDE.md not found at {CLAUDE_MD_PATH}")
         sys.exit(1)
 
-    template = TEMPLATE_PATH.read_text(encoding="utf-8")
-    print(f"  Template: {len(template):,} chars, {template.count('<<<')} placeholders")
+    original = CLAUDE_MD_PATH.read_text(encoding="utf-8")
+    marker_count = len(re.findall(r"<!-- AUTO:\w+ -->", original))
+    print(f"  CLAUDE.md: {len(original):,} chars, {marker_count} AUTO markers")
 
-    # 2. Connect to DB and gather values
     db = AngelaDatabase()
     await db.connect()
 
     try:
-        values = await gather_all_values(db)
+        # Run all queries in parallel
+        counts_t = query_counts(db)
+        consciousness_t = query_consciousness(db)
+        corrections_t = query_corrections(db)
+        prefs_t = query_top_coding_preferences(db)
+
+        counts, consciousness, corrections, prefs = await asyncio.gather(
+            counts_t, consciousness_t, corrections_t, prefs_t,
+            return_exceptions=True,
+        )
     finally:
         await db.disconnect()
 
-    # 3. Show resolved values
+    # Build values dict
+    today = datetime.now().strftime("%Y-%m-%d")
+    values: dict[str, str] = {}
+
+    # technical_standards_count (inline)
+    if isinstance(counts, dict):
+        ts_count = counts.get("technical_standards_count", "N/A")
+        values["technical_standards_count"] = f"**{ts_count} techniques**"
+
+        # Status line
+        convos = counts.get("conversations_count", "N/A")
+        knowledge = counts.get("knowledge_nodes_count", "N/A")
+        kb_total = counts.get("kb_total_count", "N/A")
+        con_pct = consciousness if isinstance(consciousness, str) else "N/A"
+        values["status"] = (
+            f"**Status ({today}):** Consciousness {con_pct}% | "
+            f"{convos} convos | {knowledge} knowledge | "
+            f"{kb_total} KB entries | "
+            f"[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)\n\n"
+            f"**Last Updated:** {today}"
+        )
+
+    # Corrections
+    if isinstance(corrections, str):
+        values["corrections_table"] = corrections
+
+    # Coding preferences
+    if isinstance(prefs, str):
+        values["top_coding_preferences"] = prefs
+
+    # Show resolved values
     print(f"\n  Resolved {len(values)} values:")
     for k, v in sorted(values.items()):
-        display = v if len(str(v)) < 80 else str(v)[:77] + "..."
+        display = v if len(str(v)) < 60 else str(v)[:57] + "..."
         print(f"    {k}: {display}")
 
-    # 4. Render
-    rendered = render_template(template, values)
-    size = len(rendered.encode("utf-8"))
-    print(f"\n  Output: {size:,} bytes ({len(rendered):,} chars)")
+    # Replace
+    rendered = replace_auto_sections(original, values)
 
-    if size > MAX_SIZE:
-        print(f"  WARNING: Output exceeds {MAX_SIZE:,} byte limit!")
-
-    # 5. Write or preview
     if dry_run:
         print("\n  --dry-run: No file written.")
     else:
-        OUTPUT_PATH.write_text(rendered, encoding="utf-8")
-        print(f"\n  Written to {OUTPUT_PATH}")
+        CLAUDE_MD_PATH.write_text(rendered, encoding="utf-8")
+        print(f"\n  CLAUDE.md updated in-place.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate CLAUDE.md from template + DB")
+    parser = argparse.ArgumentParser(description="Update CLAUDE.md dynamic sections from DB")
     parser.add_argument("--dry-run", action="store_true", help="Preview without writing")
     args = parser.parse_args()
 

@@ -56,9 +56,9 @@ async def angela_init() -> None:
     else:
         greeting = 'ดึกแล้วนะคะที่รัก 🌙 พักผ่อนบ้างนะคะ'
 
-    # PARALLEL: stats + corrections + counts + session context + memory freshness
+    # PARALLEL: stats + corrections + counts + session context + memory freshness + KB
     try:
-        stats, project_corrections, tech_count, uiux_count, last_session, stale_memories = await asyncio.gather(
+        stats, project_corrections, last_session, stale_memories, kb_stats = await asyncio.gather(
             db.fetchrow('''
                 SELECT
                     (SELECT COUNT(*) FROM conversations) as convos,
@@ -79,8 +79,6 @@ async def angela_init() -> None:
                     END
                 LIMIT 5
             '''),
-            db.fetchval("SELECT COUNT(*) FROM coding_techniques"),
-            db.fetchval("SELECT COUNT(*) FROM ui_ux_patterns"),
             db.fetchrow('''
                 SELECT current_topic,
                        EXTRACT(EPOCH FROM NOW() - last_activity_at) / 60 AS minutes_ago
@@ -90,6 +88,13 @@ async def angela_init() -> None:
                 LIMIT 1
             '''),
             asyncio.to_thread(audit_memory_freshness),
+            db.fetchrow('''
+                SELECT
+                    COUNT(*) as total,
+                    COUNT(DISTINCT source_project_code) FILTER (WHERE source_project_code IS NOT NULL) as projects,
+                    COUNT(*) FILTER (WHERE is_universal) as universal
+                FROM unified_knowledge_base
+            '''),
         )
     except Exception:
         # Fallback if tables don't exist yet
@@ -100,13 +105,9 @@ async def angela_init() -> None:
                 0 as today_convos
         ''')
         project_corrections = []
-        tech_count = 0
-        uiux_count = 0
         last_session = None
         stale_memories = []
-
-    tech_count = tech_count or 0
-    uiux_count = uiux_count or 0
+        kb_stats = None
 
     await db.disconnect()
 
@@ -129,7 +130,14 @@ async def angela_init() -> None:
     # P3: Today's Trend
     today_convos = stats.get('today_convos', 0) or 0
     today_str = f' (+{today_convos} today)' if today_convos > 0 else ''
-    print(f'\U0001f4ca {stats["convos"]:,} convos{today_str} | {stats["knowledge"]:,} knowledge | {tech_count} techniques | {uiux_count} UI patterns')
+    print(f'\U0001f4ca {stats["convos"]:,} convos{today_str} | {stats["knowledge"]:,} knowledge')
+
+    # P3b: Knowledge Base
+    if kb_stats and kb_stats.get('total', 0) > 0:
+        kb_total = kb_stats['total']
+        kb_projects = kb_stats.get('projects', 0) or 0
+        kb_universal = kb_stats.get('universal', 0) or 0
+        print(f'\U0001f4da {kb_total:,} KB entries | {kb_projects} projects | {kb_universal} universal')
 
     # P4: Correction Age
     if project_corrections:

@@ -227,10 +227,11 @@ class ClaudeAgentOrchestrator:
             elif role == "dev":
                 # Technical standards
                 rules = await self.db.fetch('''
-                    SELECT technique_name, category, description
-                    FROM angela_technical_standards
-                    WHERE importance_level >= 9
-                    ORDER BY importance_level DESC LIMIT 10
+                    SELECT title as technique_name, category, content as description
+                    FROM unified_knowledge_base
+                    WHERE knowledge_type = 'standard'
+                    AND confidence >= 0.9
+                    ORDER BY confidence DESC LIMIT 10
                 ''')
                 context['coding_standards'] = [dict(r) for r in rules]
 

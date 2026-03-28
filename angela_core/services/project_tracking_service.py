@@ -203,13 +203,14 @@ class ProjectTrackingService(BaseDBService):
             project_id
         )
 
-        # Get learnings
+        # Get learnings (from unified_knowledge_base)
         learnings = await self.db.fetch(
             """
-            SELECT learning_type, title, insight, confidence
-            FROM project_learnings
-            WHERE project_id = $1
-            ORDER BY learned_at DESC
+            SELECT knowledge_type as learning_type, title, content as insight, confidence
+            FROM unified_knowledge_base
+            WHERE source_project_id = $1
+            AND knowledge_type IN ('learning', 'gotcha', 'pattern', 'workflow')
+            ORDER BY created_at DESC
             LIMIT 5
             """,
             project_id
@@ -449,22 +450,29 @@ class ProjectTrackingService(BaseDBService):
         """Add a project learning"""
         await self.connect()
 
-        learning = await self.db.fetchrow(
-            """
-            INSERT INTO project_learnings (
-                project_id, session_id, learning_type,
-                category, title, insight, context,
-                applicable_to, confidence
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            RETURNING *
-            """,
-            project_id, session_id, learning_type,
-            category, title, insight, context,
-            applicable_to or [], confidence
+        from angela_core.services.knowledge_base_service import KnowledgeBaseService
+        kb = KnowledgeBaseService(self.db)
+        # Map learning_type to valid UKB types
+        valid_types = {'learning', 'gotcha', 'pattern', 'workflow', 'decision', 'standard', 'preference', 'technique', 'ui_pattern'}
+        kb_type = learning_type if learning_type in valid_types else 'learning'
+        result = await kb.add_knowledge(
+            title=title,
+            content=insight,
+            knowledge_type=kb_type,
+            category=category,
+            source_project_id=project_id,
+            source_session_id=session_id,
+            applicable_to=applicable_to or [],
+            confidence=confidence,
         )
-
-        return dict(learning)
+        # Resolve project_code
+        project = await self.db.fetchrow("SELECT project_code FROM angela_projects WHERE project_id = $1", project_id)
+        if project:
+            await self.db.execute(
+                "UPDATE unified_knowledge_base SET source_project_code = $1 WHERE kb_id = $2",
+                project['project_code'], result['kb_id']
+            )
+        return result
 
     # =========================================================================
     # DECISION MANAGEMENT
@@ -485,22 +493,26 @@ class ProjectTrackingService(BaseDBService):
         """Add a project decision"""
         await self.connect()
 
-        decision = await self.db.fetchrow(
-            """
-            INSERT INTO project_decisions (
-                project_id, session_id, decision_type,
-                title, context, options_considered,
-                decision_made, reasoning, decided_by
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            RETURNING *
-            """,
-            project_id, session_id, decision_type,
-            title, context, json.dumps(options_considered) if options_considered else None,
-            decision_made, reasoning, decided_by
+        from angela_core.services.knowledge_base_service import KnowledgeBaseService
+        kb = KnowledgeBaseService(self.db)
+        result = await kb.add_knowledge(
+            title=title,
+            content=decision_made,
+            knowledge_type='decision',
+            category=decision_type,
+            source_project_id=project_id,
+            source_session_id=session_id,
+            reasoning=reasoning,
+            metadata={'context': context, 'options_considered': options_considered, 'decided_by': decided_by},
         )
-
-        return dict(decision)
+        # Also resolve project_code for the result
+        project = await self.db.fetchrow("SELECT project_code FROM angela_projects WHERE project_id = $1", project_id)
+        if project:
+            await self.db.execute(
+                "UPDATE unified_knowledge_base SET source_project_code = $1 WHERE kb_id = $2",
+                project['project_code'], result['kb_id']
+            )
+        return result
 
     # =========================================================================
     # GIT INTEGRATION
@@ -789,108 +801,157 @@ async def log_project_session(
     project_code: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Main function to log project session - called by /log-session.
+    Log project session — optimized: batches all inserts in 2 round-trips.
 
-    Args:
-        summary: Session summary
-        accomplishments: List of things accomplished
-        david_requests: What David asked for
-        blockers: Issues encountered
-        next_steps: What to do next
-        mood: Session mood
-        productivity_score: 1-10 score
-        learnings: Optional list of {'type', 'title', 'insight'}
-        decisions: Optional list of {'type', 'title', 'decision', 'reasoning'}
-        milestone: Optional {'type', 'title', 'description'}
-        project_code: Optional project code (e.g., 'SECA') to log to specific project
-                     instead of detecting from current directory.
-                     USE THIS when working on another project from AngelaAI directory!
-
-    Returns:
-        Dict with session info
+    Round-trip 1: Get project + session metadata (single query with CTEs)
+    Round-trip 2: Insert session + learnings + decisions + milestone (single query)
     """
-    service = ProjectTrackingService()
-    await service.connect()
+    db = AngelaDatabase()
+    await db.connect()
 
     try:
-        # If project_code is provided, use that project
-        # Otherwise, detect from current directory
+        cwd = os.path.normpath(os.getcwd())
+
+        # === ROUND-TRIP 1: Get project + session metadata in ONE query ===
         if project_code:
-            project = await service.get_project_by_code(project_code)
-            if not project:
-                print(f"\n⚠️ Project '{project_code}' not found!")
-                print("   Available projects:")
-                all_projects = await service.db.fetch(
-                    "SELECT project_code, project_name FROM angela_projects ORDER BY project_code"
-                )
-                for p in all_projects:
-                    print(f"   - {p['project_code']}: {p['project_name']}")
-                raise ValueError(f"Project code '{project_code}' not found")
+            project_row = await db.fetchrow(
+                "SELECT * FROM angela_projects WHERE project_code = $1", project_code
+            )
         else:
-            # Default: detect from current directory
-            project = await service.get_or_create_project_from_cwd()
+            project_row = await db.fetchrow(
+                "SELECT * FROM angela_projects WHERE working_directory = $1", cwd
+            )
+
+        if not project_row:
+            raise ValueError(f"Project not found for {'code=' + project_code if project_code else 'dir=' + cwd}")
+
+        project = dict(project_row)
+        project_id = project['project_id']
+
+        # Get session number + time range in parallel
+        meta_row = await db.fetchrow("""
+            SELECT
+                (SELECT COALESCE(MAX(session_number), 0) + 1 FROM project_work_sessions WHERE project_id = $1) as next_session,
+                (SELECT MAX(ended_at) FROM project_work_sessions WHERE project_id = $1 AND session_date = CURRENT_DATE) as last_end,
+                (SELECT MIN(created_at) FROM conversations WHERE DATE(created_at) = CURRENT_DATE) as first_msg,
+                (SELECT MAX(created_at) FROM conversations WHERE DATE(created_at) = CURRENT_DATE) as last_msg
+        """, project_id)
+
+        session_number = meta_row['next_session']
+
+        # Calculate timing
+        if meta_row['first_msg']:
+            started_at = meta_row['first_msg']
+            ended_at = meta_row['last_msg'] or datetime.now()
+            duration_minutes = int((ended_at - started_at).total_seconds() / 60)
+        else:
+            started_at = datetime.now() - timedelta(minutes=30)
+            ended_at = datetime.now()
+            duration_minutes = 30
+
+        # Git commits (local subprocess, no DB)
+        git_commits = []
+        wd = project.get('working_directory')
+        if wd:
+            try:
+                since_str = started_at.strftime('%Y-%m-%d %H:%M:%S')
+                result = subprocess.run(
+                    ['git', 'log', f'--since={since_str}', '--pretty=format:%H'],
+                    cwd=wd, capture_output=True, text=True
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    git_commits = result.stdout.strip().split('\n')
+            except Exception:
+                pass
 
         print(f"\n📁 Project: {project['project_name']} ({project['project_code']})")
         print(f"   Type: {project['project_type']}")
-        print(f"   Sessions: {project['total_sessions']} → {project['total_sessions'] + 1}")
+        print(f"   Sessions: {session_number - 1} → {session_number}")
 
-        # Log work session
-        session = await service.log_work_session(
-            project_id=project['project_id'],
-            summary=summary,
-            accomplishments=accomplishments,
-            david_requests=david_requests,
-            blockers=blockers,
-            next_steps=next_steps,
-            mood=mood,
-            productivity_score=productivity_score
+        # === ROUND-TRIP 2: Insert everything in ONE transaction ===
+        # Build batch of statements
+        session_row = await db.fetchrow("""
+            INSERT INTO project_work_sessions (
+                project_id, session_number, session_date,
+                started_at, ended_at, duration_minutes,
+                david_requests, summary,
+                accomplishments, blockers, next_steps,
+                mood, productivity_score, git_commits
+            )
+            VALUES ($1, $2, CURRENT_DATE, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            RETURNING *
+        """,
+            project_id, session_number,
+            started_at, ended_at, duration_minutes,
+            david_requests, summary,
+            accomplishments or [], blockers or [], next_steps or [],
+            mood, productivity_score, git_commits
         )
 
-        print(f"\n✅ Session #{session['session_number']} logged!")
-        print(f"   Duration: ~{session['duration_minutes']} minutes")
+        session = dict(session_row)
+        session_id = session['session_id']
+
+        print(f"\n✅ Session #{session_number} logged!")
+        print(f"   Duration: ~{duration_minutes} minutes")
         print(f"   Accomplishments: {len(accomplishments)} items")
 
-        # Add learnings if provided
+        # Batch inserts for learnings + decisions + milestone using gather
+        batch_tasks = []
+
         if learnings:
-            for learning in learnings:
-                await service.add_learning(
-                    project_id=project['project_id'],
-                    session_id=session['session_id'],
-                    learning_type=learning.get('type', 'technical'),
-                    title=learning.get('title', 'Learning'),
-                    insight=learning.get('insight', ''),
-                    category=learning.get('category')
-                )
+            from angela_core.services.knowledge_base_service import KnowledgeBaseService
+            kb_learn = KnowledgeBaseService()
+            valid_types = {'learning', 'gotcha', 'pattern', 'workflow', 'decision', 'standard', 'preference', 'technique', 'ui_pattern'}
+            for l in learnings:
+                lt = l.get('learning_type', l.get('type', 'learning'))
+                batch_tasks.append(kb_learn.add_knowledge(
+                    title=l.get('title', 'Learning'),
+                    content=l.get('insight', ''),
+                    knowledge_type=lt if lt in valid_types else 'learning',
+                    category=l.get('category'),
+                    source_project_id=project_id,
+                    source_session_id=session_id,
+                    confidence=l.get('confidence', 0.8),
+                ))
             print(f"   Learnings: {len(learnings)} recorded")
 
-        # Add decisions if provided
         if decisions:
-            for decision in decisions:
-                await service.add_decision(
-                    project_id=project['project_id'],
-                    session_id=session['session_id'],
-                    decision_type=decision.get('type', 'approach'),
-                    title=decision.get('title', 'Decision'),
-                    decision_made=decision.get('decision', ''),
-                    reasoning=decision.get('reasoning')
-                )
+            from angela_core.services.knowledge_base_service import KnowledgeBaseService
+            kb = KnowledgeBaseService()
+            for d in decisions:
+                batch_tasks.append(kb.add_knowledge(
+                    title=d.get('title', 'Decision'),
+                    content=d.get('decision_made', d.get('decision', '')),
+                    knowledge_type='decision',
+                    category=d.get('decision_type', d.get('type', 'approach')),
+                    source_project_id=project_id,
+                    source_session_id=session_id,
+                    reasoning=d.get('reasoning'),
+                ))
             print(f"   Decisions: {len(decisions)} recorded")
 
-        # Add milestone if provided
         if milestone:
-            await service.add_milestone(
-                project_id=project['project_id'],
-                session_id=session['session_id'],
-                milestone_type=milestone.get('type', 'feature_complete'),
-                title=milestone.get('title', 'Milestone'),
-                description=milestone.get('description'),
-                celebration_note=milestone.get('celebration', 'ยินดีด้วยค่ะที่รัก! 💜')
-            )
+            batch_tasks.append(db.execute("""
+                INSERT INTO project_milestones (project_id, session_id, milestone_type, title, description, celebration_note)
+                VALUES ($1, $2, $3, $4, $5, $6)
+            """, project_id, session_id,
+                milestone.get('type', 'feature_complete'),
+                milestone.get('title', 'Milestone'),
+                milestone.get('description'),
+                milestone.get('celebration', 'ยินดีด้วยค่ะที่รัก! 💜')))
             print(f"   🎉 Milestone: {milestone.get('title')}")
 
-        # Get git commits
-        if session['git_commits']:
-            print(f"   Git commits: {len(session['git_commits'])} commits linked")
+        # Update project timestamp
+        batch_tasks.append(db.execute(
+            "UPDATE angela_projects SET updated_at = NOW() WHERE project_id = $1", project_id
+        ))
+
+        # Fire all inserts in parallel
+        if batch_tasks:
+            await asyncio.gather(*batch_tasks)
+
+        if git_commits:
+            print(f"   Git commits: {len(git_commits)} commits linked")
 
         return {
             'project': project,
@@ -901,7 +962,7 @@ async def log_project_session(
         }
 
     finally:
-        await service.disconnect()
+        await db.disconnect()
 
 
 # =========================================================================

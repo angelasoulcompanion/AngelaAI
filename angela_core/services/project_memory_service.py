@@ -405,20 +405,38 @@ class ProjectMemoryService(BaseDBService):
         if pattern_type:
             rows = await self.db.fetch(
                 """
-                SELECT pp.* FROM project_patterns pp
-                JOIN angela_projects p ON pp.project_id = p.project_id
-                WHERE p.project_code = $1 AND pp.pattern_type = $2
-                ORDER BY pp.used_count DESC, pp.pattern_name
+                SELECT kb_id as pattern_id, source_project_id as project_id,
+                       title as pattern_name, category as pattern_type,
+                       content as description, code_snippet,
+                       (metadata->>'file_path') as file_path,
+                       (metadata->>'usage_example') as usage_example,
+                       (metadata->>'parameters') as parameters,
+                       (metadata->>'returns') as returns,
+                       tags as depends_on, times_applied as used_count,
+                       created_at, updated_at
+                FROM unified_knowledge_base
+                WHERE knowledge_type = 'pattern'
+                AND source_project_code = $1 AND category = $2
+                ORDER BY times_applied DESC, title
                 """,
                 project_code, pattern_type
             )
         else:
             rows = await self.db.fetch(
                 """
-                SELECT pp.* FROM project_patterns pp
-                JOIN angela_projects p ON pp.project_id = p.project_id
-                WHERE p.project_code = $1
-                ORDER BY pp.used_count DESC, pp.pattern_name
+                SELECT kb_id as pattern_id, source_project_id as project_id,
+                       title as pattern_name, category as pattern_type,
+                       content as description, code_snippet,
+                       (metadata->>'file_path') as file_path,
+                       (metadata->>'usage_example') as usage_example,
+                       (metadata->>'parameters') as parameters,
+                       (metadata->>'returns') as returns,
+                       tags as depends_on, times_applied as used_count,
+                       created_at, updated_at
+                FROM unified_knowledge_base
+                WHERE knowledge_type = 'pattern'
+                AND source_project_code = $1
+                ORDER BY times_applied DESC, title
                 """,
                 project_code
             )
@@ -431,9 +449,18 @@ class ProjectMemoryService(BaseDBService):
 
         row = await self.db.fetchrow(
             """
-            SELECT pp.* FROM project_patterns pp
-            JOIN angela_projects p ON pp.project_id = p.project_id
-            WHERE p.project_code = $1 AND pp.pattern_name = $2
+            SELECT kb_id as pattern_id, source_project_id as project_id,
+                   title as pattern_name, category as pattern_type,
+                   content as description, code_snippet,
+                   (metadata->>'file_path') as file_path,
+                   (metadata->>'usage_example') as usage_example,
+                   (metadata->>'parameters') as parameters,
+                   (metadata->>'returns') as returns,
+                   tags as depends_on, times_applied as used_count,
+                   created_at, updated_at
+            FROM unified_knowledge_base
+            WHERE knowledge_type = 'pattern'
+            AND source_project_code = $1 AND title = $2
             """,
             project_code, pattern_name
         )
@@ -463,25 +490,24 @@ class ProjectMemoryService(BaseDBService):
             logger.error(f"Project not found: {project_code}")
             return None
 
-        pattern_id = uuid4()
-
         try:
-            await self.db.execute(
-                """
-                INSERT INTO project_patterns
-                (pattern_id, project_id, pattern_name, pattern_type, description,
-                 code_snippet, file_path, usage_example, parameters, returns,
-                 depends_on, used_count, created_at, updated_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, 0, NOW(), NOW())
-                ON CONFLICT (project_id, pattern_name) DO UPDATE SET
-                    description = EXCLUDED.description,
-                    code_snippet = EXCLUDED.code_snippet,
-                    usage_example = EXCLUDED.usage_example,
-                    updated_at = NOW()
-                """,
-                str(pattern_id), str(project.project_id), pattern_name, pattern_type,
-                description, code_snippet, file_path, usage_example,
-                json.dumps(parameters or []), returns, depends_on or []
+            from angela_core.services.knowledge_base_service import KnowledgeBaseService
+            kb = KnowledgeBaseService(self.db)
+            await kb.add_knowledge(
+                title=pattern_name,
+                content=description,
+                knowledge_type='pattern',
+                category=pattern_type,
+                tags=depends_on or [],
+                source_project_id=project.project_id,
+                source_project_code=project_code,
+                code_snippet=code_snippet,
+                metadata={
+                    'file_path': file_path,
+                    'usage_example': usage_example,
+                    'parameters': json.dumps(parameters or []),
+                    'returns': returns,
+                },
             )
 
             logger.info(f"✅ Added pattern: {project_code}.{pattern_name}")
@@ -498,11 +524,11 @@ class ProjectMemoryService(BaseDBService):
         try:
             await self.db.execute(
                 """
-                UPDATE project_patterns pp
-                SET used_count = used_count + 1, updated_at = NOW()
-                FROM projects p
-                WHERE pp.project_id = p.project_id
-                AND p.project_code = $1 AND pp.pattern_name = $2
+                UPDATE unified_knowledge_base
+                SET times_applied = times_applied + 1, updated_at = NOW(),
+                    last_applied_at = NOW()
+                WHERE knowledge_type = 'pattern'
+                AND source_project_code = $1 AND title = $2
                 """,
                 project_code, pattern_name
             )
@@ -722,9 +748,20 @@ class ProjectMemoryService(BaseDBService):
         return [self._row_to_flow(row) for row in rows]
 
     async def _get_patterns_by_project(self, project_id: UUID) -> List[ProjectPattern]:
-        """Get all patterns for a project ID."""
+        """Get all patterns for a project ID (from unified_knowledge_base)."""
         rows = await self.db.fetch(
-            "SELECT * FROM project_patterns WHERE project_id = $1 ORDER BY used_count DESC",
+            """SELECT kb_id as pattern_id, source_project_id as project_id,
+                      title as pattern_name, category as pattern_type,
+                      content as description, code_snippet,
+                      (metadata->>'file_path') as file_path,
+                      (metadata->>'usage_example') as usage_example,
+                      (metadata->>'parameters') as parameters,
+                      (metadata->>'returns') as returns,
+                      tags as depends_on, times_applied as used_count,
+                      created_at, updated_at
+               FROM unified_knowledge_base
+               WHERE knowledge_type = 'pattern' AND source_project_id = $1
+               ORDER BY times_applied DESC""",
             str(project_id)
         )
         return [self._row_to_pattern(row) for row in rows]
