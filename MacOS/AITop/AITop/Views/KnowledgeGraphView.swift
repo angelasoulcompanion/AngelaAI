@@ -396,6 +396,8 @@ struct AnimatedNetworkGraph: View {
     let data: KnowledgeGraphResponse
     let projectColors: [Color]
     @Binding var selectedProjectCode: String?
+    @State private var animationTime: Double = 0
+    private let timer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
 
     private let techTypeColors: [String: Color] = [
         "language": Color(hex: "3B82F6"),
@@ -412,10 +414,9 @@ struct AnimatedNetworkGraph: View {
     ]
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-            GeometryReader { geo in
-                let time = timeline.date.timeIntervalSinceReferenceDate
-                let size = geo.size
+        GeometryReader { geo in
+            let time = animationTime
+            let size = geo.size
                 let cx = size.width / 2
                 let cy = size.height / 2
 
@@ -551,6 +552,8 @@ struct AnimatedNetworkGraph: View {
                     selectedProjectCode = nil
                 }
             }
+        .onReceive(timer) { _ in
+            animationTime += 1.0 / 30.0
         }
     }
 
