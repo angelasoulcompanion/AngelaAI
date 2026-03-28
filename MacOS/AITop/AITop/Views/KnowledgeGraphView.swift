@@ -41,12 +41,12 @@ struct KnowledgeGraphView: View {
                     // Row 1: Summary stats
                     summaryRow(data)
 
-                    // Row 2: Network graph (compact) + Knowledge types
+                    // Row 2: Network graph (large, interactive) + Knowledge types
                     HStack(alignment: .top, spacing: AITopTheme.spacing) {
                         networkGraphCard(data)
                         knowledgeTypesCard(data)
                     }
-                    .frame(height: 360)
+                    .frame(height: 500)
 
                     // Row 3: Project cards grid
                     projectCardsSection(data)
@@ -390,177 +390,350 @@ struct KnowledgeGraphView: View {
     }
 }
 
-// MARK: - Animated Network Graph
+// MARK: - Force-Directed Network Graph with Zoom/Hover/Drag
+
+private struct GraphNode {
+    let id: String
+    let label: String
+    let kind: NodeKind
+    let baseRadius: CGFloat
+    let color: Color
+    var x: CGFloat
+    var y: CGFloat
+    var vx: CGFloat = 0
+    var vy: CGFloat = 0
+    var pinned = false
+    enum NodeKind { case project, tech }
+}
+
+private struct GraphLink {
+    let sourceIdx: Int
+    let targetIdx: Int
+    let weight: CGFloat
+    let dashed: Bool
+    let color: Color
+}
 
 struct AnimatedNetworkGraph: View {
     let data: KnowledgeGraphResponse
     let projectColors: [Color]
     @Binding var selectedProjectCode: String?
-    @State private var animationTime: Double = 0
-    private let timer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
+
+    @State private var nodes: [GraphNode] = []
+    @State private var links: [GraphLink] = []
+    @State private var time: Double = 0
+    @State private var scale: CGFloat = 1.0
+    @State private var offset: CGSize = .zero
+    @State private var dragNodeIdx: Int? = nil
+    @State private var hoveredNodeIdx: Int? = nil
+    @State private var lastDragPos: CGPoint = .zero
+    @State private var initialized = false
+
+    private let timer = Timer.publish(every: 1.0 / 40.0, on: .main, in: .common).autoconnect()
 
     private let techTypeColors: [String: Color] = [
-        "language": Color(hex: "3B82F6"),
-        "framework": Color(hex: "8B5CF6"),
-        "database": Color(hex: "14B8A6"),
-        "library": Color(hex: "6B7280"),
-        "ai": Color(hex: "F97316"),
-        "embedding": Color(hex: "EC4899"),
-        "auth": Color(hex: "EF4444"),
-        "frontend": Color(hex: "22C55E"),
-        "styling": Color(hex: "06B6D4"),
-        "tool": Color(hex: "A3A3A3"),
-        "ocr": Color(hex: "D97706"),
+        "language": Color(hex: "3B82F6"), "framework": Color(hex: "8B5CF6"),
+        "database": Color(hex: "14B8A6"), "library": Color(hex: "6B7280"),
+        "ai": Color(hex: "F97316"), "embedding": Color(hex: "EC4899"),
+        "auth": Color(hex: "EF4444"), "frontend": Color(hex: "22C55E"),
+        "styling": Color(hex: "06B6D4"), "tool": Color(hex: "A3A3A3"),
     ]
 
     var body: some View {
         GeometryReader { geo in
-            let time = animationTime
             let size = geo.size
-                let cx = size.width / 2
-                let cy = size.height / 2
+            Canvas { context, _ in
+                let tx = size.width / 2 + offset.width
+                let ty = size.height / 2 + offset.height
 
-                let activeProjects = data.projects.filter { $0.kbCount > 0 || $0.hours > 0 }
-                let sharedTechs = (data.techStack ?? []).filter { $0.projectCount >= 2 }
+                // Draw links
+                for link in links {
+                    guard link.sourceIdx < nodes.count, link.targetIdx < nodes.count else { continue }
+                    let s = nodes[link.sourceIdx]
+                    let t = nodes[link.targetIdx]
+                    let x1 = s.x * scale + tx, y1 = s.y * scale + ty
+                    let x2 = t.x * scale + tx, y2 = t.y * scale + ty
 
-                // Layout: projects in outer ring, tech in inner ring
-                let pRadius = min(cx, cy) * 0.75
-                let tRadius = min(cx, cy) * 0.35
-                let pPositions = circleLayout(count: activeProjects.count, center: CGPoint(x: cx, y: cy), radius: pRadius)
-                let tPositions = circleLayout(count: sharedTechs.count, center: CGPoint(x: cx, y: cy), radius: tRadius)
+                    var path = Path()
+                    path.move(to: CGPoint(x: x1, y: y1))
+                    path.addLine(to: CGPoint(x: x2, y: y2))
 
-                Canvas { context, _ in
-                    // 1. Draw tech-to-project links (animated pulse)
-                    for (ti, tech) in sharedTechs.enumerated() {
-                        let tPos = tPositions[ti]
-                        for projectCode in tech.projects {
-                            guard let pi = activeProjects.firstIndex(where: { $0.code == projectCode }) else { continue }
-                            let pPos = pPositions[pi]
-
-                            // Animated dash phase
-                            let phase = CGFloat(time.truncatingRemainder(dividingBy: 3.0)) * 8.0
-                            var path = Path()
-                            path.move(to: tPos)
-                            path.addLine(to: pPos)
-
-                            let isHighlighted = selectedProjectCode == projectCode
-                            let baseOpacity = isHighlighted ? 0.4 : 0.12
-                            let color = techTypeColors[tech.techType] ?? AITopTheme.textTertiary
-
-                            context.stroke(
-                                path,
-                                with: .color(color.opacity(baseOpacity)),
-                                style: StrokeStyle(lineWidth: isHighlighted ? 1.5 : 0.7, dash: [4, 4], dashPhase: phase)
-                            )
-                        }
-                    }
-
-                    // 2. Draw project-to-project edges (solid, shared knowledge)
-                    for edge in data.edges {
-                        guard let si = activeProjects.firstIndex(where: { $0.code == edge.fromProject }),
-                              let ti = activeProjects.firstIndex(where: { $0.code == edge.toProject }) else { continue }
-                        var path = Path()
-                        path.move(to: pPositions[si])
-                        path.addLine(to: pPositions[ti])
-                        let w = max(1.5, min(4, CGFloat(edge.sharedCount) * 0.4))
-                        let opacity = min(0.4, Double(edge.sharedCount) * 0.05 + 0.08)
-                        context.stroke(path, with: .color(AITopTheme.accentOrange.opacity(opacity)), lineWidth: w)
-                    }
-
-                    // 3. Draw tech nodes (inner ring, small with pulse)
-                    for (ti, tech) in sharedTechs.enumerated() {
-                        let pos = tPositions[ti]
-                        let baseR: CGFloat = max(4, min(10, CGFloat(tech.projectCount) * 2.5))
-                        // Gentle pulse animation
-                        let pulse = CGFloat(sin(time * 2.0 + Double(ti) * 0.5)) * 1.5
-                        let r = baseR + pulse
-                        let color = techTypeColors[tech.techType] ?? AITopTheme.textTertiary
-
-                        // Glow
-                        context.fill(
-                            Path(ellipseIn: CGRect(x: pos.x - r - 3, y: pos.y - r - 3, width: (r + 3) * 2, height: (r + 3) * 2)),
-                            with: .color(color.opacity(0.15))
-                        )
-                        // Node
-                        context.fill(
-                            Path(ellipseIn: CGRect(x: pos.x - r, y: pos.y - r, width: r * 2, height: r * 2)),
-                            with: .color(color.opacity(0.85))
-                        )
-                        // Label
-                        let label = Text(tech.name)
-                            .font(.system(size: 7, weight: .medium))
-                            .foregroundColor(color)
-                        context.draw(label, at: CGPoint(x: pos.x, y: pos.y + r + 7))
-                    }
-
-                    // 4. Draw project nodes (outer ring, large with breathing)
-                    for (i, project) in activeProjects.enumerated() {
-                        let pos = pPositions[i]
-                        let baseR = max(14, min(32, CGFloat(project.kbCount) / 6.0 + 12))
-                        let breath = CGFloat(sin(time * 1.2 + Double(i) * 0.8)) * 1.5
-                        let r = baseR + breath
-                        let color = projectColors[i % projectColors.count]
-                        let isSelected = selectedProjectCode == project.code
-
-                        // Outer glow (stronger for selected)
-                        let glowR = r + (isSelected ? 8 : 4)
-                        context.fill(
-                            Path(ellipseIn: CGRect(x: pos.x - glowR, y: pos.y - glowR, width: glowR * 2, height: glowR * 2)),
-                            with: .color(color.opacity(isSelected ? 0.25 : 0.1))
-                        )
-
-                        // Node
-                        context.fill(
-                            Path(ellipseIn: CGRect(x: pos.x - r, y: pos.y - r, width: r * 2, height: r * 2)),
-                            with: .color(color.opacity(isSelected ? 1.0 : 0.85))
-                        )
-
-                        // Border ring
-                        context.stroke(
-                            Path(ellipseIn: CGRect(x: pos.x - r, y: pos.y - r, width: r * 2, height: r * 2)),
-                            with: .color(color), lineWidth: isSelected ? 2 : 0.5
-                        )
-
-                        // Label below
-                        let nameLabel = Text(project.code)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                        context.draw(nameLabel, at: CGPoint(x: pos.x, y: pos.y + r + 12))
-
-                        // KB count inside
-                        if r >= 16 {
-                            let countLabel = Text("\(project.kbCount)")
-                                .font(.system(size: 9, weight: .bold, design: .rounded))
-                                .foregroundColor(.white.opacity(0.9))
-                            context.draw(countLabel, at: pos)
-                        }
+                    if link.dashed {
+                        let phase = CGFloat(time.truncatingRemainder(dividingBy: 3.0)) * 8.0
+                        context.stroke(path, with: .color(link.color),
+                                       style: StrokeStyle(lineWidth: link.weight * scale, dash: [4, 4], dashPhase: phase))
+                    } else {
+                        context.stroke(path, with: .color(link.color), lineWidth: link.weight * scale)
                     }
                 }
-                .onTapGesture { location in
-                    for (i, project) in activeProjects.enumerated() {
-                        let pos = pPositions[i]
-                        let r = max(14, min(32, CGFloat(project.kbCount) / 6.0 + 12)) + 8
-                        let dx = location.x - pos.x
-                        let dy = location.y - pos.y
-                        if dx * dx + dy * dy <= r * r {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedProjectCode = selectedProjectCode == project.code ? nil : project.code
-                            }
-                            return
+
+                // Draw nodes
+                for (i, node) in nodes.enumerated() {
+                    let x = node.x * scale + tx
+                    let y = node.y * scale + ty
+                    let pulse = CGFloat(sin(time * 1.5 + Double(i) * 0.6)) * 1.5 * scale
+                    let r = (node.baseRadius + pulse) * scale
+                    let isHovered = i == hoveredNodeIdx
+                    let isSelected = node.kind == .project && selectedProjectCode == node.id
+
+                    // Glow
+                    if isHovered || isSelected {
+                        let gr = r + 6 * scale
+                        context.fill(Path(ellipseIn: CGRect(x: x - gr, y: y - gr, width: gr * 2, height: gr * 2)),
+                                     with: .color(node.color.opacity(0.3)))
+                    }
+
+                    // Node
+                    context.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)),
+                                 with: .color(node.color.opacity(isHovered || isSelected ? 1.0 : 0.8)))
+
+                    // Border
+                    context.stroke(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)),
+                                   with: .color(node.color), lineWidth: isSelected ? 2 : 0.5)
+
+                    // Label
+                    let fontSize: CGFloat = node.kind == .project ? 10 : 7
+                    let label = Text(node.label)
+                        .font(.system(size: fontSize * min(scale, 1.5), weight: node.kind == .project ? .bold : .medium))
+                        .foregroundColor(node.kind == .project ? .white : node.color)
+                    context.draw(label, at: CGPoint(x: x, y: y + r + 8 * scale))
+
+                    // Count inside project nodes
+                    if node.kind == .project && r >= 14 * scale {
+                        let countLabel = Text(node.id.hasPrefix("cat_") ? "" : "\(Int(node.baseRadius - 10) * 6)")
+                        // Actually show kbCount - find from data
+                        if let proj = data.projects.first(where: { $0.code == node.id }) {
+                            let ct = Text("\(proj.kbCount)")
+                                .font(.system(size: 9 * min(scale, 1.5), weight: .bold, design: .rounded))
+                                .foregroundColor(.white.opacity(0.9))
+                            context.draw(ct, at: CGPoint(x: x, y: y))
                         }
                     }
-                    selectedProjectCode = nil
+
+                    // Hover tooltip
+                    if isHovered && node.kind == .tech {
+                        if let tech = (data.techStack ?? []).first(where: { $0.name == node.id }) {
+                            let tip = Text("\(tech.name) (\(tech.techType)) — \(tech.projectCount) projects")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.white)
+                            let bg = Path(roundedRect: CGRect(x: x - 80, y: y - r - 28 * scale, width: 160, height: 20),
+                                          cornerRadius: 4)
+                            context.fill(bg, with: .color(Color.black.opacity(0.85)))
+                            context.draw(tip, at: CGPoint(x: x, y: y - r - 18 * scale))
+                        }
+                    }
                 }
             }
-        .onReceive(timer) { _ in
-            animationTime += 1.0 / 30.0
+            // Hover tracking
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let loc):
+                    let tx = size.width / 2 + offset.width
+                    let ty = size.height / 2 + offset.height
+                    hoveredNodeIdx = nil
+                    for (i, node) in nodes.enumerated() {
+                        let nx = node.x * scale + tx, ny = node.y * scale + ty
+                        let r = node.baseRadius * scale + 6
+                        if (loc.x - nx) * (loc.x - nx) + (loc.y - ny) * (loc.y - ny) <= r * r {
+                            hoveredNodeIdx = i
+                            break
+                        }
+                    }
+                case .ended:
+                    hoveredNodeIdx = nil
+                }
+            }
+            // Drag nodes or pan
+            .gesture(
+                DragGesture(minimumDistance: 2)
+                    .onChanged { value in
+                        let tx = size.width / 2 + offset.width
+                        let ty = size.height / 2 + offset.height
+
+                        if dragNodeIdx == nil {
+                            // Hit test for drag start
+                            let start = value.startLocation
+                            for (i, node) in nodes.enumerated() {
+                                let nx = node.x * scale + tx, ny = node.y * scale + ty
+                                let r = node.baseRadius * scale + 8
+                                if (start.x - nx) * (start.x - nx) + (start.y - ny) * (start.y - ny) <= r * r {
+                                    dragNodeIdx = i
+                                    nodes[i].pinned = true
+                                    lastDragPos = value.location
+                                    return
+                                }
+                            }
+                            // Pan canvas
+                            dragNodeIdx = -1
+                            lastDragPos = value.location
+                        }
+
+                        if let idx = dragNodeIdx, idx >= 0, idx < nodes.count {
+                            let dx = (value.location.x - lastDragPos.x) / scale
+                            let dy = (value.location.y - lastDragPos.y) / scale
+                            nodes[idx].x += dx
+                            nodes[idx].y += dy
+                            lastDragPos = value.location
+                        } else if dragNodeIdx == -1 {
+                            let dx = value.location.x - lastDragPos.x
+                            let dy = value.location.y - lastDragPos.y
+                            offset.width += dx
+                            offset.height += dy
+                            lastDragPos = value.location
+                        }
+                    }
+                    .onEnded { _ in
+                        if let idx = dragNodeIdx, idx >= 0, idx < nodes.count {
+                            nodes[idx].pinned = false
+                        }
+                        dragNodeIdx = nil
+                    }
+            )
+            // Zoom
+            .gesture(
+                MagnificationGesture()
+                    .onChanged { value in
+                        scale = max(0.3, min(3.0, value))
+                    }
+            )
+            // Click to select project
+            .onTapGesture { location in
+                let tx = size.width / 2 + offset.width
+                let ty = size.height / 2 + offset.height
+                for node in nodes where node.kind == .project {
+                    let nx = node.x * scale + tx, ny = node.y * scale + ty
+                    let r = node.baseRadius * scale + 8
+                    if (location.x - nx) * (location.x - nx) + (location.y - ny) * (location.y - ny) <= r * r {
+                        withAnimation { selectedProjectCode = selectedProjectCode == node.id ? nil : node.id }
+                        return
+                    }
+                }
+                selectedProjectCode = nil
+            }
         }
+        .onReceive(timer) { _ in
+            time += 1.0 / 40.0
+            simulateForces()
+        }
+        .onAppear { buildGraph() }
+        .onChange(of: data.projects.count) { _ in buildGraph() }
     }
 
-    private func circleLayout(count: Int, center: CGPoint, radius: CGFloat) -> [CGPoint] {
-        (0..<count).map { i in
-            let angle = 2.0 * .pi * Double(i) / Double(max(count, 1)) - .pi / 2
-            return CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
+    // MARK: - Build graph from data
+
+    private func buildGraph() {
+        guard !initialized else { return }
+        initialized = true
+        var newNodes: [GraphNode] = []
+        var newLinks: [GraphLink] = []
+
+        let activeProjects = data.projects.filter { $0.kbCount > 0 || $0.hours > 0 }
+        let sharedTechs = (data.techStack ?? []).filter { $0.projectCount >= 2 }
+
+        // Project nodes in circle
+        for (i, project) in activeProjects.enumerated() {
+            let angle = 2.0 * .pi * Double(i) / Double(max(activeProjects.count, 1)) - .pi / 2
+            let r: CGFloat = 180
+            newNodes.append(GraphNode(
+                id: project.code, label: project.code, kind: .project,
+                baseRadius: max(16, min(34, CGFloat(project.kbCount) / 5.0 + 14)),
+                color: projectColors[i % projectColors.count],
+                x: r * cos(angle), y: r * sin(angle)
+            ))
+        }
+
+        // Tech nodes scattered near center
+        for (ti, tech) in sharedTechs.enumerated() {
+            let angle = 2.0 * .pi * Double(ti) / Double(max(sharedTechs.count, 1))
+            let r: CGFloat = 70 + CGFloat.random(in: -20...20)
+            newNodes.append(GraphNode(
+                id: tech.name, label: tech.name, kind: .tech,
+                baseRadius: max(4, min(10, CGFloat(tech.projectCount) * 2.5)),
+                color: techTypeColors[tech.techType] ?? AITopTheme.textTertiary,
+                x: r * cos(angle), y: r * sin(angle)
+            ))
+
+            // Links from tech to each project
+            let techIdx = newNodes.count - 1
+            for projectCode in tech.projects {
+                if let pi = newNodes.firstIndex(where: { $0.id == projectCode }) {
+                    newLinks.append(GraphLink(
+                        sourceIdx: techIdx, targetIdx: pi, weight: 0.7,
+                        dashed: true, color: (techTypeColors[tech.techType] ?? AITopTheme.textTertiary).opacity(0.2)
+                    ))
+                }
+            }
+        }
+
+        // Project-to-project edges
+        for edge in data.edges {
+            if let si = newNodes.firstIndex(where: { $0.id == edge.fromProject }),
+               let ti = newNodes.firstIndex(where: { $0.id == edge.toProject }) {
+                newLinks.append(GraphLink(
+                    sourceIdx: si, targetIdx: ti,
+                    weight: max(1.5, min(4, CGFloat(edge.sharedCount) * 0.4)),
+                    dashed: false,
+                    color: AITopTheme.accentOrange.opacity(min(0.4, Double(edge.sharedCount) * 0.05 + 0.08))
+                ))
+            }
+        }
+
+        nodes = newNodes
+        links = newLinks
+    }
+
+    // MARK: - Force simulation
+
+    private func simulateForces() {
+        guard nodes.count > 1 else { return }
+        let alpha: CGFloat = 0.3
+
+        for i in nodes.indices {
+            guard !nodes[i].pinned else { continue }
+            var fx: CGFloat = 0, fy: CGFloat = 0
+
+            // Repulsion
+            for j in nodes.indices where i != j {
+                let dx = nodes[i].x - nodes[j].x
+                let dy = nodes[i].y - nodes[j].y
+                let dist = max(sqrt(dx * dx + dy * dy), 1)
+                let repulse: CGFloat = nodes[i].kind == .project ? 5000 : 1500
+                fx += (dx / dist) * repulse / (dist * dist) * alpha
+                fy += (dy / dist) * repulse / (dist * dist) * alpha
+            }
+
+            // Center gravity
+            fx -= nodes[i].x * 0.003 * alpha
+            fy -= nodes[i].y * 0.003 * alpha
+
+            nodes[i].vx = (nodes[i].vx + fx) * 0.6
+            nodes[i].vy = (nodes[i].vy + fy) * 0.6
+        }
+
+        // Spring attraction along links
+        for link in links {
+            let si = link.sourceIdx, ti = link.targetIdx
+            guard si < nodes.count, ti < nodes.count else { continue }
+            let dx = nodes[ti].x - nodes[si].x
+            let dy = nodes[ti].y - nodes[si].y
+            let dist = max(sqrt(dx * dx + dy * dy), 1)
+            let target: CGFloat = nodes[si].kind == .project && nodes[ti].kind == .project ? 200 : 100
+            let force = (dist - target) * 0.003 * alpha
+
+            if !nodes[si].pinned {
+                nodes[si].vx += (dx / dist) * force
+                nodes[si].vy += (dy / dist) * force
+            }
+            if !nodes[ti].pinned {
+                nodes[ti].vx -= (dx / dist) * force
+                nodes[ti].vy -= (dy / dist) * force
+            }
+        }
+
+        // Apply velocity
+        for i in nodes.indices where !nodes[i].pinned {
+            nodes[i].x += nodes[i].vx
+            nodes[i].y += nodes[i].vy
         }
     }
 }
