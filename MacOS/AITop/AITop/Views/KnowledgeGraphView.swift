@@ -635,7 +635,7 @@ struct AnimatedNetworkGraph: View {
             let angle = 2.0 * .pi * Double(i) / Double(max(activeProjects.count, 1)) - .pi / 2
             let r: CGFloat = 180
             newNodes.append(GraphNode(
-                id: project.code, label: project.code, kind: .project,
+                id: project.code, label: project.name, kind: .project,
                 baseRadius: max(16, min(34, CGFloat(project.kbCount) / 5.0 + 14)),
                 color: projectColors[i % projectColors.count],
                 x: r * cos(angle), y: r * sin(angle)
