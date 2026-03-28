@@ -159,3 +159,42 @@ struct ProjectDetailResponse: Codable {
     let commits: [GitCommit]
     let patterns: [ProjectPattern]
 }
+
+// MARK: - Knowledge Graph
+
+struct KnowledgeGraphResponse: Codable {
+    let projects: [GraphProject]
+    let categories: [GraphCategory]
+    let edges: [GraphEdge]
+    let typeBreakdown: [TypeCount]
+}
+
+struct GraphProject: Codable, Identifiable {
+    let id: String
+    let code: String
+    let name: String
+    let kbCount: Int
+    let hours: Double
+}
+
+struct GraphCategory: Codable, Identifiable {
+    let id: String
+    let name: String
+    let count: Int
+    let projects: [String]
+}
+
+struct GraphEdge: Codable, Identifiable {
+    let fromProject: String
+    let toProject: String
+    let sharedCount: Int
+    let categories: [String]
+
+    var id: String { "\(fromProject)-\(toProject)" }
+}
+
+struct TypeCount: Codable, Identifiable {
+    let id: String
+    let type: String
+    let count: Int
+}

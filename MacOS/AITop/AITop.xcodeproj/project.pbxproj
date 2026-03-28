@@ -27,6 +27,11 @@
 		0349921B546A47099CF06A30 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EC503AB029B439F83522D4C /* SettingsView.swift */; };
 		A1B2C3D4E5F647A8B9C0D1E2 /* AngelaBrainModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E4D5C6B7A8490192837465 /* AngelaBrainModels.swift */; };
 		C4D5E6F7A8B9401C2D3E4F50 /* AngelaBrainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61728394A5B6C7D8E9F0A1B2 /* AngelaBrainView.swift */; };
+		D6E7F8A9B0C1D2E3F4A5B6C7 /* KnowledgeGraphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72839405B6C7D8E9F0A1B2C3 /* KnowledgeGraphView.swift */; };
+		E5F6A7B8C9D0E1F2A364E5F6 /* TrainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1F2B3C4D5E6F7081920A1B2 /* TrainView.swift */; };
+		F6A7B8C9D0E1F2A3B475F6A7 /* DatasetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E3C4D5A6F708192031B2C3 /* DatasetsView.swift */; };
+		A7B8C9D0E1F2A3B4C586A7B8 /* ModelHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6A7B8091C2D43C4D5 /* ModelHubView.swift */; };
+		B8C9D0E1F2A3B4C5D697B8C9 /* JobsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6A7B8C90A1D2E54D5E6 /* JobsView.swift */; };
 		65AA41A5AD3C4C68B6DA2C7A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 741CBE4DB1A94C79ADF40C56 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -51,6 +56,11 @@
 		2EC503AB029B439F83522D4C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView.swift"; sourceTree = "<group>"; };
 		F3E4D5C6B7A8490192837465 /* AngelaBrainModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AngelaBrainModels.swift"; sourceTree = "<group>"; };
 		61728394A5B6C7D8E9F0A1B2 /* AngelaBrainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AngelaBrainView.swift"; sourceTree = "<group>"; };
+		72839405B6C7D8E9F0A1B2C3 /* KnowledgeGraphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KnowledgeGraphView.swift"; sourceTree = "<group>"; };
+		A1F2B3C4D5E6F7081920A1B2 /* TrainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrainView.swift"; sourceTree = "<group>"; };
+		B2E3C4D5A6F708192031B2C3 /* DatasetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DatasetsView.swift"; sourceTree = "<group>"; };
+		C3D4E5F6A7B8091C2D43C4D5 /* ModelHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelHubView.swift"; sourceTree = "<group>"; };
+		D4E5F6A7B8C90A1D2E54D5E6 /* JobsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JobsView.swift"; sourceTree = "<group>"; };
 		741CBE4DB1A94C79ADF40C56 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A22EABB376E740B284AE0BE2 /* AITop.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AITop.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -138,8 +148,21 @@
 				7DA3F2C43DD843E69D943BFE /* RAGView.swift */,
 				2EC503AB029B439F83522D4C /* SettingsView.swift */,
 				61728394A5B6C7D8E9F0A1B2 /* AngelaBrainView.swift */,
+				72839405B6C7D8E9F0A1B2C3 /* KnowledgeGraphView.swift */,
+				C9D0E1F2A3B4C5D6E7A8C9D0 /* FineTune */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		C9D0E1F2A3B4C5D6E7A8C9D0 /* FineTune */ = {
+			isa = PBXGroup;
+			children = (
+				A1F2B3C4D5E6F7081920A1B2 /* TrainView.swift */,
+				B2E3C4D5A6F708192031B2C3 /* DatasetsView.swift */,
+				C3D4E5F6A7B8091C2D43C4D5 /* ModelHubView.swift */,
+				D4E5F6A7B8C90A1D2E54D5E6 /* JobsView.swift */,
+			);
+			path = FineTune;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -226,6 +249,11 @@
 				0349921B546A47099CF06A30 /* SettingsView.swift in Sources */,
 				A1B2C3D4E5F647A8B9C0D1E2 /* AngelaBrainModels.swift in Sources */,
 				C4D5E6F7A8B9401C2D3E4F50 /* AngelaBrainView.swift in Sources */,
+				D6E7F8A9B0C1D2E3F4A5B6C7 /* KnowledgeGraphView.swift in Sources */,
+				E5F6A7B8C9D0E1F2A364E5F6 /* TrainView.swift in Sources */,
+				F6A7B8C9D0E1F2A3B475F6A7 /* DatasetsView.swift in Sources */,
+				A7B8C9D0E1F2A3B4C586A7B8 /* ModelHubView.swift in Sources */,
+				B8C9D0E1F2A3B4C5D697B8C9 /* JobsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

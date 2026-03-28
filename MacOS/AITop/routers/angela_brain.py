@@ -392,12 +392,14 @@ async def project_detail(project_code: str):
                 LIMIT 30
             """, pid),
             pool.fetch("""
-                SELECT pattern_name, pattern_type, description,
-                       COALESCE(used_count, 0) AS used_count,
-                       COALESCE(file_path, '') AS file_path
-                FROM public.project_patterns
-                WHERE project_id = $1
-                ORDER BY used_count DESC
+                SELECT title AS pattern_name,
+                       COALESCE(category, '') AS pattern_type,
+                       content AS description,
+                       COALESCE(times_applied, 0) AS used_count,
+                       COALESCE(metadata->>'file_path', '') AS file_path
+                FROM public.unified_knowledge_base
+                WHERE knowledge_type = 'pattern' AND source_project_id = $1
+                ORDER BY times_applied DESC
             """, pid),
         )
 
@@ -461,4 +463,92 @@ async def project_detail(project_code: str):
         raise
     except Exception as e:
         logger.error(f"Project detail error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Knowledge Graph ───────────────────────────────────────────
+
+@router.get("/angela-brain/knowledge-graph")
+async def knowledge_graph():
+    """Graph data for knowledge network visualization.
+
+    Returns projects as main nodes, categories as cluster nodes,
+    and cross-project edges with shared knowledge counts.
+    """
+    try:
+        pool = await get_pool()
+
+        projects_rows, categories_rows, edges_rows, type_rows = await asyncio.gather(
+            # Projects with KB entry counts
+            pool.fetch("""
+                SELECT p.project_id::text AS id, p.project_code AS code,
+                       p.project_name AS name,
+                       COALESCE(p.total_hours, 0) AS hours,
+                       COUNT(kb.kb_id) AS kb_count
+                FROM public.angela_projects p
+                LEFT JOIN public.unified_knowledge_base kb
+                    ON kb.source_project_code = p.project_code
+                GROUP BY p.project_id, p.project_code, p.project_name, p.total_hours
+                ORDER BY kb_count DESC
+            """),
+            # Categories with their project associations
+            pool.fetch("""
+                SELECT category AS name, COUNT(*) AS count,
+                       array_agg(DISTINCT source_project_code) FILTER (WHERE source_project_code IS NOT NULL) AS projects
+                FROM public.unified_knowledge_base
+                WHERE category IS NOT NULL
+                GROUP BY category
+                HAVING COUNT(*) >= 3
+                ORDER BY count DESC
+                LIMIT 40
+            """),
+            # Cross-project edges (shared categories between project pairs)
+            pool.fetch("""
+                WITH project_cats AS (
+                    SELECT source_project_code AS project, category
+                    FROM public.unified_knowledge_base
+                    WHERE source_project_code IS NOT NULL AND category IS NOT NULL
+                    GROUP BY source_project_code, category
+                )
+                SELECT a.project AS from_project, b.project AS to_project,
+                       COUNT(*) AS shared_count,
+                       array_agg(a.category) AS categories
+                FROM project_cats a
+                JOIN project_cats b ON a.category = b.category AND a.project < b.project
+                GROUP BY a.project, b.project
+                ORDER BY shared_count DESC
+            """),
+            # Type breakdown for legend
+            pool.fetch("""
+                SELECT knowledge_type AS type, COUNT(*) AS count
+                FROM public.unified_knowledge_base
+                GROUP BY knowledge_type
+                ORDER BY count DESC
+            """),
+        )
+
+        return {
+            "projects": [
+                {"id": r["id"], "code": r["code"], "name": r["name"],
+                 "kb_count": int(r["kb_count"]), "hours": float(r["hours"])}
+                for r in projects_rows
+            ],
+            "categories": [
+                {"id": r["name"], "name": r["name"], "count": int(r["count"]),
+                 "projects": [p for p in (r["projects"] or []) if p]}
+                for r in categories_rows
+            ],
+            "edges": [
+                {"from_project": r["from_project"], "to_project": r["to_project"],
+                 "shared_count": int(r["shared_count"]),
+                 "categories": list(r["categories"] or [])}
+                for r in edges_rows
+            ],
+            "type_breakdown": [
+                {"id": r["type"], "type": r["type"], "count": int(r["count"])}
+                for r in type_rows
+            ],
+        }
+    except Exception as e:
+        logger.error(f"Knowledge graph error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

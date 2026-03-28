@@ -18,6 +18,8 @@ struct ContentView: View {
                 switch selectedItem {
                 case .angelaBrain:
                     AngelaBrainView()
+                case .knowledgeGraph:
+                    KnowledgeGraphView()
                 case .dashboard:
                     DashboardView()
                 case .models:
