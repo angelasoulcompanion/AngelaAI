@@ -25,6 +25,8 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     // Trading (Phase 7)
     case signalDashboard
     case strategyBuilder
+    case screener
+    case tradePlans
     case patterns
 
     // AI Insights
@@ -32,6 +34,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case sentiment
     case forecast
     case research
+    case narrative
 
     // Market
     case globalMonitor
@@ -65,11 +68,14 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .factors: return "Factor Analysis"
         case .signalDashboard: return "Signal Dashboard"
         case .strategyBuilder: return "Strategy Builder"
+        case .screener: return "Screener"
+        case .tradePlans: return "Trade Plans"
         case .patterns: return "Patterns"
         case .aiAdvisor: return "AI Advisor"
         case .sentiment: return "Sentiment"
         case .forecast: return "Forecast"
         case .research: return "Research RAG"
+        case .narrative: return "Market Narrative"
         case .globalMonitor: return "Global Monitor"
         case .marketOverview: return "Market Overview"
         case .marketBreadth: return "Market Breadth"
@@ -97,11 +103,14 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .factors: return "chart.bar.fill"
         case .signalDashboard: return "antenna.radiowaves.left.and.right"
         case .strategyBuilder: return "gearshape.2.fill"
+        case .screener: return "magnifyingglass"
+        case .tradePlans: return "list.clipboard.fill"
         case .patterns: return "chart.xyaxis.line"
         case .aiAdvisor: return "brain.head.profile"
         case .sentiment: return "newspaper.fill"
         case .forecast: return "chart.line.flattrend.xyaxis"
         case .research: return "books.vertical.fill"
+        case .narrative: return "doc.text.fill"
         case .globalMonitor: return "globe.americas.fill"
         case .marketOverview: return "globe"
         case .marketBreadth: return "chart.bar.doc.horizontal.fill"
@@ -120,8 +129,8 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .dashboard: return "DASHBOARD"
         case .portfolios, .transactions: return "PORTFOLIO"
         case .mpt, .valueAtRisk, .stressTest, .performance, .correlation, .regime, .factors: return "ANALYSIS"
-        case .signalDashboard, .strategyBuilder, .patterns: return "TRADING"
-        case .aiAdvisor, .sentiment, .forecast, .research: return "AI INSIGHTS"
+        case .signalDashboard, .strategyBuilder, .screener, .tradePlans, .patterns: return "TRADING"
+        case .aiAdvisor, .sentiment, .forecast, .research, .narrative: return "AI INSIGHTS"
         case .globalMonitor, .marketOverview, .marketBreadth, .optionsChain, .watchlist: return "MARKET"
         case .backtest, .monteCarlo, .technical, .statistics: return "TOOLS"
         case .settings: return "SETTINGS"
@@ -136,8 +145,8 @@ struct Sidebar: View {
         ("DASHBOARD", [.globalMonitor, .marketOverview, .marketBreadth, .dashboard]),
         ("PORTFOLIO", [.portfolios, .transactions]),
         ("ANALYSIS", [.mpt, .regime, .factors, .valueAtRisk, .stressTest, .performance, .correlation, .optionsChain]),
-        ("TRADING", [.signalDashboard, .strategyBuilder, .patterns]),
-        ("AI INSIGHTS", [.aiAdvisor, .sentiment, .forecast, .research]),
+        ("TRADING", [.signalDashboard, .strategyBuilder, .screener, .tradePlans, .patterns]),
+        ("AI INSIGHTS", [.aiAdvisor, .sentiment, .forecast, .research, .narrative]),
         ("TOOLS", [.backtest, .monteCarlo, .technical, .statistics]),
         ("SETTINGS", [.watchlist, .settings]),
     ]

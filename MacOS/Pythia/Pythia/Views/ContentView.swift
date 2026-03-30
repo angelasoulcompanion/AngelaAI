@@ -54,6 +54,10 @@ struct ContentView: View {
                     SignalDashboardView()
                 case .strategyBuilder:
                     StrategyBuilderView()
+                case .screener:
+                    ScreenerView()
+                case .tradePlans:
+                    TradePlanView()
                 case .patterns:
                     PatternView()
 
@@ -78,6 +82,8 @@ struct ContentView: View {
                     ForecastView()
                 case .research:
                     ResearchRAGView()
+                case .narrative:
+                    NarrativeView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

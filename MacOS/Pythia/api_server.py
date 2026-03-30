@@ -48,6 +48,9 @@ from routers import (
     strategies,
     # Phase 8: AI Trading Intelligence
     patterns,
+    screener,
+    trade_plans,
+    narrative,
 )
 
 app = FastAPI(
@@ -123,6 +126,9 @@ app.include_router(strategies.router)
 
 # ── Phase 8: AI Trading Intelligence ────────────────────
 app.include_router(patterns.router)
+app.include_router(screener.router)
+app.include_router(trade_plans.router)
+app.include_router(narrative.router)
 
 
 if __name__ == "__main__":
