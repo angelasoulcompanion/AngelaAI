@@ -140,6 +140,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 
 struct Sidebar: View {
     @Binding var selectedItem: SidebarItem
+    @State private var collapsed: Set<String> = []
 
     private let groups: [(String, [SidebarItem])] = [
         ("DASHBOARD", [.globalMonitor, .marketOverview, .marketBreadth, .dashboard]),
@@ -154,11 +155,32 @@ struct Sidebar: View {
     var body: some View {
         List(selection: $selectedItem) {
             ForEach(groups, id: \.0) { group, items in
-                Section(group) {
-                    ForEach(items) { item in
-                        Label(item.title, systemImage: item.icon)
-                            .tag(item)
+                Section {
+                    if !collapsed.contains(group) {
+                        ForEach(items) { item in
+                            Label(item.title, systemImage: item.icon)
+                                .tag(item)
+                        }
                     }
+                } header: {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            if collapsed.contains(group) {
+                                collapsed.remove(group)
+                            } else {
+                                collapsed.insert(group)
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text(group)
+                            Spacer()
+                            Image(systemName: collapsed.contains(group) ? "chevron.right" : "chevron.down")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(PythiaTheme.textTertiary)
+                        }
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
