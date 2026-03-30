@@ -27,6 +27,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 
     // Trading (Phase 7)
     case signalDashboard
+    case alphaML
     case strategyBuilder
     case screener
     case tradePlans
@@ -74,6 +75,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .factors: return "Factor Analysis"
         case .riskBudget: return "Risk Budget"
         case .signalDashboard: return "Signal Dashboard"
+        case .alphaML: return "Alpha ML"
         case .strategyBuilder: return "Strategy Builder"
         case .screener: return "Screener"
         case .tradePlans: return "Trade Plans"
@@ -113,6 +115,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .factors: return "chart.bar.fill"
         case .riskBudget: return "shield.lefthalf.filled"
         case .signalDashboard: return "antenna.radiowaves.left.and.right"
+        case .alphaML: return "cpu.fill"
         case .strategyBuilder: return "gearshape.2.fill"
         case .screener: return "magnifyingglass"
         case .tradePlans: return "list.clipboard.fill"
@@ -141,7 +144,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .dashboard, .alerts: return "DASHBOARD"
         case .portfolios, .transactions, .rebalance: return "PORTFOLIO"
         case .mpt, .valueAtRisk, .stressTest, .performance, .correlation, .regime, .factors, .riskBudget: return "ANALYSIS"
-        case .signalDashboard, .strategyBuilder, .screener, .tradePlans, .patterns, .events: return "TRADING"
+        case .signalDashboard, .alphaML, .strategyBuilder, .screener, .tradePlans, .patterns, .events: return "TRADING"
         case .aiAdvisor, .sentiment, .forecast, .research, .narrative: return "AI INSIGHTS"
         case .globalMonitor, .marketOverview, .marketBreadth, .optionsChain, .watchlist: return "MARKET"
         case .backtest, .monteCarlo, .technical, .statistics: return "TOOLS"
@@ -158,7 +161,7 @@ struct Sidebar: View {
         ("DASHBOARD", [.globalMonitor, .marketOverview, .marketBreadth, .dashboard, .alerts]),
         ("PORTFOLIO", [.portfolios, .transactions, .rebalance]),
         ("ANALYSIS", [.mpt, .regime, .factors, .riskBudget, .valueAtRisk, .stressTest, .performance, .correlation, .optionsChain]),
-        ("TRADING", [.signalDashboard, .strategyBuilder, .screener, .tradePlans, .patterns, .events]),
+        ("TRADING", [.signalDashboard, .alphaML, .strategyBuilder, .screener, .tradePlans, .patterns, .events]),
         ("AI INSIGHTS", [.aiAdvisor, .sentiment, .forecast, .research, .narrative]),
         ("TOOLS", [.backtest, .monteCarlo, .technical, .statistics]),
         ("SETTINGS", [.watchlist, .settings]),

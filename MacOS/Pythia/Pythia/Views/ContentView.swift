@@ -58,6 +58,8 @@ struct ContentView: View {
                 // Trading
                 case .signalDashboard:
                     SignalDashboardView()
+                case .alphaML:
+                    AlphaView()
                 case .strategyBuilder:
                     StrategyBuilderView()
                 case .screener:
