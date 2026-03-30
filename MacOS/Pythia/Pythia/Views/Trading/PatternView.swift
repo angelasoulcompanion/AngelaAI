@@ -4,12 +4,14 @@
 //
 
 import SwiftUI
+import Charts
 
 struct PatternView: View {
     @EnvironmentObject var db: DatabaseService
 
     @State private var selectedAssetId: String?
     @State private var result: PatternResponse?
+    @State private var priceData: [HistoryBar] = []
     @State private var isLoading = false
 
     var body: some View {
@@ -38,6 +40,11 @@ struct PatternView: View {
                     // Summary
                     summaryCard(r)
 
+                    // Price chart with pattern levels
+                    if !priceData.isEmpty {
+                        priceChartWithLevels(r)
+                    }
+
                     // Pattern cards
                     ForEach(r.patterns) { pattern in
                         patternCard(pattern, currentPrice: r.currentPrice)
@@ -47,6 +54,143 @@ struct PatternView: View {
             .padding(PythiaTheme.largeSpacing)
         }
         .background(PythiaTheme.backgroundDark)
+    }
+
+    // MARK: - Price Chart with Pattern Levels
+
+    private func priceChartWithLevels(_ r: PatternResponse) -> some View {
+        let keyLevels = collectKeyLevels(r)
+        let srPattern = r.patterns.first { $0.patternType == "support_resistance" }
+        let supports = srPattern?.keyLevels?.filter { $0 < r.currentPrice } ?? []
+        let resistances = srPattern?.keyLevels?.filter { $0 >= r.currentPrice } ?? []
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Price Chart — \(r.symbol)")
+                    .font(PythiaTheme.heading())
+                    .foregroundColor(PythiaTheme.textPrimary)
+                Spacer()
+                Text(String(format: "%.2f", r.currentPrice))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(PythiaTheme.accentGold)
+            }
+
+            Chart {
+                // Price line
+                ForEach(priceData) { bar in
+                    LineMark(
+                        x: .value("Date", bar.date),
+                        y: .value("Price", bar.close)
+                    )
+                    .foregroundStyle(PythiaTheme.accentGold)
+                    .lineStyle(StrokeStyle(lineWidth: 1.5))
+                }
+
+                // Support levels (green dashed)
+                ForEach(supports, id: \.self) { level in
+                    RuleMark(y: .value("Support", level))
+                        .foregroundStyle(PythiaTheme.profit.opacity(0.6))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [6, 4]))
+                        .annotation(position: .leading, alignment: .leading) {
+                            Text(String(format: "S %.0f", level))
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(PythiaTheme.profit)
+                        }
+                }
+
+                // Resistance levels (red dashed)
+                ForEach(resistances, id: \.self) { level in
+                    RuleMark(y: .value("Resistance", level))
+                        .foregroundStyle(PythiaTheme.loss.opacity(0.6))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [6, 4]))
+                        .annotation(position: .leading, alignment: .leading) {
+                            Text(String(format: "R %.0f", level))
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(PythiaTheme.loss)
+                        }
+                }
+
+                // Breakout levels (gold dotted)
+                ForEach(breakoutLevels(r), id: \.self) { bp in
+                    RuleMark(y: .value("Breakout", bp))
+                        .foregroundStyle(PythiaTheme.accentGold.opacity(0.5))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                }
+
+                // Target levels (blue dotted)
+                ForEach(targetLevels(r), id: \.self) { tp in
+                    RuleMark(y: .value("Target", tp))
+                        .foregroundStyle(PythiaTheme.secondaryBlue.opacity(0.5))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                }
+
+                // Current price line
+                RuleMark(y: .value("Current", r.currentPrice))
+                    .foregroundStyle(PythiaTheme.textTertiary.opacity(0.4))
+                    .lineStyle(StrokeStyle(lineWidth: 0.5))
+            }
+            .chartYAxis {
+                AxisMarks(position: .trailing) { value in
+                    AxisValueLabel {
+                        Text(String(format: "%.0f", value.as(Double.self) ?? 0))
+                            .font(.system(size: 10))
+                            .foregroundColor(PythiaTheme.textSecondary)
+                    }
+                }
+            }
+            .chartXAxis {
+                AxisMarks(values: .automatic(desiredCount: 6)) { value in
+                    AxisValueLabel {
+                        if let dateStr = value.as(String.self) {
+                            Text(String(dateStr.suffix(5)))
+                                .font(.system(size: 9))
+                                .foregroundColor(PythiaTheme.textTertiary)
+                        }
+                    }
+                }
+            }
+            .frame(height: 300)
+
+            // Legend
+            HStack(spacing: 16) {
+                legendItem("Support", PythiaTheme.profit)
+                legendItem("Resistance", PythiaTheme.loss)
+                legendItem("Breakout", PythiaTheme.accentGold)
+                legendItem("Target", PythiaTheme.secondaryBlue)
+            }
+            .padding(.top, 4)
+        }
+        .padding()
+        .pythiaCard()
+    }
+
+    private func legendItem(_ label: String, _ color: Color) -> some View {
+        HStack(spacing: 4) {
+            Rectangle()
+                .fill(color)
+                .frame(width: 16, height: 2)
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundColor(PythiaTheme.textTertiary)
+        }
+    }
+
+    private func collectKeyLevels(_ r: PatternResponse) -> [Double] {
+        r.patterns.flatMap { $0.keyLevels ?? [] }
+    }
+
+    private func breakoutLevels(_ r: PatternResponse) -> [Double] {
+        r.patterns.compactMap { p in
+            guard p.patternType != "support_resistance", let bp = p.breakoutPrice, bp > 0 else { return nil }
+            return bp
+        }
+    }
+
+    private func targetLevels(_ r: PatternResponse) -> [Double] {
+        r.patterns.compactMap { p in
+            guard p.patternType != "support_resistance", let tp = p.targetPrice, tp > 0 else { return nil }
+            return tp
+        }
     }
 
     // MARK: - Summary
@@ -221,6 +365,12 @@ struct PatternView: View {
         defer { isLoading = false }
         do {
             result = try await db.get("/patterns/\(assetId)?days=120", timeout: 60.0)
+
+            // Fetch price history for chart
+            if let r = result, r.success {
+                let history: HistoryResponse = try await db.get("/market/history/\(r.symbol)?period=6mo")
+                priceData = history.data
+            }
         } catch {
             result = nil
         }
