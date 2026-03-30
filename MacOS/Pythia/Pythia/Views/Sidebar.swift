@@ -19,6 +19,13 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case stressTest
     case performance
     case correlation
+    case regime
+    case factors
+
+    // Trading (Phase 7)
+    case signalDashboard
+    case strategyBuilder
+    case patterns
 
     // AI Insights
     case aiAdvisor
@@ -54,6 +61,11 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .stressTest: return "Stress Test"
         case .performance: return "Performance"
         case .correlation: return "Correlation"
+        case .regime: return "Regime Detection"
+        case .factors: return "Factor Analysis"
+        case .signalDashboard: return "Signal Dashboard"
+        case .strategyBuilder: return "Strategy Builder"
+        case .patterns: return "Patterns"
         case .aiAdvisor: return "AI Advisor"
         case .sentiment: return "Sentiment"
         case .forecast: return "Forecast"
@@ -81,6 +93,11 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .stressTest: return "bolt.fill"
         case .performance: return "chart.line.uptrend.xyaxis"
         case .correlation: return "square.grid.3x3.fill"
+        case .regime: return "waveform.path.ecg"
+        case .factors: return "chart.bar.fill"
+        case .signalDashboard: return "antenna.radiowaves.left.and.right"
+        case .strategyBuilder: return "gearshape.2.fill"
+        case .patterns: return "chart.xyaxis.line"
         case .aiAdvisor: return "brain.head.profile"
         case .sentiment: return "newspaper.fill"
         case .forecast: return "chart.line.flattrend.xyaxis"
@@ -102,7 +119,8 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         switch self {
         case .dashboard: return "DASHBOARD"
         case .portfolios, .transactions: return "PORTFOLIO"
-        case .mpt, .valueAtRisk, .stressTest, .performance, .correlation: return "ANALYSIS"
+        case .mpt, .valueAtRisk, .stressTest, .performance, .correlation, .regime, .factors: return "ANALYSIS"
+        case .signalDashboard, .strategyBuilder, .patterns: return "TRADING"
         case .aiAdvisor, .sentiment, .forecast, .research: return "AI INSIGHTS"
         case .globalMonitor, .marketOverview, .marketBreadth, .optionsChain, .watchlist: return "MARKET"
         case .backtest, .monteCarlo, .technical, .statistics: return "TOOLS"
@@ -117,7 +135,8 @@ struct Sidebar: View {
     private let groups: [(String, [SidebarItem])] = [
         ("DASHBOARD", [.globalMonitor, .marketOverview, .marketBreadth, .dashboard]),
         ("PORTFOLIO", [.portfolios, .transactions]),
-        ("ANALYSIS", [.mpt, .valueAtRisk, .stressTest, .performance, .correlation, .optionsChain]),
+        ("ANALYSIS", [.mpt, .regime, .factors, .valueAtRisk, .stressTest, .performance, .correlation, .optionsChain]),
+        ("TRADING", [.signalDashboard, .strategyBuilder, .patterns]),
         ("AI INSIGHTS", [.aiAdvisor, .sentiment, .forecast, .research]),
         ("TOOLS", [.backtest, .monteCarlo, .technical, .statistics]),
         ("SETTINGS", [.watchlist, .settings]),

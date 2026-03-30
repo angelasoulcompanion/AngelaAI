@@ -40,6 +40,14 @@ from routers import (
     market_breadth,
     # Phase 6: Global Monitor
     global_monitor,
+    # Phase 7: Quantitative Trading Engine
+    regime,
+    signals,
+    factors,
+    position_sizing,
+    strategies,
+    # Phase 8: AI Trading Intelligence
+    patterns,
 )
 
 app = FastAPI(
@@ -105,6 +113,16 @@ app.include_router(market_breadth.router)
 
 # ── Phase 6: Global Monitor ──────────────────────────────
 app.include_router(global_monitor.router)
+
+# ── Phase 7: Quantitative Trading Engine ─────────────────
+app.include_router(regime.router)
+app.include_router(signals.router)
+app.include_router(factors.router)
+app.include_router(position_sizing.router)
+app.include_router(strategies.router)
+
+# ── Phase 8: AI Trading Intelligence ────────────────────
+app.include_router(patterns.router)
 
 
 if __name__ == "__main__":

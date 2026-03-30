@@ -36,6 +36,10 @@ struct ContentView: View {
                 // Analysis
                 case .mpt:
                     MPTView()
+                case .regime:
+                    RegimeView()
+                case .factors:
+                    FactorView()
                 case .valueAtRisk:
                     VaRView()
                 case .stressTest:
@@ -44,6 +48,14 @@ struct ContentView: View {
                     PerformanceView()
                 case .correlation:
                     CorrelationView()
+
+                // Trading
+                case .signalDashboard:
+                    SignalDashboardView()
+                case .strategyBuilder:
+                    StrategyBuilderView()
+                case .patterns:
+                    PatternView()
 
                 // Market / Tools
                 case .optionsChain:

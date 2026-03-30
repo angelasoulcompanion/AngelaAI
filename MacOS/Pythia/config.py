@@ -46,6 +46,32 @@ class PythiaConfig:
     OPTIMIZATION_MAX_ITERATIONS = 1000
     OPTIMIZATION_TOLERANCE = 1e-8
 
+    # ── Phase 7: Quantitative Trading Engine ──────────────
+    SIGNAL_COMPOSITE_WEIGHTS = {
+        "technical": 0.35,
+        "sentiment": 0.20,
+        "quant": 0.30,
+        "fundamental": 0.15,
+    }
+    REGIME_HMM_STATES = 4
+    REGIME_CACHE_TTL_SECONDS = 3600
+    REGIME_LOOKBACK_DAYS = 500
+    DEFAULT_TRANSACTION_COST_BPS = 10   # 10bps for Thai stocks
+    DEFAULT_SLIPPAGE_BPS = 5
+    KELLY_FRACTION = 0.5                # Half-Kelly for safety
+    REBALANCE_DRIFT_THRESHOLD = 0.05    # 5% drift triggers rebalance
+
+    # ── Phase 8: AI Trading Intelligence ──────────────────
+    SCREENER_MAX_RESULTS = 50
+    ALERT_CHECK_INTERVAL_SECONDS = 300  # 5 minutes
+
+    # ── LLM Cache TTLs (seconds) ──────────────────────────
+    CACHE_TTL_REGIME = 21600      # 6 hours
+    CACHE_TTL_SIGNALS = 3600      # 1 hour
+    CACHE_TTL_SCREENER = 1800     # 30 minutes
+    CACHE_TTL_NARRATIVE = 43200   # 12 hours
+    CACHE_TTL_TRADE_PLAN = 7200   # 2 hours
+
     @classmethod
     def get_settings_dict(cls) -> dict:
         return {

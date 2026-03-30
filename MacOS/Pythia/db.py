@@ -73,8 +73,10 @@ async def _run_migrations(conn: asyncpg.Connection) -> None:
         try:
             sql = sql_file.read_text()
             for statement in sql.split(";"):
-                stmt = statement.strip()
-                if stmt and not stmt.startswith("--"):
+                # Strip leading comment lines before checking
+                lines = [l for l in statement.strip().split("\n") if not l.strip().startswith("--")]
+                stmt = "\n".join(lines).strip()
+                if stmt:
                     await conn.execute(stmt)
             print(f"  Migration: {sql_file.name}")
         except Exception as e:
