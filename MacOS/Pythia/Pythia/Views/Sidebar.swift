@@ -13,6 +13,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     // Portfolio
     case portfolios
     case transactions
+    case rebalance
 
     // Analysis
     case mpt
@@ -22,6 +23,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case correlation
     case regime
     case factors
+    case riskBudget
 
     // Trading (Phase 7)
     case signalDashboard
@@ -62,6 +64,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .alerts: return "Alerts"
         case .portfolios: return "Portfolios"
         case .transactions: return "Transactions"
+        case .rebalance: return "Rebalance"
         case .mpt: return "MPT Optimization"
         case .valueAtRisk: return "Value at Risk"
         case .stressTest: return "Stress Test"
@@ -69,6 +72,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .correlation: return "Correlation"
         case .regime: return "Regime Detection"
         case .factors: return "Factor Analysis"
+        case .riskBudget: return "Risk Budget"
         case .signalDashboard: return "Signal Dashboard"
         case .strategyBuilder: return "Strategy Builder"
         case .screener: return "Screener"
@@ -99,6 +103,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .alerts: return "bell.badge.fill"
         case .portfolios: return "briefcase.fill"
         case .transactions: return "arrow.left.arrow.right"
+        case .rebalance: return "scale.3d"
         case .mpt: return "chart.pie.fill"
         case .valueAtRisk: return "exclamationmark.triangle.fill"
         case .stressTest: return "bolt.fill"
@@ -106,6 +111,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .correlation: return "square.grid.3x3.fill"
         case .regime: return "waveform.path.ecg"
         case .factors: return "chart.bar.fill"
+        case .riskBudget: return "shield.lefthalf.filled"
         case .signalDashboard: return "antenna.radiowaves.left.and.right"
         case .strategyBuilder: return "gearshape.2.fill"
         case .screener: return "magnifyingglass"
@@ -133,8 +139,8 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     var group: String {
         switch self {
         case .dashboard, .alerts: return "DASHBOARD"
-        case .portfolios, .transactions: return "PORTFOLIO"
-        case .mpt, .valueAtRisk, .stressTest, .performance, .correlation, .regime, .factors: return "ANALYSIS"
+        case .portfolios, .transactions, .rebalance: return "PORTFOLIO"
+        case .mpt, .valueAtRisk, .stressTest, .performance, .correlation, .regime, .factors, .riskBudget: return "ANALYSIS"
         case .signalDashboard, .strategyBuilder, .screener, .tradePlans, .patterns, .events: return "TRADING"
         case .aiAdvisor, .sentiment, .forecast, .research, .narrative: return "AI INSIGHTS"
         case .globalMonitor, .marketOverview, .marketBreadth, .optionsChain, .watchlist: return "MARKET"
@@ -150,8 +156,8 @@ struct Sidebar: View {
 
     private let groups: [(String, [SidebarItem])] = [
         ("DASHBOARD", [.globalMonitor, .marketOverview, .marketBreadth, .dashboard, .alerts]),
-        ("PORTFOLIO", [.portfolios, .transactions]),
-        ("ANALYSIS", [.mpt, .regime, .factors, .valueAtRisk, .stressTest, .performance, .correlation, .optionsChain]),
+        ("PORTFOLIO", [.portfolios, .transactions, .rebalance]),
+        ("ANALYSIS", [.mpt, .regime, .factors, .riskBudget, .valueAtRisk, .stressTest, .performance, .correlation, .optionsChain]),
         ("TRADING", [.signalDashboard, .strategyBuilder, .screener, .tradePlans, .patterns, .events]),
         ("AI INSIGHTS", [.aiAdvisor, .sentiment, .forecast, .research, .narrative]),
         ("TOOLS", [.backtest, .monteCarlo, .technical, .statistics]),

@@ -24,6 +24,8 @@ struct ContentView: View {
                     PortfolioListView()
                 case .transactions:
                     TransactionsView()
+                case .rebalance:
+                    RebalanceView()
                 case .globalMonitor:
                     GlobalMonitorView()
                 case .marketOverview:
@@ -42,6 +44,8 @@ struct ContentView: View {
                     RegimeView()
                 case .factors:
                     FactorView()
+                case .riskBudget:
+                    RiskBudgetView()
                 case .valueAtRisk:
                     VaRView()
                 case .stressTest:

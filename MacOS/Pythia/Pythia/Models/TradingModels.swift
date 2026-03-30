@@ -281,6 +281,120 @@ struct CheckAlertsResponse: Codable {
     }
 }
 
+// MARK: - Alpha ML
+
+struct AlphaResponse: Codable {
+    let assetId: String
+    let symbol: String
+    let predictedDirection: String
+    let probability: Double
+    let featureImportance: [FeatureImportanceItem]?
+    let modelAccuracy: Double
+    let trainingSamples: Int
+    let success: Bool
+    let message: String?
+
+    enum CodingKeys: String, CodingKey {
+        case assetId = "asset_id"
+        case symbol
+        case predictedDirection = "predicted_direction"
+        case probability
+        case featureImportance = "feature_importance"
+        case modelAccuracy = "model_accuracy"
+        case trainingSamples = "training_samples"
+        case success, message
+    }
+}
+
+struct FeatureImportanceItem: Codable, Identifiable {
+    var id: String { feature }
+    let feature: String
+    let importance: Double
+}
+
+// MARK: - Rebalance
+
+struct RebalanceResponse: Codable {
+    let portfolioId: String
+    let planType: String
+    let totalValue: Double
+    let trades: [RebalanceTrade]
+    let maxDrift: Double
+    let estimatedCost: Double
+    let needsRebalance: Bool
+    let success: Bool
+    let message: String?
+
+    enum CodingKeys: String, CodingKey {
+        case portfolioId = "portfolio_id"
+        case planType = "plan_type"
+        case totalValue = "total_value"
+        case trades
+        case maxDrift = "max_drift"
+        case estimatedCost = "estimated_cost"
+        case needsRebalance = "needs_rebalance"
+        case success, message
+    }
+}
+
+struct RebalanceTrade: Codable, Identifiable {
+    var id: String { assetId }
+    let assetId: String
+    let symbol: String
+    let currentWeight: Double
+    let targetWeight: Double
+    let drift: Double
+    let action: String
+    let tradeValue: Double
+
+    enum CodingKeys: String, CodingKey {
+        case assetId = "asset_id"
+        case symbol
+        case currentWeight = "current_weight"
+        case targetWeight = "target_weight"
+        case drift, action
+        case tradeValue = "trade_value"
+    }
+}
+
+// MARK: - Risk Budget
+
+struct RiskBudgetResponse: Codable {
+    let portfolioId: String
+    let totalBudget: Double
+    let allocations: [RiskAllocation]
+    let utilization: Double
+    let regime: String?
+    let aiAdvice: String?
+    let success: Bool
+    let message: String?
+
+    enum CodingKeys: String, CodingKey {
+        case portfolioId = "portfolio_id"
+        case totalBudget = "total_budget"
+        case allocations, utilization, regime
+        case aiAdvice = "ai_advice"
+        case success, message
+    }
+}
+
+struct RiskAllocation: Codable, Identifiable {
+    var id: String { strategyId }
+    let strategyId: String
+    let strategyName: String
+    let strategyType: String
+    let riskBudgetPct: Double
+    let maxPositionPct: Double
+
+    enum CodingKeys: String, CodingKey {
+        case strategyId = "strategy_id"
+        case strategyName = "strategy_name"
+        case strategyType = "strategy_type"
+        case riskBudgetPct = "risk_budget_pct"
+        case maxPositionPct = "max_position_pct"
+    }
+}
+
 // MARK: - Market Narrative
 
 struct NarrativeResponse: Codable {

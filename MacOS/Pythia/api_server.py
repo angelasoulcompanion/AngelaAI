@@ -54,6 +54,7 @@ from routers import (
     correlation_monitor,
     events,
     alerts,
+    rebalance,
 )
 
 app = FastAPI(
@@ -135,6 +136,9 @@ app.include_router(narrative.router)
 app.include_router(correlation_monitor.router)
 app.include_router(events.router)
 app.include_router(alerts.router)
+
+# ── Phase 7+8: Final (Alpha, Rebalance, Risk Budget) ────
+app.include_router(rebalance.router)
 
 
 if __name__ == "__main__":
