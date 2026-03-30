@@ -18,6 +18,8 @@ struct ContentView: View {
                 switch selectedItem {
                 case .dashboard:
                     DashboardView()
+                case .alerts:
+                    AlertsView()
                 case .portfolios:
                     PortfolioListView()
                 case .transactions:
@@ -60,6 +62,8 @@ struct ContentView: View {
                     TradePlanView()
                 case .patterns:
                     PatternView()
+                case .events:
+                    EventView()
 
                 // Market / Tools
                 case .optionsChain:

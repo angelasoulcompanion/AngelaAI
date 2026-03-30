@@ -51,6 +51,9 @@ from routers import (
     screener,
     trade_plans,
     narrative,
+    correlation_monitor,
+    events,
+    alerts,
 )
 
 app = FastAPI(
@@ -129,6 +132,9 @@ app.include_router(patterns.router)
 app.include_router(screener.router)
 app.include_router(trade_plans.router)
 app.include_router(narrative.router)
+app.include_router(correlation_monitor.router)
+app.include_router(events.router)
+app.include_router(alerts.router)
 
 
 if __name__ == "__main__":

@@ -146,6 +146,141 @@ struct TradePlanSummary: Codable, Identifiable {
     }
 }
 
+// MARK: - Correlation Monitor
+
+struct CorrelationMonitorResponse: Codable {
+    let portfolioId: String
+    let correlationRegime: String
+    let avgCorrelation: Double
+    let avgHistorical: Double
+    let shifts: [CorrelationShiftItem]
+    let matrix: [[Double]]?
+    let symbols: [String]?
+    let success: Bool
+    let message: String?
+
+    enum CodingKeys: String, CodingKey {
+        case portfolioId = "portfolio_id"
+        case correlationRegime = "correlation_regime"
+        case avgCorrelation = "avg_correlation"
+        case avgHistorical = "avg_historical"
+        case shifts, matrix, symbols, success, message
+    }
+}
+
+struct CorrelationShiftItem: Codable, Identifiable {
+    var id: String { "\(asset1)_\(asset2)" }
+    let asset1: String
+    let asset2: String
+    let currentCorr: Double
+    let historicalCorr: Double
+    let shift: Double
+    let significance: String
+
+    enum CodingKeys: String, CodingKey {
+        case asset1 = "asset_1"
+        case asset2 = "asset_2"
+        case currentCorr = "current_corr"
+        case historicalCorr = "historical_corr"
+        case shift, significance
+    }
+}
+
+// MARK: - Event Impact
+
+struct EventImpactResponse: Codable {
+    let assetId: String
+    let symbol: String
+    let eventType: String
+    let avgMovePct: Double
+    let avgPreMove: Double
+    let avgPostMove: Double
+    let positiveRate: Double
+    let eventsAnalyzed: Int
+    let upcomingEvents: [EventItem]?
+    let historicalEvents: [HistoricalEvent]?
+    let success: Bool
+    let message: String?
+
+    enum CodingKeys: String, CodingKey {
+        case assetId = "asset_id"
+        case symbol
+        case eventType = "event_type"
+        case avgMovePct = "avg_move_pct"
+        case avgPreMove = "avg_pre_move"
+        case avgPostMove = "avg_post_move"
+        case positiveRate = "positive_rate"
+        case eventsAnalyzed = "events_analyzed"
+        case upcomingEvents = "upcoming_events"
+        case historicalEvents = "historical_events"
+        case success, message
+    }
+}
+
+struct EventItem: Codable, Identifiable {
+    var id: String { "\(type ?? "")_\(event ?? "")" }
+    let type: String?
+    let event: String?
+    let value: String?
+}
+
+struct HistoricalEvent: Codable, Identifiable {
+    var id: String { date ?? "" }
+    let date: String?
+    let eventReturn: Double?
+    let pre5d: Double?
+    let post5d: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case date
+        case eventReturn = "event_return"
+        case pre5d = "pre_5d"
+        case post5d = "post_5d"
+    }
+}
+
+// MARK: - Alerts
+
+struct AlertListResponse: Codable {
+    let alerts: [AlertItem]
+    let count: Int
+}
+
+struct AlertItem: Codable, Identifiable {
+    var id: String { alertId }
+    let alertId: String
+    let alertType: String
+    let title: String
+    let message: String?
+    let severity: String
+    let isRead: Bool
+    let triggeredAt: String?
+    let createdAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case alertId = "alert_id"
+        case alertType = "alert_type"
+        case title, message, severity
+        case isRead = "is_read"
+        case triggeredAt = "triggered_at"
+        case createdAt = "created_at"
+    }
+}
+
+struct UnreadCountResponse: Codable {
+    let count: Int
+}
+
+struct CheckAlertsResponse: Codable {
+    let generated: Int
+    let alertIds: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case generated
+        case alertIds = "alert_ids"
+    }
+}
+
 // MARK: - Market Narrative
 
 struct NarrativeResponse: Codable {

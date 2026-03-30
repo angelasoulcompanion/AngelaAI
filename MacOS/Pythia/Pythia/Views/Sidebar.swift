@@ -8,6 +8,7 @@ import SwiftUI
 enum SidebarItem: String, CaseIterable, Identifiable {
     // Dashboard
     case dashboard
+    case alerts
 
     // Portfolio
     case portfolios
@@ -28,6 +29,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case screener
     case tradePlans
     case patterns
+    case events
 
     // AI Insights
     case aiAdvisor
@@ -57,6 +59,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .dashboard: return "Dashboard"
+        case .alerts: return "Alerts"
         case .portfolios: return "Portfolios"
         case .transactions: return "Transactions"
         case .mpt: return "MPT Optimization"
@@ -71,6 +74,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .screener: return "Screener"
         case .tradePlans: return "Trade Plans"
         case .patterns: return "Patterns"
+        case .events: return "Events"
         case .aiAdvisor: return "AI Advisor"
         case .sentiment: return "Sentiment"
         case .forecast: return "Forecast"
@@ -92,6 +96,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .dashboard: return "chart.bar.xaxis.ascending.badge.clock"
+        case .alerts: return "bell.badge.fill"
         case .portfolios: return "briefcase.fill"
         case .transactions: return "arrow.left.arrow.right"
         case .mpt: return "chart.pie.fill"
@@ -106,6 +111,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .screener: return "magnifyingglass"
         case .tradePlans: return "list.clipboard.fill"
         case .patterns: return "chart.xyaxis.line"
+        case .events: return "calendar.badge.clock"
         case .aiAdvisor: return "brain.head.profile"
         case .sentiment: return "newspaper.fill"
         case .forecast: return "chart.line.flattrend.xyaxis"
@@ -126,10 +132,10 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 
     var group: String {
         switch self {
-        case .dashboard: return "DASHBOARD"
+        case .dashboard, .alerts: return "DASHBOARD"
         case .portfolios, .transactions: return "PORTFOLIO"
         case .mpt, .valueAtRisk, .stressTest, .performance, .correlation, .regime, .factors: return "ANALYSIS"
-        case .signalDashboard, .strategyBuilder, .screener, .tradePlans, .patterns: return "TRADING"
+        case .signalDashboard, .strategyBuilder, .screener, .tradePlans, .patterns, .events: return "TRADING"
         case .aiAdvisor, .sentiment, .forecast, .research, .narrative: return "AI INSIGHTS"
         case .globalMonitor, .marketOverview, .marketBreadth, .optionsChain, .watchlist: return "MARKET"
         case .backtest, .monteCarlo, .technical, .statistics: return "TOOLS"
@@ -143,10 +149,10 @@ struct Sidebar: View {
     @State private var collapsed: Set<String> = []
 
     private let groups: [(String, [SidebarItem])] = [
-        ("DASHBOARD", [.globalMonitor, .marketOverview, .marketBreadth, .dashboard]),
+        ("DASHBOARD", [.globalMonitor, .marketOverview, .marketBreadth, .dashboard, .alerts]),
         ("PORTFOLIO", [.portfolios, .transactions]),
         ("ANALYSIS", [.mpt, .regime, .factors, .valueAtRisk, .stressTest, .performance, .correlation, .optionsChain]),
-        ("TRADING", [.signalDashboard, .strategyBuilder, .screener, .tradePlans, .patterns]),
+        ("TRADING", [.signalDashboard, .strategyBuilder, .screener, .tradePlans, .patterns, .events]),
         ("AI INSIGHTS", [.aiAdvisor, .sentiment, .forecast, .research, .narrative]),
         ("TOOLS", [.backtest, .monteCarlo, .technical, .statistics]),
         ("SETTINGS", [.watchlist, .settings]),
