@@ -1,0 +1,86 @@
+-- ============================================
+-- CRM WTU Data Warehouse — README
+-- ============================================
+--
+-- Database: crm_wtu_dw (PostgreSQL @ pgsql02.xtrathai.local)
+-- Source:   crm_wtu.public (same server)
+-- Domain:   University Student Recruitment CRM (Admissions Pipeline)
+--
+-- ============================================
+-- EXECUTION ORDER
+-- ============================================
+--
+-- 1. 00_create_database.sql    — Create crm_wtu_dw database (run as admin)
+-- 2. 01_dim_date.sql           — Create & populate dim_date (2020–2030)
+-- 3. 02_dimensions.sql         — Create all dimension tables (with unknown members)
+-- 4. 03_fact_tables.sql        — Create all fact tables
+-- 5. 04_etl_dimensions.sql     — Load dimensions from source (requires FDW setup)
+-- 6. 05_etl_facts.sql          — Load fact tables from source
+-- 7. 06_validation.sql         — Run validation checks
+-- 8. 07_sample_analytics.sql   — Sample analytical queries
+--
+-- ============================================
+-- PREREQUISITE: Foreign Data Wrapper
+-- ============================================
+--
+-- Connect to crm_wtu_dw and run:
+--
+--   CREATE EXTENSION IF NOT EXISTS postgres_fdw;
+--
+--   CREATE SERVER crm_wtu_src FOREIGN DATA WRAPPER postgres_fdw
+--       OPTIONS (host 'pgsql02.xtrathai.local', dbname 'crm_wtu', port '5432');
+--
+--   CREATE USER MAPPING FOR CURRENT_USER SERVER crm_wtu_src
+--       OPTIONS (user 'postgres', password '???');
+--
+--   CREATE SCHEMA IF NOT EXISTS src;
+--   IMPORT FOREIGN SCHEMA public FROM SERVER crm_wtu_src INTO src;
+--
+-- ============================================
+-- STAR SCHEMA SUMMARY
+-- ============================================
+--
+-- DIMENSIONS (17):
+--   dim_date                    — Calendar + Thai education year/semester
+--   dim_staff                   — Recruitment officers (SCD2)
+--   dim_lead                    — Prospective students (SCD2)
+--   dim_school                  — Feeder schools
+--   dim_curriculum              — Academic hierarchy (conformed)
+--   dim_province                — Geographic
+--   dim_program_type            — ป.ตรี / ป.โท / ป.เอก / certificate
+--   dim_channel                 — Marketing channels
+--   dim_interaction_type        — Contact methods (Call, Visit, Line...)
+--   dim_interaction_outcome     — Contact results
+--   dim_lead_state              — Lead pipeline stages
+--   dim_opportunity_state       — Opportunity pipeline stages
+--   dim_application_form_state  — Application statuses
+--   dim_appointment_type        — Meeting types
+--   dim_lose_reason             — Deal loss reasons
+--   dim_closed_sale_status      — Win / Lose
+--   dim_lead_source             — Origin (from_type + source + campaign)
+--   dim_target_group            — Recruitment target groups
+--   dim_education_level         — Prior education level
+--
+-- FACTS (6):
+--   fact_lead_interaction       — Every contact event (248K rows)
+--   fact_appointment            — Scheduled meetings (23K rows)
+--   fact_closed_sale            — Pipeline closures Win/Lose (12K rows)
+--   fact_payment                — Fee payments (2K rows)
+--   fact_lead_pipeline          — Accumulating snapshot per lead (61K rows)
+--   fact_kpi_target             — Recruitment targets vs actual
+--
+-- ============================================
+-- GRAIN MATRIX
+-- ============================================
+--
+-- Fact Table              | Grain                    | date | staff | lead | curriculum | program | school | province
+-- ------------------------|--------------------------|------|-------|------|------------|---------|--------|----------
+-- fact_lead_interaction   | 1 contact event          |  X   |   X   |  X   |            |         |        |
+-- fact_appointment        | 1 scheduled meeting      |  X   |   X   |  X   |            |         |        |
+-- fact_closed_sale        | 1 pipeline closure       |  X   |   X   |  X   |     X      |    X    |   X    |    X
+-- fact_payment            | 1 fee line in receipt    |  X   |   X   |  X   |            |         |        |
+-- fact_lead_pipeline      | 1 lead (accumulating)    |  X*  |   X   |  X   |     X      |    X    |   X    |    X
+-- fact_kpi_target         | 1 target per curriculum  |      |       |      |     X      |    X    |   X    |
+--
+-- * fact_lead_pipeline has multiple role-playing date keys (created, first_contact, opp, closed)
+--
