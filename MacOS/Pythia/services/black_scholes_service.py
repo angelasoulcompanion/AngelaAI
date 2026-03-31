@@ -319,11 +319,27 @@ def analyze_option(
             },
         }
 
+    # B-S model internals for display
+    T = time_to_expiry
+    sigma = hist_vol
+    d1_val = (np.log(spot / strike) + (risk_free_rate + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
+    d2_val = d1_val - sigma * np.sqrt(T)
+
     return {
         "success": True,
         "symbol": symbol,
         "spot": round(spot, 4),
         "historical_vol": round(hist_vol, 4),
+        "bs_model": {
+            "d1": round(float(d1_val), 6),
+            "d2": round(float(d2_val), 6),
+            "n_d1": round(float(norm.cdf(d1_val)), 6),
+            "n_d2": round(float(norm.cdf(d2_val)), 6),
+            "n_neg_d1": round(float(norm.cdf(-d1_val)), 6),
+            "n_neg_d2": round(float(norm.cdf(-d2_val)), 6),
+            "discount_factor": round(float(np.exp(-risk_free_rate * T)), 6),
+            "forward_price": round(float(spot * np.exp(risk_free_rate * T)), 4),
+        },
         "quote": {
             "current_price": round(spot, 4),
             "change_percent": round(change_pct, 4),

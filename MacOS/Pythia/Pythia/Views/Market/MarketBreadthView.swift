@@ -5,6 +5,8 @@
 
 import SwiftUI
 import Charts
+import AppKit
+import UniformTypeIdentifiers
 
 struct MarketBreadthView: View {
     @EnvironmentObject var db: DatabaseService
@@ -80,6 +82,16 @@ struct MarketBreadthView: View {
                     Task { await loadBreadth() }
                 }
                 .pythiaPrimaryButton()
+
+                if breadth != nil {
+                    Button(action: exportPDF) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.down.doc.fill")
+                            Text("PDF")
+                        }
+                    }
+                    .pythiaSecondaryButton()
+                }
 
                 Spacer()
             }
@@ -611,6 +623,42 @@ struct MarketBreadthView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+        }
+    }
+
+    // MARK: - Export PDF
+
+    @MainActor
+    private func exportPDF() {
+        guard let b = breadth else { return }
+
+        let uName = universes.first(where: { $0.id == selectedUniverse })
+            .map { "\($0.name) (\($0.size))" } ?? selectedUniverse
+        let printView = MarketBreadthPrintView(breadth: b, universe: selectedUniverse, universeName: uName)
+        let renderer = ImageRenderer(content: printView)
+        renderer.scale = 2.0
+
+        let pdfData = NSMutableData()
+        guard let consumer = CGDataConsumer(data: pdfData as CFMutableData) else { return }
+
+        renderer.render { size, renderFn in
+            var mediaBox = CGRect(origin: .zero, size: size)
+            guard let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else { return }
+            context.beginPDFPage(nil)
+            renderFn(context)
+            context.endPDFPage()
+            context.closePDF()
+        }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.pdf]
+        let safeName = uName.replacingOccurrences(of: " ", with: "_")
+            .replacingOccurrences(of: "(", with: "").replacingOccurrences(of: ")", with: "")
+        panel.nameFieldStringValue = "\(safeName)_breadth.pdf"
+        panel.title = "Export Market Breadth PDF"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            try? pdfData.write(to: url, options: .atomic)
         }
     }
 

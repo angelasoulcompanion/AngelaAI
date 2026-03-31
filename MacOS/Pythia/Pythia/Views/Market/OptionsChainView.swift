@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import Charts
 
 struct OptionsChainView: View {
     @EnvironmentObject var db: DatabaseService
@@ -40,6 +41,10 @@ struct OptionsChainView: View {
                     suggestionCard(r.suggestion)
                     pricingCards(r)
                     greeksTable(r)
+                    optionPayoffChart(r)
+                    if let bs = r.bsModel {
+                        blackScholesSection(r, bs: bs)
+                    }
                 }
             }
             .padding(PythiaTheme.largeSpacing)
@@ -328,6 +333,432 @@ struct OptionsChainView: View {
         if years <= 0.25 { return "3M" }
         if years <= 0.5 { return "6M" }
         return "1Y"
+    }
+
+    // MARK: - Option Payoff & Price Chart
+
+    private struct PayoffPoint: Identifiable {
+        let id = UUID()
+        let spotPrice: Double
+        let value: Double
+        let series: String
+    }
+
+    private func optionPayoffChart(_ r: OptionAnalysisResponse) -> some View {
+        // Generate B-S prices across spot range (±40% from current strike)
+        let K = r.strike
+        let T = r.timeToExpiry
+        let rf = r.riskFreeRate
+        let sigma = r.historicalVol
+        let spotMin = K * 0.6
+        let spotMax = K * 1.4
+        let steps = 80
+
+        var points: [PayoffPoint] = []
+
+        for i in 0...steps {
+            let s = spotMin + (spotMax - spotMin) * Double(i) / Double(steps)
+
+            // Call payoff at expiry
+            let callPayoff = max(s - K, 0) - r.call.price
+            points.append(PayoffPoint(spotPrice: s, value: callPayoff, series: "Call Payoff"))
+
+            // Put payoff at expiry
+            let putPayoff = max(K - s, 0) - r.put.price
+            points.append(PayoffPoint(spotPrice: s, value: putPayoff, series: "Put Payoff"))
+
+            // B-S Call price (current)
+            if T > 0 && sigma > 0 {
+                let sqrtT = sqrt(T)
+                let d1 = (log(s / K) + (rf + 0.5 * sigma * sigma) * T) / (sigma * sqrtT)
+                let d2 = d1 - sigma * sqrtT
+                let nd1 = 0.5 * (1.0 + erf(d1 / sqrt(2.0)))
+                let nd2 = 0.5 * (1.0 + erf(d2 / sqrt(2.0)))
+                let callPrice = s * nd1 - K * exp(-rf * T) * nd2
+                points.append(PayoffPoint(spotPrice: s, value: callPrice - r.call.price, series: "Call Value"))
+
+                // B-S Put price (current)
+                let nNegd1 = 1.0 - nd1
+                let nNegd2 = 1.0 - nd2
+                let putPrice = K * exp(-rf * T) * nNegd2 - s * nNegd1
+                points.append(PayoffPoint(spotPrice: s, value: putPrice - r.put.price, series: "Put Value"))
+            }
+        }
+
+        let allValues = points.map(\.value)
+        let yMin = max((allValues.min() ?? -1) * 1.1, -K * 0.3)
+        let yMax = min((allValues.max() ?? 1) * 1.1, K * 0.3)
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                HStack(spacing: 8) {
+                    Image(systemName: "chart.xyaxis.line")
+                        .foregroundColor(PythiaTheme.accentGold)
+                    Text("Option P&L Diagram")
+                        .font(PythiaTheme.headline())
+                        .foregroundColor(PythiaTheme.textPrimary)
+                }
+                Spacer()
+                HStack(spacing: 16) {
+                    legendItem("Call Payoff", PythiaTheme.profit, dashed: true)
+                    legendItem("Call Value", PythiaTheme.profit, dashed: false)
+                    legendItem("Put Payoff", PythiaTheme.loss, dashed: true)
+                    legendItem("Put Value", PythiaTheme.loss, dashed: false)
+                }
+            }
+
+            Chart {
+                // Zero line
+                RuleMark(y: .value("Zero", 0))
+                    .foregroundStyle(PythiaTheme.textTertiary.opacity(0.4))
+                    .lineStyle(StrokeStyle(lineWidth: 0.5))
+
+                // Current spot vertical line
+                RuleMark(x: .value("Spot", r.spot))
+                    .foregroundStyle(PythiaTheme.accentGold.opacity(0.6))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [6, 4]))
+                    .annotation(position: .top, alignment: .center) {
+                        Text("Spot")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(PythiaTheme.accentGold)
+                    }
+
+                // Strike vertical line
+                RuleMark(x: .value("Strike", K))
+                    .foregroundStyle(PythiaTheme.textTertiary.opacity(0.4))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    .annotation(position: .top, alignment: .center) {
+                        Text("K")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(PythiaTheme.textTertiary)
+                    }
+
+                // Call Payoff (dashed)
+                ForEach(points.filter { $0.series == "Call Payoff" }) { p in
+                    LineMark(
+                        x: .value("Spot", p.spotPrice),
+                        y: .value("P&L", p.value),
+                        series: .value("S", "Call Payoff")
+                    )
+                    .foregroundStyle(PythiaTheme.profit.opacity(0.5))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                }
+
+                // Call Value (solid)
+                ForEach(points.filter { $0.series == "Call Value" }) { p in
+                    LineMark(
+                        x: .value("Spot", p.spotPrice),
+                        y: .value("P&L", p.value),
+                        series: .value("S", "Call Value")
+                    )
+                    .foregroundStyle(PythiaTheme.profit)
+                    .lineStyle(StrokeStyle(lineWidth: 2))
+                }
+
+                // Put Payoff (dashed)
+                ForEach(points.filter { $0.series == "Put Payoff" }) { p in
+                    LineMark(
+                        x: .value("Spot", p.spotPrice),
+                        y: .value("P&L", p.value),
+                        series: .value("S", "Put Payoff")
+                    )
+                    .foregroundStyle(PythiaTheme.loss.opacity(0.5))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                }
+
+                // Put Value (solid)
+                ForEach(points.filter { $0.series == "Put Value" }) { p in
+                    LineMark(
+                        x: .value("Spot", p.spotPrice),
+                        y: .value("P&L", p.value),
+                        series: .value("S", "Put Value")
+                    )
+                    .foregroundStyle(PythiaTheme.loss)
+                    .lineStyle(StrokeStyle(lineWidth: 2))
+                }
+            }
+            .chartYScale(domain: yMin...yMax)
+            .chartLegend(.hidden)
+            .chartXAxis {
+                AxisMarks(values: .automatic(desiredCount: 8)) { value in
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4]))
+                        .foregroundStyle(PythiaTheme.textTertiary.opacity(0.15))
+                    AxisValueLabel {
+                        if let v = value.as(Double.self) {
+                            Text(String(format: "%.2f", v))
+                                .font(.system(size: 9, design: .monospaced))
+                                .foregroundColor(PythiaTheme.textSecondary)
+                        }
+                    }
+                }
+            }
+            .chartYAxis {
+                AxisMarks(values: .automatic(desiredCount: 6)) { value in
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4]))
+                        .foregroundStyle(PythiaTheme.textTertiary.opacity(0.15))
+                    AxisValueLabel {
+                        if let v = value.as(Double.self) {
+                            Text(String(format: "%.3f", v))
+                                .font(.system(size: 9, design: .monospaced))
+                                .foregroundColor(PythiaTheme.textSecondary)
+                        }
+                    }
+                }
+            }
+            .frame(height: 280)
+
+            // Breakeven annotation
+            HStack(spacing: 20) {
+                HStack(spacing: 6) {
+                    Circle().fill(PythiaTheme.profit).frame(width: 6, height: 6)
+                    Text("Call B/E: \(String(format: "%.4f", K + r.call.price))")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(PythiaTheme.textSecondary)
+                }
+                HStack(spacing: 6) {
+                    Circle().fill(PythiaTheme.loss).frame(width: 6, height: 6)
+                    Text("Put B/E: \(String(format: "%.4f", K - r.put.price))")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(PythiaTheme.textSecondary)
+                }
+                Spacer()
+                Text("Dashed = Payoff at expiry · Solid = Current value (B-S)")
+                    .font(.system(size: 9))
+                    .foregroundColor(PythiaTheme.textTertiary)
+            }
+        }
+        .padding()
+        .pythiaCard()
+    }
+
+    private func legendItem(_ label: String, _ color: Color, dashed: Bool) -> some View {
+        HStack(spacing: 4) {
+            if dashed {
+                RoundedRectangle(cornerRadius: 1)
+                    .stroke(color.opacity(0.6), style: StrokeStyle(lineWidth: 2, dash: [4, 3]))
+                    .frame(width: 14, height: 2)
+            } else {
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(color)
+                    .frame(width: 14, height: 2)
+            }
+            Text(label)
+                .font(.system(size: 9))
+                .foregroundColor(PythiaTheme.textSecondary)
+        }
+    }
+
+    // MARK: - Black-Scholes Model
+
+    private func blackScholesSection(_ r: OptionAnalysisResponse, bs: BSModel) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Header
+            HStack(spacing: 8) {
+                Image(systemName: "function")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(PythiaTheme.accentGold)
+                Text("Black-Scholes-Merton Model")
+                    .font(PythiaTheme.headline())
+                    .foregroundColor(PythiaTheme.textPrimary)
+                Spacer()
+                Text("European Options")
+                    .font(.system(size: 10))
+                    .foregroundColor(PythiaTheme.textTertiary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                    .background(PythiaTheme.textTertiary.opacity(0.1))
+                    .cornerRadius(4)
+            }
+
+            // Formula display
+            VStack(alignment: .leading, spacing: 8) {
+                Text("C = S·N(d₁) − K·e⁻ʳᵀ·N(d₂)")
+                    .font(.system(size: 15, weight: .medium, design: .serif))
+                    .foregroundColor(PythiaTheme.profit)
+                Text("P = K·e⁻ʳᵀ·N(−d₂) − S·N(−d₁)")
+                    .font(.system(size: 15, weight: .medium, design: .serif))
+                    .foregroundColor(PythiaTheme.loss)
+
+                Divider().background(PythiaTheme.textTertiary.opacity(0.2))
+
+                HStack(spacing: 0) {
+                    Text("d₁ = ")
+                        .font(.system(size: 13, design: .serif))
+                        .foregroundColor(PythiaTheme.textSecondary)
+                    Text("[ln(S/K) + (r + σ²/2)·T]")
+                        .font(.system(size: 12, design: .serif))
+                        .foregroundColor(PythiaTheme.textPrimary)
+                    Text(" / ")
+                        .foregroundColor(PythiaTheme.textTertiary)
+                    Text("σ√T")
+                        .font(.system(size: 12, design: .serif))
+                        .foregroundColor(PythiaTheme.textPrimary)
+                }
+                Text("d₂ = d₁ − σ√T")
+                    .font(.system(size: 13, design: .serif))
+                    .foregroundColor(PythiaTheme.textSecondary)
+            }
+            .padding(12)
+            .background(PythiaTheme.backgroundDark.opacity(0.5))
+            .cornerRadius(8)
+
+            // Model Inputs
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Model Inputs")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(PythiaTheme.textTertiary)
+
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 8) {
+                    bsInputCell("S (Spot)", String(format: "%.4f", r.spot))
+                    bsInputCell("K (Strike)", String(format: "%.2f", r.strike))
+                    bsInputCell("σ (Vol)", String(format: "%.2f%%", r.historicalVol * 100))
+                    bsInputCell("r (Rate)", String(format: "%.2f%%", r.riskFreeRate * 100))
+                    bsInputCell("T (Years)", String(format: "%.4f", r.timeToExpiry))
+                }
+            }
+
+            // Computed Values
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Computed Values")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(PythiaTheme.textTertiary)
+
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 8) {
+                    bsValueCell("d₁", String(format: "%+.6f", bs.d1), highlight: true)
+                    bsValueCell("d₂", String(format: "%+.6f", bs.d2), highlight: true)
+                    bsValueCell("N(d₁)", String(format: "%.6f", bs.nD1))
+                    bsValueCell("N(d₂)", String(format: "%.6f", bs.nD2))
+                    bsValueCell("N(−d₁)", String(format: "%.6f", bs.nNegD1))
+                    bsValueCell("N(−d₂)", String(format: "%.6f", bs.nNegD2))
+                    bsValueCell("e⁻ʳᵀ", String(format: "%.6f", bs.discountFactor))
+                    bsValueCell("Forward", String(format: "%.4f", bs.forwardPrice))
+                }
+            }
+
+            // Pricing Decomposition
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Pricing Decomposition")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(PythiaTheme.textTertiary)
+
+                HStack(spacing: 12) {
+                    // Call decomposition
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("CALL")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(PythiaTheme.profit)
+                        bsDecompRow("S × N(d₁)", r.spot * bs.nD1)
+                        bsDecompRow("K × e⁻ʳᵀ × N(d₂)", r.strike * bs.discountFactor * bs.nD2, subtract: true)
+                        Divider().background(PythiaTheme.profit.opacity(0.3))
+                        HStack {
+                            Text("= Call Price")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(PythiaTheme.textSecondary)
+                            Spacer()
+                            Text(String(format: "%.4f", r.call.price))
+                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                .foregroundColor(PythiaTheme.profit)
+                        }
+                    }
+                    .padding(10)
+                    .background(PythiaTheme.profit.opacity(0.05))
+                    .cornerRadius(8)
+
+                    // Put decomposition
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("PUT")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(PythiaTheme.loss)
+                        bsDecompRow("K × e⁻ʳᵀ × N(−d₂)", r.strike * bs.discountFactor * bs.nNegD2)
+                        bsDecompRow("S × N(−d₁)", r.spot * bs.nNegD1, subtract: true)
+                        Divider().background(PythiaTheme.loss.opacity(0.3))
+                        HStack {
+                            Text("= Put Price")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(PythiaTheme.textSecondary)
+                            Spacer()
+                            Text(String(format: "%.4f", r.put.price))
+                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                .foregroundColor(PythiaTheme.loss)
+                        }
+                    }
+                    .padding(10)
+                    .background(PythiaTheme.loss.opacity(0.05))
+                    .cornerRadius(8)
+                }
+            }
+
+            // Put-Call Parity check
+            let parityLeft = r.call.price - r.put.price
+            let parityRight = r.spot - r.strike * bs.discountFactor
+            let parityDiff = abs(parityLeft - parityRight)
+
+            HStack(spacing: 8) {
+                Image(systemName: parityDiff < 0.01 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(parityDiff < 0.01 ? PythiaTheme.profit : PythiaTheme.accentGold)
+                Text("Put-Call Parity: C − P = S − K·e⁻ʳᵀ")
+                    .font(.system(size: 11, design: .serif))
+                    .foregroundColor(PythiaTheme.textSecondary)
+                Spacer()
+                Text(String(format: "%.4f ≈ %.4f", parityLeft, parityRight))
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundColor(parityDiff < 0.01 ? PythiaTheme.profit : PythiaTheme.accentGold)
+                Text(parityDiff < 0.01 ? "✓" : String(format: "Δ%.4f", parityDiff))
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(parityDiff < 0.01 ? PythiaTheme.profit : PythiaTheme.accentGold)
+            }
+            .padding(8)
+            .background(PythiaTheme.backgroundDark.opacity(0.5))
+            .cornerRadius(6)
+        }
+        .padding()
+        .pythiaCard()
+    }
+
+    private func bsInputCell(_ label: String, _ value: String) -> some View {
+        VStack(spacing: 3) {
+            Text(label)
+                .font(.system(size: 9))
+                .foregroundColor(PythiaTheme.textTertiary)
+            Text(value)
+                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                .foregroundColor(PythiaTheme.textPrimary)
+        }
+        .padding(8)
+        .background(PythiaTheme.backgroundDark.opacity(0.4))
+        .cornerRadius(6)
+    }
+
+    private func bsValueCell(_ label: String, _ value: String, highlight: Bool = false) -> some View {
+        VStack(spacing: 3) {
+            Text(label)
+                .font(.system(size: 10, design: .serif))
+                .foregroundColor(PythiaTheme.textTertiary)
+            Text(value)
+                .font(.system(size: 12, weight: highlight ? .bold : .medium, design: .monospaced))
+                .foregroundColor(highlight ? PythiaTheme.accentGold : PythiaTheme.textPrimary)
+        }
+        .padding(8)
+        .background(highlight ? PythiaTheme.accentGold.opacity(0.06) : PythiaTheme.backgroundDark.opacity(0.4))
+        .cornerRadius(6)
+    }
+
+    private func bsDecompRow(_ label: String, _ value: Double, subtract: Bool = false) -> some View {
+        HStack {
+            Text(subtract ? "−" : "+")
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundColor(PythiaTheme.textTertiary)
+                .frame(width: 10)
+            Text(label)
+                .font(.system(size: 9))
+                .foregroundColor(PythiaTheme.textSecondary)
+                .lineLimit(1)
+            Spacer()
+            Text(String(format: "%.4f", value))
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(PythiaTheme.textPrimary)
+        }
     }
 
     // MARK: - Helpers

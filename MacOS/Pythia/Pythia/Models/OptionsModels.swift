@@ -61,6 +61,7 @@ struct OptionAnalysisResponse: Codable {
     let call: OptionSide
     let put: OptionSide
     let suggestion: OptionSuggestion
+    let bsModel: BSModel?
 
     enum CodingKeys: String, CodingKey {
         case success, symbol, spot
@@ -69,6 +70,28 @@ struct OptionAnalysisResponse: Codable {
         case timeToExpiry = "time_to_expiry"
         case riskFreeRate = "risk_free_rate"
         case call, put, suggestion
+        case bsModel = "bs_model"
+    }
+}
+
+struct BSModel: Codable {
+    let d1: Double
+    let d2: Double
+    let nD1: Double
+    let nD2: Double
+    let nNegD1: Double
+    let nNegD2: Double
+    let discountFactor: Double
+    let forwardPrice: Double
+
+    enum CodingKeys: String, CodingKey {
+        case d1, d2
+        case nD1 = "n_d1"
+        case nD2 = "n_d2"
+        case nNegD1 = "n_neg_d1"
+        case nNegD2 = "n_neg_d2"
+        case discountFactor = "discount_factor"
+        case forwardPrice = "forward_price"
     }
 }
 
