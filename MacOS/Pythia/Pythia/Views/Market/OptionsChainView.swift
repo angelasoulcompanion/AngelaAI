@@ -5,6 +5,8 @@
 
 import SwiftUI
 import Charts
+import AppKit
+import UniformTypeIdentifiers
 
 struct OptionsChainView: View {
     @EnvironmentObject var db: DatabaseService
@@ -80,6 +82,16 @@ struct OptionsChainView: View {
             Button("Analyze") { Task { await analyze() } }
                 .pythiaPrimaryButton()
                 .disabled(selectedAssetId == nil)
+
+            if result != nil {
+                Button(action: exportPDF) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.down.doc.fill")
+                        Text("PDF")
+                    }
+                }
+                .pythiaSecondaryButton()
+            }
 
             Spacer()
         }
@@ -806,6 +818,38 @@ struct OptionsChainView: View {
         case "bullish": return PythiaTheme.profit
         case "bearish": return PythiaTheme.loss
         default: return PythiaTheme.textTertiary
+        }
+    }
+
+    // MARK: - Export PDF
+
+    @MainActor
+    private func exportPDF() {
+        guard let r = result else { return }
+
+        let printView = OptionsAnalysisPrintView(result: r)
+        let renderer = ImageRenderer(content: printView)
+        renderer.scale = 2.0
+
+        let pdfData = NSMutableData()
+        guard let consumer = CGDataConsumer(data: pdfData as CFMutableData) else { return }
+
+        renderer.render { size, renderFn in
+            var mediaBox = CGRect(origin: .zero, size: size)
+            guard let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else { return }
+            context.beginPDFPage(nil)
+            renderFn(context)
+            context.endPDFPage()
+            context.closePDF()
+        }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.pdf]
+        panel.nameFieldStringValue = "\(r.symbol)_options.pdf"
+        panel.title = "Export Options Analysis PDF"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            try? pdfData.write(to: url, options: .atomic)
         }
     }
 
