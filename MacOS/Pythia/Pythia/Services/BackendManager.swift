@@ -192,17 +192,50 @@ class BackendManager: ObservableObject {
 
     func stopServer() {
         stopHealthCheck()
-        guard let process = process, process.isRunning else { return }
 
-        process.terminate()
-        DispatchQueue.global().async {
-            process.waitUntilExit()
-            DispatchQueue.main.async {
-                self.process = nil
-                self.isRunning = false
-                self.isConnected = false
-                self.statusMessage = "Stopped"
+        // 1) Kill managed process (if app started it)
+        if let proc = process, proc.isRunning {
+            proc.terminate()
+            DispatchQueue.global().async {
+                proc.waitUntilExit()
             }
+            process = nil
+        }
+
+        // 2) Also kill any backend on our port (covers external/orphaned processes)
+        killProcessOnPort(APIConfig.port)
+
+        DispatchQueue.main.async {
+            self.isRunning = false
+            self.isConnected = false
+            self.statusMessage = "Stopped"
+        }
+    }
+
+    /// Kill any process listening on a given port
+    private func killProcessOnPort(_ port: Int) {
+        let pipe = Pipe()
+        let lsof = Process()
+        lsof.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
+        lsof.arguments = ["-ti", ":\(port)"]
+        lsof.standardOutput = pipe
+        lsof.standardError = FileHandle.nullDevice
+
+        do {
+            try lsof.run()
+            lsof.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !output.isEmpty {
+                for pidStr in output.split(separator: "\n") {
+                    if let pid = Int32(pidStr.trimmingCharacters(in: .whitespaces)) {
+                        kill(pid, SIGTERM)
+                        print("[BackendManager] Killed PID \(pid) on port \(port)")
+                    }
+                }
+            }
+        } catch {
+            print("[BackendManager] killProcessOnPort failed: \(error)")
         }
     }
 

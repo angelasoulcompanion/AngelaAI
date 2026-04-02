@@ -15,6 +15,8 @@ struct GlobalMonitorView: View {
     @State private var isLoading = true
     @State private var errorMsg: String?
     @State private var autoRefreshTask: Task<Void, Never>?
+    @State private var anglesData: [AngleHeatmapItem] = []
+    @State private var anglesLoading = false
 
     var body: some View {
         Group {
@@ -88,6 +90,11 @@ struct GlobalMonitorView: View {
 
                 // Global Heatmap
                 heatmapSection(data.heatmap)
+
+                // Angles Watchlist Heatmap
+                if !anglesData.isEmpty {
+                    anglesHeatmapSection()
+                }
 
                 // Economic Calendar
                 if let events = data.economicCalendar, !events.isEmpty {
@@ -379,6 +386,94 @@ struct GlobalMonitorView: View {
         .padding(.vertical, 8)
         .background(bgColor)
         .cornerRadius(6)
+    }
+
+    // MARK: - Angles Watchlist Heatmap
+
+    private func anglesHeatmapSection() -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "star.circle.fill")
+                        .foregroundColor(PythiaTheme.accentGold)
+                    Text("Angles Watchlist")
+                        .font(PythiaTheme.heading())
+                        .foregroundColor(PythiaTheme.textPrimary)
+                }
+
+                Spacer()
+
+                // Summary stats
+                let up = anglesData.filter { ($0.changePercent ?? 0) > 0 }.count
+                let down = anglesData.filter { ($0.changePercent ?? 0) < 0 }.count
+                let flat = anglesData.count - up - down
+                HStack(spacing: 10) {
+                    Label("\(up)", systemImage: "arrow.up")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(PythiaTheme.successGreen)
+                    Label("\(down)", systemImage: "arrow.down")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(PythiaTheme.errorRed)
+                    if flat > 0 {
+                        Label("\(flat)", systemImage: "minus")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(PythiaTheme.textTertiary)
+                    }
+                }
+            }
+
+            // Heatmap grid — treemap style with size based on market cap weight
+            let cols = min(anglesData.count, 8)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: max(cols, 1)), spacing: 5) {
+                ForEach(anglesData) { item in
+                    angleTile(item)
+                }
+            }
+        }
+        .padding(12)
+        .pythiaCard()
+    }
+
+    private func angleTile(_ item: AngleHeatmapItem) -> some View {
+        let pct = item.changePercent ?? 0
+        let bgColor = heatmapColor(pct)
+
+        return VStack(spacing: 3) {
+            Text(item.symbol)
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundColor(.white)
+                .lineLimit(1)
+
+            if let price = item.price {
+                Text(formatCompactPrice(price))
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.85))
+            }
+
+            Text(String(format: "%+.2f%%", pct))
+                .font(.system(size: 12, weight: .heavy, design: .monospaced))
+                .foregroundColor(.white)
+
+            if let vol = item.volume, vol > 0 {
+                Text(formatVolume(vol))
+                    .font(.system(size: 8))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(bgColor)
+        .cornerRadius(6)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+        )
+    }
+
+    private func formatVolume(_ vol: Double) -> String {
+        if vol >= 1_000_000 { return String(format: "%.1fM", vol / 1_000_000) }
+        if vol >= 1_000 { return String(format: "%.0fK", vol / 1_000) }
+        return String(format: "%.0f", vol)
     }
 
     // MARK: - Timeline
@@ -871,6 +966,14 @@ struct GlobalMonitorView: View {
             if data == nil { errorMsg = error.localizedDescription }
         }
         isLoading = false
+
+        // Angles watchlist — fetch separately, non-blocking
+        do {
+            let resp: AngleWatchlistResponse = try await db.get("/watchlist/angles/heatmap", timeout: 30)
+            anglesData = resp.items
+        } catch {
+            // Silent fail — section just won't show
+        }
     }
 
     private func startAutoRefresh() {
@@ -927,7 +1030,7 @@ struct GlobalMonitorView: View {
     private func currentUTCHour() -> Double {
         let cal = Calendar(identifier: .gregorian)
         let utc = TimeZone(identifier: "UTC")!
-        var components = cal.dateComponents(in: utc, from: Date())
+        let components = cal.dateComponents(in: utc, from: Date())
         return Double(components.hour ?? 0) + Double(components.minute ?? 0) / 60.0
     }
 
@@ -955,6 +1058,7 @@ struct GlobalMonitorView: View {
             "ASX 200": "ASX",
             "KOSPI": "KOS",
             "Shanghai": "SHCOMP",
+            "Shenzhen": "SZSE",
         ]
         return map[name] ?? name
     }

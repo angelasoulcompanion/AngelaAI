@@ -327,6 +327,7 @@ async def get_market_state(conn: asyncpg.Connection) -> MarketStateResult:
         ("^N225", "Nikkei 225", "Asia-Pacific"),
         ("^HSI", "Hang Seng", "Asia-Pacific"),
         ("000001.SS", "Shanghai", "Asia-Pacific"),
+        ("399001.SZ", "Shenzhen", "Asia-Pacific"),
         ("^KS11", "KOSPI", "Asia-Pacific"),
         ("^TWII", "Taiwan", "Asia-Pacific"),
         ("^AXJO", "ASX 200", "Asia-Pacific"),

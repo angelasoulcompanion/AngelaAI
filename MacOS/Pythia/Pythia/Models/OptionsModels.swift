@@ -191,6 +191,121 @@ enum AnyCodableValue: Codable {
     }
 }
 
+// MARK: - Option Strategy
+
+struct StrategyResponse: Codable {
+    let success: Bool
+    let strategy: StrategyMeta
+    let spot: Double
+    let timeToExpiry: Double
+    let volatility: Double
+    let riskFreeRate: Double
+    let legs: [StrategyLegResult]
+    let netCost: Double
+    let combinedGreeks: OptionGreeks
+    let maxProfit: Double
+    let maxLoss: Double
+    let breakevens: [Double]
+    let riskRewardRatio: Double?
+    let payoffCurve: PayoffCurve
+
+    enum CodingKeys: String, CodingKey {
+        case success, strategy, spot
+        case timeToExpiry = "time_to_expiry"
+        case volatility
+        case riskFreeRate = "risk_free_rate"
+        case legs
+        case netCost = "net_cost"
+        case combinedGreeks = "combined_greeks"
+        case maxProfit = "max_profit"
+        case maxLoss = "max_loss"
+        case breakevens
+        case riskRewardRatio = "risk_reward_ratio"
+        case payoffCurve = "payoff_curve"
+    }
+}
+
+struct StrategyMeta: Codable {
+    let name: String
+    let description: String
+    let outlook: String
+}
+
+struct StrategyLegResult: Codable, Identifiable {
+    let optionType: String
+    let strike: Double
+    let position: String
+    let quantity: Int
+    let price: Double
+    let premium: Double?
+    let greeks: OptionGreeks?
+
+    var id: String { "\(optionType)-\(strike)-\(position)" }
+
+    enum CodingKeys: String, CodingKey {
+        case optionType = "option_type"
+        case strike, position, quantity, price, premium, greeks
+    }
+}
+
+struct PayoffCurve: Codable {
+    let spotRange: [Double]
+    let payoffAtExpiry: [Double]
+    let valueNow: [Double]
+
+    enum CodingKeys: String, CodingKey {
+        case spotRange = "spot_range"
+        case payoffAtExpiry = "payoff_at_expiry"
+        case valueNow = "value_now"
+    }
+}
+
+// MARK: - Watchlist Strategy Scan
+
+struct WatchlistScanResponse: Codable {
+    let success: Bool
+    let watchlist: String
+    let count: Int
+    let results: [WatchlistScanResult]
+}
+
+struct WatchlistScanResult: Codable, Identifiable {
+    let symbol: String
+    let name: String?
+    let sector: String?
+    let spot: Double?
+    let volatility: Double?
+    let direction: String?
+    let directionScore: Int?
+    let strategy: StrategyMeta?
+    let strategyKey: String?
+    let maxProfit: Double?
+    let maxLoss: Double?
+    let netCost: Double?
+    let riskReward: Double?
+    let breakevens: [Double]?
+    let gainScore: Double?
+    let combinedGreeks: OptionGreeks?
+    let error: String?
+
+    var id: String { symbol }
+
+    enum CodingKeys: String, CodingKey {
+        case symbol, name, sector, spot, volatility, direction
+        case directionScore = "direction_score"
+        case strategy
+        case strategyKey = "strategy_key"
+        case maxProfit = "max_profit"
+        case maxLoss = "max_loss"
+        case netCost = "net_cost"
+        case riskReward = "risk_reward"
+        case breakevens
+        case gainScore = "gain_score"
+        case combinedGreeks = "combined_greeks"
+        case error
+    }
+}
+
 // MARK: - Backtest
 
 struct BacktestResponse: Codable {

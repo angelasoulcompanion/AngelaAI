@@ -1,5 +1,5 @@
 """
-Pythia — Watchlist CRUD
+Pythia — Watchlist CRUD + Angles Heatmap
 """
 from uuid import UUID
 
@@ -9,6 +9,9 @@ from db import get_conn
 from schemas import WatchlistCreate, WatchlistItemAdd
 
 router = APIRouter(prefix="/api/watchlists", tags=["watchlist"])
+
+# Separate router for /api/watchlist (singular) — Angles heatmap shortcut
+angles_router = APIRouter(prefix="/api/watchlist", tags=["watchlist"])
 
 
 @router.get("/")
@@ -165,3 +168,80 @@ async def delete_watchlist(watchlist_id: UUID, conn=Depends(get_conn)):
         WHERE watchlist_id = $1
     """, watchlist_id)
     return {"status": "deleted"}
+
+
+# ── Angles Watchlist Heatmap ──────────────────────────────────
+
+@angles_router.get("/angles/heatmap")
+async def angles_heatmap(conn=Depends(get_conn)):
+    """
+    Get heatmap data for 'Angles' watchlist.
+    Fetches live quotes from yfinance for each asset in the watchlist.
+    """
+    try:
+        import yfinance as yf
+    except ImportError:
+        return {"success": False, "items": [], "error": "yfinance not installed"}
+
+    # Find the Angles watchlist
+    wl = await conn.fetchrow("""
+        SELECT watchlist_id FROM watchlists
+        WHERE LOWER(name) = 'angles' AND is_active = true
+    """)
+    if not wl:
+        return {"success": True, "items": [], "error": "No watchlist named 'Angles' found"}
+
+    # Get symbols
+    items = await conn.fetch("""
+        SELECT a.symbol, a.name, a.sector
+        FROM watchlist_items wi
+        JOIN assets a ON wi.asset_id = a.asset_id
+        WHERE wi.watchlist_id = $1
+        ORDER BY a.symbol
+    """, wl["watchlist_id"])
+
+    if not items:
+        return {"success": True, "items": []}
+
+    symbols = [r["symbol"] for r in items]
+    symbol_info = {r["symbol"]: dict(r) for r in items}
+
+    # Batch fetch quotes from yfinance
+    result_items = []
+    try:
+        tickers = yf.Tickers(" ".join(symbols))
+        for sym in symbols:
+            info = symbol_info[sym]
+            try:
+                ticker = tickers.tickers.get(sym)
+                if ticker is None:
+                    continue
+                fast = ticker.fast_info
+                price = getattr(fast, 'last_price', None)
+                prev_close = getattr(fast, 'previous_close', None)
+                change_pct = ((price - prev_close) / prev_close * 100) if price and prev_close else None
+
+                hist = ticker.history(period="1d")
+                volume = float(hist["Volume"].iloc[-1]) if not hist.empty else None
+
+                result_items.append({
+                    "symbol": sym,
+                    "name": info["name"],
+                    "price": round(price, 2) if price else None,
+                    "change_percent": round(change_pct, 2) if change_pct is not None else None,
+                    "volume": volume,
+                    "sector": info.get("sector"),
+                })
+            except Exception:
+                result_items.append({
+                    "symbol": sym,
+                    "name": info["name"],
+                    "price": None,
+                    "change_percent": None,
+                    "volume": None,
+                    "sector": info.get("sector"),
+                })
+    except Exception as e:
+        return {"success": False, "items": [], "error": str(e)}
+
+    return {"success": True, "items": result_items}

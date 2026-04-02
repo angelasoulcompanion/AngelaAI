@@ -74,6 +74,8 @@ struct ContentView: View {
                 // Market / Tools
                 case .optionsChain:
                     OptionsChainView()
+                case .optionStrategy:
+                    OptionStrategyView()
                 case .backtest:
                     BacktestView()
                 case .monteCarlo:

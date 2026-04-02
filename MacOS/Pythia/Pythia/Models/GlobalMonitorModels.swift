@@ -151,6 +151,29 @@ struct HeatmapItem: Codable, Identifiable {
     }
 }
 
+// MARK: - Angles Watchlist Heatmap
+
+struct AngleWatchlistResponse: Codable {
+    let success: Bool
+    let items: [AngleHeatmapItem]
+}
+
+struct AngleHeatmapItem: Codable, Identifiable {
+    let symbol: String
+    let name: String
+    let price: Double?
+    let changePercent: Double?
+    let volume: Double?
+    let sector: String?
+
+    var id: String { symbol }
+
+    enum CodingKeys: String, CodingKey {
+        case symbol, name, price, volume, sector
+        case changePercent = "change_percent"
+    }
+}
+
 struct TimelineExchange: Codable, Identifiable {
     let name: String
     let utcOpen: Double

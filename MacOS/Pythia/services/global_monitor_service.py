@@ -36,6 +36,7 @@ INDICES = [
     {"symbol": "^AXJO",    "name": "ASX 200",     "region": "Asia-Pac",  "country": "AU", "flag": "\U0001f1e6\U0001f1fa"},
     {"symbol": "^KS11",    "name": "KOSPI",       "region": "Asia-Pac",  "country": "KR", "flag": "\U0001f1f0\U0001f1f7"},
     {"symbol": "000001.SS","name": "Shanghai",    "region": "Asia-Pac",  "country": "CN", "flag": "\U0001f1e8\U0001f1f3"},
+    {"symbol": "399001.SZ","name": "Shenzhen",   "region": "Asia-Pac",  "country": "CN", "flag": "\U0001f1e8\U0001f1f3"},
     # Global indicators
     {"symbol": "^VIX",     "name": "VIX",         "region": "Global",    "country": "GL", "flag": "\U0001f310"},
     {"symbol": "DX-Y.NYB", "name": "DXY",         "region": "Global",    "country": "GL", "flag": "\U0001f4b5"},
@@ -86,6 +87,7 @@ EXCHANGE_HOURS: dict[str, tuple[int, int, int, int, str, str]] = {
     "^AXJO":     (10, 0, 16, 0,  "Australia/Sydney",   "ASX"),
     "^KS11":     (9, 0,  15, 30, "Asia/Seoul",         "KRX"),
     "000001.SS": (9, 30, 15, 0,  "Asia/Shanghai",      "SSE"),
+    "399001.SZ": (9, 30, 15, 0,  "Asia/Shanghai",      "SZSE"),
     "^VIX":      (9, 30, 16, 0,  "America/New_York",   "CBOE"),
     "DX-Y.NYB":  (20, 0, 17, 0,  "America/New_York",   "ICE"),  # nearly 24h
 }
