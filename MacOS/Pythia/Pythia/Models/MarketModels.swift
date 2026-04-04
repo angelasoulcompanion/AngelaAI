@@ -65,7 +65,7 @@ struct HistoryBar: Codable, Identifiable {
     var id: String { date }
 }
 
-struct WatchlistQuote: Codable, Identifiable {
+struct WatchlistQuote: Codable, Identifiable, Equatable {
     let symbol: String
     let name: String?
     let currentPrice: Double?
