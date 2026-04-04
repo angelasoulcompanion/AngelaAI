@@ -45,6 +45,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case globalMonitor
     case marketOverview
     case marketBreadth
+    case earningsCalendar
     case optionsChain
     case optionStrategy
     case watchlist
@@ -90,6 +91,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .globalMonitor: return "Global Monitor"
         case .marketOverview: return "Market Overview"
         case .marketBreadth: return "Market Breadth"
+        case .earningsCalendar: return "Earnings Calendar"
         case .optionsChain: return "Options Chain"
         case .optionStrategy: return "Option Strategy"
         case .watchlist: return "Watchlist"
@@ -131,6 +133,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .globalMonitor: return "globe.americas.fill"
         case .marketOverview: return "globe"
         case .marketBreadth: return "chart.bar.doc.horizontal.fill"
+        case .earningsCalendar: return "calendar.badge.plus"
         case .optionsChain: return "rectangle.split.3x3.fill"
         case .optionStrategy: return "puzzlepiece.fill"
         case .watchlist: return "star.fill"
@@ -149,7 +152,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .mpt, .valueAtRisk, .stressTest, .performance, .correlation, .regime, .factors, .riskBudget: return "ANALYSIS"
         case .signalDashboard, .alphaML, .strategyBuilder, .screener, .tradePlans, .patterns, .events: return "TRADING"
         case .aiAdvisor, .sentiment, .forecast, .research, .narrative: return "AI INSIGHTS"
-        case .globalMonitor, .marketOverview, .marketBreadth, .optionsChain, .optionStrategy, .watchlist: return "MARKET"
+        case .globalMonitor, .marketOverview, .marketBreadth, .earningsCalendar, .optionsChain, .optionStrategy, .watchlist: return "MARKET"
         case .backtest, .monteCarlo, .technical, .statistics: return "TOOLS"
         case .settings: return "SETTINGS"
         }
@@ -161,7 +164,7 @@ struct Sidebar: View {
     @State private var collapsed: Set<String> = []
 
     private let groups: [(String, [SidebarItem])] = [
-        ("DASHBOARD", [.globalMonitor, .marketOverview, .marketBreadth, .dashboard, .alerts]),
+        ("DASHBOARD", [.globalMonitor, .marketOverview, .marketBreadth, .earningsCalendar, .dashboard, .alerts]),
         ("PORTFOLIO", [.portfolios, .transactions, .rebalance]),
         ("ANALYSIS", [.mpt, .regime, .factors, .riskBudget, .valueAtRisk, .stressTest, .performance, .correlation, .optionsChain, .optionStrategy]),
         ("TRADING", [.signalDashboard, .alphaML, .strategyBuilder, .screener, .tradePlans, .patterns, .events]),

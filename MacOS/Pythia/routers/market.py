@@ -9,14 +9,22 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from db import get_conn
 from helpers.financial_utils import get_yahoo_symbol
+from services.cache_service import cache, MemoryCache
 
 router = APIRouter(prefix="/api/market", tags=["market"])
 
 
 @router.get("/quote/{symbol}")
 async def get_quote(symbol: str, conn=Depends(get_conn)):
-    """Get real-time quote for a symbol. Caches in DB for 5 minutes."""
-    # Check cache first
+    """Get real-time quote for a symbol. Memory cache 5min → DB cache → Yahoo Finance."""
+    cache_key = f"quote:{symbol.upper()}"
+
+    # Check memory cache first (fastest)
+    mem_cached = cache.get(cache_key)
+    if mem_cached is not None:
+        return mem_cached
+
+    # Check DB cache
     cached = await conn.fetchrow("""
         SELECT metadata FROM assets
         WHERE symbol = $1 AND metadata->>'last_quote_at' IS NOT NULL
@@ -26,6 +34,7 @@ async def get_quote(symbol: str, conn=Depends(get_conn)):
     if cached and cached["metadata"]:
         meta = json.loads(cached["metadata"]) if isinstance(cached["metadata"], str) else cached["metadata"]
         if "quote" in meta:
+            cache.set(cache_key, meta["quote"], MemoryCache.QUOTE_TTL)
             return meta["quote"]
 
     # Fetch from Yahoo Finance
@@ -69,7 +78,8 @@ async def get_quote(symbol: str, conn=Depends(get_conn)):
         quote["change"] = round(curr - prev, 4)
         quote["change_percent"] = round((curr - prev) / prev * 100, 2)
 
-    # Cache the quote
+    # Cache the quote (memory + DB)
+    cache.set(cache_key, quote, MemoryCache.QUOTE_TTL)
     await conn.execute("""
         UPDATE assets SET metadata = metadata || $1::jsonb, updated_at = NOW()
         WHERE symbol = $2
@@ -77,6 +87,19 @@ async def get_quote(symbol: str, conn=Depends(get_conn)):
         symbol.upper())
 
     return quote
+
+
+@router.get("/cache/stats")
+async def cache_stats():
+    """Get memory cache statistics."""
+    return cache.stats
+
+
+@router.post("/cache/clear")
+async def cache_clear():
+    """Clear all memory cache entries."""
+    cache.clear()
+    return {"status": "cleared"}
 
 
 @router.get("/history/{symbol}")

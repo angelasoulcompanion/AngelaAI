@@ -32,6 +32,8 @@ struct ContentView: View {
                     MarketOverviewView()
                 case .marketBreadth:
                     MarketBreadthView()
+                case .earningsCalendar:
+                    EarningsCalendarView()
                 case .watchlist:
                     WatchlistView()
                 case .settings:

@@ -56,6 +56,7 @@ from routers import (
     alerts,
     rebalance,
     ws_prices,
+    earnings_calendar,
 )
 
 app = FastAPI(
@@ -144,6 +145,9 @@ app.include_router(rebalance.router)
 
 # ── WebSocket: Live Price Stream ──────────────────────────
 app.include_router(ws_prices.router)
+
+# ── Earnings Calendar & Economic Events ──────────────────
+app.include_router(earnings_calendar.router)
 
 
 if __name__ == "__main__":
