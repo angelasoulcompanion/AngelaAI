@@ -56,12 +56,17 @@ class PriceStreamService:
     async def _broadcast_loop(self):
         """Fetch prices every REFRESH_INTERVAL and broadcast to clients."""
         logger.info("Price broadcast loop started (interval=%ds)", REFRESH_INTERVAL)
+        cycle = 0
         while self._clients:
+            cycle += 1
             try:
+                print(f"[PriceStream] 🔄 Broadcast cycle #{cycle} starting ({len(self._clients)} clients)...")
                 await self._fetch_and_broadcast()
+                print(f"[PriceStream] ✅ Broadcast cycle #{cycle} complete")
             except asyncio.CancelledError:
                 break
             except Exception as e:
+                print(f"[PriceStream] ❌ Broadcast cycle #{cycle} error: {e}")
                 logger.error("Price broadcast error: %s", e)
             await asyncio.sleep(REFRESH_INTERVAL)
         logger.info("Price broadcast loop stopped (no clients)")

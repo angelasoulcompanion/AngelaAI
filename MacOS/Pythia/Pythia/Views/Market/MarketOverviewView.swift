@@ -35,6 +35,11 @@ struct MarketOverviewView: View {
     @State private var scrollTarget: String?
     @State private var scrollIndex: Int = 0
 
+    // Live update timer
+    @State private var liveTimeAgo: String = ""
+    @State private var lastLiveUpdate: Date?
+    private let liveTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: PythiaTheme.largeSpacing) {
@@ -126,6 +131,11 @@ struct MarketOverviewView: View {
                                     Text("Live")
                                         .font(.system(size: 10, weight: .medium))
                                         .foregroundColor(.green)
+                                    if priceStream.updateCounter > 0 {
+                                        Text("· Updated \(liveTimeAgo)")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(PythiaTheme.textTertiary)
+                                    }
                                 }
                             }
                             Spacer()
@@ -198,7 +208,19 @@ struct MarketOverviewView: View {
                 liveQuotes[existing.symbol] ?? existing
             }
             watchlistQuotes = merged
+            lastLiveUpdate = Date()
             print("[MarketOverview] 🔄 Merged \(liveQuotes.count) live quotes (update #\(count))")
+        }
+        .onReceive(liveTimer) { _ in
+            guard let last = lastLiveUpdate else { return }
+            let secs = Int(Date().timeIntervalSince(last))
+            if secs < 5 {
+                liveTimeAgo = "just now"
+            } else if secs < 60 {
+                liveTimeAgo = "\(secs)s ago"
+            } else {
+                liveTimeAgo = "\(secs / 60)m ago"
+            }
         }
     }
 
