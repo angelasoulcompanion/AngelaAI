@@ -28,6 +28,9 @@ struct MarketOverviewView: View {
     // Background refresh
     @State private var isRefreshing = false
 
+    // Live price stream
+    @StateObject private var priceStream = PriceStreamService.shared
+
     // Horizontal scroll navigation
     @State private var scrollTarget: String?
     @State private var scrollIndex: Int = 0
@@ -72,6 +75,7 @@ struct MarketOverviewView: View {
                         HStack(spacing: 8) {
                             FilterPill(label: "All", isSelected: selectedWatchlistId == nil) {
                                 selectedWatchlistId = nil
+                                priceStream.subscribe(watchlistId: nil)
                                 Task {
                                     await loadWatchlistQuotesCached()
                                     await refreshWatchlistQuotes()
@@ -80,6 +84,7 @@ struct MarketOverviewView: View {
                             ForEach(watchlists.filter { $0.name != "Thai Stocks" }) { wl in
                                 FilterPill(label: wl.name, isSelected: selectedWatchlistId == wl.watchlistId) {
                                     selectedWatchlistId = wl.watchlistId
+                                    priceStream.subscribe(watchlistId: wl.watchlistId)
                                     Task {
                                         await loadWatchlistQuotesCached()
                                         await refreshWatchlistQuotes()
@@ -182,6 +187,19 @@ struct MarketOverviewView: View {
 
             // Phase 2: Refresh with fresh data in background
             await refreshWatchlistQuotes()
+
+            // Phase 3: Connect WebSocket for live price updates
+            priceStream.connect(watchlistId: selectedWatchlistId)
+        }
+        .onDisappear {
+            priceStream.disconnect()
+        }
+        .onChange(of: priceStream.latestQuotes) { _, liveQuotes in
+            // Merge live WS quotes into watchlistQuotes
+            guard !liveQuotes.isEmpty else { return }
+            watchlistQuotes = watchlistQuotes.map { existing in
+                liveQuotes[existing.symbol] ?? existing
+            }
         }
     }
 
