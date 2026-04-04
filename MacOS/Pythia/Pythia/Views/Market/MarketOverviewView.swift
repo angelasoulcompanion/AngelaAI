@@ -29,7 +29,7 @@ struct MarketOverviewView: View {
     @State private var isRefreshing = false
 
     // Live price stream
-    @StateObject private var priceStream = PriceStreamService.shared
+    @ObservedObject private var priceStream = PriceStreamService.shared
 
     // Horizontal scroll navigation
     @State private var scrollTarget: String?
@@ -95,13 +95,20 @@ struct MarketOverviewView: View {
                     }
                 }
 
-                // Watchlist Cards (horizontal scroll, single row)
+                // Watchlist Cards (grid layout — all visible)
                 if !watchlistQuotes.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 8) {
                             Text("Watchlist")
                                 .font(PythiaTheme.headline())
                                 .foregroundColor(PythiaTheme.textSecondary)
+                            Text("\(watchlistQuotes.count)")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(PythiaTheme.textTertiary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(PythiaTheme.surfaceBackground)
+                                .cornerRadius(4)
                             if isRefreshing {
                                 HStack(spacing: 4) {
                                     ProgressView()
@@ -111,40 +118,29 @@ struct MarketOverviewView: View {
                                         .foregroundColor(PythiaTheme.textTertiary)
                                 }
                             }
-                        }
-
-                        ZStack {
-                            ScrollViewReader { proxy in
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 12) {
-                                        ForEach(watchlistQuotes) { wq in
-                                            WatchlistStockCard(
-                                                quote: wq,
-                                                isSelected: selectedCardSymbol == wq.symbol
-                                            )
-                                            .frame(width: 240)
-                                            .id("card_\(wq.symbol)")
-                                            .onTapGesture { selectCard(wq.symbol) }
-                                        }
-                                    }
-                                }
-                                .onChange(of: scrollTarget) { _, target in
-                                    guard let target else { return }
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        proxy.scrollTo(target, anchor: .leading)
-                                    }
-                                    scrollTarget = nil
+                            if priceStream.isConnected {
+                                HStack(spacing: 4) {
+                                    Circle()
+                                        .fill(Color.green)
+                                        .frame(width: 6, height: 6)
+                                    Text("Live")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(.green)
                                 }
                             }
+                            Spacer()
+                        }
 
-                            HStack {
-                                ScrollArrowButton(direction: .left) {
-                                    scrollToNeighbor(watchlistQuotes, offset: -3)
-                                }
-                                Spacer()
-                                ScrollArrowButton(direction: .right) {
-                                    scrollToNeighbor(watchlistQuotes, offset: 3)
-                                }
+                        LazyVGrid(columns: [
+                            GridItem(.adaptive(minimum: 220, maximum: 280), spacing: 12)
+                        ], spacing: 12) {
+                            ForEach(watchlistQuotes) { wq in
+                                WatchlistStockCard(
+                                    quote: wq,
+                                    isSelected: selectedCardSymbol == wq.symbol
+                                )
+                                .id("card_\(wq.symbol)")
+                                .onTapGesture { selectCard(wq.symbol) }
                             }
                         }
                     }
@@ -194,12 +190,15 @@ struct MarketOverviewView: View {
         .onDisappear {
             priceStream.disconnect()
         }
-        .onChange(of: priceStream.latestQuotes) { _, liveQuotes in
-            // Merge live WS quotes into watchlistQuotes
+        .onChange(of: priceStream.updateCounter) { _, count in
+            // Merge live WS quotes into watchlistQuotes when new data arrives
+            let liveQuotes = priceStream.latestQuotes
             guard !liveQuotes.isEmpty else { return }
-            watchlistQuotes = watchlistQuotes.map { existing in
+            let merged = watchlistQuotes.map { existing in
                 liveQuotes[existing.symbol] ?? existing
             }
+            watchlistQuotes = merged
+            print("[MarketOverview] 🔄 Merged \(liveQuotes.count) live quotes (update #\(count))")
         }
     }
 

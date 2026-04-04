@@ -5,13 +5,11 @@
 
 import Foundation
 import Combine
-import os.log
 
 struct PriceUpdateMessage: Codable {
     let type: String
     let timestamp: String?
     let quotes: [WsQuote]?
-    let data: AckData?
 
     struct WsQuote: Codable {
         let symbol: String
@@ -30,27 +28,18 @@ struct PriceUpdateMessage: Codable {
             case changePercent = "change_percent"
         }
     }
-
-    struct AckData: Codable {
-        let watchlistId: String?
-        enum CodingKeys: String, CodingKey {
-            case watchlistId = "watchlist_id"
-        }
-    }
 }
 
-@MainActor
 class PriceStreamService: ObservableObject {
     static let shared = PriceStreamService()
 
     @Published var latestQuotes: [String: WatchlistQuote] = [:]
     @Published var isConnected = false
-    @Published var lastUpdateTime: Date?
+    @Published var updateCounter: Int = 0  // simple counter to trigger onChange
 
     private var wsTask: URLSessionWebSocketTask?
     private var session: URLSession
-    private let logger = Logger(subsystem: "com.pythia", category: "PriceStream")
-    private var reconnectTask: Task<Void, Never>?
+    private var isReceiving = false
 
     private init() {
         let config = URLSessionConfiguration.default
@@ -67,66 +56,82 @@ class PriceStreamService: ObservableObject {
             urlStr += "?watchlist_id=\(wlId)"
         }
 
-        guard let url = URL(string: urlStr) else {
-            logger.error("Invalid WS URL: \(urlStr)")
-            return
-        }
+        guard let url = URL(string: urlStr) else { return }
 
         let task = session.webSocketTask(with: url)
         task.resume()
         wsTask = task
-        isConnected = true
-        logger.info("WS connecting to \(urlStr)")
+        isReceiving = false
+        print("[PriceStream] 🔌 Connecting to \(urlStr)")
 
-        receiveLoop()
+        // Start receive loop in detached task to avoid @MainActor issues
+        Task.detached { [weak self] in
+            await self?.receiveLoop()
+        }
     }
 
     func disconnect() {
-        reconnectTask?.cancel()
-        reconnectTask = nil
         wsTask?.cancel(with: .normalClosure, reason: nil)
         wsTask = nil
-        isConnected = false
+        isReceiving = false
+        Task { @MainActor in
+            self.isConnected = false
+        }
     }
 
     func subscribe(watchlistId: String?) {
         guard let ws = wsTask else { return }
-        let msg: [String: Any?] = ["action": "subscribe", "watchlist_id": watchlistId]
-        if let data = try? JSONSerialization.data(withJSONObject: msg.compactMapValues { $0 }) {
-            ws.send(.string(String(data: data, encoding: .utf8) ?? "")) { _ in }
-        }
+        let msg = "{\"action\":\"subscribe\",\"watchlist_id\":\(watchlistId.map { "\"\($0)\"" } ?? "null")}"
+        ws.send(.string(msg)) { _ in }
     }
 
-    // MARK: - Private
+    // MARK: - Async receive loop
 
-    private func receiveLoop() {
-        wsTask?.receive { [weak self] result in
-            Task { @MainActor in
-                guard let self = self else { return }
+    private func receiveLoop() async {
+        guard let ws = wsTask else { return }
+        isReceiving = true
+        print("[PriceStream] 🔄 Receive loop started")
 
-                switch result {
-                case .success(let message):
-                    switch message {
-                    case .string(let text):
-                        self.handleMessage(text)
-                    case .data(let data):
-                        if let text = String(data: data, encoding: .utf8) {
-                            self.handleMessage(text)
-                        }
-                    @unknown default:
-                        break
+        while isReceiving {
+            do {
+                let message = try await ws.receive()
+
+                // Mark connected on first successful receive
+                await MainActor.run {
+                    if !self.isConnected {
+                        self.isConnected = true
+                        print("[PriceStream] ✅ Connected and receiving!")
                     }
-                    self.receiveLoop()
-
-                case .failure(let error):
-                    self.logger.error("WS receive error: \(error.localizedDescription)")
-                    self.isConnected = false
-                    self.scheduleReconnect()
                 }
+
+                switch message {
+                case .string(let text):
+                    await handleMessage(text)
+                case .data(let data):
+                    if let text = String(data: data, encoding: .utf8) {
+                        await handleMessage(text)
+                    }
+                @unknown default:
+                    break
+                }
+            } catch {
+                print("[PriceStream] ❌ Receive error: \(error.localizedDescription)")
+                await MainActor.run {
+                    self.isConnected = false
+                    self.isReceiving = false
+                }
+                // Auto-reconnect after 5s
+                try? await Task.sleep(for: .seconds(5))
+                await MainActor.run {
+                    print("[PriceStream] 🔄 Reconnecting...")
+                    self.connect()
+                }
+                return
             }
         }
     }
 
+    @MainActor
     private func handleMessage(_ text: String) {
         guard let data = text.data(using: .utf8) else { return }
 
@@ -146,21 +151,11 @@ class PriceStreamService: ObservableObject {
                         volume: q.volume
                     )
                 }
-                lastUpdateTime = Date()
-                logger.info("Received \(quotes.count) live quotes")
+                updateCounter += 1
+                print("[PriceStream] 📊 Received \(quotes.count) quotes (update #\(updateCounter))")
             }
         } catch {
-            logger.error("WS decode error: \(error.localizedDescription)")
-        }
-    }
-
-    private func scheduleReconnect() {
-        reconnectTask?.cancel()
-        reconnectTask = Task {
-            try? await Task.sleep(for: .seconds(5))
-            guard !Task.isCancelled else { return }
-            logger.info("WS reconnecting...")
-            connect()
+            print("[PriceStream] ⚠️ Decode error: \(error)")
         }
     }
 }
