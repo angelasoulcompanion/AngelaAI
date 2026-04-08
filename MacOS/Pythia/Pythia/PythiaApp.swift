@@ -12,12 +12,14 @@ struct PythiaApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var databaseService = DatabaseService.shared
     @StateObject private var backendManager = BackendManager.shared
+    @StateObject private var pageVisibility = PageVisibilityManager()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(databaseService)
                 .environmentObject(backendManager)
+                .environmentObject(pageVisibility)
                 .frame(minWidth: 1200, minHeight: 800)
                 .preferredColorScheme(.dark)
                 .onAppear {

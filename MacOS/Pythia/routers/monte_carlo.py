@@ -15,12 +15,13 @@ router = APIRouter(prefix="/api/monte-carlo", tags=["Monte Carlo"])
 @router.get("/{asset_id}/simulate")
 async def simulate(
     asset_id: UUID,
-    n_simulations: int = Query(10000, ge=100, le=100000),
+    n_simulations: int = Query(10000, ge=100, le=1000000),
     time_steps: int = Query(252, ge=10, le=756),
     lookback_days: int = Query(365, ge=60, le=3650),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    result = await run_monte_carlo(conn, asset_id, n_simulations, time_steps, lookback_days)
+    n_sample = min(500, max(100, n_simulations // 2))  # 50% of simulations, capped at 500 for rendering
+    result = await run_monte_carlo(conn, asset_id, n_simulations, time_steps, lookback_days, n_sample_paths=n_sample)
     return {
         "symbol": result.symbol,
         "current_price": result.current_price,

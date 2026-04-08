@@ -190,9 +190,9 @@ class DatabaseService: ObservableObject {
 
     func fetchAssets(search: String? = nil) async throws -> [Asset] {
         if let search = search, !search.isEmpty {
-            return try await get("/assets/?limit=500&search=\(search.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? search)")
+            return try await get("/assets/?limit=2000&search=\(search.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? search)")
         }
-        return try await get("/assets/?limit=500")
+        return try await get("/assets/?limit=2000")
     }
 
     func createAssetFromYahoo(symbol: String) async throws -> AssetCreateResponse {
@@ -442,7 +442,7 @@ class DatabaseService: ObservableObject {
 
     func fetchBreadth(universe: String, period: String = "1y") async throws -> BreadthResponse {
         let u = universe.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? universe
-        return try await get("/breadth/\(u)?period=\(period)")
+        return try await get("/breadth/\(u)?period=\(period)", timeout: 180.0)
     }
 }
 

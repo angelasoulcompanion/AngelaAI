@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/assets", tags=["assets"])
 async def list_assets(
     asset_type: str | None = None,
     search: str | None = None,
-    limit: int = Query(100, ge=1, le=500),
+    limit: int = Query(100, ge=1, le=2000),
     conn=Depends(get_conn)
 ):
     """List assets with optional filtering."""

@@ -57,6 +57,8 @@ from routers import (
     rebalance,
     ws_prices,
     earnings_calendar,
+    # Phase 9: Alpha Ideas
+    alpha_ideas,
 )
 
 app = FastAPI(
@@ -148,6 +150,9 @@ app.include_router(ws_prices.router)
 
 # ── Earnings Calendar & Economic Events ──────────────────
 app.include_router(earnings_calendar.router)
+
+# ── Phase 9: Alpha Ideas (Factor Research) ──────────────
+app.include_router(alpha_ideas.router)
 
 
 if __name__ == "__main__":

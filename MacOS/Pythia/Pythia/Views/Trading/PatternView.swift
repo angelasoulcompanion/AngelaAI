@@ -59,7 +59,6 @@ struct PatternView: View {
     // MARK: - Price Chart with Pattern Levels
 
     private func priceChartWithLevels(_ r: PatternResponse) -> some View {
-        let keyLevels = collectKeyLevels(r)
         let srPattern = r.patterns.first { $0.patternType == "support_resistance" }
         let supports = srPattern?.keyLevels?.filter { $0 < r.currentPrice } ?? []
         let resistances = srPattern?.keyLevels?.filter { $0 >= r.currentPrice } ?? []

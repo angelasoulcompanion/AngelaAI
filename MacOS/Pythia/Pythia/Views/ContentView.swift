@@ -62,6 +62,8 @@ struct ContentView: View {
                     SignalDashboardView()
                 case .alphaML:
                     AlphaView()
+                case .alphaIdeas:
+                    AlphaIdeasView()
                 case .strategyBuilder:
                     StrategyBuilderView()
                 case .screener:

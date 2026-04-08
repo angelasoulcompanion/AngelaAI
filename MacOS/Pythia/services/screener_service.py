@@ -24,29 +24,52 @@ class ScreenerResult:
 
 PRESET_SCREENS = {
     "oversold_bounce": {
-        "name": "Oversold Bounce Candidates",
-        "description": "Stocks with RSI < 35 and positive 5-day momentum",
-        "sql_filter": "rsi < 35 AND momentum_5d > 0",
+        "name": "Oversold Bounce",
+        "description": "RSI < 35 with positive 5-day momentum",
     },
     "high_volume_movers": {
         "name": "High Volume Movers",
-        "description": "Volume > 2x 20-day average with significant price move",
-        "sql_filter": "volume_ratio > 2.0",
+        "description": "Volume > 2x 20-day average",
     },
     "trend_following": {
         "name": "Trend Following",
         "description": "SMA20 > SMA50 with positive momentum",
-        "sql_filter": "sma20_above_sma50 = true AND momentum_20d > 0.03",
     },
     "low_volatility": {
-        "name": "Low Volatility Income",
-        "description": "Annual volatility < 20% with stable price action",
-        "sql_filter": "annual_vol < 0.20",
+        "name": "Low Volatility",
+        "description": "Annual volatility < 20%",
     },
     "mean_reversion": {
-        "name": "Mean Reversion Setup",
-        "description": "Price > 10% below 50-day SMA (potential snap-back)",
-        "sql_filter": "deviation_from_sma50 < -0.10",
+        "name": "Mean Reversion",
+        "description": "Price > 10% below SMA50",
+    },
+    "momentum_leaders": {
+        "name": "Momentum Leaders",
+        "description": "Strong 20-day momentum > 8%",
+    },
+    "overbought": {
+        "name": "Overbought (Short)",
+        "description": "RSI > 70 — potential reversal",
+    },
+    "breakout": {
+        "name": "Breakout Candidates",
+        "description": "SMA20 > SMA50 + high volume + positive momentum",
+    },
+    "high_volatility": {
+        "name": "High Volatility",
+        "description": "Annual vol > 50% — for options/swing traders",
+    },
+    "volume_dry_up": {
+        "name": "Volume Dry-Up",
+        "description": "Volume < 0.5x average — potential breakout setup",
+    },
+    "sma_death_cross": {
+        "name": "Death Cross",
+        "description": "SMA20 < SMA50 — bearish signal",
+    },
+    "deep_value": {
+        "name": "Deep Value",
+        "description": "Price > 15% below SMA50 + low vol",
     },
 }
 
@@ -293,4 +316,20 @@ def _passes_preset(metrics: dict, preset_name: str) -> bool:
         return metrics["annual_vol"] < 0.20 and metrics["annual_vol"] > 0
     elif preset_name == "mean_reversion":
         return metrics["deviation_from_sma50"] < -0.10
+    elif preset_name == "momentum_leaders":
+        return metrics["momentum_20d"] > 0.08
+    elif preset_name == "overbought":
+        return metrics["rsi"] > 70
+    elif preset_name == "breakout":
+        return (metrics["sma20_above_sma50"]
+                and metrics["volume_ratio"] > 1.5
+                and metrics["momentum_5d"] > 0.02)
+    elif preset_name == "high_volatility":
+        return metrics["annual_vol"] > 0.50
+    elif preset_name == "volume_dry_up":
+        return metrics["volume_ratio"] < 0.5 and metrics["volume_ratio"] > 0
+    elif preset_name == "sma_death_cross":
+        return not metrics["sma20_above_sma50"] and metrics["momentum_20d"] < -0.02
+    elif preset_name == "deep_value":
+        return metrics["deviation_from_sma50"] < -0.15 and metrics["annual_vol"] < 0.35
     return True

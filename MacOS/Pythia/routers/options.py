@@ -321,8 +321,8 @@ async def scan_watchlist_strategies(
     """
     Scan all assets in a watchlist → analyze direction → suggest optimal strategy → rank by gain.
     """
-    import yfinance as yf
     import numpy as np
+    from datetime import date, timedelta
 
     # Find watchlist
     wl = await conn.fetchrow(
@@ -333,7 +333,7 @@ async def scan_watchlist_strategies(
         raise HTTPException(status_code=404, detail=f"Watchlist '{watchlist_name}' not found")
 
     items = await conn.fetch("""
-        SELECT a.symbol, a.name, a.sector
+        SELECT a.asset_id, a.symbol, a.name, a.sector
         FROM watchlist_items wi JOIN assets a ON wi.asset_id = a.asset_id
         WHERE wi.watchlist_id = $1 ORDER BY a.symbol
     """, wl["watchlist_id"])
@@ -341,26 +341,47 @@ async def scan_watchlist_strategies(
     if not items:
         return {"success": True, "results": [], "watchlist": watchlist_name}
 
+    # Batch fetch prices from DB (fast, no rate limit)
+    asset_ids = [item["asset_id"] for item in items]
+    cutoff = date.today() - timedelta(days=120)
+    price_rows = await conn.fetch(
+        """SELECT asset_id, date, close_price
+           FROM historical_prices
+           WHERE asset_id = ANY($1) AND date >= $2
+           ORDER BY asset_id, date""",
+        asset_ids, cutoff,
+    )
+    # Group by asset_id
+    prices_by_asset: dict = {}
+    for r in price_rows:
+        aid = r["asset_id"]
+        if aid not in prices_by_asset:
+            prices_by_asset[aid] = []
+        prices_by_asset[aid].append(float(r["close_price"]))
+
     results = []
     for item in items:
         sym = item["symbol"]
         try:
-            ticker = yf.Ticker(sym)
-            hist = ticker.history(period="3mo")
-            if hist.empty or len(hist) < 10:
+            closes = prices_by_asset.get(item["asset_id"], [])
+            if len(closes) < 10:
                 continue
 
-            spot = float(hist["Close"].iloc[-1])
-            returns = hist["Close"].pct_change().dropna()
-            vol = float(returns.std() * np.sqrt(252))
-            if vol < 0.01:
+            spot = closes[-1]
+            if not np.isfinite(spot) or spot <= 0:
+                continue
+            closes_arr = np.array(closes)
+            returns_arr = np.diff(np.log(closes_arr))
+            vol = float(np.std(returns_arr) * np.sqrt(252))
+            if not np.isfinite(vol) or vol < 0.01:
                 vol = 0.20
 
-            # Direction analysis (simplified)
-            ma20 = float(hist["Close"].rolling(20).mean().iloc[-1]) if len(hist) >= 20 else spot
-            ma50 = float(hist["Close"].rolling(50).mean().iloc[-1]) if len(hist) >= 50 else spot
-            momentum = float(returns.tail(5).sum())
-            rsi_delta = float(returns.tail(14).mean())
+            # Direction analysis from DB prices
+            n = len(closes_arr)
+            ma20 = float(np.mean(closes_arr[-20:])) if n >= 20 else spot
+            ma50 = float(np.mean(closes_arr[-50:])) if n >= 50 else spot
+            momentum = float(np.sum(returns_arr[-5:])) if len(returns_arr) >= 5 else 0
+            rsi_delta = float(np.mean(returns_arr[-14:])) if len(returns_arr) >= 14 else 0
 
             score = 0
             if spot > ma20: score += 1
@@ -393,8 +414,10 @@ async def scan_watchlist_strategies(
                 direction = "neutral"
 
             # Compute strategy
-            K_atm = round(spot)
+            K_atm = round(spot) if spot < 1e8 else spot
             w = round(spot * 0.05, 2)
+            if w < 0.01:
+                w = max(spot * 0.05, 0.01)
             leg_defs = {
                 "bull_call_spread": [
                     {"option_type": "call", "strike": K_atm, "position": "long"},
@@ -425,6 +448,10 @@ async def scan_watchlist_strategies(
             }
 
             legs = leg_defs.get(strategy, leg_defs["bull_call_spread"])
+            # Validate all strikes are finite
+            if any(not np.isfinite(l["strike"]) for l in legs):
+                continue
+
             strat_result = _compute_strategy(spot, legs, time_to_expiry, risk_free_rate, vol, strategy)
 
             max_profit = strat_result["max_profit"]

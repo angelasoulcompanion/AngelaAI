@@ -538,6 +538,8 @@ struct OptionStrategyView: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 5)
                             .background(idx % 2 == 0 ? Color.clear : PythiaTheme.surfaceBackground.opacity(0.2))
+                            .contentShape(Rectangle())
+                            .onTapGesture { fillFromScan(r) }
                         }
                     }
                 }
@@ -555,6 +557,16 @@ struct OptionStrategyView: View {
         case "bearish": return PythiaTheme.errorRed
         default: return PythiaTheme.warningOrange
         }
+    }
+
+    private func fillFromScan(_ r: WatchlistScanResult) {
+        if let s = r.spot { spot = String(format: "%.2f", s) }
+        if let v = r.volatility { volatility = String(format: "%.2f", v) }
+        if let key = r.strategyKey, strategies.contains(where: { $0.0 == key }) {
+            selectedStrategy = key
+        }
+        // Auto-build
+        Task { await analyze() }
     }
 
     private func scanWatchlist() async {

@@ -13,6 +13,7 @@ struct ScreenerView: View {
     @State private var presets: [ScreenerPreset] = []
     @State private var isLoading = false
     @State private var errorText: String?
+    @State private var selectedSymbol: String?
 
     var body: some View {
         ScrollView {
@@ -58,6 +59,11 @@ struct ScreenerView: View {
                         .font(PythiaTheme.body())
                         .foregroundColor(PythiaTheme.textTertiary)
                         .padding()
+                }
+
+                // TA Detail for selected symbol
+                if let sym = selectedSymbol {
+                    taDetailSection(sym)
                 }
             }
             .padding(PythiaTheme.largeSpacing)
@@ -137,6 +143,13 @@ struct ScreenerView: View {
                 .foregroundColor(PythiaTheme.textSecondary)
                 .padding(.vertical, 3)
                 .padding(.horizontal, 4)
+                .background(selectedSymbol == item.symbol ? PythiaTheme.accentGold.opacity(0.1) : Color.clear)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        selectedSymbol = selectedSymbol == item.symbol ? nil : item.symbol
+                    }
+                }
             }
         }
         .padding()
@@ -153,6 +166,65 @@ struct ScreenerView: View {
         if score > 0.2 { return PythiaTheme.profit }
         if score < -0.2 { return PythiaTheme.loss }
         return PythiaTheme.accentGold
+    }
+
+    // MARK: - TA Detail
+
+    private func taDetailSection(_ symbol: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "chart.xyaxis.line")
+                    .foregroundColor(PythiaTheme.accentGold)
+                Text("Technical Analysis — \(symbol)")
+                    .font(PythiaTheme.heading())
+                    .foregroundColor(PythiaTheme.textPrimary)
+                Spacer()
+                Button {
+                    withAnimation { selectedSymbol = nil }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(PythiaTheme.textTertiary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Metric cards from screener data
+            if let item = result?.results.first(where: { $0.symbol == symbol }) {
+                LazyVGrid(columns: [
+                    GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()),
+                    GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()),
+                ], spacing: 10) {
+                    metricCard("Price", String(format: "%.2f", item.price), PythiaTheme.textPrimary)
+                    metricCard("RSI", String(format: "%.0f", item.rsi ?? 0), rsiColor(item.rsi ?? 50))
+                    metricCard("Mom 20d", String(format: "%+.1f%%", (item.momentum20d ?? 0) * 100),
+                              (item.momentum20d ?? 0) >= 0 ? PythiaTheme.profit : PythiaTheme.loss)
+                    metricCard("Vol Ratio", String(format: "%.1fx", item.volumeRatio ?? 1), PythiaTheme.textSecondary)
+                    metricCard("Ann Vol", String(format: "%.0f%%", (item.annualVol ?? 0) * 100), PythiaTheme.textSecondary)
+                    metricCard("Score", String(format: "%+.2f", item.compositeScore ?? 0), scoreColor(item.compositeScore ?? 0))
+                }
+            }
+
+            // Full TechnicalChartView
+            TechnicalChartView(symbol: symbol)
+                .id(symbol)
+        }
+        .padding()
+        .pythiaCard()
+    }
+
+    private func metricCard(_ label: String, _ value: String, _ color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.system(size: 16, weight: .bold, design: .monospaced))
+                .foregroundColor(color)
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundColor(PythiaTheme.textTertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(PythiaTheme.surfaceBackground.opacity(0.3))
+        .cornerRadius(8)
     }
 
     private func search() async {

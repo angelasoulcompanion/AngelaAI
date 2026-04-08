@@ -136,7 +136,6 @@ struct SignalDashboardView: View {
                         .frame(width: 130, alignment: .leading)
 
                     GeometryReader { geo in
-                        let normalized = (score + 1) / 2  // -1..1 → 0..1
                         let width = geo.size.width
                         let center = width / 2
 

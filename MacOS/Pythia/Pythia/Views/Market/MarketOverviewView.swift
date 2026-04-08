@@ -352,11 +352,11 @@ struct MarketOverviewView: View {
         do {
             watchlists = try await db.fetchWatchlists()
             Logger().info("[MarketOverview] Loaded \(self.watchlists.count) watchlists")
-            // Default to "Stock Market" watchlist
+            // Default to "Focused" watchlist
             if selectedWatchlistId == nil,
-               let stockMarket = watchlists.first(where: { $0.name == "Stock Market" }) {
-                selectedWatchlistId = stockMarket.watchlistId
-                Logger().info("[MarketOverview] Auto-selected Stock Market: \(stockMarket.watchlistId)")
+               let focused = watchlists.first(where: { $0.name == "Focused" }) {
+                selectedWatchlistId = focused.watchlistId
+                Logger().info("[MarketOverview] Auto-selected Focused: \(focused.watchlistId)")
             }
         } catch {
             Logger().error("[MarketOverview] loadWatchlists error: \(error.localizedDescription)")

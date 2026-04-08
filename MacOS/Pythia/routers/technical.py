@@ -6,8 +6,9 @@ import math
 from typing import Optional
 
 import numpy as np
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from db import get_conn
 from helpers.financial_utils import get_yahoo_symbol
 
 router = APIRouter(prefix="/api/technical", tags=["technical"])
@@ -138,26 +139,59 @@ async def get_technical_analysis(
     ema_periods: str = Query("12,26", description="Comma-separated EMA periods"),
     bb_period: int = Query(20, ge=5, le=50, description="Bollinger Bands period"),
     bb_std: float = Query(2.0, ge=0.5, le=4.0, description="Bollinger Bands std dev"),
+    conn=Depends(get_conn),
 ):
-    """Compute technical indicators for a symbol."""
+    """Compute technical indicators for a symbol. Uses yfinance with DB fallback."""
+    from datetime import date, timedelta
+    import numpy as np
+
+    period_days = {"1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730, "5y": 1825}
+    days = period_days.get(period, 180)
+
+    dates, opens, highs, lows, closes, volumes = [], [], [], [], [], []
+
+    # Try yfinance first
     try:
         import yfinance as yf
-    except ImportError:
-        raise HTTPException(status_code=503, detail="yfinance not installed")
+        yahoo_symbol = get_yahoo_symbol(symbol)
+        hist = yf.Ticker(yahoo_symbol).history(period=period, interval=interval)
+        if not hist.empty and len(hist) >= 10:
+            dates = [idx.strftime("%Y-%m-%d") for idx in hist.index]
+            opens = [round(float(r.get("Open", 0)), 4) for _, r in hist.iterrows()]
+            highs = [round(float(r.get("High", 0)), 4) for _, r in hist.iterrows()]
+            lows = [round(float(r.get("Low", 0)), 4) for _, r in hist.iterrows()]
+            closes = [round(float(r.get("Close", 0)), 4) for _, r in hist.iterrows()]
+            volumes = [int(r.get("Volume", 0)) for _, r in hist.iterrows()]
+    except Exception:
+        pass
 
-    yahoo_symbol = get_yahoo_symbol(symbol)
-    ticker = yf.Ticker(yahoo_symbol)
-    hist = ticker.history(period=period, interval=interval)
+    # Fallback: DB historical_prices
+    if not closes:
+        asset = await conn.fetchrow(
+            "SELECT asset_id FROM assets WHERE symbol = $1 AND is_active = true", symbol
+        )
+        if not asset:
+            raise HTTPException(status_code=404, detail=f"No data for {symbol}")
 
-    if hist.empty:
-        raise HTTPException(status_code=404, detail=f"No data for {symbol}")
+        cutoff = date.today() - timedelta(days=days + 30)
+        rows = await conn.fetch(
+            """SELECT date, open_price, high_price, low_price, close_price, volume
+               FROM historical_prices
+               WHERE asset_id = $1 AND date >= $2
+               ORDER BY date""",
+            asset["asset_id"], cutoff,
+        )
+        # Filter out rows with null close_price
+        rows = [r for r in rows if r["close_price"] is not None]
+        if len(rows) < 10:
+            raise HTTPException(status_code=404, detail=f"Insufficient data for {symbol}")
 
-    dates = [idx.strftime("%Y-%m-%d") for idx in hist.index]
-    opens = [round(float(r.get("Open", 0)), 4) for _, r in hist.iterrows()]
-    highs = [round(float(r.get("High", 0)), 4) for _, r in hist.iterrows()]
-    lows = [round(float(r.get("Low", 0)), 4) for _, r in hist.iterrows()]
-    closes = [round(float(r.get("Close", 0)), 4) for _, r in hist.iterrows()]
-    volumes = [int(r.get("Volume", 0)) for _, r in hist.iterrows()]
+        dates = [r["date"].strftime("%Y-%m-%d") for r in rows]
+        opens = [round(float(r["open_price"] or r["close_price"]), 4) for r in rows]
+        highs = [round(float(r["high_price"] or r["close_price"]), 4) for r in rows]
+        lows = [round(float(r["low_price"] or r["close_price"]), 4) for r in rows]
+        closes = [round(float(r["close_price"]), 4) for r in rows]
+        volumes = [int(r["volume"] or 0) for r in rows]
 
     # Parse SMA/EMA period lists
     try:
@@ -185,6 +219,26 @@ async def get_technical_analysis(
     for key in ema_data:
         ema_data[key] = [round(v, 4) if v is not None else None for v in ema_data[key]]
 
+    # Sanitize NaN/Inf values for JSON compliance
+    import math
+
+    def _clean(v):
+        if v is None:
+            return None
+        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+            return None
+        return v
+
+    def _clean_list(lst):
+        return [_clean(v) for v in lst]
+
+    macd_data = {k: _clean_list(v) if isinstance(v, list) else v for k, v in macd_data.items()}
+    rsi_data = _clean_list(rsi_data)
+    bb_data = {k: _clean_list(v) if isinstance(v, list) else v for k, v in bb_data.items()}
+    for key in sma_data:
+        sma_data[key] = _clean_list(sma_data[key])
+    for key in ema_data:
+        ema_data[key] = _clean_list(ema_data[key])
     return {
         "symbol": symbol.upper(),
         "period": period,

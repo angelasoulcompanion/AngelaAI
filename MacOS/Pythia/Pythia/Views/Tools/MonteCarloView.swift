@@ -56,6 +56,9 @@ struct MonteCarloView: View {
                         Text("1,000").tag(1000)
                         Text("10,000").tag(10000)
                         Text("50,000").tag(50000)
+                        Text("100,000").tag(100000)
+                        Text("500,000").tag(500000)
+                        Text("1,000,000").tag(1000000)
                     }
                     .frame(width: 180)
 
@@ -215,8 +218,8 @@ struct MonteCarloView: View {
         var points = [PathPoint]()
         var uid = 0
         let paletteSize = mcRainbowPalette.count
-        // Limit to 30 paths for SwiftUI Charts performance
-        let maxPaths = min(r.samplePaths.count, 30)
+        // Show 50% of received paths, capped at 200 for SwiftUI Charts performance
+        let maxPaths = min(max(r.samplePaths.count / 2, 30), 200)
         for pIdx in 0..<maxPaths {
             let path = r.samplePaths[pIdx]
             let cIdx = pIdx % paletteSize
@@ -243,7 +246,7 @@ struct MonteCarloView: View {
                                     yDomain: (priceMin - pad)...(priceMax + pad))
 
             HStack(spacing: 16) {
-                Text("\(result?.samplePaths.count ?? 0) simulation paths")
+                Text("\(min(max((result?.samplePaths.count ?? 0) / 2, 30), 200)) of \(result?.samplePaths.count ?? 0) paths (50%)")
                     .font(PythiaTheme.caption())
                     .foregroundColor(PythiaTheme.textSecondary)
                 HStack(spacing: 4) {

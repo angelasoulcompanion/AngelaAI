@@ -419,3 +419,88 @@ struct NarrativeResponse: Codable {
         case type, success, message
     }
 }
+
+// MARK: - Alpha Ideas (Factor Research)
+
+struct AlphaIdeasResponse: Codable {
+    let ideas: [AlphaIdeaItem]
+    let compositeRanking: [AlphaIdeaStock]
+    let totalStocksScanned: Int
+    let scanTimeSeconds: Double
+    let success: Bool
+    let message: String?
+
+    enum CodingKeys: String, CodingKey {
+        case ideas
+        case compositeRanking = "composite_ranking"
+        case totalStocksScanned = "total_stocks_scanned"
+        case scanTimeSeconds = "scan_time_seconds"
+        case success, message
+    }
+}
+
+struct AlphaIdeaItem: Codable, Identifiable {
+    var id: String { ideaId }
+    let ideaId: String
+    let name: String
+    let description: String
+    let longRationale: String
+    let shortRationale: String
+    let longCandidates: [AlphaIdeaStock]
+    let shortCandidates: [AlphaIdeaStock]
+
+    enum CodingKeys: String, CodingKey {
+        case ideaId = "idea_id"
+        case name, description
+        case longRationale = "long_rationale"
+        case shortRationale = "short_rationale"
+        case longCandidates = "long_candidates"
+        case shortCandidates = "short_candidates"
+    }
+}
+
+struct AlphaIdeaStock: Codable, Identifiable {
+    var id: String { assetId }
+    let assetId: String
+    let symbol: String
+    let name: String?
+    let sector: String?
+    let price: Double
+    let babScore: Double?
+    let valueScore: Double?
+    let sizeScore: Double?
+    let strScore: Double?
+    let momScore: Double?
+    let ltrScore: Double?
+    let bavScore: Double?
+    let compositeScore: Double
+    let beta: Double?
+    let pbRatio: Double?
+    let marketCap: Double?
+    let return1w: Double?
+    let return6m: Double?
+    let return12m: Double?
+    let return3y: Double?
+    let annualVol: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case assetId = "asset_id"
+        case symbol, name, sector, price
+        case babScore = "bab_score"
+        case valueScore = "value_score"
+        case sizeScore = "size_score"
+        case strScore = "str_score"
+        case momScore = "mom_score"
+        case ltrScore = "ltr_score"
+        case bavScore = "bav_score"
+        case compositeScore = "composite_score"
+        case beta
+        case pbRatio = "pb_ratio"
+        case marketCap = "market_cap"
+        case return1w = "return_1w"
+        case return6m = "return_6m"
+        case return12m = "return_12m"
+        case return3y = "return_3y"
+        case annualVol = "annual_vol"
+    }
+}

@@ -28,6 +28,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     // Trading (Phase 7)
     case signalDashboard
     case alphaML
+    case alphaIdeas
     case strategyBuilder
     case screener
     case tradePlans
@@ -78,6 +79,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .riskBudget: return "Risk Budget"
         case .signalDashboard: return "Signal Dashboard"
         case .alphaML: return "Alpha ML"
+        case .alphaIdeas: return "Alpha Ideas"
         case .strategyBuilder: return "Strategy Builder"
         case .screener: return "Screener"
         case .tradePlans: return "Trade Plans"
@@ -120,6 +122,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .riskBudget: return "shield.lefthalf.filled"
         case .signalDashboard: return "antenna.radiowaves.left.and.right"
         case .alphaML: return "cpu.fill"
+        case .alphaIdeas: return "lightbulb.fill"
         case .strategyBuilder: return "gearshape.2.fill"
         case .screener: return "magnifyingglass"
         case .tradePlans: return "list.clipboard.fill"
@@ -150,7 +153,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .dashboard, .alerts: return "DASHBOARD"
         case .portfolios, .transactions, .rebalance: return "PORTFOLIO"
         case .mpt, .valueAtRisk, .stressTest, .performance, .correlation, .regime, .factors, .riskBudget: return "ANALYSIS"
-        case .signalDashboard, .alphaML, .strategyBuilder, .screener, .tradePlans, .patterns, .events: return "TRADING"
+        case .signalDashboard, .alphaML, .alphaIdeas, .strategyBuilder, .screener, .tradePlans, .patterns, .events: return "TRADING"
         case .aiAdvisor, .sentiment, .forecast, .research, .narrative: return "AI INSIGHTS"
         case .globalMonitor, .marketOverview, .marketBreadth, .earningsCalendar, .optionsChain, .optionStrategy, .watchlist: return "MARKET"
         case .backtest, .monteCarlo, .technical, .statistics: return "TOOLS"
@@ -161,13 +164,14 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 
 struct Sidebar: View {
     @Binding var selectedItem: SidebarItem
+    @EnvironmentObject var pageVisibility: PageVisibilityManager
     @State private var collapsed: Set<String> = []
 
     private let groups: [(String, [SidebarItem])] = [
         ("DASHBOARD", [.globalMonitor, .marketOverview, .marketBreadth, .earningsCalendar, .dashboard, .alerts]),
         ("PORTFOLIO", [.portfolios, .transactions, .rebalance]),
         ("ANALYSIS", [.mpt, .regime, .factors, .riskBudget, .valueAtRisk, .stressTest, .performance, .correlation, .optionsChain, .optionStrategy]),
-        ("TRADING", [.signalDashboard, .alphaML, .strategyBuilder, .screener, .tradePlans, .patterns, .events]),
+        ("TRADING", [.signalDashboard, .alphaML, .alphaIdeas, .strategyBuilder, .screener, .tradePlans, .patterns, .events]),
         ("AI INSIGHTS", [.aiAdvisor, .sentiment, .forecast, .research, .narrative]),
         ("TOOLS", [.backtest, .monteCarlo, .technical, .statistics]),
         ("SETTINGS", [.watchlist, .settings]),
@@ -175,7 +179,9 @@ struct Sidebar: View {
 
     var body: some View {
         List(selection: $selectedItem) {
-            ForEach(groups, id: \.0) { group, items in
+            ForEach(groups, id: \.0) { group, allItems in
+                let items = allItems.filter { pageVisibility.isVisible($0) }
+                if !items.isEmpty {
                 Section {
                     if !collapsed.contains(group) {
                         ForEach(items) { item in
@@ -202,6 +208,7 @@ struct Sidebar: View {
                         }
                     }
                     .buttonStyle(.plain)
+                }
                 }
             }
         }
