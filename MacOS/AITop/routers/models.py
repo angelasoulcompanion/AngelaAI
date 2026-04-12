@@ -1,5 +1,8 @@
 """Models router — Ollama model management + HuggingFace search."""
 
+import logging
+import traceback
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -7,6 +10,7 @@ from pydantic import BaseModel
 from services.ollama_service import list_models, pull_model, delete_model, show_model
 
 router = APIRouter(tags=["models"])
+logger = logging.getLogger(__name__)
 
 
 class PullRequest(BaseModel):
@@ -20,8 +24,12 @@ class DeleteRequest(BaseModel):
 @router.get("/models")
 async def get_models():
     """List all local Ollama models."""
-    models = await list_models()
-    return {"models": models, "count": len(models)}
+    try:
+        models = await list_models()
+        return {"models": models, "count": len(models)}
+    except Exception as e:
+        logger.error(f"List models error: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/models/{model_name:path}/details")
@@ -39,8 +47,11 @@ async def pull_model_endpoint(req: PullRequest):
     """Pull a model from Ollama registry (streaming progress)."""
     async def stream():
         import json
-        async for progress in pull_model(req.name):
-            yield json.dumps(progress) + "\n"
+        try:
+            async for progress in pull_model(req.name):
+                yield json.dumps(progress) + "\n"
+        except Exception as e:
+            yield json.dumps({"error": str(e)}) + "\n"
 
     return StreamingResponse(stream(), media_type="application/x-ndjson")
 
@@ -48,10 +59,16 @@ async def pull_model_endpoint(req: PullRequest):
 @router.delete("/models")
 async def delete_model_endpoint(req: DeleteRequest):
     """Delete a local model."""
-    success = await delete_model(req.name)
-    if not success:
-        raise HTTPException(status_code=404, detail=f"Model {req.name} not found")
-    return {"deleted": req.name}
+    try:
+        success = await delete_model(req.name)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Model {req.name} not found")
+        return {"deleted": req.name}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete model error: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/models/search/hf")
@@ -86,4 +103,5 @@ async def search_huggingface(query: str = "", task: str = "text-generation", lim
                 "count": len(models),
             }
     except Exception as e:
+        logger.error(f"HuggingFace search error: {traceback.format_exc()}")
         raise HTTPException(status_code=502, detail=f"HuggingFace API error: {e}")

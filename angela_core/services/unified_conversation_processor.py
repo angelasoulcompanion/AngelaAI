@@ -542,7 +542,10 @@ Angela: "{angela_resp}" """
         conversation_id: Optional[uuid.UUID] = None,
     ) -> int:
         """Save detected emotions to angela_emotions table."""
-        from angela_core.services.emotion_capture_service import EmotionCaptureService
+        try:
+            from angela_core.services.emotion_capture_service import EmotionCaptureService
+        except ImportError:
+            from angela_core.services._deprecated.emotion_capture_service import EmotionCaptureService
         ecs = EmotionCaptureService()
         saved = 0
 

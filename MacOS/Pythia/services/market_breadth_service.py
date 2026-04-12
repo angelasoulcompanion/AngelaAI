@@ -169,12 +169,28 @@ def compute_breadth(symbols: list[str], period: str = "1y") -> dict:
     ad_ratio = np.where(declines > 0, advances / declines, advances)
     ad_ratio[0] = np.nan
 
-    # 5) % Above 50-day and 200-day MA
-    sma50_matrix = np.full_like(close_matrix, np.nan)
-    sma200_matrix = np.full_like(close_matrix, np.nan)
-    for j in range(n_stocks):
-        sma50_matrix[:, j] = _sma(close_matrix[:, j], 50)
-        sma200_matrix[:, j] = _sma(close_matrix[:, j], 200)
+    # 5) % Above 50-day and 200-day MA (vectorized, NaN-safe)
+    def _sma_matrix(mat: np.ndarray, period: int) -> np.ndarray:
+        """Vectorized SMA — handles NaN via cumsum of filled values / valid counts."""
+        result = np.full_like(mat, np.nan, dtype=float)
+        if mat.shape[0] < period:
+            return result
+        filled = np.where(np.isnan(mat), 0.0, mat)
+        valid = (~np.isnan(mat)).astype(float)
+        cum_filled = np.cumsum(filled, axis=0)
+        cum_filled = np.vstack([np.zeros((1, mat.shape[1])), cum_filled])
+        cum_valid = np.cumsum(valid, axis=0)
+        cum_valid = np.vstack([np.zeros((1, mat.shape[1])), cum_valid])
+        window_sum = cum_filled[period:] - cum_filled[:-period]
+        window_count = cum_valid[period:] - cum_valid[:-period]
+        min_required = max(period // 2, 1)
+        has_enough = window_count >= min_required
+        with np.errstate(divide="ignore", invalid="ignore"):
+            result[period - 1:] = np.where(has_enough, window_sum / np.maximum(window_count, 1), np.nan)
+        return result
+
+    sma50_matrix = _sma_matrix(close_matrix, 50)
+    sma200_matrix = _sma_matrix(close_matrix, 200)
 
     above_50 = np.nansum(close_matrix > sma50_matrix, axis=1)
     valid_50 = np.nansum(~np.isnan(sma50_matrix), axis=1)
@@ -216,13 +232,12 @@ def compute_breadth(symbols: list[str], period: str = "1y") -> dict:
 
     # 9) TRIN (Arms Index)
     # TRIN = (A/D) / (AdvVol/DecVol), < 1 = bullish, > 1 = bearish
-    adv_volume = np.zeros(n_days)
-    dec_volume = np.zeros(n_days)
-    for i in range(1, n_days):
-        up_mask = daily_change[i, :] > 0
-        dn_mask = daily_change[i, :] < 0
-        adv_volume[i] = np.nansum(volume_matrix[i, :][up_mask])
-        dec_volume[i] = np.nansum(volume_matrix[i, :][dn_mask])
+    up_mask = daily_change > 0
+    dn_mask = daily_change < 0
+    adv_volume = np.nansum(volume_matrix * up_mask, axis=1)
+    dec_volume = np.nansum(volume_matrix * dn_mask, axis=1)
+    adv_volume[0] = 0
+    dec_volume[0] = 0
 
     with np.errstate(divide="ignore", invalid="ignore"):
         vol_ratio = np.where(dec_volume > 0, adv_volume / dec_volume, 1.0)

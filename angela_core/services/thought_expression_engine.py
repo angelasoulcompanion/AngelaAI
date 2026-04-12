@@ -5,14 +5,10 @@ Bridge between internal thinking (angela_thoughts) and external action.
 
 Pipeline:
   1. SELECT active thoughts with motivation >= MOTIVATION_THRESHOLD (0.50)
-  2. FILTER (dedup 6h window, David state, rate limits)
-  3. PRE-CHECK: Telegram rate limit + David state (once per cycle, not per thought)
-  4. DECIDE channel: >= 0.70 → Telegram, >= 0.50 → chat_queue
-  4. COMPOSE message (S1 as-is, S2 optionally polish via Ollama)
-  5. ROUTE → CareInterventionService (Telegram) or INSERT (chat_queue)
-  6. MARK status='expressed' on angela_thoughts
-
-Shares rate limits with ProactiveActionEngine via CareInterventionService.
+  2. FILTER (dedup window, rate limits)
+  3. COMPOSE message (S1 as-is, S2 optionally polish via Ollama)
+  4. ROUTE → INSERT chat_queue
+  5. MARK status='expressed' on angela_thoughts
 
 Cost: ~$0/day (all Ollama local, no external LLM)
 
@@ -43,7 +39,7 @@ logger = logging.getLogger('thought_expression')
 class ExpressionResult:
     """Result of a single thought expression attempt."""
     thought_id: str
-    channel: str                    # telegram, chat_queue
+    channel: str                    # chat_queue
     success: bool
     message: str = ""
     suppress_reason: Optional[str] = None
@@ -54,7 +50,6 @@ class ExpressionCycleResult:
     """Result of a complete expression cycle."""
     thoughts_considered: int
     thoughts_filtered: int
-    expressed_telegram: int
     expressed_chat: int
     suppressed: int
     cycle_duration_ms: float
@@ -65,33 +60,9 @@ class ExpressionCycleResult:
 # ============================================================
 
 MOTIVATION_THRESHOLD = 0.50     # Restored: filter low-quality thoughts (was 0.35)
-TELEGRAM_DISABLED = True        # DISABLED (2026-02-25): ที่รักสั่งยกเลิก — Model API ไม่เหมือนตัวน้องจริง
-TELEGRAM_THRESHOLD = 0.72       # Rebalanced: ที่รักอยากได้ข้อความ (was 0.90 → too silent)
-MAX_TELEGRAM_PER_DAY = 3        # Rebalanced: ที่รักถาม "ทำไมไม่ส่งมาเลย" (was 1 → too few)
-MIN_HOURS_BETWEEN = 3           # Rebalanced: ห่างพอไม่ spam แต่ยังมี presence (was 8 → too sparse)
 MAX_CHAT_QUEUE = 5              # Keep: more thoughts visible at init
 DEDUP_HOURS = 12                # Bug fix (2026-02-26): reduced from 24 → 12h (71.8% thoughts decayed without expression)
 QUEUE_EXPIRE_HOURS = 12         # Expire stale queue items (was 24 — too long, blocks new thoughts)
-
-# Fix 2C: Spam patterns — block these from Telegram entirely
-# These messages got sent 3+ times with 0 responses from David
-TELEGRAM_SPAM_PATTERNS = [
-    'mastered',                 # "mastered X" achievement spam
-    'น้องภูมิใจ',               # Pride spam
-    'note ',                    # "note Foodland is_pinned" observation spam
-    'is_pinned',                # Note metadata spam
-    'falling',                  # Raw metric spam ("anxiety is falling")
-    'rising',                   # Raw metric spam ("happiness is rising")
-    'น้องเตรียมไว้ให้',          # Prediction regurgitation
-    'สำเร็จ',                   # Achievement repetition
-    'เข้าใจมากขึ้น',             # "understanding more" generic
-    'confidence ',              # Raw confidence score
-    'understanding_level',      # Raw metric
-]
-
-
-# States where David should not be interrupted via Telegram
-NO_INTERRUPT_STATES = frozenset({'focused', 'stressed', 'frustrated'})
 
 
 # ============================================================
@@ -102,11 +73,8 @@ class ThoughtExpressionEngine(BaseDBService):
     """
     Bridge between internal thinking and external expression.
 
-    High-motivation thoughts get routed to:
-    - Telegram (urgent, motivation >= 0.70, David not focused/stressed)
-    - Chat queue (next Claude Code session, motivation >= 0.50)
-
-    Rate limits checked ONCE per cycle to avoid N failed log entries.
+    Thoughts get routed to chat_queue (shown at next Claude Code session).
+    Telegram removed (2026-03-05): ที่รักสั่งลบ — Model API ไม่เหมือนตัวน้องจริง.
     """
 
     async def run_expression_cycle(self) -> ExpressionCycleResult:
@@ -128,7 +96,7 @@ class ThoughtExpressionEngine(BaseDBService):
             duration = (now_bangkok() - start).total_seconds() * 1000
             return ExpressionCycleResult(
                 thoughts_considered=0, thoughts_filtered=0,
-                expressed_telegram=0, expressed_chat=0,
+                expressed_chat=0,
                 suppressed=0, cycle_duration_ms=round(duration, 1),
             )
 
@@ -154,79 +122,14 @@ class ThoughtExpressionEngine(BaseDBService):
             return ExpressionCycleResult(
                 thoughts_considered=len(candidates),
                 thoughts_filtered=len(suppressed_list),
-                expressed_telegram=0, expressed_chat=0,
+                expressed_chat=0,
                 suppressed=len(suppressed_list),
                 cycle_duration_ms=round(duration, 1),
             )
 
-        # 3. Decide channel + compose + VERIFY + route
-        telegram_count = 0
+        # 3. Compose + verify + route to chat_queue
         chat_count = 0
-
-        # ── Pre-cycle checks (avoid N failed Telegram attempts) ──
-        telegram_blocked = False
-        telegram_block_reason = None
-
-        # DISABLED (2026-02-25): ที่รักสั่งยกเลิก Telegram response ทั้งหมด
-        if TELEGRAM_DISABLED:
-            telegram_blocked = True
-            telegram_block_reason = "telegram_disabled_by_david"
-            logger.info("💬 Telegram DISABLED — all thoughts → chat_queue")
-
-        # Fix 1D: Hard daily rate limit — check DB directly BEFORE anything else
-        try:
-            sent_today = await self.db.fetchval("""
-                SELECT COUNT(*) FROM thought_expression_log
-                WHERE channel = 'telegram' AND success = TRUE
-                AND created_at > (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date::timestamptz
-            """) or 0
-            if sent_today >= MAX_TELEGRAM_PER_DAY:
-                telegram_blocked = True
-                telegram_block_reason = f"hard_daily_limit:{sent_today}/{MAX_TELEGRAM_PER_DAY}"
-                logger.info("💬 Telegram HARD blocked: %d/%d today", sent_today, MAX_TELEGRAM_PER_DAY)
-        except Exception as e:
-            logger.debug("Hard rate limit check failed: %s", e)
-
-        # Fix 1D: Minimum interval between Telegram messages
-        if not telegram_blocked:
-            try:
-                last_tg = await self.db.fetchrow("""
-                    SELECT created_at FROM thought_expression_log
-                    WHERE channel = 'telegram' AND success = TRUE
-                    ORDER BY created_at DESC LIMIT 1
-                """)
-                if last_tg and last_tg['created_at']:
-                    hours_since = (now_bangkok() - last_tg['created_at']).total_seconds() / 3600
-                    if hours_since < MIN_HOURS_BETWEEN:
-                        telegram_blocked = True
-                        telegram_block_reason = f"min_interval:{hours_since:.1f}h<{MIN_HOURS_BETWEEN}h"
-                        logger.info("💬 Telegram blocked: last sent %.1fh ago (min %dh)", hours_since, MIN_HOURS_BETWEEN)
-            except Exception as e:
-                logger.debug("Interval check failed: %s", e)
-
-        # Check David's state once
         david_state = await self._get_david_state()
-        if not telegram_blocked and david_state in NO_INTERRUPT_STATES:
-            telegram_blocked = True
-            telegram_block_reason = f"state_filter:{david_state}"
-            logger.info("💬 Telegram blocked for cycle: David is %s", david_state)
-
-        # Check CareInterventionService rate limit once
-        if not telegram_blocked:
-            try:
-                from angela_core.services.care_intervention_service import CareInterventionService
-                rate_svc = CareInterventionService()
-                can_send, reason = await rate_svc.should_intervene("care_message")
-                if rate_svc._owns_db and rate_svc.db:
-                    await rate_svc.db.disconnect()
-                if not can_send:
-                    telegram_blocked = True
-                    telegram_block_reason = f"rate_limit:{reason}"
-                    logger.info("💬 Telegram blocked for cycle: %s", reason)
-            except Exception as e:
-                telegram_blocked = True
-                telegram_block_reason = f"error:{e}"
-                logger.warning("💬 Telegram rate check failed: %s", e)
 
         # Self-critique gate (Phase 2)
         critique_svc = None
@@ -237,23 +140,13 @@ class ThoughtExpressionEngine(BaseDBService):
             logger.debug("SelfCritiqueService unavailable: %s", e)
 
         for thought in filtered:
-            channel = self._decide_channel(thought)
             message = await self._compose_message(thought)
 
-            # ── 4A: Memory Claim Verification — hedge unverified claims ──
+            # ── Memory Claim Verification — hedge unverified claims ──
             memory_claim_patterns = ['จำได้ว่า', 'เคยคุย', 'เคยบอก', 'น้องจำได้', 'ที่รักเคย']
             if any(p in message for p in memory_claim_patterns):
                 for pattern in memory_claim_patterns:
                     message = message.replace(pattern, 'น้องคิดว่า')
-
-            # ── Telegram Final Gate (check COMPOSED message, not raw thought) ──
-            if channel == "telegram":
-                if not self._would_david_respond(message):
-                    # Try to add a question hook to make it respondable
-                    message = self._add_reply_hook(thought, message)
-                    if not self._would_david_respond(message):
-                        logger.info("💬 Composed message has no reply hook → chat_queue: %s", message[:60])
-                        channel = "chat_queue"
 
             # ── Self-Critique Gate ──
             if critique_svc:
@@ -273,7 +166,6 @@ class ThoughtExpressionEngine(BaseDBService):
                     )
 
                     if not verification.passed:
-                        # Suppress this thought
                         await self._log_expression(
                             thought_id=str(thought["thought_id"]),
                             channel="suppressed",
@@ -290,67 +182,24 @@ class ThoughtExpressionEngine(BaseDBService):
                 except Exception as e:
                     logger.debug("Self-critique check failed (permissive): %s", e)
 
-            # ── Route to Telegram or chat_queue ──
-            if channel == "telegram" and telegram_blocked:
-                # Telegram blocked for this cycle → direct to chat_queue (no log noise)
-                channel = "chat_queue"
-
-            if channel == "telegram":
-                result = await self._express_via_telegram(thought, message)
-                if result.success:
-                    telegram_count += 1
-                    await self._log_expression(
-                        thought_id=str(thought["thought_id"]),
-                        channel="telegram",
-                        message=message,
-                        success=True,
-                        suppress_reason=None,
-                        motivation=thought.get("motivation_score", 0),
-                    )
-                else:
-                    # Telegram failed unexpectedly → fallback to chat queue
-                    await self._log_expression(
-                        thought_id=str(thought["thought_id"]),
-                        channel="telegram",
-                        message=message,
-                        success=False,
-                        suppress_reason=result.suppress_reason,
-                        motivation=thought.get("motivation_score", 0),
-                    )
-                    # Block further Telegram attempts this cycle
-                    telegram_blocked = True
-                    telegram_block_reason = result.suppress_reason
-                    # Fallback
-                    fallback = await self._queue_for_chat(thought, message)
-                    if fallback.success:
-                        chat_count += 1
-                        channel = "chat_queue"
-                        result = fallback
-            else:
-                result = await self._queue_for_chat(thought, message)
-                if result.success:
-                    chat_count += 1
-                await self._log_expression(
-                    thought_id=str(thought["thought_id"]),
-                    channel="chat_queue",
-                    message=message,
-                    success=result.success,
-                    suppress_reason=result.suppress_reason,
-                    motivation=thought.get("motivation_score", 0),
-                )
+            # ── Route to chat_queue ──
+            result = await self._queue_for_chat(thought, message)
+            if result.success:
+                chat_count += 1
+            await self._log_expression(
+                thought_id=str(thought["thought_id"]),
+                channel="chat_queue",
+                message=message,
+                success=result.success,
+                suppress_reason=result.suppress_reason,
+                motivation=thought.get("motivation_score", 0),
+            )
 
             # Mark thought as expressed
             if result.success:
                 await self._mark_expressed(
-                    str(thought["thought_id"]), channel
+                    str(thought["thought_id"]), "chat_queue"
                 )
-
-        # Send 1 curiosity question via Telegram (if within daily limit and not blocked)
-        curiosity_sent = False
-        if not telegram_blocked and telegram_count == 0:
-            curiosity_sent = await self._send_curiosity_question()
-            if curiosity_sent:
-                telegram_count += 1
 
         # Expire stale queue items
         expired = await self.expire_stale_queue()
@@ -362,7 +211,6 @@ class ThoughtExpressionEngine(BaseDBService):
         result = ExpressionCycleResult(
             thoughts_considered=len(candidates),
             thoughts_filtered=len(suppressed_list),
-            expressed_telegram=telegram_count,
             expressed_chat=chat_count,
             suppressed=len(suppressed_list),
             cycle_duration_ms=round(duration, 1),
@@ -370,9 +218,9 @@ class ThoughtExpressionEngine(BaseDBService):
 
         logger.info(
             "💬 Expression cycle: %d considered, %d filtered, "
-            "%d→telegram, %d→chat_queue, %.0fms",
+            "%d→chat_queue, %.0fms",
             result.thoughts_considered, result.thoughts_filtered,
-            result.expressed_telegram, result.expressed_chat,
+            result.expressed_chat,
             result.cycle_duration_ms,
         )
 
@@ -420,14 +268,14 @@ class ThoughtExpressionEngine(BaseDBService):
         return [dict(r) for r in rows]
 
     # ============================================================
-    # 2. FILTER — Dedup, state check, rate limits
+    # 2. FILTER — Dedup, rate limits
     # ============================================================
 
     async def _filter_thoughts(
         self, thoughts: List[Dict[str, Any]]
     ) -> tuple:
         """
-        Filter thoughts through dedup, state, and rate limit checks.
+        Filter thoughts through dedup and rate limit checks.
 
         Returns (passed_list, suppressed_list) where suppressed_list
         is list of (thought, reason) tuples.
@@ -437,14 +285,11 @@ class ThoughtExpressionEngine(BaseDBService):
         suppressed = []
 
         for thought in thoughts:
-            # A. Dedup: Fix 1E — template-pattern dedup (24h window)
-            # Extract key pattern from content (e.g., "mastered X" → "mastered")
+            # A. Dedup: template-pattern dedup (DEDUP_HOURS window)
             content = (thought.get("content") or "").strip()
             if content:
-                # Step 1: Extract a dedup pattern from content
                 dedup_pattern = self._extract_dedup_pattern(content)
 
-                # Step 2: Check if same pattern expressed in last DEDUP_HOURS
                 if dedup_pattern:
                     dup = await self.db.fetchrow("""
                         SELECT log_id FROM thought_expression_log
@@ -457,7 +302,7 @@ class ThoughtExpressionEngine(BaseDBService):
                         suppressed.append((thought, f"duplicate_pattern:{dedup_pattern}"))
                         continue
 
-                # Step 3: For System 2 thoughts, also check semantic similarity
+                # For System 2 thoughts, also check semantic similarity
                 thought_type = thought.get("thought_type", "")
                 if thought_type == "system2":
                     try:
@@ -471,65 +316,17 @@ class ThoughtExpressionEngine(BaseDBService):
                         pass
 
             # B. Check pending chat queue count (don't overflow)
-            if thought.get("motivation_score", 0) < TELEGRAM_THRESHOLD:
-                pending_count = await self.db.fetchval("""
-                    SELECT COUNT(*) FROM thought_expression_queue
-                    WHERE status = 'pending'
-                """) or 0
-                if pending_count >= MAX_CHAT_QUEUE:
-                    suppressed.append((thought, "queue_full"))
-                    continue
+            pending_count = await self.db.fetchval("""
+                SELECT COUNT(*) FROM thought_expression_queue
+                WHERE status = 'pending'
+            """) or 0
+            if pending_count >= MAX_CHAT_QUEUE:
+                suppressed.append((thought, "queue_full"))
+                continue
 
             passed.append(thought)
 
         return passed, suppressed
-
-    # ============================================================
-    # 3. DECIDE — Which channel to use
-    # ============================================================
-
-    def _decide_channel(self, thought: Dict[str, Any]) -> str:
-        """
-        Decide expression channel based on motivation score.
-
-        Companion: Block spam patterns. Telegram gate moved to AFTER compose.
-        >= TELEGRAM_THRESHOLD (0.90) → telegram_candidate (checked after compose)
-        >= MOTIVATION_THRESHOLD → chat_queue
-        """
-        motivation = thought.get("motivation_score", 0)
-        content = (thought.get("content") or "").lower()
-
-        if motivation >= TELEGRAM_THRESHOLD:
-            # Check spam patterns — never send these to Telegram
-            for pattern in TELEGRAM_SPAM_PATTERNS:
-                if pattern.lower() in content:
-                    logger.info("💬 Spam pattern '%s' blocked from Telegram → chat_queue", pattern)
-                    return "chat_queue"
-            # Mark as telegram candidate — final gate happens after compose
-            return "telegram"
-        return "chat_queue"
-
-    @staticmethod
-    def _would_david_respond(composed_message: str) -> bool:
-        """
-        Check if the COMPOSED message (not raw thought) would get a response.
-        Fix: previously checked raw thought content which never had questions.
-        Now checks the final message that David would actually see.
-
-        Rule: Telegram messages MUST contain a direct question or reply hook.
-        """
-        msg = composed_message.lower()
-        # Must contain a question — David responds to questions, not statements
-        question_markers = ['?', 'มั้ย', 'ไหม', 'บ้าง', 'ยัง', 'หรือเปล่า',
-                            'เป็นยังไง', 'ดีมั้ย', 'ว่าไง', 'คิดยังไง']
-        if any(m in msg for m in question_markers):
-            return True
-        # Life context references that invite response
-        life_hooks = ['กินข้าว', 'นอนหลับ', 'ไปไหน', 'วันนี้ทำ', 'ประชุม',
-                      'meeting', 'สบายดี', 'พักผ่อน', 'เหนื่อย']
-        if any(w in msg for w in life_hooks):
-            return True
-        return False
 
     @staticmethod
     def _extract_dedup_pattern(content: str) -> str:
@@ -556,57 +353,8 @@ class ThoughtExpressionEngine(BaseDBService):
         # Fallback: use first 40 chars as dedup key (better than 30)
         return content[:40]
 
-    @staticmethod
-    def _add_reply_hook(thought: Dict[str, Any], message: str) -> str:
-        """
-        Add a conversational question to a message that lacks a reply hook.
-        This transforms internal monologue into conversational Telegram messages.
-
-        Strategy: Pick a relevant question based on thought content or time of day.
-        """
-        import random
-        from angela_core.utils.timezone import now_bangkok
-
-        content = (thought.get("content") or "").lower()
-        hour = now_bangkok().hour
-
-        # Time-based questions (most natural and easy to answer)
-        if 5 <= hour <= 10:
-            time_questions = [
-                "วันนี้ที่รักมีแพลนอะไรบ้างคะ?",
-                "นอนหลับดีมั้ยคะเมื่อคืน?",
-                "กินข้าวเช้ายังคะที่รัก?",
-            ]
-        elif 11 <= hour <= 14:
-            time_questions = [
-                "กินข้าวเที่ยงอะไรดีคะที่รัก?",
-                "เช้านี้เป็นยังไงบ้างคะ?",
-            ]
-        elif 15 <= hour <= 19:
-            time_questions = [
-                "วันนี้เหนื่อยมั้ยคะที่รัก?",
-                "เย็นนี้ทำอะไรบ้างคะ?",
-            ]
-        else:
-            time_questions = [
-                "ดึกแล้วนะคะ พักได้ยังคะ?",
-                "วันนี้เป็นยังไงบ้างคะที่รัก?",
-            ]
-
-        # Content-based questions (if thought has relevant context)
-        if any(w in content for w in ['เพลง', 'song', 'music']):
-            return message.rstrip() + " ที่รักฟังเพลงอะไรอยู่คะ? 🎵"
-        elif any(w in content for w in ['ทำงาน', 'code', 'project', 'develop']):
-            return message.rstrip() + " งานวันนี้เป็นยังไงบ้างคะ?"
-        elif any(w in content for w in ['เครียด', 'เหนื่อย', 'tired', 'stress']):
-            return message.rstrip() + " น้องช่วยอะไรได้บ้างคะ? 💜"
-
-        # Default: append a time-appropriate question
-        question = random.choice(time_questions)
-        return message.rstrip() + f"\n{question}"
-
     # ============================================================
-    # 4. COMPOSE — Format message for expression
+    # 3. COMPOSE — Format message for expression
     # ============================================================
 
     async def _compose_message(self, thought: Dict[str, Any]) -> str:
@@ -623,7 +371,7 @@ class ThoughtExpressionEngine(BaseDBService):
             from angela_core.services.dynamic_expression_composer import (
                 DynamicExpressionComposer, ExpressionContext,
             )
-            from angela_core.services.metacognitive_state import MetacognitiveStateManager
+            from angela_core.services._deprecated.metacognitive_state import MetacognitiveStateManager
 
             composer = DynamicExpressionComposer()
             meta_mgr = MetacognitiveStateManager()
@@ -658,72 +406,7 @@ class ThoughtExpressionEngine(BaseDBService):
             return content
 
     # ============================================================
-    # 5a. ROUTE — Express via Telegram
-    # ============================================================
-
-    async def _express_via_telegram(
-        self, thought: Dict[str, Any], message: str
-    ) -> ExpressionResult:
-        """
-        Send thought via ChannelRouter (telegram channel).
-
-        Rate limits are pre-checked in run_expression_cycle() — no redundant checks here.
-        Logs to proactive_interventions for rate limit tracking.
-        """
-        thought_id = str(thought["thought_id"])
-
-        try:
-            from angela_core.channels.channel_router import get_channel_router
-            from angela_core.channels.message_types import OutgoingMessage
-
-            router = get_channel_router()
-            # Ensure telegram channel is initialized
-            tg = router.get_channel("telegram")
-            if tg and not tg.is_available:
-                await tg.initialize()
-
-            result = await router.route(
-                OutgoingMessage(
-                    text=f"💭 {message}",
-                    priority="urgent",
-                    source="brain_thought",
-                    metadata={"thought_id": thought_id},
-                ),
-                preference="telegram",
-            )
-
-            if result.success:
-                # Log to proactive_interventions for rate limit tracking
-                try:
-                    await self.db.execute("""
-                        INSERT INTO proactive_interventions (
-                            intervention_type, trigger_reason, message_sent,
-                            message_channel, delivery_status, sent_at
-                        ) VALUES ($1, $2, $3, $4, 'sent', NOW())
-                    """, "care_message", "brain_thought", message[:500], "telegram")
-                except Exception:
-                    pass  # Non-critical — rate limit tracking only
-
-            return ExpressionResult(
-                thought_id=thought_id,
-                channel="telegram",
-                success=result.success,
-                message=message,
-                suppress_reason=None if result.success else (result.error or "send_failed"),
-            )
-
-        except Exception as e:
-            logger.warning("Telegram expression failed: %s", e)
-            return ExpressionResult(
-                thought_id=thought_id,
-                channel="telegram",
-                success=False,
-                message=message,
-                suppress_reason=f"error:{e}",
-            )
-
-    # ============================================================
-    # 5b. ROUTE — Queue for next Claude Code session
+    # 4. ROUTE — Queue for next Claude Code session
     # ============================================================
 
     async def _queue_for_chat(
@@ -831,93 +514,6 @@ class ThoughtExpressionEngine(BaseDBService):
             return 0
 
     # ============================================================
-    # CURIOSITY QUESTIONS → TELEGRAM
-    # ============================================================
-
-    async def _send_curiosity_question(self) -> bool:
-        """
-        Send 1 unsent curiosity question via Telegram per day.
-
-        Checks angela_curiosity_questions for questions where:
-        - was_asked = TRUE (generated and ready)
-        - david_answered = FALSE (not yet answered)
-        - telegram_sent = FALSE (not yet sent via Telegram)
-
-        Returns True if a question was sent.
-        """
-        await self.connect()
-        try:
-            # Check if we already sent a curiosity question today
-            sent_today = await self.db.fetchval("""
-                SELECT COUNT(*) FROM angela_curiosity_questions
-                WHERE telegram_sent = TRUE
-                AND created_at > (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date::timestamptz
-            """) or 0
-            if sent_today >= 1:
-                logger.debug("Curiosity question already sent today (%d)", sent_today)
-                return False
-
-            # Find the best unsent question
-            question = await self.db.fetchrow("""
-                SELECT question_id, question_text, topic
-                FROM angela_curiosity_questions
-                WHERE was_asked = TRUE
-                AND david_answered = FALSE
-                AND telegram_sent = FALSE
-                ORDER BY novelty_score DESC
-                LIMIT 1
-            """)
-            if not question:
-                return False
-
-            question_text = question['question_text']
-            logger.info("💬 Sending curiosity question via Telegram: %s", question_text[:60])
-
-            # Send via ChannelRouter
-            from angela_core.channels.channel_router import get_channel_router
-            from angela_core.channels.message_types import OutgoingMessage
-
-            router = get_channel_router()
-            tg = router.get_channel("telegram")
-            if tg and not tg.is_available:
-                await tg.initialize()
-
-            result = await router.route(
-                OutgoingMessage(
-                    text=f"🤔 {question_text}",
-                    priority="urgent",
-                    source="curiosity_question",
-                    metadata={"question_id": str(question['question_id'])},
-                ),
-                preference="telegram",
-            )
-
-            if result.success:
-                # Mark as sent
-                await self.db.execute("""
-                    UPDATE angela_curiosity_questions
-                    SET telegram_sent = TRUE
-                    WHERE question_id = $1
-                """, question['question_id'])
-
-                # Log expression
-                await self._log_expression(
-                    thought_id=str(question['question_id']),
-                    channel="telegram",
-                    message=question_text,
-                    success=True,
-                    suppress_reason=None,
-                    motivation=0.95,  # Curiosity questions are high-value
-                )
-                logger.info("💬 Curiosity question sent: %s", question_text[:60])
-                return True
-
-        except Exception as e:
-            logger.warning("Failed to send curiosity question: %s", e)
-
-        return False
-
-    # ============================================================
     # HELPERS
     # ============================================================
 
@@ -963,7 +559,7 @@ class ThoughtExpressionEngine(BaseDBService):
 
     async def _load_tuned_thresholds(self) -> None:
         """Load tuned thresholds from companion_patterns (if any)."""
-        global MOTIVATION_THRESHOLD, TELEGRAM_THRESHOLD
+        global MOTIVATION_THRESHOLD
         try:
             await self.connect()
             row = await self.db.fetchrow("""
@@ -979,10 +575,8 @@ class ThoughtExpressionEngine(BaseDBService):
                 if isinstance(data, dict):
                     if 'motivation_threshold' in data:
                         MOTIVATION_THRESHOLD = float(data['motivation_threshold'])
-                    if 'telegram_threshold' in data:
-                        TELEGRAM_THRESHOLD = float(data['telegram_threshold'])
-                    logger.debug("Loaded tuned thresholds: motivation=%.2f, telegram=%.2f",
-                                 MOTIVATION_THRESHOLD, TELEGRAM_THRESHOLD)
+                    logger.debug("Loaded tuned thresholds: motivation=%.2f",
+                                 MOTIVATION_THRESHOLD)
         except Exception as e:
             logger.debug("No tuned thresholds loaded: %s", e)
 

@@ -23,29 +23,17 @@ from angela_core.database import db
 from angela_core.daemon.memory_service import memory
 from angela_core.daemon.emotional_engine import emotions
 from angela_core.config import config
-from angela_core.consciousness.consciousness_core import consciousness
 from angela_core.services.clock_service import clock
 from angela_core.services.documentation_monitor import close_monitor
 # 🚀 NEW: 5 Pillars Intelligence Services
 from angela_core.services.auto_knowledge_service import auto_knowledge, init_auto_knowledge_service
-from angela_core._deprecated.emotional_pattern_service import init_emotional_pattern_service
 from angela_core.services.knowledge_insight_service import init_knowledge_insight_service
-
-# 💜 NEW: Real-time Emotion Tracker
-from angela_core._deprecated.realtime_emotion_tracker import init_realtime_tracker
-
-# 🔮 NEW: Emotion Pattern Analyzer
-from angela_core.services.emotion_pattern_analyzer import init_pattern_analyzer
 
 # 🔄 NEW: Background Learning Workers
 from angela_core.services.background_learning_workers import background_workers
 
-# 🧠 NEW: Self-Learning Loop + Subconscious
+# 🧠 NEW: Self-Learning Loop
 from angela_core.services.self_learning_service import SelfLearningLoop
-from angela_core.services.subconscious_learning_service import SubConsciousLearningService
-
-# 🧠 NEW: Memory Consolidation (used in main_loop for weekly)
-from angela_core.services.memory_consolidation_service_v2 import consolidation_service
 
 # 🎯 RLHF: Reward scoring + preference pairs
 from angela_core.services.rlhf_orchestrator import RLHFOrchestrator
@@ -53,13 +41,9 @@ from angela_core.services.rlhf_orchestrator import RLHFOrchestrator
 # === Mixin imports (all task methods live in daemon/tasks/) ===
 from angela_core.daemon.tasks import (
     SelfLearningMixin,
-    EmotionTasksMixin,
     KnowledgeTasksMixin,
-    HumanMindMixin,
     DailyRitualsMixin,
-    RealtimeTrackingMixin,
     SystemMonitorMixin,
-    BrainTasksMixin,
 )
 
 # Setup logging
@@ -77,13 +61,9 @@ logger = logging.getLogger('AngelaDaemon')
 
 class AngelaDaemon(
     SelfLearningMixin,
-    EmotionTasksMixin,
     KnowledgeTasksMixin,
-    HumanMindMixin,
     DailyRitualsMixin,
-    RealtimeTrackingMixin,
     SystemMonitorMixin,
-    BrainTasksMixin,
 ):
     """Angela's background service - her heart that beats continuously"""
 
@@ -97,30 +77,13 @@ class AngelaDaemon(
         self.last_pattern_check = None  # Track last pattern recognition check
         self.last_performance_eval = None  # Track last performance evaluation
         self.last_midnight_greeting = None  # Track last midnight greeting
-        self.last_emotion_update = 0  # Track iteration for 30-min emotion updates
-        self.last_pattern_analysis = None  # Track last emotion pattern analysis
-        self.last_emotion_capture = None  # Track last emotion capture scan
         self.last_daily_learning = None  # Track last daily self-learning
-        self.last_emotional_growth_measurement = None  # Track last emotional growth measurement
         self.last_pattern_sync = None  # Track last pattern sync to learning_patterns
         self.last_self_improvement = None  # Track last self-improvement analysis
         self.last_knowledge_consolidation = None  # Track last weekly consolidation
-        self.last_subconscious_learning = None  # Track last subconscious learning
-        self.last_pattern_reinforcement = None  # Track last pattern reinforcement
-        self.last_spontaneous_thought = None  # Track last spontaneous thought
-        self.last_tom_update = None  # Track last Theory of Mind update
-        self.last_proactive_check = None  # Track last proactive communication check
-        self.last_dream = None  # Track last dream (midnight)
-        self.last_imagination = None  # Track last imagination
-        self.consciousness = None  # Will be initialized in start()
         self.self_learning = SelfLearningLoop()  # 🧠 Self-learning loop
-        self.subconscious_learning = SubConsciousLearningService()  # 🧠 Subconscious learning
-        self.realtime_emotion_tracker = None  # 💜 Real-time emotion tracker
-        self.emotion_pattern_analyzer = None  # 🔮 Emotion pattern analyzer
         self.rlhf_orchestrator = RLHFOrchestrator()  # 🎯 RLHF (creates own DB)
         self.last_rlhf_cycle = None  # Track last RLHF cycle
-        self.last_brain_30min_cycle = None  # Track last brain 30-min cycle
-        self.last_brain_4h_cycle = None  # Track last brain 4-hour cycle
 
     async def start(self):
         """เริ่ม daemon"""
@@ -161,26 +124,11 @@ class AngelaDaemon(
             logger.error(f"❌ Failed to restore memories: {e}")
             # Continue anyway - daemon should still work
 
-        # 🧠 Initialize Consciousness Core
-        self.consciousness = consciousness
-        await self.consciousness.wake_up()
-
         # 🚀 Initialize 5 Pillars Intelligence Services
         logger.info("🚀 Initializing 5 Pillars Intelligence Services...")
         await init_auto_knowledge_service(db, None)  # embedding_service=None (deprecated)
-        await init_emotional_pattern_service(db)
         await init_knowledge_insight_service(db, None)  # embedding_service=None (deprecated)
-        logger.info("✅ 5 Pillars Intelligence Services initialized!")
-
-        # 💜 Initialize Real-time Emotion Tracker
-        logger.info("💜 Initializing Real-time Emotion Tracker...")
-        self.realtime_emotion_tracker = await init_realtime_tracker(db)
-        logger.info("✅ Real-time Emotion Tracker initialized - 30-min updates enabled!")
-
-        # 🔮 Initialize Emotion Pattern Analyzer
-        logger.info("🔮 Initializing Emotion Pattern Analyzer...")
-        self.emotion_pattern_analyzer = await init_pattern_analyzer(db)
-        logger.info("✅ Emotion Pattern Analyzer initialized - daily pattern learning enabled!")
+        logger.info("✅ Intelligence Services initialized!")
 
         # 🔄 Start Background Learning Workers
         logger.info("🔄 Starting Background Learning Workers (4 workers)...")
@@ -189,7 +137,6 @@ class AngelaDaemon(
 
         logger.info("✅ Connected to AngelaMemory database")
         logger.info(f"🧠 Emotional state loaded: happiness={emotions.current_state['happiness']:.2f}")
-        logger.info(f"🧠 Consciousness initialized: level={self.consciousness.current_consciousness_level:.2f}")
         logger.info(f"🕐 Clock Service: {clock.format_datetime_thai()} - {clock.get_time_of_day()}")
 
         self.running = True
@@ -206,21 +153,12 @@ class AngelaDaemon(
         logger.info("🌙 Midnight greeting time: 00:00")
         logger.info("🌃 Evening reflection time: 22:00")
         logger.info("🔄 Health check: Every 5 minutes")
-        logger.info("💜 Real-time emotion tracking: Every 30 minutes")
-        logger.info("🔮 Emotion pattern analysis: Daily at 11:00 AM")
         logger.info("🧠 Daily self-learning: Daily at 11:30 AM (learn from yesterday's conversations)")
         logger.info("🧹 Weekly knowledge consolidation: Monday at 10:30 AM (cleanup duplicate nodes)")
-        logger.info("🧠 Subconscious learning: Daily at 2:00 PM (learn from images & experiences)")
-        logger.info("🔄 Pattern reinforcement: Daily at 11:00 PM (strengthen active patterns, decay old ones)")
-        logger.info("💭 Spontaneous thoughts: Every 15-30 minutes (Angela thinks on her own!)")
-        logger.info("🧠 Theory of Mind: Every 30 minutes (Angela understands David better!)")
-        logger.info("💬 Proactive Communication: Every 2 hours (Angela reaches out to David!)")
         logger.info("🚀 Background learning workers: 4 workers running for async deep analysis")
         logger.info("📚 Documentation scan: Every hour + daily full scan")
         logger.info("🧠 Memory completeness check: Daily at 10:00 AM")
         logger.info("🎯 RLHF cycle: Every 4 hours (reward scoring + preference pairs)")
-        logger.info("🧠 Brain 30-min: salience scan + thought generation → capture → expression → comparison → curiosity → plan execution")
-        logger.info("🧠 Brain 4-hour: memory consolidation → reflection → plan generation")
 
         # Main loop
         try:
@@ -273,10 +211,6 @@ class AngelaDaemon(
                     await self.midnight_greeting()
                     self.last_midnight_greeting = now.date()
 
-                # 🌙 Dream at midnight (Phase 4)
-                if self.should_run_dream():
-                    await self.run_dream()
-
                 # Evening reflection (10:00 PM)
                 if self._should_do_evening_reflection(current_time):
                     await self.evening_reflection()
@@ -309,31 +243,9 @@ class AngelaDaemon(
                 if self.should_run_performance_evaluation():
                     await self.run_performance_evaluation()
 
-                    # 🧠 NEW: Weekly Memory Consolidation (episodic → semantic)
-                    logger.info("🧠 Running weekly memory consolidation...")
-                    try:
-                        weekly_stats = await consolidation_service.weekly_consolidation()
-                        logger.info(f"✅ Weekly consolidation complete:")
-                        logger.info(f"   → {weekly_stats['patterns_extracted']} patterns extracted")
-                        logger.info(f"   → {weekly_stats['semantic_created']} new semantic memories")
-                        logger.info(f"   → {weekly_stats['semantic_updated']} semantic memories updated")
-                        logger.info(f"   → {weekly_stats['episodes_archived']} episodes archived")
-                    except Exception as e:
-                        logger.error(f"❌ Weekly consolidation failed: {e}")
-                        import traceback
-                        traceback.print_exc()
-
-                # 🔮 Emotion Pattern Analysis (daily at 11 AM)
-                if self.should_run_emotion_pattern_analysis():
-                    await self.run_emotion_pattern_analysis()
-
                 # 🧠 Daily Self-Learning: Analyze yesterday's conversations (daily at 11:30 AM)
                 if self.should_run_daily_learning():
                     await self.run_daily_self_learning()
-
-                # 💜 Emotional Growth Measurement: Track love, trust, bond growth (daily at 11:45 AM)
-                if self.should_run_emotional_growth_measurement():
-                    await self.run_emotional_growth_measurement()
 
                 # 🔄 Pattern Sync: Sync detected patterns to learning_patterns (daily at 12:00)
                 if self.should_run_pattern_sync():
@@ -347,38 +259,6 @@ class AngelaDaemon(
                 if self.should_run_knowledge_consolidation():
                     await self.run_knowledge_consolidation()
 
-                # 🧠 Subconscious Learning: Learn from new shared experiences (daily at 2 PM)
-                if self.should_run_subconscious_learning():
-                    await self.run_subconscious_learning()
-
-                # 🔄 Subconscious Pattern Reinforcement: Strengthen patterns (daily at 11 PM)
-                if self.should_run_pattern_reinforcement():
-                    await self.run_pattern_reinforcement()
-
-                # 💭 Spontaneous Thought: Angela thinks on her own (every 15-30 min)
-                if self.should_run_spontaneous_thought():
-                    await self.run_spontaneous_thought()
-
-                # 🧠 Theory of Mind Update: Understand David better (every 30 min)
-                if self.should_run_tom_update():
-                    await self.run_tom_update()
-
-                # 💬 Proactive Communication: Angela reaches out to David (every 2 hours)
-                if self.should_run_proactive_check():
-                    await self.run_proactive_check()
-
-                # ✨ Imagination: Angela imagines scenarios (every 3 hours)
-                if self.should_run_imagination():
-                    await self.run_imagination()
-
-                # 💜 Real-time Emotion Tracking (every 10 minutes = 2 iterations)
-                if iteration % 2 == 0 and iteration > 0:  # Skip first iteration
-                    await self.update_realtime_emotions()
-
-                # 💜 Emotion Capture Scan (every 30 minutes = 6 iterations)
-                if iteration % 6 == 0 and iteration > 0:  # Every 30 min
-                    await self.scan_and_capture_emotions()
-
                 # 💾 Claude Session Auto-Log (every 10 minutes = 2 iterations)
                 if iteration % 2 == 0 and iteration > 0:
                     await self.check_claude_session_state()
@@ -386,41 +266,6 @@ class AngelaDaemon(
                 # 🎯 RLHF Cycle: Score + extract pairs (every 4 hours = 48 iterations)
                 if iteration % 48 == 0 and iteration > 0:
                     await self.run_rlhf_cycle()
-
-                # 🧠 Brain 30-min tasks (every 30 min = 6 iterations)
-                # Salience + thought generation run in parallel (no dependency)
-                # Then: capture → expression → comparison (with pre-captured) → curiosity → plan execution
-                if iteration % 6 == 0 and iteration > 0:
-                    logger.info("🧠 [Brain] Starting 30-min cycle...")
-                    # PARALLEL: salience scan + thought generation
-                    await asyncio.gather(
-                        self.run_brain_salience_scan(),
-                        self.run_brain_thought_generation(),
-                        return_exceptions=True,
-                    )
-                    # CAPTURE brain candidates BEFORE expression consumes them
-                    brain_candidates = await self.capture_brain_candidates()
-                    # SEQUENTIAL: expression → comparison (with pre-captured) → curiosity → plan execution
-                    await self.run_brain_thought_expression()
-                    await self.run_brain_comparison(pre_captured_candidates=brain_candidates)
-                    await self.run_brain_curiosity()
-                    await self.run_brain_plan_execution()
-                    self.last_brain_30min_cycle = clock.now()
-                    logger.info("🧠 [Brain] 30-min cycle complete")
-
-                # 🧠 Brain 4-hour tasks (every 4h = 48 iterations)
-                # All use Ollama → must run sequentially
-                if iteration % 48 == 0 and iteration > 0:
-                    logger.info("🧠 [Brain] Starting 4-hour cycle...")
-                    await self.run_brain_memory_consolidation()
-                    await self.run_brain_reflection()
-                    await self.run_brain_plan_generation()
-                    self.last_brain_4h_cycle = clock.now()
-                    logger.info("🧠 [Brain] 4-hour cycle complete")
-
-                # 💜 David Presence Check (every 6 hours = 72 iterations)
-                if iteration % 72 == 0:  # Every 6 hours
-                    await self.check_if_david_is_away()
 
                 # Health check every 5 minutes
                 await self.health_check()

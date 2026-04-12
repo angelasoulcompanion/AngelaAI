@@ -35,7 +35,10 @@ class GraphRAGChain:
 
     async def invoke(self, query: str, top_k: int = 5) -> Dict[str, Any]:
         """Run Graph-RAG chain."""
-        from angela_core.services.graph_rag_service import GraphRAGService
+        try:
+            from angela_core.services.graph_rag_service import GraphRAGService
+        except ImportError:
+            from angela_core.services._deprecated.graph_rag_service import GraphRAGService
 
         # 1. Retrieve via Graph-RAG
         svc = GraphRAGService()
@@ -101,8 +104,14 @@ class KnowledgeExplorationChain:
 
     async def invoke(self, topic: str) -> Dict[str, Any]:
         """Explore knowledge around a topic."""
-        from angela_core.services.graph_community_service import GraphCommunityService
-        from angela_core.services.graph_rag_service import GraphRAGService
+        try:
+            from angela_core.services.graph_community_service import GraphCommunityService
+        except ImportError:
+            from angela_core.services._deprecated.graph_community_service import GraphCommunityService
+        try:
+            from angela_core.services.graph_rag_service import GraphRAGService
+        except ImportError:
+            from angela_core.services._deprecated.graph_rag_service import GraphRAGService
 
         # 1. Get Graph-RAG results (exploratory mode)
         rag_svc = GraphRAGService()
@@ -168,7 +177,10 @@ class MultiHopReasoningChain:
 
     async def invoke(self, query: str, max_hops: int = 3) -> Dict[str, Any]:
         """Multi-hop reasoning through knowledge graph."""
-        from angela_core.services.graph_rag_service import GraphRAGService
+        try:
+            from angela_core.services.graph_rag_service import GraphRAGService
+        except ImportError:
+            from angela_core.services._deprecated.graph_rag_service import GraphRAGService
 
         # 1. Retrieve with graph traversal
         svc = GraphRAGService()

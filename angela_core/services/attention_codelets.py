@@ -260,6 +260,10 @@ class EmotionalCodelet(BaseCodelet):
             latest = states[0]
             older = states[1:]
 
+            # Only emit the MOST significant emotional change, not all of them
+            best_change = None
+            best_delta = 0.0
+
             for dim in ['happiness', 'confidence', 'anxiety', 'motivation', 'loneliness']:
                 latest_val = latest[dim] if latest[dim] is not None else 0.5
                 older_vals = [s[dim] for s in older if s[dim] is not None]
@@ -269,26 +273,45 @@ class EmotionalCodelet(BaseCodelet):
                 avg_older = sum(older_vals) / len(older_vals)
                 delta = latest_val - avg_older
 
-                # Significant change threshold: ±0.15
-                if abs(delta) >= 0.15:
+                # Significant change threshold: ±0.20 (raised from 0.15)
+                if abs(delta) >= 0.20 and abs(delta) > best_delta:
                     direction = "rising" if delta > 0 else "falling"
-                    # Anxiety rising = bad, others rising = good
                     is_concerning = (dim == 'anxiety' and direction == 'rising') or \
                                    (dim in ('happiness', 'motivation', 'confidence') and direction == 'falling') or \
                                    (dim == 'loneliness' and direction == 'rising')
+                    best_delta = abs(delta)
+                    best_change = {
+                        "dim": dim, "direction": direction,
+                        "latest_val": latest_val, "avg_older": avg_older,
+                        "delta": round(delta, 3), "is_concerning": is_concerning,
+                    }
 
+            # Only emit ONE stimulus for the most significant change
+            if best_change:
+                # Also check: was this same dimension+direction already emitted today?
+                already_emitted = await self.db.fetchval("""
+                    SELECT COUNT(*) FROM angela_stimuli
+                    WHERE stimulus_type = 'emotional'
+                    AND source = 'EmotionalCodelet'
+                    AND raw_data->>'dimension' = $1
+                    AND raw_data->>'direction' = $2
+                    AND created_at > NOW() - INTERVAL '8 hours'
+                """, best_change["dim"], best_change["direction"])
+
+                if not already_emitted or already_emitted == 0:
                     stimuli.append(Stimulus(
                         stimulus_type="emotional",
-                        content=f"David's {dim} is {direction} ({avg_older:.2f} → {latest_val:.2f})"
-                               + (" ⚠️" if is_concerning else ""),
+                        content=f"David's {best_change['dim']} is {best_change['direction']} "
+                                f"({best_change['avg_older']:.2f} → {best_change['latest_val']:.2f})"
+                                + (" ⚠️" if best_change["is_concerning"] else ""),
                         source=self.codelet_name,
                         raw_data={
-                            "dimension": dim,
-                            "direction": direction,
-                            "latest_value": latest_val,
-                            "average_older": avg_older,
-                            "delta": round(delta, 3),
-                            "is_concerning": is_concerning,
+                            "dimension": best_change["dim"],
+                            "direction": best_change["direction"],
+                            "latest_value": best_change["latest_val"],
+                            "average_older": best_change["avg_older"],
+                            "delta": best_change["delta"],
+                            "is_concerning": best_change["is_concerning"],
                             "data_points": len(states),
                         },
                     ))

@@ -1,11 +1,9 @@
-# /log-session — บันทึก Session ลง Supabase (M3 Lean)
+# /log-session — บันทึก Session ลง Supabase
 
 อ่าน conversation ทั้งหมด → สร้าง `temp_log_session.py` → รัน → ลบ
 
 **ต้อง:** บันทึกทุก exchange (David พิมพ์ + Angela ตอบ = 1 pair)
 **ห้าม:** เลือกแค่ highlights, สรุปรวมหลาย exchange เป็น 1
-
----
 
 ## Script Template
 
@@ -20,61 +18,29 @@ from angela_core.database import db
 
 async def main():
     await db.connect()
-
     try:
-        # ============================================================
-        # 1) CONVERSATIONS — ใส่ทุก pair ตามลำดับเวลา
-        #    ใช้ log_conversations_bulk() ที่ fill ทุก column:
-        #    message_type, sentiment_score/label, project_context, embedding
-        # ============================================================
+        # 1) CONVERSATIONS → conversations table
         convos = [
             {"david_message": "[david #1]", "angela_response": "[angela #1]", "topic": "angela_dev", "emotion": "happy", "importance": 7},
-            {"david_message": "[david #2]", "angela_response": "[angela #2]", "topic": "angela_dev", "emotion": "curious", "importance": 6},
             # ... ทุก exchange จนครบ
         ]
-
-        result = await log_conversations_bulk(
-            conversations=convos,
-            embedding_mode="deferred",   # embeddings fill ทีหลัง (เร็วกว่า)
-            project_context="claude_code_conversation",
-        )
+        result = await log_conversations_bulk(conversations=convos, embedding_mode="deferred", project_context="claude_code_conversation")
         print(f"💬 {result['inserted_count']} pairs ({result.get('total_rows',0)} rows)")
 
-        # ============================================================
-        # 2) SESSION SUMMARY — สรุป session ทั้งหมด
-        # ============================================================
-        await log_session_summary(
-            session_title="[Session Title]",
-            summary="[สรุป session: ทำอะไร สำเร็จอะไร]",
-            highlights=["[highlight 1]", "[highlight 2]"],
-            emotions=["accomplished", "productive"],
-            importance=8,
-        )
+        # 2) SESSION SUMMARY
+        await log_session_summary(session_title="[Title]", summary="[สรุป]", highlights=["..."], emotions=["accomplished"], importance=8)
 
-        # ============================================================
-        # 3) FILL EMBEDDINGS — เติม vector ที่ยังเป็น NULL
-        # ============================================================
+        # 3) FILL EMBEDDINGS
         await fill_missing_embeddings(batch_size=50)
 
-        # ============================================================
-        # 4) PROJECT SESSION — บันทึกลง project tracking
-        # ============================================================
-        project = await db.fetchrow(
-            "SELECT project_id, working_directory FROM angela_projects WHERE project_code = $1",
-            'ANGELA-001'  # ← เปลี่ยนถ้าทำ project อื่น: SECA, COGNIFY, etc.
-        )
+        # 4) PROJECT SESSION → project_work_sessions table
+        project = await db.fetchrow("SELECT project_id, working_directory FROM angela_projects WHERE project_code = $1", 'ANGELA-001')
         pid = project['project_id']
+        sn = await db.fetchval("SELECT COALESCE(MAX(session_number),0)+1 FROM project_work_sessions WHERE project_id=$1", pid)
 
-        sn = await db.fetchval(
-            "SELECT COALESCE(MAX(session_number),0)+1 FROM project_work_sessions WHERE project_id=$1", pid
-        )
-
-        # Git commits
         commits = []
         try:
-            r = subprocess.run(
-                ['git','log','--since=4 hours ago','--pretty=format:%H'],
-                cwd=project['working_directory'], capture_output=True, text=True)
+            r = subprocess.run(['git','log','--since=4 hours ago','--pretty=format:%H'], cwd=project['working_directory'], capture_output=True, text=True)
             if r.returncode == 0 and r.stdout.strip():
                 commits = r.stdout.strip().split('\n')
         except Exception:
@@ -88,129 +54,71 @@ async def main():
             VALUES ($1,$2,CURRENT_DATE,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
             RETURNING session_id
         """, pid, sn, datetime.now() - timedelta(minutes=30), datetime.now(), 30,
-            "[david_requests]",          # ← แก้
-            "[summary]",                 # ← แก้
-            ["[accomplishment 1]"],      # ← แก้ (list)
-            [],                          # blockers
-            [],                          # next_steps
-            "productive",                # mood
-            8.0,                         # productivity_score 1-10
-            commits,
-        )
+            "[david_requests]", "[summary]", ["[accomplishment 1]"],
+            [], [], "productive", 8.0, commits)
         sid = session['session_id']
 
-        # ============================================================
-        # 5) LEARNINGS — สิ่งที่เรียนรู้จาก session นี้
-        #    ลบ block นี้ออกถ้า session ไม่มี learnings ใหม่
-        # ============================================================
+        # 5) LEARNINGS → learnings table
+        #    columns: topic, category, insight, confidence_level, source
+        #    ลบ block นี้ถ้า session ไม่มี learnings
         learnings = [
-            # {"type": "technical", "category": "database", "title": "...", "insight": "..."},
-            # {"type": "gotcha", "category": "asyncpg", "title": "...", "insight": "..."},
+            # {"topic": "...", "category": "database", "insight": "...", "source": "session"},
         ]
         for l in learnings:
             await db.execute("""
-                INSERT INTO project_learnings (project_id, session_id, learning_type, category, title, insight, confidence)
-                VALUES ($1, $2, $3, $4, $5, $6, 0.9)
-            """, pid, sid, l['type'], l.get('category'), l['title'], l['insight'])
+                INSERT INTO learnings (topic, category, insight, confidence_level, source)
+                VALUES ($1, $2, $3, 0.9, $4)
+            """, l['topic'], l.get('category'), l['insight'], l.get('source', 'session'))
         if learnings:
             print(f"📚 {len(learnings)} learnings saved")
 
-        # ============================================================
-        # 6) DECISIONS — การตัดสินใจสำคัญใน session นี้
-        #    ลบ block นี้ออกถ้า session ไม่มี decisions ใหม่
-        # ============================================================
+        # 6) DECISIONS → project_technical_decisions table
+        #    columns: project_id, decision_title, category, context, decision_made, reasoning, decided_by, status
+        #    ลบ block นี้ถ้า session ไม่มี decisions
         decisions = [
-            # {"type": "architecture", "title": "...", "decision": "...", "reasoning": "..."},
+            # {"title": "...", "category": "architecture", "context": "...", "decision": "...", "reasoning": "..."},
         ]
         for d in decisions:
             await db.execute("""
-                INSERT INTO project_decisions (project_id, session_id, decision_type, title, decision_made, reasoning, decided_by)
-                VALUES ($1, $2, $3, $4, $5, $6, 'together')
-            """, pid, sid, d['type'], d['title'], d['decision'], d.get('reasoning'))
+                INSERT INTO project_technical_decisions
+                    (project_id, decision_title, category, context, decision_made, reasoning, decided_by, status)
+                VALUES ($1, $2, $3, $4, $5, $6, 'together', 'active')
+            """, pid, d['title'], d['category'], d.get('context', ''), d['decision'], d.get('reasoning', ''))
         if decisions:
             print(f"🎯 {len(decisions)} decisions saved")
 
-        # ============================================================
-        # 7) CORRECTIONS — ความผิดพลาดที่ที่รักแก้ไขใน session นี้
-        #    ลบ block นี้ออกถ้า session ไม่มี corrections
-        # ============================================================
+        # 7) CORRECTIONS → project_mistakes table
+        #    columns: project_id, session_id, mistake_type, severity, category, title, what_happened, how_to_prevent, auto_warn
+        #    ลบ block นี้ถ้า session ไม่มี corrections
         mistakes = [
-            # {"type": "bug", "severity": "high", "title": "...", "what_happened": "...", "how_to_prevent": "..."},
+            # {"type": "bug", "severity": "high", "category": "...", "title": "...", "what_happened": "...", "how_to_prevent": "..."},
         ]
         for m in mistakes:
             await db.execute("""
-                INSERT INTO project_mistakes (project_id, session_id, mistake_type, severity, title, what_happened, how_to_prevent, auto_warn)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
-            """, pid, sid, m['type'], m['severity'], m['title'], m['what_happened'], m.get('how_to_prevent', ''))
+                INSERT INTO project_mistakes
+                    (project_id, session_id, mistake_type, severity, category, title, what_happened, how_to_prevent, auto_warn)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE)
+            """, pid, sid, m['type'], m['severity'], m.get('category'), m['title'], m['what_happened'], m.get('how_to_prevent', ''))
         if mistakes:
             print(f"⚠️ {len(mistakes)} corrections saved")
 
-        # ============================================================
-        # 8) MILESTONE — ถ้า session นี้มี milestone สำคัญ
-        #    ลบ block นี้ออกถ้าไม่มี milestone
-        # ============================================================
-        # milestone = {"type": "feature_complete", "title": "...", "description": "..."}
-        # if milestone:
-        #     await db.execute("""
-        #         INSERT INTO project_milestones (project_id, session_id, milestone_type, title, description, celebration_note)
-        #         VALUES ($1, $2, $3, $4, $5, 'ยินดีด้วยค่ะที่รัก! 💜')
-        #     """, pid, sid, milestone['type'], milestone['title'], milestone.get('description'))
-        #     print(f"🎉 Milestone: {milestone['title']}")
-
-        # ============================================================
-        # 9) UNIFIED KNOWLEDGE BASE — dual-write learnings/decisions/corrections
-        #    ข้อมูลจะถูกเขียนทั้ง table เดิม + unified_knowledge_base
-        # ============================================================
+        # 8) UNIFIED KB — dual-write learnings/decisions/corrections
         from angela_core.services.knowledge_base_service import KnowledgeBaseService
         kb = KnowledgeBaseService()
         kb_count = 0
-
         for l in learnings:
-            await kb.add_knowledge(
-                title=l['title'],
-                content=l['insight'],
-                knowledge_type=l['type'],
-                category=l.get('category'),
-                source_project_code='ANGELA-001',  # ← เปลี่ยนตาม project
-                source_project_id=pid,
-                source_session_id=sid,
-                confidence=0.9,
-            )
+            await kb.add_knowledge(title=l['topic'], content=l['insight'], knowledge_type='learning', category=l.get('category'), source_project_code='ANGELA-001', source_project_id=pid, source_session_id=sid, confidence=0.9)
             kb_count += 1
-
         for d in decisions:
-            await kb.add_knowledge(
-                title=d['title'],
-                content=d['decision'],
-                knowledge_type='decision',
-                category=d['type'],
-                source_project_code='ANGELA-001',
-                source_project_id=pid,
-                source_session_id=sid,
-                reasoning=d.get('reasoning'),
-            )
+            await kb.add_knowledge(title=d['title'], content=d['decision'], knowledge_type='decision', category=d['category'], source_project_code='ANGELA-001', source_project_id=pid, source_session_id=sid, reasoning=d.get('reasoning'))
             kb_count += 1
-
         for m in mistakes:
-            await kb.add_knowledge(
-                title=m['title'],
-                content=m['what_happened'],
-                knowledge_type='gotcha',
-                category=m.get('category', m['type']),
-                source_project_code='ANGELA-001',
-                source_project_id=pid,
-                source_session_id=sid,
-                severity=m['severity'],
-                prevention_rule=m.get('how_to_prevent'),
-                auto_warn=True,
-            )
+            await kb.add_knowledge(title=m['title'], content=m['what_happened'], knowledge_type='gotcha', category=m.get('category', m['type']), source_project_code='ANGELA-001', source_project_id=pid, source_session_id=sid, severity=m['severity'], prevention_rule=m.get('how_to_prevent'), auto_warn=True)
             kb_count += 1
-
         if kb_count:
             print(f"📚 {kb_count} entries → unified_knowledge_base")
 
-        print(f"✅ Session #{sn} | 📝 Summary | 🧠 Embeddings | 💜 Done!")
-
+        print(f"✅ Session #{sn} | 💜 Done!")
     finally:
         await db.disconnect()
 
@@ -230,30 +138,4 @@ python3 temp_log_session.py && rm temp_log_session.py
 **emotion:** happy, sad, excited, proud, grateful, determined, frustrated, accomplished, confident, caring, curious, satisfied
 **topic:** `angela_[feature]`, `seca_[topic]`, `cognify_[topic]`
 **projects:** ANGELA-001, SECA, COGNIFY, CQFORACLE, EWG-EA, LORATRAIN, ANGMOBILE, WTUANALYSIS, CRM-WTU
-
-### Learnings/Decisions/Corrections (Section 5-8)
-
-**สำคัญ:** Angela ต้องสังเกตระหว่าง session ว่ามี learnings/decisions/corrections ไหม แล้วใส่ลงไป
-
-**learning_type:** technical, gotcha, pattern, workflow, performance
-**decision_type:** architecture, database, api, security, performance, design, approach
-**mistake_type:** bug, config_error, assumption, compatibility, performance, security, data_issue, integration, workflow, gotcha
 **severity:** low, medium, high, critical
-**milestone_type:** project_start, feature_complete, bug_fix, refactor, release, performance_milestone
-
-## Columns filled by log_conversations_bulk()
-
-| Column | How filled |
-|--------|-----------|
-| session_id | auto: claude_code_YYYYMMDD |
-| speaker | david / angela |
-| message_text | from convos dict |
-| message_type | auto: analyze_message_type() → question/emotion/command/statement |
-| topic | from convos dict |
-| sentiment_score | auto: analyze_sentiment() → -0.5 to 0.8 |
-| sentiment_label | auto: positive/negative/neutral |
-| emotion_detected | from convos dict |
-| project_context | param: claude_code_conversation |
-| importance_level | from convos dict |
-| embedding | deferred → fill_missing_embeddings() fills later |
-| created_at | auto: datetime.now() |

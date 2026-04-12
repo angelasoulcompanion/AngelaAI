@@ -80,14 +80,51 @@ class BackendManager: ObservableObject {
         proc.arguments = [apiPath, "--port", String(port)]
         proc.currentDirectoryURL = URL(fileURLWithPath: (apiPath as NSString).deletingLastPathComponent)
 
+        // Inherit environment + ensure Python can find packages & secrets
         var env = ProcessInfo.processInfo.environment
         env["PYTHONUNBUFFERED"] = "1"
+
+        // Ensure HOME is set (Xcode sandbox may strip it)
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        env["HOME"] = home
+
+        // Add PYTHONPATH so imports resolve correctly
+        let projectRoot = (apiPath as NSString).deletingLastPathComponent
+        env["PYTHONPATH"] = projectRoot
+
+        // Ensure PATH includes Python framework
+        if env["PATH"]?.contains("/Library/Frameworks/Python.framework") != true {
+            env["PATH"] = [
+                "/Library/Frameworks/Python.framework/Versions/3.13/bin",
+                "/opt/homebrew/bin",
+                "/usr/local/bin",
+                env["PATH"] ?? "/usr/bin"
+            ].joined(separator: ":")
+        }
+
         proc.environment = env
 
         let outputPipe = Pipe()
         let errorPipe = Pipe()
         proc.standardOutput = outputPipe
         proc.standardError = errorPipe
+
+        // Capture stdout/stderr for debugging
+        outputPipe.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            if !data.isEmpty, let str = String(data: data, encoding: .utf8) {
+                print("[AITop Backend] \(str)", terminator: "")
+            }
+        }
+        errorPipe.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            if !data.isEmpty, let str = String(data: data, encoding: .utf8) {
+                print("[AITop Backend ERROR] \(str)", terminator: "")
+                DispatchQueue.main.async { [weak self] in
+                    self?.lastError = str.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            }
+        }
 
         proc.terminationHandler = { [weak self] p in
             DispatchQueue.main.async {
@@ -101,15 +138,17 @@ class BackendManager: ObservableObject {
         do {
             try proc.run()
             process = proc
+            print("[BackendManager] Started python3 \(apiPath) --port \(port)")
             DispatchQueue.main.async {
                 self.isRunning = true
                 self.statusMessage = "Starting on port \(port)..."
             }
 
-            DispatchQueue.global().asyncAfter(deadline: .now() + 2.0) { [weak self] in
-                self?.waitForServer(port: port, attempts: 10)
+            DispatchQueue.global().asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                self?.waitForServer(port: port, attempts: 15)
             }
         } catch {
+            print("[BackendManager] Failed to start: \(error)")
             DispatchQueue.main.async {
                 self.lastError = error.localizedDescription
                 self.statusMessage = "Failed: \(error.localizedDescription)"

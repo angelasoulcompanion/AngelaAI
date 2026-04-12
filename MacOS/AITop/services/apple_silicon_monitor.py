@@ -1,12 +1,11 @@
 """
 Apple Silicon GPU & Neural Engine Monitor.
 GPU: reads 'Device Utilization %' from ioreg IOAccelerator (no sudo needed).
-ANE: reads from ioreg AppleARMIODevice (best effort).
+ANE: reads power-gates from ioreg ane device + detects CoreML processes.
 """
 
 import re
 import subprocess
-import time
 from typing import Optional
 
 
@@ -36,7 +35,7 @@ def get_gpu_usage() -> dict:
             "vram_used_bytes": in_use_mem if in_use_mem >= 0 else 0,
             "vram_alloc_bytes": alloc_mem if alloc_mem >= 0 else 0,
         }
-    except Exception as e:
+    except Exception:
         return {
             "gpu_percent": -1,
             "renderer_percent": -1,
@@ -46,22 +45,48 @@ def get_gpu_usage() -> dict:
         }
 
 
-def get_ane_power() -> dict:
+def get_ane_status() -> dict:
     """
-    Get Neural Engine power consumption (mW) from ioreg.
-    ANE usage % is not directly available, but power gives an indication.
+    Get Neural Engine status from ioreg power-gates + CoreML process detection.
+    macOS does not expose ANE utilization % without sudo/powermetrics.
+    We use two heuristics:
+    1. power-gates bytes from ioreg ane device (non-zero = powered on)
+    2. Check for coremlcompiler/ANECompilerService processes
     """
+    ane_active = False
+    power_gate_value = 0
+
+    # Method 1: Check power-gates from ioreg
     try:
         result = subprocess.run(
-            ["ioreg", "-r", "-d", "1", "-w", "0", "-n", "ane0"],
-            capture_output=True, text=True, timeout=5
+            ["ioreg", "-r", "-n", "ane", "-d", "1", "-w", "0"],
+            capture_output=True, text=True, timeout=3
         )
-        if "ane-power" in result.stdout:
-            power = _extract_value(result.stdout, "ane-power")
-            return {"ane_power_mw": power, "ane_active": power > 0}
+        if "power-gates" in result.stdout:
+            # Parse power-gates = <b4000000a4010000>
+            match = re.search(r'"power-gates"\s*=\s*<([0-9a-f]+)>', result.stdout)
+            if match:
+                hex_str = match.group(1)
+                power_gate_value = int(hex_str, 16)
+                ane_active = power_gate_value > 0
     except Exception:
         pass
-    return {"ane_power_mw": 0, "ane_active": False}
+
+    # Method 2: Check if CoreML/ANE processes are running
+    try:
+        result = subprocess.run(
+            ["pgrep", "-fl", "coreml|ANECompiler|espresso|aned"],
+            capture_output=True, text=True, timeout=3
+        )
+        if result.stdout.strip():
+            ane_active = True
+    except Exception:
+        pass
+
+    return {
+        "ane_active": ane_active,
+        "ane_power_mw": 0,  # Not available without sudo
+    }
 
 
 def _extract_value(text: str, key: str) -> int:
@@ -76,7 +101,7 @@ def _extract_value(text: str, key: str) -> int:
 def get_gpu_ane_usage() -> dict:
     """Combined GPU + ANE usage for dashboard."""
     gpu = get_gpu_usage()
-    ane = get_ane_power()
+    ane = get_ane_status()
     return {
         "gpu_percent": gpu["gpu_percent"],
         "renderer_percent": gpu["renderer_percent"],

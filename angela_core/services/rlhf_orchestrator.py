@@ -20,7 +20,10 @@ from typing import Dict, Any
 
 from angela_core.services.reward_score_service import RewardScoreService
 from angela_core.services.preference_pairs_service import PreferencePairsService
-from angela_core.services.ab_quality_tester import ABQualityTester
+try:
+    from angela_core.services.ab_quality_tester import ABQualityTester
+except ImportError:
+    from angela_core.services._deprecated.ab_quality_tester import ABQualityTester
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@
 Channel Router — Smart message routing across all channels.
 =============================================================
 Central router that decides which channel to use based on:
-- Message priority (urgent→Telegram/LINE, normal→chat_queue, formal→email)
+- Message priority (urgent→LINE/chat_queue, normal→chat_queue, formal→email)
 - Channel availability
 - User preference
 - Rate limits
@@ -30,7 +30,7 @@ class ChannelRouter:
     Smart message routing across multiple channels.
 
     Priority-based auto-routing:
-    - urgent → Telegram first, LINE fallback
+    - urgent → LINE first, chat_queue fallback
     - normal → chat_queue (shown at init)
     - formal → email
     - low → chat_queue
@@ -142,10 +142,9 @@ class ChannelRouter:
         priority = message.priority
 
         if priority == "urgent":
-            # Try Telegram first, then LINE, then chat_queue
-            for ch in ["telegram", "line"]:
-                if ch in self._channels and self._channels[ch].is_available:
-                    return ch
+            # Try LINE first, then chat_queue
+            if "line" in self._channels and self._channels["line"].is_available:
+                return "line"
             return "chat_queue"
 
         elif priority == "formal":
@@ -194,12 +193,10 @@ def get_channel_router() -> ChannelRouter:
         _router = ChannelRouter()
 
         # Register default channels
-        from angela_core.channels.telegram_channel import TelegramChannel
         from angela_core.channels.line_channel import LINEChannel
         from angela_core.channels.email_channel import EmailChannel
         from angela_core.channels.chat_queue_channel import ChatQueueChannel
 
-        _router.register_channel(TelegramChannel())
         _router.register_channel(LINEChannel())
         _router.register_channel(EmailChannel())
         _router.register_channel(ChatQueueChannel())

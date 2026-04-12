@@ -196,7 +196,7 @@ class EnhancedMemoryRestore:
             summary_parts.append(f"   - {conv_count} conversations today")
 
             # Show recent topics
-            topics = [c.get("topic", "general") for c in snapshot["todays_conversations"][:5]]
+            topics = [c.get("topic") or "general" for c in snapshot["todays_conversations"][:5]]
             summary_parts.append(f"   - Recent topics: {', '.join(set(topics))}")
             summary_parts.append("")
 

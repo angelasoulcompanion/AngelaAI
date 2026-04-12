@@ -28,7 +28,10 @@ warnings.warn(
 
 from angela_core.database import db
 from angela_core.config import config
-from angela_core.services.emotion_capture_service import emotion_capture
+try:
+    from angela_core.services.emotion_capture_service import emotion_capture
+except ImportError:
+    from angela_core.services._deprecated.emotion_capture_service import emotion_capture
 from angela_core.utils.memory_helpers import (
     analyze_message_type,
     analyze_sentiment,

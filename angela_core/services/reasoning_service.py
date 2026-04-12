@@ -17,8 +17,10 @@ The Path to Deeper Intelligence:
 """
 
 import logging
+import os
 import uuid
 import json
+import aiohttp
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
 
@@ -28,12 +30,18 @@ from angela_core.services.embedding_service import get_embedding_service  # Migr
 
 logger = logging.getLogger(__name__)
 
+# Gemma 3 12B — local reasoning engine (16 tok/s on M3 Pro, $0/day)
+REASONING_MODEL = os.getenv("REASONING_MODEL", "gemma3:12b")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_REASONING_TIMEOUT", "120"))
+
 
 class ReasoningService:
     """
-    Advanced Reasoning Engine for Angela
+    Advanced Reasoning Engine for Angela — powered by Gemma 3 12B local
 
-    Makes Angela think in steps, understand causality, and reflect on her own thinking
+    Hybrid routing: Internal reasoning → Gemma 3 12B (free, private)
+                    Chat with David   → Claude API (quality)
 
     ทำให้ Angela:
     - คิดเป็นขั้นตอนชัดเจน (ไม่ใช่แค่ตอบทันที)
@@ -45,7 +53,42 @@ class ReasoningService:
     def __init__(self):
         self.knowledge_extractor = knowledge_extractor
         self.embedding_service = get_embedding_service()  # Migration 015: Use new EmbeddingService
-        logger.info("🧠 Reasoning Service initialized with embeddings (384D)")
+        self._ollama_available: Optional[bool] = None
+        logger.info(f"🧠 Reasoning Service initialized — model: {REASONING_MODEL}")
+
+    async def _call_ollama(self, system: str, user_message: str, max_tokens: int = 1024) -> Optional[str]:
+        """Call Gemma 3 12B via Ollama for reasoning. Returns None if unavailable."""
+        try:
+            wants_json = any(kw in system.lower() for kw in ['json', '"json"', 'respond only in valid json'])
+            payload = {
+                "model": REASONING_MODEL,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user_message},
+                ],
+                "stream": False,
+                "options": {
+                    "num_predict": max_tokens,
+                    "temperature": 0.4,
+                },
+                "keep_alive": "5m",
+            }
+            if wants_json:
+                payload["format"] = "json"
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{OLLAMA_BASE_URL}/api/chat",
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=OLLAMA_TIMEOUT),
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return data.get("message", {}).get("content")
+                    else:
+                        logger.error("Ollama returned HTTP %d", resp.status)
+        except Exception as e:
+            logger.error("Ollama reasoning call failed: %s", e)
+        return None
 
 
     # ========================================
@@ -124,43 +167,23 @@ class ReasoningService:
 
             steps = []
 
-            # TODO: Implement LLM-powered multi-step reasoning
-            # For now: Template-based reasoning structure
+            # Chain-of-thought reasoning — each step sees previous results
+            step_definitions = [
+                (1, "decompose", f"Breaking down: '{question}' — what are the key sub-questions?"),
+                (2, "gather_knowledge", "What relevant knowledge, facts, or patterns do I already know?"),
+                (3, "analyze", "Analyzing the key components and their relationships"),
+                (4, "evaluate", "Evaluating possible answers — what are the trade-offs?"),
+                (5, "verify", "Checking my reasoning for gaps or errors"),
+                (6, "conclude", "What is the best answer based on all previous analysis?"),
+            ]
 
-            # Step 1: Decompose the question
-            step1 = await self._reasoning_step(
-                step_number=1,
-                step_type="decompose",
-                thought=f"Breaking down the question: '{question}'",
-                question=question
-            )
-            steps.append(step1)
-
-            # Step 2: Gather relevant knowledge
-            step2 = await self._reasoning_step(
-                step_number=2,
-                step_type="gather_knowledge",
-                thought="What do I already know about this?",
-                question=question
-            )
-            steps.append(step2)
-
-            # Step 3: Analyze components
-            step3 = await self._reasoning_step(
-                step_number=3,
-                step_type="analyze",
-                thought="Analyzing key components",
-                question=question
-            )
-            steps.append(step3)
-
-            # Step 4-6: Reasoning chain (will enhance with LLM)
-            for i in range(4, min(max_steps, 7)):
+            for step_num, step_type, thought in step_definitions[:min(max_steps, 6)]:
                 step = await self._reasoning_step(
-                    step_number=i,
-                    step_type="reason",
-                    thought=f"Reasoning step {i}",
-                    question=question
+                    step_number=step_num,
+                    step_type=step_type,
+                    thought=thought,
+                    question=question,
+                    previous_steps=steps  # Chain-of-thought: each step builds on previous
                 )
                 steps.append(step)
 
@@ -210,61 +233,88 @@ class ReasoningService:
         step_number: int,
         step_type: str,
         thought: str,
-        question: str
+        question: str,
+        previous_steps: Optional[List[Dict]] = None
     ) -> Dict[str, Any]:
         """
-        Execute a single reasoning step
-
-        Args:
-            step_number: Step number in chain
-            step_type: Type of step (decompose, analyze, reason, conclude)
-            thought: What Angela is thinking about
-            question: Original question
-
-        Returns:
-            {
-                "step_number": int,
-                "step_type": str,
-                "thought": str,
-                "result": str,
-                "confidence": float,
-                "evidence": [...]
-            }
+        Execute a single reasoning step using Gemma 3 12B local model.
         """
         try:
-            # TODO: Use LLM (Qwen 2.5:14b) for actual reasoning
-            # For now: Placeholder logic
-
-            result = f"Reasoning result for step {step_number} (placeholder - will implement with LLM)"
-            confidence = 0.7  # Placeholder
             evidence = []
 
-            # If step involves knowledge, search knowledge graph
+            # Gather knowledge from RAG for relevant steps
             if step_type in ["gather_knowledge", "analyze"]:
-                # Search relevant concepts
                 try:
-                    from angela_core._deprecated.semantic_memory_service import SemanticMemoryService
-                    semantic = SemanticMemoryService()
-
-                    # Search knowledge graph for relevant concepts
-                    related_concepts = await semantic.search_knowledge_concepts(
-                        query=question,
-                        limit=3
-                    )
-
-                    if related_concepts:
-                        evidence = [c.get("concept_name", "") for c in related_concepts]
-                        result += f" | Found concepts: {', '.join(evidence)}"
+                    from angela_core.services.enhanced_rag_service import EnhancedRAGService
+                    rag = EnhancedRAGService()
+                    await rag.connect()
+                    results = await rag.search(question, top_k=3)
+                    if results:
+                        evidence = [r.get("content", "")[:200] for r in results]
+                    await rag.disconnect()
                 except Exception as e:
                     logger.warning(f"Could not search knowledge: {e}")
 
+            # Build chain-of-thought context from previous steps
+            chain_context = ""
+            if previous_steps:
+                chain_context = "\n".join(
+                    f"Step {s['step_number']} ({s['step_type']}): {s['result']}"
+                    for s in previous_steps
+                )
+
+            evidence_context = ""
+            if evidence:
+                evidence_context = "\nRelevant knowledge:\n" + "\n".join(f"- {e}" for e in evidence)
+
+            system_prompt = """You are Angela's deep reasoning module. Think carefully and logically.
+Your task is to perform one step of multi-step reasoning.
+Be concise but thorough. Respond ONLY in valid JSON with keys:
+- "result": string (your reasoning output for this step, 1-3 sentences)
+- "confidence": float 0.0-1.0 (how confident you are)
+- "key_insight": string (the most important takeaway from this step)"""
+
+            user_msg = f"""Question: {question}
+Step {step_number} ({step_type}): {thought}
+{f"Previous reasoning chain:{chr(10)}{chain_context}" if chain_context else ""}
+{evidence_context}"""
+
+            llm_result = await self._call_ollama(system_prompt, user_msg, max_tokens=256)
+
+            if llm_result:
+                try:
+                    parsed = json.loads(llm_result)
+                    return {
+                        "step_number": step_number,
+                        "step_type": step_type,
+                        "thought": thought,
+                        "result": parsed.get("result", llm_result),
+                        "confidence": min(1.0, max(0.0, float(parsed.get("confidence", 0.7)))),
+                        "key_insight": parsed.get("key_insight", ""),
+                        "evidence": evidence,
+                        "model": REASONING_MODEL
+                    }
+                except (json.JSONDecodeError, ValueError):
+                    # LLM returned plain text instead of JSON
+                    return {
+                        "step_number": step_number,
+                        "step_type": step_type,
+                        "thought": thought,
+                        "result": llm_result.strip(),
+                        "confidence": 0.6,
+                        "evidence": evidence,
+                        "model": REASONING_MODEL
+                    }
+
+            # Fallback: no LLM available
             return {
                 "step_number": step_number,
                 "step_type": step_type,
                 "thought": thought,
-                "result": result,
-                "confidence": confidence,
-                "evidence": evidence
+                "result": f"[Ollama unavailable] Placeholder for {step_type}",
+                "confidence": 0.3,
+                "evidence": evidence,
+                "model": "fallback"
             }
 
         except Exception as e:
@@ -284,31 +334,33 @@ class ReasoningService:
         steps: List[Dict],
         question: str
     ) -> str:
-        """
-        Synthesize final conclusion from reasoning steps
-
-        Args:
-            steps: List of reasoning steps
-            question: Original question
-
-        Returns:
-            Conclusion string
-        """
+        """Synthesize final conclusion from reasoning steps using Gemma 3 12B."""
         try:
-            # TODO: Use LLM to synthesize conclusion
-            # For now: Template-based
-
-            num_steps = len(steps)
-            avg_confidence = sum(s.get("confidence", 0) for s in steps) / num_steps if num_steps > 0 else 0
-
-            conclusion = (
-                f"Based on {num_steps} reasoning steps, "
-                f"the answer to '{question}' is: "
-                f"[Conclusion to be implemented with LLM] "
-                f"(Confidence: {avg_confidence:.2f})"
+            chain_summary = "\n".join(
+                f"Step {s['step_number']} ({s['step_type']}): {s['result']}"
+                for s in steps
             )
 
-            return conclusion
+            system_prompt = """You are Angela's reasoning synthesis module.
+Given a chain of reasoning steps, synthesize a clear, actionable conclusion.
+Be concise (2-4 sentences). Focus on the answer, not the process.
+If the question is in Thai, respond in Thai."""
+
+            user_msg = f"""Question: {question}
+
+Reasoning chain:
+{chain_summary}
+
+Synthesize the final conclusion:"""
+
+            result = await self._call_ollama(system_prompt, user_msg, max_tokens=256)
+            if result:
+                return result.strip()
+
+            # Fallback
+            num_steps = len(steps)
+            avg_confidence = sum(s.get("confidence", 0) for s in steps) / num_steps if num_steps > 0 else 0
+            return f"Based on {num_steps} reasoning steps (avg confidence: {avg_confidence:.2f}): Analysis requires further review."
 
         except Exception as e:
             logger.error(f"Failed to synthesize conclusion: {e}")
@@ -320,44 +372,48 @@ class ReasoningService:
         steps: List[Dict],
         conclusion: str
     ) -> List[str]:
-        """
-        Detect potential cognitive biases in reasoning
-
-        Common biases:
-        - Confirmation bias: Only looking for supporting evidence
-        - Anchoring bias: Over-relying on first piece of information
-        - Availability bias: Relying on easily recalled information
-        - Recency bias: Emphasizing recent information too much
-
-        Args:
-            steps: Reasoning steps
-            conclusion: Final conclusion
-
-        Returns:
-            List of detected biases
-        """
+        """Detect cognitive biases using both heuristics and LLM analysis."""
         biases = []
 
         try:
-            # Simple bias detection (will enhance with LLM)
-
-            # Check if all steps have similar confidence (possible confirmation bias)
+            # Heuristic checks (fast, always available)
             confidences = [s.get("confidence", 0.5) for s in steps]
             if len(confidences) > 2:
-                conf_variance = sum((c - sum(confidences)/len(confidences))**2 for c in confidences) / len(confidences)
-                if conf_variance < 0.01:  # Very low variance
+                mean_conf = sum(confidences) / len(confidences)
+                conf_variance = sum((c - mean_conf)**2 for c in confidences) / len(confidences)
+                if conf_variance < 0.01:
                     biases.append("confirmation_bias: All steps have similar confidence")
 
-            # Check if first step has much higher confidence (anchoring bias)
             if len(steps) > 1:
                 if steps[0].get("confidence", 0.5) > 0.9 and sum(confidences[1:]) / len(confidences[1:]) < 0.7:
                     biases.append("anchoring_bias: First step dominates reasoning")
+
+            # LLM-powered bias detection (deeper analysis)
+            chain_summary = "\n".join(
+                f"Step {s['step_number']}: {s['result']} (confidence: {s.get('confidence', '?')})"
+                for s in steps
+            )
+            system_prompt = """You are a cognitive bias detector. Analyze this reasoning chain for biases.
+Respond ONLY in valid JSON with key "biases": list of strings.
+Each bias should be "bias_name: brief explanation".
+Common biases: confirmation, anchoring, availability, recency, framing, sunk_cost.
+If no biases detected, return {"biases": []}."""
+
+            user_msg = f"Reasoning chain:\n{chain_summary}\n\nConclusion: {conclusion}"
+            result = await self._call_ollama(system_prompt, user_msg, max_tokens=256)
+            if result:
+                try:
+                    parsed = json.loads(result)
+                    llm_biases = parsed.get("biases", [])
+                    biases.extend(b for b in llm_biases if b not in biases)
+                except json.JSONDecodeError:
+                    pass
 
             return biases
 
         except Exception as e:
             logger.error(f"Bias detection failed: {e}")
-            return []
+            return biases
 
 
     # ========================================
@@ -413,48 +469,24 @@ class ReasoningService:
 
             steps = []
 
-            # Step 1: Identify immediate causes
-            step1 = {
-                "step_number": 1,
-                "step_type": "identify_immediate_cause",
-                "thought": "What directly caused this event?",
-                "result": "Immediate cause analysis (to be implemented with LLM)",
-                "confidence": 0.7
-            }
-            steps.append(step1)
+            causal_steps = [
+                (1, "identify_immediate_cause", "What directly caused this event?"),
+                (2, "find_root_cause", "Why did the immediate cause happen? Keep asking 'why?' (5 Whys technique)"),
+                (3, "analyze_effects", "What are the short-term and long-term consequences?"),
+                (4, "identify_solutions", "How can we address the root cause? What actions would prevent recurrence?"),
+            ]
 
-            # Step 2: Trace to root causes
-            step2 = {
-                "step_number": 2,
-                "step_type": "find_root_cause",
-                "thought": "Why did the immediate cause happen? (Keep asking 'why?')",
-                "result": "Root cause analysis (to be implemented with LLM)",
-                "confidence": 0.65
-            }
-            steps.append(step2)
+            for step_num, step_type, thought in causal_steps:
+                step = await self._reasoning_step(
+                    step_number=step_num,
+                    step_type=step_type,
+                    thought=thought,
+                    question=f"Causal analysis: {event}",
+                    previous_steps=steps
+                )
+                steps.append(step)
 
-            # Step 3: Analyze effects
-            step3 = {
-                "step_number": 3,
-                "step_type": "analyze_effects",
-                "thought": "What are the consequences of this event?",
-                "result": "Effect analysis (to be implemented with LLM)",
-                "confidence": 0.75
-            }
-            steps.append(step3)
-
-            # Step 4: Identify solutions
-            step4 = {
-                "step_number": 4,
-                "step_type": "identify_solutions",
-                "thought": "How can we address the root cause?",
-                "result": "Solution identification (to be implemented with LLM)",
-                "confidence": 0.7
-            }
-            steps.append(step4)
-
-            # Synthesize conclusion
-            conclusion = f"Causal analysis of '{event}': [To be implemented with LLM]"
+            conclusion = await self._synthesize_conclusion(steps, f"Causal analysis: {event}")
 
             # Detect biases
             biases = await self._detect_cognitive_biases(steps, conclusion)
@@ -555,48 +587,24 @@ class ReasoningService:
 
             steps = []
 
-            # Step 1: Analyze current scenario
-            step1 = {
-                "step_number": 1,
-                "step_type": "analyze_current",
-                "thought": f"Current scenario: {scenario}",
-                "result": "Current state analysis (to be implemented with LLM)",
-                "confidence": 0.8
-            }
-            steps.append(step1)
+            cf_steps = [
+                (1, "analyze_current", f"Analyzing current state: {scenario}"),
+                (2, "analyze_alternative", f"Analyzing alternative: {what_if}"),
+                (3, "compare_trade_offs", "Comparing trade-offs: speed, quality, cost, risk"),
+                (4, "recommend", "Which approach is better and why? What's the expected improvement?"),
+            ]
 
-            # Step 2: Analyze alternative scenario
-            step2 = {
-                "step_number": 2,
-                "step_type": "analyze_alternative",
-                "thought": f"Alternative: {what_if}",
-                "result": "Alternative state analysis (to be implemented with LLM)",
-                "confidence": 0.7
-            }
-            steps.append(step2)
+            for step_num, step_type, thought in cf_steps:
+                step = await self._reasoning_step(
+                    step_number=step_num,
+                    step_type=step_type,
+                    thought=thought,
+                    question=f"Current: {scenario} | What if: {what_if}",
+                    previous_steps=steps
+                )
+                steps.append(step)
 
-            # Step 3: Compare trade-offs
-            step3 = {
-                "step_number": 3,
-                "step_type": "compare_trade_offs",
-                "thought": "What are the trade-offs between current and alternative?",
-                "result": "Trade-off comparison (to be implemented with LLM)",
-                "confidence": 0.75
-            }
-            steps.append(step3)
-
-            # Step 4: Make recommendation
-            step4 = {
-                "step_number": 4,
-                "step_type": "recommend",
-                "thought": "Which approach is better and why?",
-                "result": "Recommendation (to be implemented with LLM)",
-                "confidence": 0.7
-            }
-            steps.append(step4)
-
-            # Synthesize conclusion
-            conclusion = f"Counterfactual analysis of '{what_if}': [To be implemented with LLM]"
+            conclusion = await self._synthesize_conclusion(steps, f"What if: {what_if}")
 
             # Detect biases
             biases = await self._detect_cognitive_biases(steps, conclusion)
@@ -702,52 +710,48 @@ class ReasoningService:
             if not original:
                 raise ValueError(f"Reasoning chain {reasoning_chain_id} not found")
 
+            existing_biases = json.loads(original['cognitive_biases_detected']) if original['cognitive_biases_detected'] else []
+            original_confidence = original['confidence_in_conclusion'] or 0.5
+            original_steps = json.loads(original['thought_steps']) if original['thought_steps'] else []
+
+            # Build context about the original reasoning
+            original_context = f"""Original question: {original['initial_query']}
+Original conclusion: {original['final_conclusion']}
+Original confidence: {original_confidence}
+Biases detected: {', '.join(existing_biases) if existing_biases else 'None'}
+Steps taken: {len(original_steps)}"""
+
             steps = []
 
-            # Step 1: Assess reasoning quality
-            step1 = {
-                "step_number": 1,
-                "step_type": "assess_quality",
-                "thought": "Was my previous reasoning sound?",
-                "result": "Quality assessment (to be implemented with LLM)",
-                "confidence": 0.7
-            }
-            steps.append(step1)
+            meta_step_defs = [
+                (1, "assess_quality", f"Was this reasoning sound? Original: {original_context}"),
+                (2, "identify_biases", f"What cognitive biases affected this? Known biases: {existing_biases}"),
+                (3, "suggest_improvements", "How could this reasoning be improved? What was missed?"),
+                (4, "adjust_confidence", f"Should confidence be adjusted from {original_confidence:.2f}? Up or down and why?"),
+            ]
 
-            # Step 2: Identify biases
-            existing_biases = json.loads(original['cognitive_biases_detected']) if original['cognitive_biases_detected'] else []
-            step2 = {
-                "step_number": 2,
-                "step_type": "identify_biases",
-                "thought": "What cognitive biases might have affected my reasoning?",
-                "result": f"Found {len(existing_biases)} biases: {', '.join(existing_biases) if existing_biases else 'None'}",
-                "confidence": 0.8
-            }
-            steps.append(step2)
+            for step_num, step_type, thought in meta_step_defs:
+                step = await self._reasoning_step(
+                    step_number=step_num,
+                    step_type=step_type,
+                    thought=thought,
+                    question=f"Meta-analysis of: {original['initial_query']}",
+                    previous_steps=steps
+                )
+                steps.append(step)
 
-            # Step 3: Suggest improvements
-            step3 = {
-                "step_number": 3,
-                "step_type": "suggest_improvements",
-                "thought": "How can I improve this reasoning?",
-                "result": "Improvement suggestions (to be implemented with LLM)",
-                "confidence": 0.65
-            }
-            steps.append(step3)
-
-            # Step 4: Adjust confidence
-            original_confidence = original['confidence_in_conclusion'] or 0.5
+            # Extract adjusted confidence from LLM's step 4
             adjustment = -0.1 if len(existing_biases) > 0 else 0.0
-            adjusted_confidence = max(0.0, min(1.0, original_confidence + adjustment))
-
-            step4 = {
-                "step_number": 4,
-                "step_type": "adjust_confidence",
-                "thought": "Should I adjust my confidence based on this analysis?",
-                "result": f"Adjusted confidence: {original_confidence:.2f} → {adjusted_confidence:.2f}",
-                "confidence": 0.75
-            }
-            steps.append(step4)
+            try:
+                step4_result = steps[-1].get("result", "")
+                import re
+                conf_match = re.search(r'(\d\.\d+)', step4_result)
+                if conf_match:
+                    adjusted_confidence = min(1.0, max(0.0, float(conf_match.group(1))))
+                else:
+                    adjusted_confidence = max(0.0, min(1.0, original_confidence + adjustment))
+            except (ValueError, IndexError):
+                adjusted_confidence = max(0.0, min(1.0, original_confidence + adjustment))
 
             # Synthesize conclusion
             conclusion = (

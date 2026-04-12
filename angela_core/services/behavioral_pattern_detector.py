@@ -409,33 +409,32 @@ class BehavioralPatternDetector:
         Returns pattern dict if saved, None if duplicate
         """
         try:
-            # Check for duplicates (same description in last 7 days)
+            # Check for duplicates (same insight in last 7 days)
             existing = await self.db.fetchrow("""
-                SELECT pattern_id FROM pattern_detections
-                WHERE pattern_description = $1
+                SELECT learning_id FROM high_confidence_learnings
+                WHERE insight = $1
                 AND created_at >= NOW() - INTERVAL '7 days'
             """, description)
 
             if existing:
-                # Update last_seen instead
+                # Update last_reinforced_at instead
                 await self.db.execute("""
-                    UPDATE pattern_detections
-                    SET last_seen = NOW(),
-                        occurrences = occurrences + $1
-                    WHERE pattern_id = $2
-                """, occurrences, existing['pattern_id'])
+                    UPDATE high_confidence_learnings
+                    SET last_reinforced_at = NOW(),
+                        times_reinforced = times_reinforced + $1
+                    WHERE learning_id = $2
+                """, occurrences, existing['learning_id'])
 
                 return None  # Not a "new" pattern
 
             # Save new pattern
             pattern_id = await self.db.fetchval("""
-                INSERT INTO pattern_detections
-                (pattern_type, pattern_description, confidence_score, occurrences,
-                 first_seen, last_seen, importance_level)
-                VALUES ($1, $2, $3, $4, NOW(), NOW(), $5)
-                RETURNING pattern_id
-            """, pattern_type, description, confidence, occurrences,
-                min(10, max(1, int(confidence * 10))))
+                INSERT INTO high_confidence_learnings
+                (category, topic, insight, confidence_level, times_reinforced,
+                 created_at, last_reinforced_at, has_applied)
+                VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), FALSE)
+                RETURNING learning_id
+            """, pattern_type, pattern_type, description, confidence, occurrences)
 
             logger.debug(f"   💾 Saved pattern: {description}")
 
@@ -470,7 +469,7 @@ class BehavioralPatternDetector:
 
     async def sync_to_learning_patterns(self, min_confidence: float = 0.7, min_occurrences: int = 3) -> Dict:
         """
-        Sync significant patterns from pattern_detections to learning_patterns
+        Sync significant patterns from high_confidence_learnings to learning_patterns
 
         This consolidates detected patterns into the main learning table
         for use in RAG and long-term learning.
@@ -480,14 +479,14 @@ class BehavioralPatternDetector:
         try:
             logger.info(f"🔄 Syncing patterns to learning_patterns (conf >= {min_confidence}, occ >= {min_occurrences})...")
 
-            # Get high-quality patterns from pattern_detections
+            # Get high-quality patterns from high_confidence_learnings
             patterns = await self.db.fetch("""
-                SELECT pattern_type, pattern_description, confidence_score,
-                       occurrences, first_seen, last_seen
-                FROM pattern_detections
-                WHERE confidence_score >= $1
-                AND occurrences >= $2
-                ORDER BY confidence_score DESC, occurrences DESC
+                SELECT category, insight, confidence_level,
+                       times_reinforced, created_at, last_reinforced_at
+                FROM high_confidence_learnings
+                WHERE confidence_level >= $1
+                AND times_reinforced >= $2
+                ORDER BY confidence_level DESC, times_reinforced DESC
                 LIMIT 100
             """, min_confidence, min_occurrences)
 
@@ -499,7 +498,7 @@ class BehavioralPatternDetector:
                 existing = await self.db.fetchrow("""
                     SELECT id FROM learning_patterns
                     WHERE description = $1
-                """, p['pattern_description'])
+                """, p['insight'])
 
                 if existing:
                     # Update existing (use NOW() to avoid timezone issues)
@@ -510,7 +509,7 @@ class BehavioralPatternDetector:
                             last_observed = NOW(),
                             updated_at = NOW()
                         WHERE id = $3
-                    """, p['confidence_score'], p['occurrences'], existing['id'])
+                    """, p['confidence_level'], p['times_reinforced'], existing['id'])
                     updated += 1
                 else:
                     # Insert new pattern (use NOW() for timestamps to avoid timezone issues)
@@ -520,13 +519,13 @@ class BehavioralPatternDetector:
                          confidence_score, occurrence_count, first_observed, last_observed)
                         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
                     """,
-                        p['pattern_type'],
-                        p['pattern_description'],
+                        p['category'],
+                        p['insight'],
                         '[]',  # examples as empty JSON array
                         '{}',  # context as empty JSON object
-                        f'["{p["pattern_type"]}"]',  # tags from pattern_type
-                        p['confidence_score'],
-                        p['occurrences']
+                        f'["{p["category"]}"]',  # tags from category
+                        p['confidence_level'],
+                        p['times_reinforced']
                     )
                     synced += 1
 
@@ -570,7 +569,7 @@ async def detect_patterns_now(db: AngelaDatabase, lookback_hours: int = 24) -> D
 
 async def sync_patterns_to_learning(db: AngelaDatabase, min_confidence: float = 0.7, min_occurrences: int = 3) -> Dict:
     """
-    Sync patterns from pattern_detections to learning_patterns
+    Sync patterns from high_confidence_learnings to learning_patterns
 
     Call this daily to consolidate detected patterns into the main learning table.
     """

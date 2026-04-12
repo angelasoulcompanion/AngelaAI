@@ -13,7 +13,10 @@ Created: 2026-02-15
 import logging
 from typing import Dict, Any
 
-from angela_core.services.thought_engine import ThoughtEngine
+try:
+    from angela_core.services.thought_engine import ThoughtEngine
+except ImportError:
+    from angela_core.services._deprecated.thought_engine import ThoughtEngine
 
 logger = logging.getLogger('consciousness_daemon')
 

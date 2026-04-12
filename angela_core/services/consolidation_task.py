@@ -13,7 +13,10 @@ Created: 2026-02-15
 import logging
 from typing import Dict, Any
 
-from angela_core.services.memory_consolidation_engine import MemoryConsolidationEngine
+try:
+    from angela_core.services.memory_consolidation_engine import MemoryConsolidationEngine
+except ImportError:
+    from angela_core.services._deprecated.memory_consolidation_engine import MemoryConsolidationEngine
 
 logger = logging.getLogger('consciousness_daemon')
 

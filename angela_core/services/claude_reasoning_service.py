@@ -23,8 +23,9 @@ from angela_core.config import config
 
 logger = logging.getLogger(__name__)
 
-# Ollama model for daemon reasoning (Thai-capable)
-OLLAMA_REASONING_MODEL = os.getenv("OLLAMA_REASONING_MODEL", "scb10x/typhoon2.5-qwen3-4b")
+# Ollama model for daemon reasoning
+# Upgraded: Typhoon 4B → Gemma 3 12B (3x larger, better reasoning, Thai-capable)
+OLLAMA_REASONING_MODEL = os.getenv("OLLAMA_REASONING_MODEL", "gemma3:12b")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 # Force provider: "ollama", "claude", or "auto" (try ollama first, then claude)

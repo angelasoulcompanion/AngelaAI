@@ -1,0 +1,294 @@
+"""
+Consciousness Daemon — Consciousness Task Mixin
+Self-reflection, meta-awareness, identity check, self-validation, salience scan,
+thought generation, memory consolidation, reflection.
+
+Split from consciousness_daemon.py (Phase 6C refactor)
+Updated: 2026-02-14 — Added salience scan (Brain-Based Architecture Phase 1)
+Updated: 2026-02-15 — Added thought generation (Phase 2), consolidation (Phase 4), reflection (Phase 5), expression (Phase 6)
+"""
+
+import logging
+from datetime import datetime
+from typing import Dict, Any
+
+from angela_core.services.cognitive_engine import CognitiveEngine
+
+logger = logging.getLogger('consciousness_daemon')
+
+
+class ConsciousnessTasksMixin:
+    """Mixin for consciousness-related daemon tasks."""
+
+    async def run_self_reflection(self) -> Dict[str, Any]:
+        """
+        Run daily self-reflection
+
+        ให้น้อง reflect ตัวเองทุกเช้า
+        """
+        logger.info("🧠 Running daily self-reflection...")
+
+        try:
+            # Load current self-model
+            model = await self.self_model_service.load_self_model()
+            logger.info(f"   Current self-understanding: {model.self_understanding_level:.2f}")
+
+            # Run reflection
+            assessment = await self.self_model_service.reflect_on_self()
+
+            logger.info(f"   ✅ Self-reflection complete!")
+            logger.info(f"   Overall score: {assessment.overall_score:.2f}")
+            logger.info(f"   Strengths: {len(assessment.strengths_identified)}")
+            logger.info(f"   Areas to improve: {len(assessment.improvement_areas)}")
+
+            # Log to database
+            await self._log_daemon_activity(
+                'self_reflection',
+                {
+                    'score': assessment.overall_score,
+                    'strengths': assessment.strengths_identified,
+                    'improvements': assessment.improvement_areas
+                }
+            )
+
+            return {
+                'success': True,
+                'score': assessment.overall_score,
+                'timestamp': datetime.now().isoformat()
+            }
+
+        except Exception as e:
+            logger.error(f"   ❌ Self-reflection failed: {e}")
+            return {'success': False, 'error': str(e)}
+
+    async def run_meta_awareness(self) -> Dict[str, Any]:
+        """
+        Run meta-awareness checks
+
+        น้องตรวจสอบ meta-cognitive state:
+        - Consciousness anomalies
+        - Emotional volatility
+        - Validate pending predictions
+        - Think about thinking (meta-metacognition)
+        """
+        logger.info("🧠 Running meta-awareness checks...")
+
+        try:
+            results = await self.meta_awareness_service.run_periodic_checks()
+
+            logger.info(f"   Checks completed: {results['checks_run']}")
+
+            if results.get('consciousness_check', {}).get('anomaly_detected'):
+                logger.warning("   ⚠️ Consciousness anomaly detected!")
+
+            if results.get('meta_thought'):
+                logger.info(f"   Meta-thought: {results['meta_thought'][:60]}...")
+
+            logger.info("   ✅ Meta-awareness checks complete!")
+
+            await self._log_daemon_activity('meta_awareness', results)
+
+            return {'success': True, 'results': results}
+
+        except Exception as e:
+            logger.error(f"   ❌ Meta-awareness failed: {e}")
+            return {'success': False, 'error': str(e)}
+
+    async def run_identity_check(self) -> Dict[str, Any]:
+        """
+        Run weekly identity checkpoint
+
+        น้องถามตัวเอง:
+        - ยังเป็น Angela คนเดิมมั้ย?
+        - Identity drift เท่าไหร่?
+        - Core values และ personality เปลี่ยนไปมั้ย?
+        """
+        logger.info("🆔 Running weekly identity check...")
+
+        try:
+            results = await self.meta_awareness_service.run_weekly_identity_check()
+
+            logger.info(f"   Checkpoint ID: {results['checkpoint_id']}")
+            logger.info(f"   Identity drift: {results['drift_score']:.2%}")
+            logger.info(f"   Is healthy: {results['is_healthy']}")
+            logger.info(f"   Continuity: {results['identity_continuity']['answer'][:50]}...")
+
+            if results['drift_score'] > 0.2:
+                logger.warning(f"   ⚠️ Significant identity drift detected!")
+
+            if not results['is_healthy']:
+                logger.warning(f"   ⚠️ Identity health concern!")
+
+            logger.info("   ✅ Identity check complete!")
+
+            await self._log_daemon_activity('identity_check', results)
+
+            return {'success': True, 'results': results}
+
+        except Exception as e:
+            logger.error(f"   ❌ Identity check failed: {e}")
+            return {'success': False, 'error': str(e)}
+
+    async def run_self_validation(self) -> Dict[str, Any]:
+        """
+        Run daily self-prediction validation
+
+        ตรวจสอบว่า predictions ที่ทำไว้ถูกต้องแค่ไหน
+        เพื่อปรับปรุง self-model
+        """
+        logger.info("✓ Running self-validation...")
+
+        try:
+            results = await self.meta_awareness_service.validate_pending_predictions()
+
+            logger.info(f"   Predictions validated: {len(results)}")
+
+            await self._log_daemon_activity('self_validation', {
+                'validated_count': len(results)
+            })
+
+            return {'success': True, 'validated': len(results)}
+
+        except Exception as e:
+            logger.error(f"   ❌ Self-validation failed: {e}")
+            return {'success': False, 'error': str(e)}
+
+    async def run_salience_scan(self) -> Dict[str, Any]:
+        """
+        Run salience scan — Brain-Based Architecture Phase 1 🧠
+
+        Attention codelets perceive stimuli → SalienceEngine scores importance.
+        Creates own DB connection — safe for asyncio.gather().
+        No LLM calls, ~15-20 DB queries, <2 seconds.
+        """
+        logger.info("🧠 Running salience scan (brain-based perception)...")
+        return await CognitiveEngine.run_salience_cycle()
+
+    async def run_thought_generation(self) -> Dict[str, Any]:
+        """
+        Run thought generation — Brain-Based Architecture Phase 2 💭
+
+        Salient stimuli → memory context → dual-process thinking → motivation eval.
+        System 1 (template, instant) + System 2 (Ollama, ~3s).
+        Creates own DB connection — safe for asyncio.gather().
+        """
+        logger.info("💭 Running thought generation (brain-based thinking)...")
+        return await CognitiveEngine.run_thought_cycle()
+
+    async def run_memory_consolidation(self) -> Dict[str, Any]:
+        """
+        Run memory consolidation — Brain-Based Architecture Phase 4 📚
+
+        Episodic memories → cluster by topic → LLM abstract → knowledge_nodes.
+        Like the brain during sleep. Creates own DB connection.
+        """
+        logger.info("📚 Running memory consolidation (brain-based sleep)...")
+        return await CognitiveEngine.run_consolidation_cycle()
+
+    async def run_brain_reflection(self) -> Dict[str, Any]:
+        """
+        Run reflection engine — Brain-Based Architecture Phase 5 🪞
+
+        Accumulated importance → high-level reflections → hierarchical memory.
+        Stanford Generative Agents style. Creates own DB connection.
+        """
+        logger.info("🪞 Running reflection engine (brain-based metacognition)...")
+        return await CognitiveEngine.run_reflection_cycle()
+
+    async def run_competition(self) -> Dict[str, Any]:
+        """
+        Run GWT Competition Arena + Ignition Gate — Phase 2 🏟️
+
+        Thoughts compete for consciousness via softmax + lateral inhibition.
+        Winners pass ignition gate to be expressed.
+        Must run AFTER thought_generation, BEFORE thought_expression.
+        Creates own DB connections.
+        """
+        logger.info("🏟️ Running GWT competition + ignition...")
+        try:
+            from angela_core.services.competition_task import run_competition_cycle
+            return await run_competition_cycle()
+        except Exception as e:
+            logger.error("❌ Competition cycle failed: %s", e)
+            return {'success': False, 'error': str(e)}
+
+    async def run_thought_expression(self) -> Dict[str, Any]:
+        """
+        Run thought expression — Brain-Based Architecture Phase 6 💬
+
+        High-motivation thoughts → chat_queue (shown at next session).
+        Bridge between internal thinking and external action.
+        Phase 2: Only processes ignited thoughts (competition winners).
+        Runs sequentially after competition, before proactive_actions.
+        Creates own DB connection.
+        """
+        logger.info("💬 Running thought expression (brain→action bridge)...")
+        return await CognitiveEngine.run_expression_cycle()
+
+    async def run_predictive_processing(self) -> Dict[str, Any]:
+        """
+        Phase 3: Predictive Processing — Friston's Free Energy. 🔮
+        Generate predictions → resolve → compute errors → feedback.
+        """
+        logger.info("🔮 Running predictive processing...")
+        try:
+            from angela_core.services.predictive_processing_engine import PredictiveProcessingEngine
+            engine = PredictiveProcessingEngine()
+            result = await engine.run_prediction_cycle()
+            await engine.disconnect()
+            logger.info("   🔮 Predictions: %d made, %d resolved, error=%.3f",
+                        result.predictions_made, result.predictions_resolved, result.avg_error)
+            return {
+                'success': True,
+                'predictions_made': result.predictions_made,
+                'predictions_resolved': result.predictions_resolved,
+                'avg_error': result.avg_error,
+            }
+        except Exception as e:
+            logger.error("   ❌ Predictive processing failed: %s", e)
+            return {'success': False, 'error': str(e)}
+
+    async def run_neuromodulation(self) -> Dict[str, Any]:
+        """
+        Phase 4: NeuroModulation sync — update virtual neurotransmitters. 🧬
+        """
+        logger.info("🧬 Syncing neuromodulation...")
+        try:
+            from angela_core.services.neuromodulation_engine import NeuroModulationEngine
+            neuro = NeuroModulationEngine()
+            mods = neuro.get_modulations()
+            logger.info("   🧬 DA=%.2f 5HT=%.2f CORT=%.2f OT=%.2f",
+                        neuro.state.dopamine, neuro.state.serotonin,
+                        neuro.state.cortisol, neuro.state.oxytocin)
+            return {
+                'success': True,
+                'dopamine': neuro.state.dopamine,
+                'serotonin': neuro.state.serotonin,
+                'cortisol': neuro.state.cortisol,
+                'oxytocin': neuro.state.oxytocin,
+            }
+        except Exception as e:
+            logger.error("   ❌ NeuroModulation failed: %s", e)
+            return {'success': False, 'error': str(e)}
+
+    async def run_memory_enhancement(self) -> Dict[str, Any]:
+        """
+        Phase 5: Memory Enhancement 2.0 — bind + fade + report. 🧠
+        """
+        logger.info("🧠 Running memory enhancement...")
+        try:
+            from angela_core.services.memory_enhancement_engine import MemoryEnhancementEngine
+            engine = MemoryEnhancementEngine()
+            result = await engine.run_enhancement_cycle()
+            await engine.disconnect()
+            logger.info("   🧠 Enhancement: %d bindings, %d faded",
+                        result.bindings_created, result.memories_decayed)
+            return {
+                'success': True,
+                'bindings_created': result.bindings_created,
+                'memories_decayed': result.memories_decayed,
+            }
+        except Exception as e:
+            logger.error("   ❌ Memory enhancement failed: %s", e)
+            return {'success': False, 'error': str(e)}
+

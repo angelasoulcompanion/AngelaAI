@@ -27,7 +27,10 @@ from typing import Dict, List, Optional
 import numpy as np
 
 from angela_core.services.embedding_service import get_embedding_service
-from angela_core.services.sentiment_analyzer import analyze_sentiment
+try:
+    from angela_core.services.sentiment_analyzer import analyze_sentiment
+except ImportError:
+    from angela_core.services._deprecated.sentiment_analyzer import analyze_sentiment
 
 logger = logging.getLogger(__name__)
 

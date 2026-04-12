@@ -42,17 +42,25 @@ def _get_writing_style_analyzer():
     """Lazy load WritingStyleAnalyzer."""
     global _writing_style_analyzer
     if _writing_style_analyzer is None:
-        from angela_core.services.writing_style_analyzer import WritingStyleAnalyzer
-        _writing_style_analyzer = WritingStyleAnalyzer
+        try:
+            from angela_core.services.writing_style_analyzer import WritingStyleAnalyzer
+            _writing_style_analyzer = WritingStyleAnalyzer
+        except ImportError:
+            logger.warning("WritingStyleAnalyzer not available (moved to _deprecated)")
+            return None
     return _writing_style_analyzer
 
 
 def _get_memory_consolidation_service():
-    """Lazy load MemoryConsolidationService."""
+    """Lazy load MemoryConsolidationService (v2)."""
     global _memory_consolidation_service
     if _memory_consolidation_service is None:
-        from angela_core._deprecated.memory_consolidation_service import MemoryConsolidationService
-        _memory_consolidation_service = MemoryConsolidationService
+        try:
+            from angela_core.services.memory_consolidation_service_v2 import consolidation_service
+            _memory_consolidation_service = consolidation_service
+        except ImportError:
+            logger.warning("MemoryConsolidationService v2 not available (moved to _deprecated)")
+            return None
     return _memory_consolidation_service
 
 

@@ -24,7 +24,10 @@ from collections import deque
 
 from angela_core.database import db
 from angela_core.services.knowledge_extraction_service import knowledge_extractor
-from angela_core.services.emotional_intelligence_service import EmotionalIntelligenceService
+try:
+    from angela_core.services.emotional_intelligence_service import EmotionalIntelligenceService
+except ImportError:
+    EmotionalIntelligenceService = None
 from angela_core.services.background_learning_workers import background_workers
 
 logger = logging.getLogger(__name__)
@@ -40,7 +43,7 @@ class RealtimeLearningPipeline:
 
     def __init__(self):
         self.knowledge_extractor = knowledge_extractor
-        self.emotional_service = EmotionalIntelligenceService()
+        self.emotional_service = EmotionalIntelligenceService() if EmotionalIntelligenceService else None
         # embedding_service is lazy-loaded when needed
         self._embedding_service = None
 

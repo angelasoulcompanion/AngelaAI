@@ -22,7 +22,6 @@ from collections import defaultdict, Counter
 from dataclasses import dataclass, asdict
 
 from angela_core.services.deep_analysis_engine import DeepAnalysisResult
-from angela_core._deprecated.pattern_recognition_engine import PatternRecognitionResult
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +137,7 @@ class KnowledgeSynthesisEngine:
     async def synthesize_knowledge(
         self,
         deep_analyses: List[Dict],  # List of analysis data from conversations
-        pattern_result: Optional[PatternRecognitionResult] = None
+        pattern_result: Optional[dict] = None
     ) -> SynthesisResult:
         """
         Synthesize knowledge from multiple sources
@@ -287,7 +286,7 @@ class KnowledgeSynthesisEngine:
     def _generate_meta_knowledge(
         self,
         analyses: List[Dict],
-        pattern_result: Optional[PatternRecognitionResult]
+        pattern_result: Optional[dict]
     ) -> List[MetaKnowledge]:
         """Generate meta-knowledge - insights about the learning process itself"""
         meta_insights = []
@@ -378,7 +377,7 @@ class KnowledgeSynthesisEngine:
     def _synthesize_user_profile(
         self,
         analyses: List[Dict],
-        pattern_result: Optional[PatternRecognitionResult],
+        pattern_result: Optional[dict],
         meta_knowledge: List[MetaKnowledge]
     ) -> UserProfile:
         """Synthesize comprehensive user profile from all knowledge"""
@@ -624,7 +623,7 @@ knowledge_synthesis_engine = KnowledgeSynthesisEngine()
 
 async def synthesize_knowledge(
     analyses: List[Dict],
-    pattern_result: Optional[PatternRecognitionResult] = None
+    pattern_result: Optional[dict] = None
 ) -> SynthesisResult:
     """
     Global helper to synthesize knowledge

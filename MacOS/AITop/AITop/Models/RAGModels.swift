@@ -31,6 +31,18 @@ struct RAGQueryResponse: Codable {
     let tokensPerSecond: Double?
 }
 
+struct IndexFolderResponse: Codable {
+    let folder: String
+    let indexed: [IndexedFile]
+    let totalIndexed: Int
+    let totalErrors: Int
+}
+
+struct IndexedFile: Codable {
+    let filename: String
+    let chunks: Int
+}
+
 struct RAGChunk: Codable, Identifiable {
     let chunkText: String
     let score: Double

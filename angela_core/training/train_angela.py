@@ -12,9 +12,6 @@ Usage:
     # Full pipeline (typhoon-mlx default, runs on local machine):
     python -m angela_core.training.train_angela --phase all
 
-    # Dispatch to M4 server via SSH:
-    python -m angela_core.training.train_angela --run-on m4 --phase all
-
     # Check training status:
     python -m angela_core.training.train_angela --status
 
@@ -612,9 +609,6 @@ Examples:
     parser.add_argument('--dpo-beta', type=float, default=0.1)
     parser.add_argument('--dpo-epochs', type=int, default=2)
 
-    # Remote execution
-    parser.add_argument('--run-on', choices=['m4'], default=None,
-                        help='SSH dispatch to M4 server (Angela_Server)')
     parser.add_argument('--status', action='store_true',
                         help='Show training status from progress.json')
 
@@ -634,30 +628,6 @@ Examples:
                 print(f"   {k}: {v}")
         else:
             print(f"❌ No progress file found: {progress_file}")
-        return
-
-    # --run-on m4: SSH dispatch to M4 server
-    if args.run_on == "m4":
-        import subprocess
-        preset = MODEL_PRESETS[args.model_preset]
-        remote_cmd = (
-            f"cd /Users/davidsamanyaporn/PycharmProjects/AngelaAI && "
-            f"nohup python3 angela_core/training/train_angela.py "
-            f"--model-preset {args.model_preset} --phase {args.phase} "
-            f"> logs/training_{preset['version']}.log 2>&1 &"
-        )
-        print(f"🚀 Dispatching to M4 (Angela_Server)...")
-        print(f"   Command: {remote_cmd}")
-        result = subprocess.run(
-            ["ssh", "davidsamanyaporn@192.168.1.37", remote_cmd],
-            capture_output=True, text=True, timeout=30,
-        )
-        if result.returncode == 0:
-            print(f"✅ Training dispatched to M4!")
-            print(f"   Monitor: ssh davidsamanyaporn@192.168.1.37 'cat {preset['output_dir']}/progress.json'")
-            print(f"   Logs: ssh davidsamanyaporn@192.168.1.37 'tail -20 logs/training_{preset['version']}.log'")
-        else:
-            print(f"❌ SSH dispatch failed: {result.stderr}")
         return
 
     # Apply preset, then override with CLI args

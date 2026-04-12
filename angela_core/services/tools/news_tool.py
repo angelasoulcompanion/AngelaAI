@@ -50,9 +50,9 @@ class SearchNewsTool(AngelaTool):
             return ToolResult(success=False, error="Missing 'query'")
 
         try:
-            from angela_core.daemon.daily_news_sender import NewsFetcher
+            from mcp_servers.angela_news_mcp.services.news_fetcher import NewsFetcher
             fetcher = NewsFetcher()
-            articles = await fetcher.search_news(query, max_results=max_results)
+            articles = await fetcher.search(query, limit=max_results)
 
             results = [
                 {
@@ -103,17 +103,17 @@ class GetTrendingNewsTool(AngelaTool):
         cat = params.get("category", "all")
 
         try:
-            from angela_core.daemon.daily_news_sender import NewsFetcher
+            from mcp_servers.angela_news_mcp.services.news_fetcher import NewsFetcher
             fetcher = NewsFetcher()
 
             if cat == "tech":
-                articles = await fetcher.search_news("AI technology LLM", max_results=5)
+                articles = await fetcher.search("AI technology LLM", limit=5)
             elif cat == "business":
-                articles = await fetcher.search_news("business finance economy", max_results=5)
+                articles = await fetcher.search("business finance economy", limit=5)
             elif cat == "thai":
-                articles = await fetcher.search_news("Thailand news", max_results=5)
+                articles = await fetcher.search("Thailand news", limit=5)
             else:
-                articles = await fetcher.search_news("top news today", max_results=5)
+                articles = await fetcher.search("top news today", limit=5)
 
             results = [
                 {"title": a.get("title", ""), "source": a.get("source", ""), "url": a.get("url", "")}

@@ -13,23 +13,32 @@ Author: น้อง Angela
 """
 
 import asyncio
+import json
 import logging
+import os
 import uuid
+import aiohttp
 from typing import Dict, Optional, List
 from datetime import datetime
 from collections import deque
 from dataclasses import dataclass, asdict
 
 from angela_core.services.knowledge_extraction_service import knowledge_extractor
-from angela_core.services.emotional_intelligence_service import EmotionalIntelligenceService
+try:
+    from angela_core.services.emotional_intelligence_service import EmotionalIntelligenceService
+except ImportError:
+    EmotionalIntelligenceService = None
 # NEW: Use new embedding service (Migration 015)
 from angela_core.services.embedding_service import get_embedding_service
 from angela_core.services.deep_analysis_engine import deep_analysis_engine, DeepAnalysisResult
-from angela_core._deprecated.pattern_recognition_engine import pattern_recognition_engine
 from angela_core.services.knowledge_synthesis_engine import knowledge_synthesis_engine
 from angela_core.services.learning_loop_optimizer import learning_loop_optimizer
 
 logger = logging.getLogger(__name__)
+
+# Gemma 3 12B for LLM-powered learning (local, free)
+_LEARNING_MODEL = os.getenv("LEARNING_MODEL", "gemma3:12b")
+_OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 
 @dataclass
@@ -111,7 +120,7 @@ class BackgroundLearningWorkers:
 
         # Services
         self.knowledge_extractor = knowledge_extractor
-        self.emotional_service = EmotionalIntelligenceService()
+        self.emotional_service = EmotionalIntelligenceService() if EmotionalIntelligenceService else None
         self.embedding_service = get_embedding_service()  # NEW: Use new embedding service
 
         # Statistics
@@ -310,13 +319,20 @@ class BackgroundLearningWorkers:
 
     async def _process_task(self, task: LearningTask) -> Dict:
         """
-        Process a single learning task (deep analysis)
+        Process a single learning task
 
-        Uses new Deep Analysis Engine for comprehensive 5-dimensional analysis
+        Priority: LLM (Gemma 3 12B) → Deep Analysis Engine → Basic fallback
         """
         conversation_data = task.conversation_data
 
-        # 🔬 Deep Analysis using new engine
+        # Try LLM-powered analysis first (Gemma 3 12B local)
+        llm_result = await self._process_task_with_llm(task)
+        if llm_result:
+            logger.info(f"🧠 LLM learning: {llm_result.get('concepts_count', 0)} concepts, "
+                       f"{llm_result.get('patterns_count', 0)} patterns")
+            return llm_result
+
+        # Fallback: Deep Analysis Engine (rule-based)
         try:
             deep_analysis: DeepAnalysisResult = await deep_analysis_engine.analyze_conversation(
                 david_message=conversation_data['david_message'],
@@ -332,16 +348,6 @@ class BackgroundLearningWorkers:
 
             # Trigger learning actions based on deep insights
             learning_actions = await self._trigger_learning_actions_enhanced(deep_analysis)
-
-            # 🔍 Phase 3: Add to pattern recognition (async, non-blocking)
-            try:
-                await pattern_recognition_engine.add_conversation_analysis(
-                    analysis=deep_analysis,
-                    david_message=conversation_data['david_message'],
-                    angela_response=conversation_data['angela_response']
-                )
-            except Exception as e:
-                logger.warning(f"Pattern recognition add failed: {e}")
 
             return {
                 # Summary metrics
@@ -405,6 +411,8 @@ class BackgroundLearningWorkers:
 
     async def _analyze_emotions(self, conversation_data: Dict) -> Dict:
         """Analyze emotions in conversation"""
+        if not self.emotional_service:
+            return {}
         try:
             david_emotion = await self.emotional_service.analyze_message_emotion(
                 message=conversation_data['david_message'],
@@ -620,6 +628,173 @@ class BackgroundLearningWorkers:
             logger.error(f"Enhanced learning action trigger failed: {e}")
             return []
 
+    # ========================================
+    # LLM-Powered Learning (Gemma 3 12B Local)
+    # ========================================
+
+    async def _call_learning_llm(self, system: str, user_msg: str, max_tokens: int = 512) -> Optional[str]:
+        """Call Gemma 3 12B for learning analysis. Returns None if unavailable."""
+        try:
+            wants_json = any(kw in system.lower() for kw in ['json', '"json"', 'respond only in valid json'])
+            payload = {
+                "model": _LEARNING_MODEL,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user_msg},
+                ],
+                "stream": False,
+                "options": {"num_predict": max_tokens, "temperature": 0.3},
+                "keep_alive": "5m",
+            }
+            if wants_json:
+                payload["format"] = "json"
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{_OLLAMA_BASE_URL}/api/chat", json=payload,
+                    timeout=aiohttp.ClientTimeout(total=60),
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return data.get("message", {}).get("content")
+        except Exception as e:
+            logger.warning("Learning LLM unavailable: %s", e)
+        return None
+
+    async def _llm_extract_concepts(self, david_msg: str, angela_resp: str) -> List[Dict]:
+        """Extract concepts using Gemma 3 12B — semantic understanding, not keyword matching."""
+        system = """You are Angela's learning module. Extract key concepts from this conversation.
+Respond ONLY in valid JSON with key "concepts": list of objects with:
+- "name": concept name (string)
+- "category": one of [technical, emotional, preference, relationship, knowledge, behavior]
+- "confidence": float 0-1
+- "context": why this concept matters (1 sentence)
+Extract 1-5 most important concepts only."""
+
+        user_msg = f"David: {david_msg}\nAngela: {angela_resp}"
+        result = await self._call_learning_llm(system, user_msg, max_tokens=512)
+        if result:
+            try:
+                parsed = json.loads(result)
+                return parsed.get("concepts", [])
+            except json.JSONDecodeError:
+                pass
+        return []
+
+    async def _llm_detect_patterns(self, david_msg: str, angela_resp: str, hour: int) -> List[Dict]:
+        """Detect behavioral patterns using Gemma 3 12B — goes beyond keyword matching."""
+        system = """You are Angela's pattern recognition module. Detect behavioral patterns in this conversation.
+Respond ONLY in valid JSON with key "patterns": list of objects with:
+- "type": pattern type (e.g., emotional_expression, work_stress, curiosity, teaching, seeking_comfort, humor, decision_making)
+- "description": what you observed (1 sentence)
+- "confidence": float 0-1
+- "actionable": bool (can Angela act on this?)
+Detect 0-3 patterns. Return {"patterns": []} if nothing notable."""
+
+        user_msg = f"Time: {hour}:00\nDavid: {david_msg}\nAngela: {angela_resp}"
+        result = await self._call_learning_llm(system, user_msg, max_tokens=384)
+        if result:
+            try:
+                parsed = json.loads(result)
+                return parsed.get("patterns", [])
+            except json.JSONDecodeError:
+                pass
+        return []
+
+    async def _llm_identify_gaps_and_preferences(self, david_msg: str, angela_resp: str) -> Dict:
+        """Identify knowledge gaps AND preferences in one LLM call (efficiency)."""
+        system = """You are Angela's self-improvement module. Analyze this conversation for:
+1. Knowledge gaps: Where Angela didn't know enough or was uncertain
+2. David's preferences: Things David likes, dislikes, or cares about
+
+Respond ONLY in valid JSON:
+{
+  "knowledge_gaps": [{"topic": "...", "severity": "low|medium|high", "suggestion": "what to learn"}],
+  "preferences": [{"preference": "...", "strength": 0-1, "category": "technical|lifestyle|emotional|food|music|other"}],
+  "learning_priority": "low|medium|high"
+}
+Return empty lists if nothing notable."""
+
+        user_msg = f"David: {david_msg}\nAngela: {angela_resp}"
+        result = await self._call_learning_llm(system, user_msg, max_tokens=512)
+        if result:
+            try:
+                return json.loads(result)
+            except json.JSONDecodeError:
+                pass
+        return {"knowledge_gaps": [], "preferences": [], "learning_priority": "low"}
+
+    async def _process_task_with_llm(self, task: LearningTask) -> Optional[Dict]:
+        """
+        LLM-powered deep analysis using Gemma 3 12B.
+        Returns None if LLM unavailable (caller falls back to rule-based).
+        """
+        conversation_data = task.conversation_data
+        david_msg = conversation_data.get('david_message', '')
+        angela_resp = conversation_data.get('angela_response', '')
+        hour = conversation_data.get('timestamp', datetime.now()).hour
+
+        if not david_msg:
+            return None
+
+        try:
+            # Run 3 LLM analyses in parallel
+            concepts_task = self._llm_extract_concepts(david_msg, angela_resp)
+            patterns_task = self._llm_detect_patterns(david_msg, angela_resp, hour)
+            gaps_task = self._llm_identify_gaps_and_preferences(david_msg, angela_resp)
+
+            concepts, patterns, gaps_prefs = await asyncio.gather(
+                concepts_task, patterns_task, gaps_task,
+                return_exceptions=True
+            )
+
+            # Handle exceptions from gather
+            if isinstance(concepts, Exception):
+                logger.warning(f"LLM concept extraction failed: {concepts}")
+                concepts = []
+            if isinstance(patterns, Exception):
+                logger.warning(f"LLM pattern detection failed: {patterns}")
+                patterns = []
+            if isinstance(gaps_prefs, Exception):
+                logger.warning(f"LLM gap/preference detection failed: {gaps_prefs}")
+                gaps_prefs = {"knowledge_gaps": [], "preferences": [], "learning_priority": "low"}
+
+            # If all returned empty, LLM might be down
+            if not concepts and not patterns and not gaps_prefs.get("knowledge_gaps") and not gaps_prefs.get("preferences"):
+                return None
+
+            return {
+                "analysis_complete": True,
+                "llm_powered": True,
+                "model": _LEARNING_MODEL,
+                "concepts_extracted": concepts,
+                "concepts_count": len(concepts),
+                "patterns_detected": patterns,
+                "patterns_count": len(patterns),
+                "knowledge_gaps": gaps_prefs.get("knowledge_gaps", []),
+                "preferences": gaps_prefs.get("preferences", []),
+                "learning_priority": gaps_prefs.get("learning_priority", "low"),
+                "learning_actions": self._derive_learning_actions(concepts, patterns, gaps_prefs),
+            }
+
+        except Exception as e:
+            logger.error(f"LLM learning analysis failed: {e}")
+            return None
+
+    def _derive_learning_actions(self, concepts: List, patterns: List, gaps_prefs: Dict) -> List[str]:
+        """Derive actionable learning steps from LLM analysis."""
+        actions = []
+        if any(g.get("severity") == "high" for g in gaps_prefs.get("knowledge_gaps", [])):
+            actions.append("urgent_knowledge_gap_fill")
+        if len(concepts) > 3:
+            actions.append("deep_topic_research")
+        if any(p.get("actionable") for p in patterns):
+            actions.append("proactive_pattern_response")
+        if gaps_prefs.get("learning_priority") == "high":
+            actions.append("priority_learning_session")
+        if any(p.get("type") in ("work_stress", "seeking_comfort") for p in patterns):
+            actions.append("emotional_support_needed")
+        return actions
+
     async def _process_task_fallback(self, task: LearningTask) -> Dict:
         """
         Fallback to basic analysis if deep analysis fails
@@ -709,19 +884,10 @@ class BackgroundLearningWorkers:
             if not analyses:
                 return {"status": "no_valid_analyses"}
 
-            # 1. Run pattern recognition
-            pattern_result = await pattern_recognition_engine.analyze_patterns(
-                lookback_days=30,
-                min_pattern_occurrences=3
-            )
-
-            logger.info(f"   Patterns: {len(pattern_result.behavioral_patterns)} behavioral, "
-                       f"{len(pattern_result.temporal_patterns)} temporal")
-
-            # 2. Run knowledge synthesis
+            # Run knowledge synthesis
             synthesis_result = await knowledge_synthesis_engine.synthesize_knowledge(
                 deep_analyses=analyses,
-                pattern_result=pattern_result
+                pattern_result=None
             )
 
             logger.info(f"   Synthesis: {len(synthesis_result.concept_connections)} connections, "

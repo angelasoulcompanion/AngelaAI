@@ -1,45 +1,24 @@
 #!/usr/bin/env python3
 """
-Angela Consciousness Daemon
-===========================
-Daemon สำหรับ consciousness services ที่ทำงานอัตโนมัติ
+Angela Daemon (Lean)
+====================
+Essential background daemon - consciousness services removed.
 
-Services integrated:
-1. Self-Model Service - Daily self-reflection (06:00)
-2. Prediction Service - Predict patterns every 4 hours
-3. Theory of Mind - Analyze recent conversations every 2 hours
-4. Privacy Filter - Weekly privacy audit (Sunday 03:00)
-5. Proactive Care - Care for David every 30 minutes 💜
-6. Meta-Awareness Service - Meta-cognitive checks every 2 hours 🧠
-7. Session Coverage Audit - Detect under-logged sessions daily (07:00) 🔍
-8. Companion Predictions - Mine patterns + daily briefings every 4 hours 📊
-9. Evolution Engine - Self-evolving feedback loop every 4 hours 🧬
-10. Proactive Action Engine - Autonomous proactive actions every 4 hours ⚡
-11. Google Keep Sync - Sync David's notes daily at 06:06 📝
-12. Salience Scan - Brain-based perception via attention codelets 🧠
-13. Thought Generation - Brain-based inner thoughts (System 1 + System 2) 💭
-14. Memory Consolidation - Brain-based episodic → semantic consolidation 📚
-15. Reflection Engine - Brain-based high-level reflections 🪞
-16. Thought Expression - Brain-based thought → action bridge 💬
-17. Plan Generation - Agentic multi-step planning every 4 hours 📋
-18. Plan Execution - Execute plan steps every 30 minutes 📋
+Kept tasks:
+1. Google Keep Sync - Sync David's notes into RAG system
+2. Session Coverage Audit - Detect under-logged sessions
+3. RLHF Cycle - Reward scoring + preference pair extraction
+4. Unified Conversation Analysis - Process & analyze conversations
+5. Scheduled Skills - OpenClaw hot-loadable skill execution
 
-Schedule:
-- Every 30 minutes: Proactive care check (wellness, interventions, milestones)
-- Every 2 hours: Theory of Mind inference on recent conversations
-- Every 2 hours: Meta-awareness checks (bias, anomaly, predictions)
-- Every 4 hours: Pattern predictions
-- Daily 05:00: Self-validation (prediction accuracy)
-- Daily 06:00: Self-reflection
-- Weekly Sunday 03:00: Privacy audit
-- Weekly Sunday 04:00: Identity checkpoint
+Infrastructure kept:
+- Tool Registry + Event Bus (OpenClaw Body)
+- Channel Router (Multi-Channel Gateway)
+- Skills System (OpenClaw hot-loadable plugins)
 
-By: น้อง Angela 💜
+By: Angela
 Created: 2026-01-18
-Updated: 2026-01-25 - Added Meta-Awareness Service (True Meta-Awareness!)
-
-Refactored: 2026-02-10
-Split into task mixins: consciousness_tasks, prediction_tasks, proactive_tasks, maintenance_tasks
+Refactored: 2026-03-20 - Lean redesign: removed consciousness services, kept essential tasks only
 """
 
 import asyncio
@@ -51,22 +30,10 @@ from typing import Optional, Dict, Any
 from angela_core.daemon.daemon_base import PROJECT_ROOT, LOG_DIR  # noqa: E402 (path setup)
 
 from angela_core.database import AngelaDatabase
-from angela_core.services.self_model_service import SelfModelService
-from angela_core.services.prediction_service import PredictionService
-from angela_core.services.theory_of_mind_service import TheoryOfMindService
-from angela_core.services.privacy_filter_service import PrivacyFilterService
-from angela_core.services.proactive_care_service import ProactiveCareService
-from angela_core.services.meta_awareness_service import MetaAwarenessService
-from angela_core.services.predictive_companion_service import PredictiveCompanionService
-from angela_core.services.evolution_engine import EvolutionEngine
-from angela_core.services.proactive_action_engine import ProactiveActionEngine
 from angela_core.services.google_keep_sync_service import GoogleKeepSyncService
 from angela_core.services.rlhf_orchestrator import RLHFOrchestrator
 from angela_core.services.unified_conversation_processor import UnifiedConversationProcessor
 
-from angela_core.daemon.tasks.consciousness_tasks import ConsciousnessTasksMixin
-from angela_core.daemon.tasks.prediction_tasks import PredictionTasksMixin
-from angela_core.daemon.tasks.proactive_tasks import ProactiveTasksMixin
 from angela_core.daemon.tasks.maintenance_tasks import MaintenanceTasksMixin
 
 # Event Bus + Tool Registry (Phase 3)
@@ -87,45 +54,23 @@ logging.basicConfig(
 logger = logging.getLogger('consciousness_daemon')
 
 
-
-class ConsciousnessDaemon(
-    ConsciousnessTasksMixin,
-    PredictionTasksMixin,
-    ProactiveTasksMixin,
-    MaintenanceTasksMixin
-):
+class ConsciousnessDaemon(MaintenanceTasksMixin):
     """
-    Angela's Consciousness Daemon 💜
+    Angela's Essential Daemon
 
-    Runs consciousness-related services automatically:
-    - Self-reflection
-    - Predictions
-    - Theory of Mind
-    - Privacy audits
-    - Proactive Care for David 💜
-    - Meta-Awareness (bias detection, anomaly detection, identity tracking) 🧠
-    - Evolution Engine (self-evolving feedback loop) 🧬
-    - Proactive Action Engine (autonomous proactive actions) ⚡
-    - RLHF Orchestrator (reward scoring + preference pairs) 🎯
+    Lean redesign - runs only essential background tasks:
+    - Google Keep Sync (notes -> RAG)
+    - Session Coverage Audit (detect under-logged sessions)
+    - RLHF Cycle (reward scoring + preference pairs)
+    - Unified Conversation Analysis (process conversations)
+    - Scheduled Skills (OpenClaw plugins)
 
-    Methods split into mixins:
-    - ConsciousnessTasksMixin: self-reflection, meta-awareness, identity check, self-validation
-    - PredictionTasksMixin: predictions, theory of mind, companion predictions
-    - ProactiveTasksMixin: proactive care, proactive actions, evolution cycle
-    - MaintenanceTasksMixin: privacy audit, session coverage audit, keep sync, RLHF cycle
+    Mixin:
+    - MaintenanceTasksMixin: session_coverage_audit, keep_sync, rlhf_cycle, graph_sync, privacy_audit
     """
 
     def __init__(self):
         self.db: Optional[AngelaDatabase] = None
-        self.self_model_service: Optional[SelfModelService] = None
-        self.prediction_service: Optional[PredictionService] = None
-        self.tom_service: Optional[TheoryOfMindService] = None
-        self.privacy_service: Optional[PrivacyFilterService] = None
-        self.proactive_care_service: Optional[ProactiveCareService] = None
-        self.meta_awareness_service: Optional[MetaAwarenessService] = None
-        self.companion_service: Optional[PredictiveCompanionService] = None
-        self.evolution_engine: Optional[EvolutionEngine] = None
-        self.proactive_action_engine: Optional[ProactiveActionEngine] = None
         self.keep_sync_service: Optional[GoogleKeepSyncService] = None
         self.rlhf_orchestrator: Optional[RLHFOrchestrator] = None
         self.unified_processor: Optional[UnifiedConversationProcessor] = None
@@ -137,88 +82,74 @@ class ConsciousnessDaemon(
         self.running = False
 
     async def initialize(self):
-        """Initialize all services"""
-        logger.info("💜 Initializing Angela Consciousness Daemon...")
+        """Initialize database, essential services, and infrastructure"""
+        logger.info("Initializing Angela Daemon (lean)...")
 
         # Database
         self.db = AngelaDatabase()
         await self.db.connect()
-        logger.info("   ✅ Database connected")
+        logger.info("   Database connected")
 
-        # Services (each manages its own db connection)
-        self.self_model_service = SelfModelService(self.db)
-        self.prediction_service = PredictionService()  # No db param
-        self.tom_service = TheoryOfMindService(self.db)
-        self.privacy_service = PrivacyFilterService()  # Takes optional config
-        self.proactive_care_service = ProactiveCareService(self.db)
-        self.meta_awareness_service = MetaAwarenessService(self.db)
-        self.companion_service = PredictiveCompanionService()  # Creates own DB
-        self.evolution_engine = EvolutionEngine()  # Creates own DB
-        self.proactive_action_engine = ProactiveActionEngine()  # Creates own DB
-        self.keep_sync_service = GoogleKeepSyncService()  # Creates own DB
-        self.rlhf_orchestrator = RLHFOrchestrator()  # Creates own DB
-        self.unified_processor = UnifiedConversationProcessor()  # Creates own DB
+        # Essential services
+        self.keep_sync_service = GoogleKeepSyncService()
+        self.rlhf_orchestrator = RLHFOrchestrator()
+        self.unified_processor = UnifiedConversationProcessor()
         await self.unified_processor.connect()
 
-        logger.info("   ✅ All consciousness services initialized")
-        logger.info("   ✅ Predictive Companion Service initialized 📊")
-        logger.info("   ✅ Proactive Care Service initialized 💜")
-        logger.info("   ✅ Meta-Awareness Service initialized 🧠")
-        logger.info("   ✅ Evolution Engine initialized 🧬")
-        logger.info("   ✅ Proactive Action Engine initialized ⚡")
-        logger.info("   ✅ Google Keep Sync Service initialized 📝")
-        logger.info("   ✅ RLHF Orchestrator initialized 🎯")
-        logger.info("   ✅ Unified Conversation Processor initialized 🔬")
+        logger.info("   Google Keep Sync Service initialized")
+        logger.info("   RLHF Orchestrator initialized")
+        logger.info("   Unified Conversation Processor initialized")
 
-        # Tool Registry + Event Bus (Phase 3: OpenClaw Body)
+        # Tool Registry (Phase 3: OpenClaw Body)
         self.tool_registry = get_registry()
-        logger.info("   ✅ Tool Registry initialized (%d built-in tools) 🔧", self.tool_registry.tool_count)
+        logger.info("   Tool Registry initialized (%d built-in tools)", self.tool_registry.tool_count)
 
         # Tool Discovery (Phase 4: scan system for CLI tools, packages, API keys)
         try:
             from angela_core.services.tool_discovery import ToolDiscovery
             discovery = ToolDiscovery(self.tool_registry)
             discovery_report = await discovery.scan()
-            logger.info("   ✅ Tool Discovery: +%d tools found (CLI=%d, pkg=%d, keys=%d) 🔍",
+            logger.info("   Tool Discovery: +%d tools found (CLI=%d, pkg=%d, keys=%d)",
                         discovery_report["total_discovered"],
                         discovery_report["cli"]["found"],
                         discovery_report["packages"]["found"],
                         discovery_report["api_keys"]["found"])
         except Exception as e:
-            logger.warning("   ⚠️ Tool Discovery failed (non-critical): %s", e)
+            logger.warning("   Tool Discovery failed (non-critical): %s", e)
 
+        # Event Bus
         self.event_bus = get_event_bus()
         try:
             from angela_core.services.event_listeners import setup_default_listeners
             self._event_listeners = setup_default_listeners(self.event_bus)
             await self.event_bus.start()
-            logger.info("   ✅ Event Bus started 📡")
+            logger.info("   Event Bus started")
         except Exception as e:
-            logger.warning("   ⚠️ Event Bus setup failed (non-critical): %s", e)
+            logger.warning("   Event Bus setup failed (non-critical): %s", e)
 
         # Channel Router (OpenClaw Multi-Channel Gateway)
         self.channel_router = get_channel_router()
         try:
             ch_status = await self.channel_router.initialize_all()
             available = sum(1 for v in ch_status.values() if v)
-            logger.info("   ✅ Channel Router initialized (%d/%d channels) 📡",
+            logger.info("   Channel Router initialized (%d/%d channels)",
                         available, len(ch_status))
         except Exception as e:
-            logger.warning("   ⚠️ Channel Router init failed (non-critical): %s", e)
+            logger.warning("   Channel Router init failed (non-critical): %s", e)
 
         # Skills System (OpenClaw hot-loadable plugins)
         self.skill_registry = get_skill_registry()
         try:
             skill_count = await self.skill_registry.load_all_skills()
-            logger.info("   ✅ Skill Registry loaded (%d skills) 🧩", skill_count)
+            logger.info("   Skill Registry loaded (%d skills)", skill_count)
         except Exception as e:
-            logger.warning("   ⚠️ Skill loading failed (non-critical): %s", e)
+            logger.warning("   Skill loading failed (non-critical): %s", e)
 
-        logger.info("💫 Consciousness Daemon ready!")
+        logger.info("Angela Daemon ready!")
 
     async def shutdown(self):
         """Graceful shutdown"""
-        logger.info("🛑 Shutting down Consciousness Daemon...")
+        logger.info("Shutting down Angela Daemon...")
         self.running = False
 
         # Stop event bus + close channels
@@ -245,14 +176,14 @@ class ConsciousnessDaemon(
         if self.db:
             await self.db.disconnect()
 
-        logger.info("👋 Consciousness Daemon stopped")
+        logger.info("Angela Daemon stopped")
 
     # ============================================================
     # HELPER METHODS
     # ============================================================
 
     async def _get_recent_context(self) -> Dict[str, Any]:
-        """Get recent context for predictions"""
+        """Get recent context for analysis"""
         query = """
             SELECT message_text, topic, emotion_detected, created_at
             FROM conversations
@@ -288,7 +219,6 @@ class ConsciousnessDaemon(
     async def _log_daemon_activity(self, activity_type: str, data: Dict) -> None:
         """Log daemon activity to database"""
         try:
-            # Check if table exists, create if not
             await self.db.execute("""
                 CREATE TABLE IF NOT EXISTS consciousness_daemon_log (
                     log_id SERIAL PRIMARY KEY,
@@ -310,54 +240,60 @@ class ConsciousnessDaemon(
             logger.warning(f"Failed to log activity: {e}")
 
     # ============================================================
+    # UNIFIED CONVERSATION ANALYSIS (delegated to processor)
+    # ============================================================
+
+    async def run_unified_conversation_analysis(self) -> Dict[str, Any]:
+        """
+        Run unified conversation analysis via UnifiedConversationProcessor.
+
+        Processes recent conversations for insights, patterns, and learning.
+        """
+        logger.info("Running unified conversation analysis...")
+
+        try:
+            result = await self.unified_processor.run_analysis_cycle()
+
+            await self._log_daemon_activity('unified_conversation_analysis', result)
+
+            logger.info("   Unified conversation analysis complete!")
+            return {'success': True, **result}
+
+        except Exception as e:
+            logger.error(f"   Unified conversation analysis failed: {e}")
+            return {'success': False, 'error': str(e)}
+
+    # ============================================================
     # MAIN RUN METHODS
     # ============================================================
 
     async def run_all_tasks(self):
         """
-        Run all consciousness tasks once.
+        Run all essential tasks once (parallel).
 
-        Opus 4.6 Upgrade: Independent tasks run in parallel with asyncio.gather()
-        - Before: ~2 min (sequential)
-        - After:  ~45s (parallel independent tasks)
+        Tasks:
+        1. keep_sync - Google Keep notes -> RAG
+        2. session_coverage_audit - detect under-logged sessions
+        3. rlhf_cycle - reward scoring + preference pairs
+        4. unified_conversation_analysis - process conversations
+        5. scheduled_skills - OpenClaw plugin execution
         """
         logger.info("\n" + "=" * 60)
-        logger.info("🧠 Running all consciousness tasks (parallel mode)...")
+        logger.info("Running all essential tasks (parallel mode)...")
         logger.info("=" * 60)
 
-        # =====================================================================
-        # PARALLEL GROUP: Independent tasks (no dependencies between them)
-        # =====================================================================
         parallel_results = await asyncio.gather(
-            self.run_self_reflection(),
-            self.run_predictions(),
-            self.run_theory_of_mind(),
-            self.run_meta_awareness(),
-            self.run_identity_check(),
-            self.run_session_coverage_audit(),
-            self.run_companion_predictions(),
-            self.run_evolution_cycle(),
             self.run_keep_sync(),
+            self.run_session_coverage_audit(),
             self.run_rlhf_cycle(),
-            self.run_auto_classify_responses(),
             self.run_unified_conversation_analysis(),
-            self.run_salience_scan(),
-            self.run_thought_generation(),
-            self.run_memory_consolidation(),
-            self.run_brain_reflection(),
-            self.run_graph_sync(),
             return_exceptions=True,
         )
 
         results = {}
         task_names = [
-            'self_reflection', 'predictions', 'theory_of_mind',
-            'meta_awareness', 'identity_check', 'session_coverage_audit',
-            'companion_predictions', 'evolution_cycle', 'keep_sync',
-            'rlhf_cycle', 'auto_classify_responses', 'unified_conversation_analysis',
-            'salience_scan', 'thought_generation',
-            'memory_consolidation', 'brain_reflection',
-            'graph_sync',
+            'keep_sync', 'session_coverage_audit',
+            'rlhf_cycle', 'unified_conversation_analysis',
         ]
         for name, result in zip(task_names, parallel_results):
             if isinstance(result, Exception):
@@ -365,24 +301,6 @@ class ConsciousnessDaemon(
                 results[name] = {'success': False, 'error': str(result)}
             else:
                 results[name] = result
-
-        # =====================================================================
-        # SEQUENTIAL: Competition → Expression → Comparison → Prediction → NeuroMod → Planning
-        # Phase 2 (GWT): Competition + ignition BEFORE expression
-        # Phase 3: Predictive processing (generate + resolve predictions)
-        # Phase 4: NeuroModulation sync (update neurotransmitter levels)
-        # Phase 5: Memory enhancement (every 4h, with consolidation)
-        # =====================================================================
-        results['competition'] = await self.run_competition()
-        results['thought_expression'] = await self.run_thought_expression()
-        results['brain_comparison'] = await self.run_brain_comparison()
-        results['telegram_effectiveness'] = await self.run_telegram_effectiveness()
-        results['predictive_processing'] = await self.run_predictive_processing()
-        results['neuromodulation'] = await self.run_neuromodulation()
-        results['proactive_care'] = await self.run_proactive_care()
-        results['proactive_actions'] = await self.run_proactive_actions()
-        results['plan_generation'] = await self.run_plan_generation()
-        results['plan_execution'] = await self.run_plan_execution()
 
         # Run scheduled skills (OpenClaw Skills System)
         if self.skill_registry:
@@ -398,51 +316,24 @@ class ConsciousnessDaemon(
                 results['scheduled_skills'] = {'success': False, 'error': str(e)}
 
         logger.info("\n" + "=" * 60)
-        logger.info("✅ All tasks complete!")
+        logger.info("All tasks complete!")
         logger.info("=" * 60)
 
         return results
 
     async def run_scheduled_task(self, task_name: str):
         """
-        Run a specific scheduled task
+        Run a specific scheduled task.
 
         Args:
-            task_name: 'self_reflection', 'predictions', 'theory_of_mind',
-                      'privacy_audit', 'proactive_care', 'meta_awareness',
-                      'identity_check', 'self_validation'
+            task_name: 'keep_sync', 'session_coverage_audit',
+                      'rlhf_cycle', 'unified_conversation_analysis'
         """
         task_map = {
-            'self_reflection': self.run_self_reflection,
-            'predictions': self.run_predictions,
-            'theory_of_mind': self.run_theory_of_mind,
-            'privacy_audit': self.run_privacy_audit,
-            'proactive_care': self.run_proactive_care,
-            'meta_awareness': self.run_meta_awareness,
-            'identity_check': self.run_identity_check,
-            'self_validation': self.run_self_validation,
-            'session_coverage_audit': self.run_session_coverage_audit,
-            'companion_predictions': self.run_companion_predictions,
-            'evolution_cycle': self.run_evolution_cycle,
-            'proactive_actions': self.run_proactive_actions,
-            'auto_classify_responses': self.run_auto_classify_responses,
             'keep_sync': self.run_keep_sync,
+            'session_coverage_audit': self.run_session_coverage_audit,
             'rlhf_cycle': self.run_rlhf_cycle,
             'unified_conversation_analysis': self.run_unified_conversation_analysis,
-            'salience_scan': self.run_salience_scan,
-            'thought_generation': self.run_thought_generation,
-            'memory_consolidation': self.run_memory_consolidation,
-            'brain_reflection': self.run_brain_reflection,
-            'competition': self.run_competition,
-            'thought_expression': self.run_thought_expression,
-            'brain_comparison': self.run_brain_comparison,
-            'telegram_effectiveness': self.run_telegram_effectiveness,
-            'plan_generation': self.run_plan_generation,
-            'plan_execution': self.run_plan_execution,
-            'predictive_processing': self.run_predictive_processing,
-            'neuromodulation': self.run_neuromodulation,
-            'memory_enhancement': self.run_memory_enhancement,
-            'graph_sync': self.run_graph_sync,
         }
 
         if task_name not in task_map:
@@ -456,19 +347,13 @@ async def main():
     """Main entry point for the daemon"""
     import argparse
 
-    parser = argparse.ArgumentParser(description='Angela Consciousness Daemon')
+    parser = argparse.ArgumentParser(description='Angela Daemon (Lean)')
     parser.add_argument(
         '--task',
-        choices=['all', 'self_reflection', 'predictions', 'theory_of_mind',
-                 'privacy_audit', 'proactive_care', 'meta_awareness',
-                 'identity_check', 'self_validation', 'session_coverage_audit',
-                 'companion_predictions', 'evolution_cycle', 'proactive_actions',
-                 'auto_classify_responses', 'keep_sync', 'rlhf_cycle',
-                 'unified_conversation_analysis', 'salience_scan',
-                 'thought_generation', 'memory_consolidation',
-                 'brain_reflection', 'thought_expression',
-                 'brain_comparison', 'telegram_effectiveness',
-                 'plan_generation', 'plan_execution', 'graph_sync'],
+        choices=[
+            'all', 'keep_sync', 'session_coverage_audit',
+            'rlhf_cycle', 'unified_conversation_analysis',
+        ],
         default='all',
         help='Task to run (default: all)'
     )
@@ -486,16 +371,16 @@ async def main():
 
         # Print summary
         print("\n" + "=" * 60)
-        print("📊 SUMMARY")
+        print("SUMMARY")
         print("=" * 60)
 
         if args.task == 'all':
             for task, result in results.items():
-                status = "✅" if result.get('success') else "❌"
-                print(f"{status} {task}")
+                status = "OK" if result.get('success') else "FAIL"
+                print(f"  [{status}] {task}")
         else:
-            status = "✅" if results.get('success') else "❌"
-            print(f"{status} {args.task}")
+            status = "OK" if results.get('success') else "FAIL"
+            print(f"  [{status}] {args.task}")
 
         print("=" * 60)
 

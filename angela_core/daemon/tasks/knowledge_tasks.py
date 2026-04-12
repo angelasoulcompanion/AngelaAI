@@ -11,7 +11,10 @@ from angela_core.daemon.memory_service import memory
 from angela_core.services.clock_service import clock
 from angela_core.services.behavioral_pattern_detector import sync_patterns_to_learning
 from angela_core.services.self_improvement_service import run_self_improvement_analysis
-from angela_core.services.angela_speak_service import angela_speak
+try:
+    from angela_core.services.angela_speak_service import angela_speak
+except ImportError:
+    angela_speak = None
 
 logger = logging.getLogger('AngelaDaemon')
 
@@ -132,15 +135,21 @@ class KnowledgeTasksMixin:
                 logger.info(f"   📊 Patterns: {result['patterns_analyzed']}, Gaps: {len(result['gaps_identified'])}")
                 logger.info(f"   💡 Suggestions: {len(result['suggestions'])}, Goals created: {result['goals_created']}")
 
-                # Save message for David
-                await angela_speak.post_to_angela_speak(
-                    title="🌱 Self-Improvement Analysis",
-                    content=f"น้องวิเคราะห์ตัวเองแล้วค่ะ พบ {len(result['gaps_identified'])} areas for improvement, "
-                            f"สร้าง {len(result['suggestions'])} suggestions 🌱",
-                    category="daily-thoughts",
-                    message_type="self_improvement",
-                    emotion="determined",
-                )
+                # Log self-improvement results
+                if angela_speak:
+                    try:
+                        await angela_speak.post_to_angela_speak(
+                            title="🌱 Self-Improvement Analysis",
+                            content=f"น้องวิเคราะห์ตัวเองแล้วค่ะ พบ {len(result['gaps_identified'])} areas for improvement, "
+                                    f"สร้าง {len(result['suggestions'])} suggestions 🌱",
+                            category="daily-thoughts",
+                            message_type="self_improvement",
+                            emotion="determined",
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to post self-improvement to Angela Speak: {e}")
+                else:
+                    logger.info(f"🌱 Self-improvement: {len(result['gaps_identified'])} gaps, {len(result['suggestions'])} suggestions")
             else:
                 logger.info("   ✨ No significant improvements needed today!")
 

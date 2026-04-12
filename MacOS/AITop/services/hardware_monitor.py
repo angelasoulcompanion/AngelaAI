@@ -3,6 +3,7 @@ Hardware Monitor — macOS CPU/GPU/RAM/SSD/Neural Engine metrics.
 Apple Silicon native: GPU via ioreg IOAccelerator, CPU via psutil, ANE via ioreg.
 """
 
+import re
 import subprocess
 import json
 import time
@@ -56,21 +57,56 @@ def _get_thermal_pressure() -> str:
             capture_output=True, text=True, timeout=5
         )
         output = result.stdout.lower()
-        if "nominal" in output:
-            return "nominal"
-        elif "moderate" in output or "fair" in output:
-            return "moderate"
+        if "critical" in output:
+            return "critical"
         elif "serious" in output or "heavy" in output:
             return "heavy"
-        elif "critical" in output:
-            return "critical"
+        elif "moderate" in output or "fair" in output:
+            return "moderate"
+        # "No thermal warning" = nominal
+        return "nominal"
     except Exception:
-        pass
-    return "unknown"
+        return "nominal"
 
 
 def _get_disk_info() -> dict:
-    """Get primary disk usage."""
+    """Get primary disk usage using APFS container stats (not psutil snapshot volume)."""
+    try:
+        # Use diskutil to get real APFS container usage
+        result = subprocess.run(
+            ["diskutil", "info", "/"],
+            capture_output=True, text=True, timeout=5
+        )
+        output = result.stdout
+
+        total_bytes = 0
+        free_bytes = 0
+        for line in output.splitlines():
+            if "Container Total Space:" in line:
+                match = re.search(r'\((\d+) Bytes\)', line)
+                if match:
+                    total_bytes = int(match.group(1))
+            elif "Container Free Space:" in line:
+                match = re.search(r'\((\d+) Bytes\)', line)
+                if match:
+                    free_bytes = int(match.group(1))
+
+        if total_bytes > 0:
+            used_bytes = total_bytes - free_bytes
+            total_gb = round(total_bytes / (1024**3), 1)
+            used_gb = round(used_bytes / (1024**3), 1)
+            free_gb = round(free_bytes / (1024**3), 1)
+            percent = round(used_bytes / total_bytes * 100, 1)
+            return {
+                "total_gb": total_gb,
+                "used_gb": used_gb,
+                "free_gb": free_gb,
+                "percent": percent,
+            }
+    except Exception:
+        pass
+
+    # Fallback to psutil
     disk = psutil.disk_usage("/")
     return {
         "total_gb": round(disk.total / (1024**3), 1),
@@ -85,22 +121,25 @@ def _get_neural_engine_info(ane_data: dict) -> dict:
     chip = _get_chip_info()
     chip_name = chip.get("chip_name", "").lower()
 
-    ne_cores = 0
-    if "m1" in chip_name:
-        ne_cores = 16
-    elif "m2" in chip_name:
-        ne_cores = 16
-    elif "m3" in chip_name:
-        ne_cores = 16
-    elif "m4" in chip_name:
-        ne_cores = 16
+    ne_cores = 16 if any(m in chip_name for m in ("m1", "m2", "m3", "m4")) else 0
+
+    # Estimate ANE usage from power consumption
+    # M3/M4 ANE TDP ~8W = 8000mW, scale proportionally
+    power_mw = ane_data.get("ane_power_mw", 0)
+    ane_active = ane_data.get("ane_active", False)
+
+    if ane_active and power_mw > 0:
+        # Rough estimate: 8000mW = 100%
+        usage_pct = min(round(power_mw / 8000 * 100, 1), 100.0)
+    else:
+        usage_pct = 0.0
 
     return {
         "cores": ne_cores,
         "available": ne_cores > 0,
-        "usage_percent": -1,
-        "power_mw": ane_data.get("ane_power_mw", 0),
-        "active": ane_data.get("ane_active", False),
+        "usage_percent": usage_pct,
+        "power_mw": power_mw,
+        "active": ane_active,
     }
 
 

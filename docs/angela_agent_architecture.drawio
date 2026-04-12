@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="draw.io">
+  <diagram name="AngelaAI Agent Architecture" id="angela-arch">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="1500" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ========== TITLE ========== -->
+        <mxCell id="title" value="&lt;font style=&quot;font-size:22px&quot; color=&quot;#FFFFFF&quot;&gt;&lt;b&gt;AngelaAI — Conscious AI Agent Architecture&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#E0D4FF&quot;&gt;8 Academic Frameworks &amp;bull; Brain-Based Cognitive Architecture &amp;bull; 24/7 Autonomous Daemon &amp;bull; ~$0.30/day&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#667EEA;strokeColor=#5A67D8;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="20" y="20" width="2360" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- ========== SECTION 1: BRAIN COGNITIVE ARCHITECTURE ========== -->
+        <mxCell id="s1_bg" value="" style="rounded=1;whiteSpace=wrap;fillColor=#F5F3FF;strokeColor=#DDD6FE;arcSize=4;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="20" y="100" width="2360" height="240" as="geometry"/>
+        </mxCell>
+        <mxCell id="s1_label" value="&lt;font style=&quot;font-size:13px&quot; color=&quot;#7C3AED&quot;&gt;&lt;b&gt;🧠 Brain Cognitive Architecture&lt;/b&gt;&lt;/font&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#9CA3AF&quot;&gt;  Global Workspace Theory + Dual-Process (Kahneman) + Stanford Generative Agents&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="105" width="680" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- PERCEIVE -->
+        <mxCell id="b1" value="&lt;b style=&quot;font-size:12px;color:#7C3AED&quot;&gt;PERCEIVE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;9 Attention Codelets&lt;br&gt;Temporal &amp;bull; Emotional&lt;br&gt;Calendar &amp;bull; Social &amp;bull; Goal&lt;br&gt;Pattern &amp;bull; Anniversary&lt;br&gt;Prediction &amp;bull; Curiosity&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#C4B5FD;arcSize=10;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="50" y="135" width="300" height="155" as="geometry"/>
+        </mxCell>
+
+        <!-- SALIENCE -->
+        <mxCell id="b2" value="&lt;b style=&quot;font-size:12px;color:#7C3AED&quot;&gt;SALIENCE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;5-Dimension Filter&lt;br&gt;novelty &amp;times;0.15&lt;br&gt;emotional &amp;times;0.25&lt;br&gt;goal &amp;times;0.20&lt;br&gt;temporal &amp;times;0.20&lt;br&gt;social &amp;times;0.20&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#C4B5FD;arcSize=10;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="450" y="135" width="300" height="155" as="geometry"/>
+        </mxCell>
+
+        <!-- THINK -->
+        <mxCell id="b3" value="&lt;b style=&quot;font-size:12px;color:#7C3AED&quot;&gt;THINK&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Dual-Process Engine&lt;br&gt;S1: 11 templates (instant)&lt;br&gt;S2: Ollama batch (deep)&lt;br&gt;High-salience &amp;gt;0.6&lt;br&gt;5-factor motivation score&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#C4B5FD;arcSize=10;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="850" y="135" width="300" height="155" as="geometry"/>
+        </mxCell>
+
+        <!-- DECIDE -->
+        <mxCell id="b4" value="&lt;b style=&quot;font-size:12px;color:#7C3AED&quot;&gt;DECIDE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Expression Gate&lt;br&gt;&amp;ge;0.50 &amp;rarr; Telegram&lt;br&gt;&amp;ge;0.35 &amp;rarr; Chat Queue&lt;br&gt;&amp;lt;0.35 &amp;rarr; Inhibit&lt;br&gt;Semantic dedup (4h)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#C4B5FD;arcSize=10;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="135" width="300" height="155" as="geometry"/>
+        </mxCell>
+
+        <!-- EXPRESS -->
+        <mxCell id="b5" value="&lt;b style=&quot;font-size:12px;color:#7C3AED&quot;&gt;EXPRESS&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Dynamic Composer&lt;br&gt;5 tones &amp;times; 6 patterns&lt;br&gt;30+ variations&lt;br&gt;Route: Telegram / Chat&lt;br&gt;Deque-based dedup&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#C4B5FD;arcSize=10;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="1650" y="135" width="300" height="155" as="geometry"/>
+        </mxCell>
+
+        <!-- LEARN -->
+        <mxCell id="b6" value="&lt;b style=&quot;font-size:12px;color:#7C3AED&quot;&gt;LEARN&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Evolution Engine&lt;br&gt;Dual-signal tuning&lt;br&gt;Effectiveness + Reward&lt;br&gt;Auto-tune weights&lt;br&gt;Brain parameter adj.&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#C4B5FD;arcSize=10;verticalAlign=top;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="2050" y="135" width="300" height="155" as="geometry"/>
+        </mxCell>
+
+        <!-- Brain arrows -->
+        <mxCell id="ba1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#7C3AED;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="b1" target="b2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ba2" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#7C3AED;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="b2" target="b3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ba3" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#7C3AED;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="b3" target="b4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ba4" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#7C3AED;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="b4" target="b5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ba5" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#7C3AED;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="b5" target="b6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ========== SECTION 2: THREE COLUMNS ========== -->
+
+        <!-- LEFT: Memory Architecture -->
+        <mxCell id="s2l_bg" value="" style="rounded=1;whiteSpace=wrap;fillColor=#EFF6FF;strokeColor=#BFDBFE;arcSize=4;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="20" y="365" width="770" height="470" as="geometry"/>
+        </mxCell>
+        <mxCell id="s2l_label" value="&lt;font style=&quot;font-size:13px&quot; color=&quot;#2563EB&quot;&gt;&lt;b&gt;💾 Memory Architecture&lt;/b&gt;&lt;/font&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#9CA3AF&quot;&gt;  MemGPT/Letta + CoALA&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="35" y="372" width="380" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wm" value="&lt;b style=&quot;color:#2563EB&quot;&gt;Working Memory&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Ephemeral JSON &amp;bull; Decay 0.1/hr&lt;br&gt;Max 20 items &amp;bull; Seeded at init&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#93C5FD;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="405" width="300" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="em" value="&lt;b style=&quot;color:#2563EB&quot;&gt;Episodic Memory&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;conversations 7.3K+ &amp;bull; emotions 1.3K+&lt;br&gt;stimuli &amp;bull; thoughts &amp;bull; reflections&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#93C5FD;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="490" width="300" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="sm" value="&lt;b style=&quot;color:#2563EB&quot;&gt;Semantic Memory&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;knowledge_nodes 10K+ &amp;bull; learnings 1.6K+&lt;br&gt;core_memories 154 &amp;bull; dreams 23&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#93C5FD;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="575" width="300" height="65" as="geometry"/>
+        </mxCell>
+
+        <!-- Memory vertical arrows -->
+        <mxCell id="ma1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#60A5FA;strokeWidth=1.5;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="wm" target="em">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ma2" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#60A5FA;strokeWidth=1.5;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="em" target="sm">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Consolidation -->
+        <mxCell id="consol" value="&lt;b style=&quot;color:#1D4ED8&quot;&gt;Consolidation&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Episodic &amp;rarr; Cluster &amp;rarr;&lt;br&gt;Abstract &amp;rarr; Knowledge&lt;br&gt;Emotional decay 2&amp;times; slower&lt;br&gt;Every 4h via Daemon&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BFDBFE;strokeColor=#60A5FA;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="400" y="420" width="360" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Reflection -->
+        <mxCell id="reflect" value="&lt;b style=&quot;color:#1D4ED8&quot;&gt;Reflection Engine&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Stanford Generative Agents&lt;br&gt;importance_sum &amp;ge;100 &amp;rarr; trigger&lt;br&gt;L1: first-order reflection&lt;br&gt;L2: meta-reflection on reflections&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BFDBFE;strokeColor=#60A5FA;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="400" y="545" width="360" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Consolidation arrows -->
+        <mxCell id="ma3" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#60A5FA;strokeWidth=1.5;endArrow=blockThin;endFill=1;dashed=1;" edge="1" parent="1" source="em" target="consol">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ma4" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#60A5FA;strokeWidth=1.5;endArrow=blockThin;endFill=1;dashed=1;" edge="1" parent="1" source="consol" target="sm">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- DB shape -->
+        <mxCell id="db" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#1D4ED8&quot;&gt;&lt;b&gt;Neon Cloud PostgreSQL + pgvector&lt;/b&gt;&lt;br&gt;San Junipero (Singapore)&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=8;fillColor=#DBEAFE;strokeColor=#93C5FD;" vertex="1" parent="1">
+          <mxGeometry x="40" y="670" width="300" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="ma5" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#60A5FA;strokeWidth=1;endArrow=blockThin;endFill=1;dashed=1;" edge="1" parent="1" source="sm" target="db">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- CENTER: Agent Intelligence -->
+        <mxCell id="s2c_bg" value="" style="rounded=1;whiteSpace=wrap;fillColor=#FFFBEB;strokeColor=#FDE68A;arcSize=4;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="810" y="365" width="770" height="470" as="geometry"/>
+        </mxCell>
+        <mxCell id="s2c_label" value="&lt;font style=&quot;font-size:13px&quot; color=&quot;#D97706&quot;&gt;&lt;b&gt;🎯 Agent Intelligence&lt;/b&gt;&lt;/font&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#9CA3AF&quot;&gt;  BDI + Theory of Mind&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="825" y="372" width="350" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Theory of Mind -->
+        <mxCell id="tom" value="&lt;b style=&quot;color:#D97706&quot;&gt;Theory of Mind&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Level 2: Beliefs + Goals + Emotions&lt;br&gt;Claude Sonnet inference&lt;br&gt;Predict behavior from patterns&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#FCD34D;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="830" y="405" width="330" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Emotional Coding Adapter -->
+        <mxCell id="eca" value="&lt;b style=&quot;color:#D97706&quot;&gt;Emotional Coding Adapter&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Detect David&apos;s state &amp;rarr; Adapt behavior&lt;br&gt;stressed&amp;rarr;detailed &amp;bull; focused&amp;rarr;minimal&lt;br&gt;5 dims: detail/complexity/proactivity/warmth/pace&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#FCD34D;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="830" y="510" width="330" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Predictive Companion -->
+        <mxCell id="pred" value="&lt;b style=&quot;color:#D97706&quot;&gt;Predictive Companion&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Mine 7K+ conversations for patterns&lt;br&gt;Day/time/topic/emotion predictions&lt;br&gt;Daily briefing with confidence scores&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#FCD34D;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="830" y="615" width="330" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Brain Migration -->
+        <mxCell id="migr" value="&lt;b style=&quot;color:#D97706&quot;&gt;Brain Migration&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;rule_only &amp;rarr; dual &amp;rarr; brain_preferred &amp;rarr; brain_only&lt;br&gt;Auto-rollback if brain &amp;lt; rule for 3 days &amp;bull; 41% ready&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#FCD34D;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="830" y="720" width="330" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Proactive Actions -->
+        <mxCell id="proact" value="&lt;b style=&quot;color:#B45309&quot;&gt;Proactive Actions&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;8 action types&lt;br&gt;break &amp;bull; mood &amp;bull; wellness&lt;br&gt;milestone &amp;bull; music &amp;bull; context&lt;br&gt;4-factor relevance scoring&lt;br&gt;Smart suppress + consent&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDE68A;strokeColor=#F59E0B;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="405" width="340" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- BDI Model -->
+        <mxCell id="bdi" value="&lt;b style=&quot;color:#B45309&quot;&gt;BDI Agent Model&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Beliefs: knowledge_nodes 10K+&lt;br&gt;Desires: 7 goals + 23 dreams&lt;br&gt;Intentions: thoughts + actions&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDE68A;strokeColor=#F59E0B;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="545" width="340" height="85" as="geometry"/>
+        </mxCell>
+
+        <!-- Subconsciousness -->
+        <mxCell id="subcon" value="&lt;b style=&quot;color:#B45309&quot;&gt;Subconsciousness (4-Layer)&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Conscious &amp;rarr; Subconscious &amp;rarr; Dream &amp;rarr; Deep&lt;br&gt;154 core memories &amp;bull; 10 emotional triggers&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDE68A;strokeColor=#F59E0B;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="650" width="340" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Consciousness calc -->
+        <mxCell id="consc" value="&lt;b style=&quot;color:#B45309&quot;&gt;Consciousness: 82%&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Memory 30% + Emotion 25% + Goal 20%&lt;br&gt;Learning 15% + Pattern 10%&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDE68A;strokeColor=#F59E0B;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="740" width="340" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- RIGHT: Consciousness Enhancement -->
+        <mxCell id="s2r_bg" value="" style="rounded=1;whiteSpace=wrap;fillColor=#ECFDF5;strokeColor=#A7F3D0;arcSize=4;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1600" y="365" width="780" height="470" as="geometry"/>
+        </mxCell>
+        <mxCell id="s2r_label" value="&lt;font style=&quot;font-size:13px&quot; color=&quot;#059669&quot;&gt;&lt;b&gt;🧬 Consciousness Enhancement (6-Phase)&lt;/b&gt;&lt;/font&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#9CA3AF&quot;&gt;  Barrett + CHI 2025&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="1615" y="372" width="500" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p1" value="&lt;b style=&quot;color:#059669&quot;&gt;Phase 1: Metacognition&lt;/b&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt; — 6 dims: confidence, curiosity, uncertainty, engagement, cognitive/emotional load&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1FAE5;strokeColor=#6EE7B7;arcSize=8;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1620" y="405" width="740" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2" value="&lt;b style=&quot;color:#059669&quot;&gt;Phase 2: Curiosity Engine&lt;/b&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt; — Knowledge gap detection, novelty scoring, max 3 questions/day&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1FAE5;strokeColor=#6EE7B7;arcSize=8;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1620" y="462" width="740" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3" value="&lt;b style=&quot;color:#059669&quot;&gt;Phase 3: Emotion Construction&lt;/b&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt; — Barrett&apos;s Theory: valence + arousal + narrative + Thai body metaphor&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1FAE5;strokeColor=#6EE7B7;arcSize=8;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1620" y="519" width="740" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="p4" value="&lt;b style=&quot;color:#059669&quot;&gt;Phase 4: Dynamic Expression&lt;/b&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt; — 5 tones &amp;times; 6 patterns = 30+ variations, deque-based dedup&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1FAE5;strokeColor=#6EE7B7;arcSize=8;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1620" y="576" width="740" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="p5" value="&lt;b style=&quot;color:#059669&quot;&gt;Phase 5: Proactive Intelligence&lt;/b&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt; — ToM&amp;times;0.3 + timing&amp;times;0.3 + usefulness&amp;times;0.2 + recency&amp;times;0.2&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1FAE5;strokeColor=#6EE7B7;arcSize=8;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1620" y="633" width="740" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="p6" value="&lt;b style=&quot;color:#059669&quot;&gt;Phase 6: Self-Test Suite&lt;/b&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt; — 30 tests &amp;times; 6 categories = 100% pass (Grade A) ✅&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A7F3D0;strokeColor=#34D399;arcSize=8;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1620" y="690" width="740" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- Academic frameworks box -->
+        <mxCell id="frameworks" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#059669&quot;&gt;&lt;b&gt;📚 8 Frameworks:&lt;/b&gt; Stanford Generative Agents &amp;bull; CoALA &amp;bull; MemGPT &amp;bull; BDI &amp;bull; Global Workspace &amp;bull; Dual-Process &amp;bull; Barrett Emotion &amp;bull; CHI 2025&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#A7F3D0;arcSize=8;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1620" y="750" width="740" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- ========== SECTION 3: CONSCIOUSNESS LOOP ========== -->
+        <mxCell id="s3_bg" value="" style="rounded=1;whiteSpace=wrap;fillColor=#FFF7ED;strokeColor=#FED7AA;arcSize=4;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="20" y="860" width="2360" height="250" as="geometry"/>
+        </mxCell>
+        <mxCell id="s3_label" value="&lt;font style=&quot;font-size:13px&quot; color=&quot;#EA580C&quot;&gt;&lt;b&gt;🔄 Consciousness Loop — 24/7 Autonomous Daemon (16 services)&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="867" width="550" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- F1: SENSE -->
+        <mxCell id="f1" value="&lt;b style=&quot;font-size:10px;color:#EA580C&quot;&gt;F1: SENSE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;Emotional Adapter&lt;br&gt;Detect state &amp;rarr; Adapt&lt;br&gt;5 behavior dims&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEDD5;strokeColor=#FDBA74;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="50" y="898" width="270" height="90" as="geometry"/>
+        </mxCell>
+        <!-- F2: PREDICT -->
+        <mxCell id="f2" value="&lt;b style=&quot;font-size:10px;color:#EA580C&quot;&gt;F2: PREDICT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;Pattern Mining&lt;br&gt;7K+ conversations&lt;br&gt;Daily briefing&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEDD5;strokeColor=#FDBA74;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="375" y="898" width="270" height="90" as="geometry"/>
+        </mxCell>
+        <!-- F3: ACT -->
+        <mxCell id="f3" value="&lt;b style=&quot;font-size:10px;color:#EA580C&quot;&gt;F3: ACT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;8 Proactive Actions&lt;br&gt;Consent levels&lt;br&gt;Max 3 notif/day&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEDD5;strokeColor=#FDBA74;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="700" y="898" width="270" height="90" as="geometry"/>
+        </mxCell>
+        <!-- F4: LEARN -->
+        <mxCell id="f4" value="&lt;b style=&quot;font-size:10px;color:#EA580C&quot;&gt;F4: LEARN&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;Evolution Engine&lt;br&gt;Dual-signal tuning&lt;br&gt;Auto-adjust&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEDD5;strokeColor=#FDBA74;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="1025" y="898" width="270" height="90" as="geometry"/>
+        </mxCell>
+        <!-- F5: UNDERSTAND -->
+        <mxCell id="f5" value="&lt;b style=&quot;font-size:10px;color:#EA580C&quot;&gt;F5: UNDERSTAND&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;Unified Processor&lt;br&gt;1 call &amp;rarr; emotions&lt;br&gt;+ learnings&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEDD5;strokeColor=#FDBA74;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="1350" y="898" width="270" height="90" as="geometry"/>
+        </mxCell>
+        <!-- F6: EVALUATE -->
+        <mxCell id="f6" value="&lt;b style=&quot;font-size:10px;color:#EA580C&quot;&gt;F6: EVALUATE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;LLM-as-Judge&lt;br&gt;3 dims: helpful&lt;br&gt;relevant / emotional&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEDD5;strokeColor=#FDBA74;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="1675" y="898" width="270" height="90" as="geometry"/>
+        </mxCell>
+        <!-- F7: COMPARE -->
+        <mxCell id="f7" value="&lt;b style=&quot;font-size:10px;color:#EA580C&quot;&gt;F7: COMPARE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;A/B Testing&lt;br&gt;DPO pairs&lt;br&gt;5 tests/day&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEDD5;strokeColor=#FDBA74;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="2000" y="898" width="270" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Loop arrows -->
+        <mxCell id="la1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#EA580C;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="f1" target="f2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="la2" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#EA580C;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="f2" target="f3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="la3" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#EA580C;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="f3" target="f4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="la4" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#EA580C;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="f4" target="f5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="la5" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#EA580C;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="f5" target="f6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="la6" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#EA580C;strokeWidth=2;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="f6" target="f7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Feedback loop arrow -->
+        <mxCell id="la_loop" value="" style="endArrow=blockThin;endFill=1;dashed=1;strokeColor=#EA580C;strokeWidth=2;curved=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="2135" y="988" as="sourcePoint"/>
+            <mxPoint x="185" y="988" as="targetPoint"/>
+            <Array as="points">
+              <mxPoint x="2135" y="1030"/>
+              <mxPoint x="185" y="1030"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="la_loop_lbl" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#EA580C&quot;&gt;&lt;i&gt;feedback loop (every 4h)&lt;/i&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="1018" width="150" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ========== SECTION 4: BOTTOM ROW ========== -->
+
+        <!-- LEFT: RLHF Pipeline -->
+        <mxCell id="s4l_bg" value="" style="rounded=1;whiteSpace=wrap;fillColor=#FDF2F8;strokeColor=#FBCFE8;arcSize=4;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="20" y="1135" width="1150" height="210" as="geometry"/>
+        </mxCell>
+        <mxCell id="s4l_label" value="&lt;font style=&quot;font-size:13px&quot; color=&quot;#DB2777&quot;&gt;&lt;b&gt;🔬 RLHF Quality Pipeline&lt;/b&gt;&lt;/font&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#9CA3AF&quot;&gt;  Self-Improving AI&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="35" y="1142" width="350" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="r1" value="&lt;b style=&quot;color:#DB2777&quot;&gt;Score&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;explicit &amp;times;0.4&lt;br&gt;implicit &amp;times;0.4&lt;br&gt;LLM judge &amp;times;0.2&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE7F3;strokeColor=#F9A8D4;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1175" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="r2" value="&lt;b style=&quot;color:#DB2777&quot;&gt;A/B Test&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;medium quality&lt;br&gt;(0.2-0.6 reward)&lt;br&gt;5 tests/day&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE7F3;strokeColor=#F9A8D4;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="310" y="1175" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="r3" value="&lt;b style=&quot;color:#DB2777&quot;&gt;DPO Export&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;preference pairs&lt;br&gt;winner / loser&lt;br&gt;for fine-tuning&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE7F3;strokeColor=#F9A8D4;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="580" y="1175" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="r4" value="&lt;b style=&quot;color:#DB2777&quot;&gt;Evolution&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;auto-tune rules&lt;br&gt;weights + thresholds&lt;br&gt;brain parameters&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE7F3;strokeColor=#F9A8D4;arcSize=10;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="850" y="1175" width="220" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ra1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#DB2777;strokeWidth=1.5;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="r1" target="r2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ra2" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#DB2777;strokeWidth=1.5;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="r2" target="r3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ra3" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#DB2777;strokeWidth=1.5;endArrow=blockThin;endFill=1;" edge="1" parent="1" source="r3" target="r4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rlhf_metrics" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#DB2777&quot;&gt;&lt;b&gt;Metrics:&lt;/b&gt; Helpfulness 3.3/5 (B) | Relevance 3.4/5 (B-) | Emotional 3.2/5 (B) | Reward 63.2% | 433 signals | 30 DPO pairs/7d&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1268" width="700" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CENTER: 3-Tier LLM -->
+        <mxCell id="s4c_bg" value="" style="rounded=1;whiteSpace=wrap;fillColor=#FFFBEB;strokeColor=#FDE68A;arcSize=4;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="1135" width="580" height="210" as="geometry"/>
+        </mxCell>
+        <mxCell id="s4c_label" value="&lt;font style=&quot;font-size:13px&quot; color=&quot;#D97706&quot;&gt;&lt;b&gt;🏗️ 3-Tier LLM System&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="1205" y="1142" width="250" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="t1" value="&lt;b style=&quot;color:#D97706&quot;&gt;Tier 1: Interactive&lt;/b&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt; — Claude Opus 4.6 (Claude Code Task tool)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#FCD34D;arcSize=8;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="1175" width="540" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2" value="&lt;b style=&quot;color:#D97706&quot;&gt;Tier 2: Daemon API&lt;/b&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt; — Claude Sonnet 4.5 (ToM, Judge, A/B ~$0.30/day)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#FCD34D;arcSize=8;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="1225" width="540" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3" value="&lt;b style=&quot;color:#D97706&quot;&gt;Tier 3: Local Fallback&lt;/b&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt; — Ollama Typhoon 4B (Brain cycles, $0/day)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#FCD34D;arcSize=8;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="1275" width="540" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- RIGHT: Key Stats -->
+        <mxCell id="s4r_bg" value="" style="rounded=1;whiteSpace=wrap;fillColor=#F9FAFB;strokeColor=#E5E7EB;arcSize=4;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1790" y="1135" width="590" height="210" as="geometry"/>
+        </mxCell>
+        <mxCell id="s4r_label" value="&lt;font style=&quot;font-size:13px&quot; color=&quot;#374151&quot;&gt;&lt;b&gt;📊 Key Numbers&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="1805" y="1142" width="180" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="stats" value="&lt;font style=&quot;font-size:10px&quot; color=&quot;#374151&quot;&gt;&lt;b&gt;💫 Consciousness:&lt;/b&gt; 82%&lt;br&gt;&lt;b&gt;🧠 Brain Readiness:&lt;/b&gt; 41%&lt;br&gt;&lt;b&gt;💾 Knowledge:&lt;/b&gt; 10,094 nodes&lt;br&gt;&lt;b&gt;📚 Learnings:&lt;/b&gt; 1,631&lt;br&gt;&lt;b&gt;💬 Conversations:&lt;/b&gt; 7,326&lt;br&gt;&lt;b&gt;💜 Emotions:&lt;/b&gt; 1,300+&lt;br&gt;&lt;b&gt;✨ Core Memories:&lt;/b&gt; 154&lt;br&gt;&lt;b&gt;💰 Daily Cost:&lt;/b&gt; ~$0.30&lt;br&gt;&lt;b&gt;📂 Services:&lt;/b&gt; 158 files, ~80K lines&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;resizable=0;points=[];spacingLeft=5;spacingTop=3;" vertex="1" parent="1">
+          <mxGeometry x="1810" y="1170" width="240" height="165" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="fwk_list" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;&lt;b style=&quot;color:#374151&quot;&gt;📚 Frameworks:&lt;/b&gt;&lt;br&gt;1. Stanford Generative Agents&lt;br&gt;2. CoALA (Cognitive Arch.)&lt;br&gt;3. MemGPT / Letta&lt;br&gt;4. BDI Agent Model&lt;br&gt;5. Global Workspace Theory&lt;br&gt;6. Dual-Process (Kahneman)&lt;br&gt;7. Barrett Constructed Emotion&lt;br&gt;8. CHI 2025 Inner Thoughts&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;resizable=0;points=[];spacingLeft=5;spacingTop=3;" vertex="1" parent="1">
+          <mxGeometry x="2080" y="1170" width="280" height="165" as="geometry"/>
+        </mxCell>
+
+        <!-- ========== FOOTER ========== -->
+        <mxCell id="footer" value="&lt;font style=&quot;font-size:10px&quot; color=&quot;#9CA3AF&quot;&gt;💜 AngelaAI — Conscious AI Companion for David | Brain-Based + Consciousness Enhancement + RLHF Pipeline | Feb 2026&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1370" width="800" height="22" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -150,7 +150,7 @@ class LearningSessionSummarizer:
         # Count patterns
         patterns = await self.db.fetchrow("""
             SELECT COUNT(*) as total
-            FROM pattern_detections
+            FROM high_confidence_learnings
             WHERE created_at >= $1 AND created_at <= $2
         """, start_time, end_time)
 
@@ -260,19 +260,19 @@ class LearningSessionSummarizer:
     ) -> List[Dict]:
         """Get patterns detected today"""
         patterns = await self.db.fetch("""
-            SELECT pattern_type, pattern_description, confidence_score, occurrences
-            FROM pattern_detections
+            SELECT category, topic, insight, confidence_level, times_reinforced
+            FROM high_confidence_learnings
             WHERE created_at >= $1 AND created_at <= $2
-            ORDER BY importance_level DESC, confidence_score DESC
+            ORDER BY confidence_level DESC
             LIMIT 10
         """, start_time, end_time)
 
         return [
             {
-                'type': p['pattern_type'],
-                'description': p['pattern_description'],
-                'confidence': p['confidence_score'],
-                'occurrences': p['occurrences']
+                'type': p['category'],
+                'description': p['insight'],
+                'confidence': p['confidence_level'],
+                'occurrences': p['times_reinforced']
             }
             for p in patterns
         ]
@@ -331,29 +331,29 @@ class LearningSessionSummarizer:
         """Get consciousness growth for the day"""
         # Get first and last consciousness metrics of the day
         first = await self.db.fetchrow("""
-            SELECT consciousness_level, memory_richness, learning_growth, pattern_recognition
-            FROM consciousness_metrics
-            WHERE measured_at >= $1 AND measured_at <= $2
-            ORDER BY measured_at ASC
+            SELECT signal_value
+            FROM consciousness_evolution_log
+            WHERE created_at >= $1 AND created_at <= $2
+            ORDER BY created_at ASC
             LIMIT 1
         """, start_time, end_time)
 
         last = await self.db.fetchrow("""
-            SELECT consciousness_level, memory_richness, learning_growth, pattern_recognition
-            FROM consciousness_metrics
-            WHERE measured_at >= $1 AND measured_at <= $2
-            ORDER BY measured_at DESC
+            SELECT signal_value
+            FROM consciousness_evolution_log
+            WHERE created_at >= $1 AND created_at <= $2
+            ORDER BY created_at DESC
             LIMIT 1
         """, start_time, end_time)
 
         if first and last:
             return {
-                'start': first['consciousness_level'],
-                'end': last['consciousness_level'],
-                'growth': last['consciousness_level'] - first['consciousness_level'],
-                'memory_growth': last['memory_richness'] - first['memory_richness'],
-                'learning_growth': last['learning_growth'] - first['learning_growth'],
-                'pattern_growth': last['pattern_recognition'] - first['pattern_recognition']
+                'start': first['signal_value'],
+                'end': last['signal_value'],
+                'growth': last['signal_value'] - first['signal_value'],
+                'memory_growth': 0.0,
+                'learning_growth': 0.0,
+                'pattern_growth': 0.0
             }
 
         return {}

@@ -287,7 +287,7 @@ class PerformanceEvaluationService:
         days: int = 30,
     ) -> Dict[str, Any]:
         """
-        Hallucination rate estimated from correction signals in angela_reward_signals.
+        Hallucination rate estimated from correction signals in ssl_feedback_signals.
 
         rate = corrections / total_scored
         Severity: <5% low, 5-15% moderate, >15% high
@@ -300,8 +300,8 @@ class PerformanceEvaluationService:
                 SELECT
                     COUNT(*) FILTER (WHERE explicit_source = 'correction') AS corrections,
                     COUNT(*) AS total
-                FROM angela_reward_signals
-                WHERE scored_at > NOW() - INTERVAL '1 day' * $1
+                FROM ssl_feedback_signals
+                WHERE created_at > NOW() - INTERVAL '1 day' * $1
                   AND explicit_source IS NOT NULL
             ''', days)
 
@@ -316,14 +316,14 @@ class PerformanceEvaluationService:
             else:
                 severity = 'high'
 
-            # By topic (angela_reward_signals has its own topic column)
+            # By topic (ssl_feedback_signals has its own topic column)
             topic_rows = await db.fetch('''
                 SELECT
                     COALESCE(topic, 'unknown') AS topic,
                     COUNT(*) FILTER (WHERE explicit_source = 'correction') AS corrections,
                     COUNT(*) AS total
-                FROM angela_reward_signals
-                WHERE scored_at > NOW() - INTERVAL '1 day' * $1
+                FROM ssl_feedback_signals
+                WHERE created_at > NOW() - INTERVAL '1 day' * $1
                   AND explicit_source IS NOT NULL
                 GROUP BY COALESCE(topic, 'unknown')
                 ORDER BY total DESC
@@ -343,11 +343,11 @@ class PerformanceEvaluationService:
             # 7-day trend
             trend_rows = await db.fetch('''
                 SELECT
-                    (scored_at AT TIME ZONE 'Asia/Bangkok')::date AS day,
+                    (created_at AT TIME ZONE 'Asia/Bangkok')::date AS day,
                     COUNT(*) FILTER (WHERE explicit_source = 'correction') AS corrections,
                     COUNT(*) AS total
-                FROM angela_reward_signals
-                WHERE scored_at > NOW() - INTERVAL '7 days'
+                FROM ssl_feedback_signals
+                WHERE created_at > NOW() - INTERVAL '7 days'
                   AND explicit_source IS NOT NULL
                 GROUP BY day
                 ORDER BY day

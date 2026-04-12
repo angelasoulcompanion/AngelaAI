@@ -148,14 +148,8 @@ class BrainDecisionListener:
         message = event.data.get("message", "")
         channel = event.data.get("channel", "chat_queue")
 
-        if channel == "telegram" and message:
-            try:
-                from angela_core.services.tools.telegram_tool import SendTelegramTool
-                tool = SendTelegramTool()
-                result = await tool.execute(message=message)
-                logger.info("Brain expression sent via Telegram: %s", result.success)
-            except Exception as e:
-                logger.error("Brain expression send failed: %s", e)
+        if message:
+            logger.info("Brain expression queued: %s", message[:60])
 
 
 # ── Calendar Alert Handler ──

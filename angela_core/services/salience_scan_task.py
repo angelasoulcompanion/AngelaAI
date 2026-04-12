@@ -13,7 +13,10 @@ Created: 2026-02-14
 import logging
 from typing import Dict, Any
 
-from angela_core.services.salience_engine import SalienceEngine
+try:
+    from angela_core.services.salience_engine import SalienceEngine
+except ImportError:
+    from angela_core.services._deprecated.salience_engine import SalienceEngine
 
 logger = logging.getLogger('consciousness_daemon')
 

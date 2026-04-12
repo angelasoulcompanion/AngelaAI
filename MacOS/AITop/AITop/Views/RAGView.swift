@@ -11,14 +11,17 @@ struct RAGView: View {
     @EnvironmentObject var apiService: APIService
     @State private var documents: [RAGDocument] = []
     @State private var localModels: [OllamaModel] = []
-    @State private var selectedModel = ""
+    @AppStorage("defaultModel") private var selectedModel = ""
     @State private var query = ""
     @State private var answer = ""
     @State private var chunks: [RAGChunk] = []
     @State private var isQuerying = false
     @State private var isUploading = false
-    @State private var error: String?
+    @State private var errorMessage: String?
+    @State private var showError = false
     @State private var tokensPerSecond: Double = 0
+    @State private var deleteTarget: RAGDocument?
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         HSplitView {
@@ -170,7 +173,17 @@ struct RAGView: View {
                             if doc.indexed {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundColor(AITopTheme.success)
+                                    .font(.system(size: 12))
                             }
+                            Button {
+                                deleteTarget = doc
+                                showDeleteConfirm = true
+                            } label: {
+                                Image(systemName: "trash")
+                                    .foregroundColor(AITopTheme.error)
+                                    .font(.system(size: 12))
+                            }
+                            .buttonStyle(.plain)
                         }
                         .padding(8)
                         .background(AITopTheme.surfaceBackground)
@@ -185,6 +198,21 @@ struct RAGView: View {
             .background(AITopTheme.backgroundMedium)
         }
         .background(AITopTheme.backgroundDark)
+        .alert("Error", isPresented: $showError) {
+            Button("OK") {}
+        } message: {
+            Text(errorMessage ?? "Unknown error")
+        }
+        .alert("Delete Document", isPresented: $showDeleteConfirm) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                if let doc = deleteTarget {
+                    deleteDocument(doc)
+                }
+            }
+        } message: {
+            Text("Remove \"\(deleteTarget?.filename ?? "")\" from the index? This cannot be undone.")
+        }
         .onAppear {
             loadDocuments()
             loadModels()
@@ -198,7 +226,9 @@ struct RAGView: View {
             do {
                 let resp: DocumentsResponse = try await apiService.getDocuments()
                 await MainActor.run { documents = resp.documents }
-            } catch {}
+            } catch {
+                showErrorAlert(error.localizedDescription)
+            }
         }
     }
 
@@ -208,9 +238,6 @@ struct RAGView: View {
                 let resp: ModelsResponse = try await apiService.getModels()
                 await MainActor.run {
                     localModels = resp.models
-                    if selectedModel.isEmpty, let first = resp.models.first {
-                        selectedModel = first.name
-                    }
                 }
             } catch {}
         }
@@ -272,11 +299,31 @@ struct RAGView: View {
                     }
                 } catch {
                     await MainActor.run {
-                        self.error = error.localizedDescription
                         isUploading = false
+                        showErrorAlert(error.localizedDescription)
                     }
                 }
             }
         }
+    }
+
+    private func deleteDocument(_ doc: RAGDocument) {
+        Task {
+            do {
+                try await apiService.deleteRAGDocument(id: doc.id)
+                await MainActor.run {
+                    loadDocuments()
+                }
+            } catch {
+                await MainActor.run {
+                    showErrorAlert(error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func showErrorAlert(_ message: String) {
+        errorMessage = message
+        showError = true
     }
 }

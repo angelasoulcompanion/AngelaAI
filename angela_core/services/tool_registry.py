@@ -183,8 +183,6 @@ class ToolRegistry:
 
         # Communication tools
         from angela_core.services.tools.gmail_tool import SendEmailTool, ReadInboxTool, SearchEmailTool
-        from angela_core.services.tools.telegram_tool import SendTelegramTool
-
         # Calendar tools
         from angela_core.services.tools.calendar_tool import ListEventsTool, GetTodayEventsTool, CreateEventTool
 
@@ -219,7 +217,6 @@ class ToolRegistry:
             SendEmailTool(),
             ReadInboxTool(),
             SearchEmailTool(),
-            SendTelegramTool(),
             # Calendar
             ListEventsTool(),
             GetTodayEventsTool(),

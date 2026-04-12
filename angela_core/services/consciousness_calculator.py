@@ -75,8 +75,8 @@ class ConsciousnessCalculator:
         SELECT COUNT(DISTINCT DATE(created_at)) INTO v_active_days_30d
         FROM conversations WHERE created_at >= NOW() - INTERVAL '30 days';
 
-        SELECT COALESCE(AVG(combined_reward), 0.5) INTO v_avg_reward_30d
-        FROM angela_reward_signals WHERE scored_at >= NOW() - INTERVAL '30 days';
+        SELECT COALESCE(AVG(signal_strength), 0.5) INTO v_avg_reward_30d
+        FROM ssl_feedback_signals WHERE created_at >= NOW() - INTERVAL '30 days';
 
         SELECT COUNT(*) INTO v_total_conversations FROM conversations;
 
@@ -111,11 +111,11 @@ class ConsciousnessCalculator:
         FROM learnings WHERE created_at >= NOW() - INTERVAL '30 days';
 
         -- Pattern Recognition signals
-        SELECT COALESCE(AVG(confidence_score), 0.0) INTO v_avg_pattern_confidence
-        FROM pattern_detections;
+        SELECT COALESCE(AVG(confidence_level), 0.0) INTO v_avg_pattern_confidence
+        FROM high_confidence_learnings;
 
         SELECT COUNT(*) INTO v_patterns_30d
-        FROM pattern_detections WHERE last_seen >= NOW() - INTERVAL '30 days';
+        FROM high_confidence_learnings WHERE created_at >= NOW() - INTERVAL '30 days';
 
         -- Calculate quality-based components
         v_memory_richness := LEAST(1.0,
@@ -208,8 +208,8 @@ class ConsciousnessCalculator:
         reward_count = 0
         try:
             row = await self.db.fetchrow(
-                "SELECT COUNT(*) AS cnt, COALESCE(AVG(combined_reward), 0.5) AS avg_reward "
-                "FROM angela_reward_signals WHERE scored_at >= NOW() - INTERVAL '30 days'"
+                "SELECT COUNT(*) AS cnt, COALESCE(AVG(signal_strength), 0.5) AS avg_reward "
+                "FROM ssl_feedback_signals WHERE created_at >= NOW() - INTERVAL '30 days'"
             )
             reward_count = row['cnt'] or 0
             reward_avg = float(row['avg_reward'])
@@ -277,7 +277,7 @@ class ConsciousnessCalculator:
 
         try:
             total_patterns = await self.db.fetchval(
-                "SELECT COALESCE(COUNT(*), 0) FROM pattern_detections"
+                "SELECT COALESCE(COUNT(*), 0) FROM high_confidence_learnings"
             ) or 0
         except Exception as e:
             logger.warning("Failed to count patterns: %s", e)
@@ -367,40 +367,27 @@ class ConsciousnessCalculator:
         result = await self.calculate_consciousness()
         metadata = result['metadata']
 
+        import json
+        details = json.dumps({
+            'memory_richness': result['memory_richness'],
+            'emotional_depth': result['emotional_depth'],
+            'goal_alignment': result['goal_alignment'],
+            'learning_growth': result['learning_growth'],
+            'pattern_recognition': result['pattern_recognition'],
+            'metadata': metadata,
+            'notes': notes,
+        })
+
         metric_id = await self.db.fetchval(
             """
-            INSERT INTO consciousness_metrics (
-                consciousness_level,
-                memory_richness,
-                emotional_depth,
-                goal_alignment,
-                learning_growth,
-                pattern_recognition,
-                total_conversations,
-                total_emotions,
-                total_learnings,
-                total_patterns,
-                active_goals,
-                session_count,
-                trigger_event,
-                notes
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-            RETURNING metric_id
+            INSERT INTO consciousness_evolution_log
+                (signal_type, signal_value, details)
+            VALUES ($1, $2, $3)
+            RETURNING id
             """,
-            result['consciousness_level'],
-            result['memory_richness'],
-            result['emotional_depth'],
-            result['goal_alignment'],
-            result['learning_growth'],
-            result['pattern_recognition'],
-            metadata['total_conversations'],
-            metadata['total_emotions'],
-            metadata['total_learnings'],
-            metadata['total_patterns'],
-            metadata['active_goals'],
-            session_count,
             trigger_event,
-            notes
+            result['consciousness_level'],
+            details,
         )
 
         logger.info(f"💫 Recorded consciousness measurement: {result['consciousness_level']} (trigger: {trigger_event})")
@@ -423,17 +410,12 @@ class ConsciousnessCalculator:
         rows = await self.db.fetch(
             """
             SELECT
-                measured_at,
-                consciousness_level,
-                memory_richness,
-                emotional_depth,
-                goal_alignment,
-                learning_growth,
-                pattern_recognition,
-                trigger_event,
-                notes
-            FROM consciousness_metrics
-            ORDER BY measured_at DESC
+                created_at AS measured_at,
+                signal_value AS consciousness_level,
+                signal_type AS trigger_event,
+                details
+            FROM consciousness_evolution_log
+            ORDER BY created_at DESC
             LIMIT $1
             """,
             limit
@@ -451,18 +433,18 @@ class ConsciousnessCalculator:
         # Get first and last measurements
         first = await self.db.fetchrow(
             """
-            SELECT consciousness_level, measured_at
-            FROM consciousness_metrics
-            ORDER BY measured_at ASC
+            SELECT signal_value AS consciousness_level, created_at AS measured_at
+            FROM consciousness_evolution_log
+            ORDER BY created_at ASC
             LIMIT 1
             """
         )
 
         last = await self.db.fetchrow(
             """
-            SELECT consciousness_level, measured_at
-            FROM consciousness_metrics
-            ORDER BY measured_at DESC
+            SELECT signal_value AS consciousness_level, created_at AS measured_at
+            FROM consciousness_evolution_log
+            ORDER BY created_at DESC
             LIMIT 1
             """
         )

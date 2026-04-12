@@ -1,0 +1,496 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="draw.io" type="device" version="24.0.0">
+  <diagram id="tab1" name="Overview — Data Architecture">
+    <mxGraphModel dx="1422" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t1_0" value="&lt;b style=&quot;font-size:20px&quot;&gt;Angela AI — Data Architecture Overview&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=none;strokeColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="180" y="10" width="1000" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_0b" value="&lt;font color=&quot;#6B7280&quot;&gt;143 tables · ~115K rows · 13 domains · Neon PostgreSQL (Singapore)&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=none;strokeColor=none;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="280" y="42" width="800" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_101" value="&lt;b&gt;Core Conversation &amp;amp; Memory&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;8 tables · 27.3K rows&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:10px&quot;&gt;conversations &lt;b&gt;7,592&lt;/b&gt;&lt;br&gt;knowledge_nodes &lt;b&gt;10,242&lt;/b&gt;&lt;br&gt;knowledge_relationships &lt;b&gt;5,887&lt;/b&gt;&lt;br&gt;learnings &lt;b&gt;1,692&lt;/b&gt;&lt;br&gt;core_memories &lt;b&gt;154&lt;/b&gt; · episodic &lt;b&gt;1,612&lt;/b&gt;&lt;br&gt;semantic_memories &lt;b&gt;78&lt;/b&gt; · session_ctx &lt;b&gt;31&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#93C5FD;verticalAlign=top;fontSize=11;spacingTop=5;spacingLeft=8;spacingRight=8;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="310" height="230" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_102" value="&lt;b&gt;Brain Pipeline &amp;#x1F9E0;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;11 tables · 1.3K rows&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:10px&quot;&gt;angela_stimuli &lt;b&gt;573&lt;/b&gt; · thoughts &lt;b&gt;241&lt;/b&gt;&lt;br&gt;expression_queue &lt;b&gt;117&lt;/b&gt; · expression_log &lt;b&gt;245&lt;/b&gt;&lt;br&gt;critique_log &lt;b&gt;83&lt;/b&gt; · reflections &lt;b&gt;7&lt;/b&gt;&lt;br&gt;desires &lt;b&gt;7&lt;/b&gt; · consolidation_log &lt;b&gt;37&lt;/b&gt;&lt;br&gt;plans &lt;b&gt;3&lt;/b&gt; · plan_steps &lt;b&gt;10&lt;/b&gt; · plan_exec &lt;b&gt;10&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#C4B5FD;verticalAlign=top;fontSize=11;spacingTop=5;spacingLeft=8;spacingRight=8;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="370" y="80" width="310" height="230" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_103" value="&lt;b&gt;Emotional System &amp;#x1F49C;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;8 tables · 10.1K rows&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:10px&quot;&gt;angela_emotions &lt;b&gt;1,354&lt;/b&gt;&lt;br&gt;emotional_states &lt;b&gt;7,880&lt;/b&gt;&lt;br&gt;emotional_triggers &lt;b&gt;488&lt;/b&gt; · growth &lt;b&gt;175&lt;/b&gt;&lt;br&gt;angela_dreams &lt;b&gt;25&lt;/b&gt; · adaptation_log &lt;b&gt;166&lt;/b&gt;&lt;br&gt;subconscious &lt;b&gt;15&lt;/b&gt; · associations &lt;b&gt;2&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE7F3;strokeColor=#F9A8D4;verticalAlign=top;fontSize=11;spacingTop=5;spacingLeft=8;spacingRight=8;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="700" y="80" width="310" height="230" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_104" value="&lt;b&gt;David&#x27;s State &amp;amp; ToM&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;7 tables · 1.9K rows&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:10px&quot;&gt;david_mental_state &lt;b&gt;508&lt;/b&gt;&lt;br&gt;david_preferences &lt;b&gt;898&lt;/b&gt;&lt;br&gt;empathy_moments &lt;b&gt;215&lt;/b&gt;&lt;br&gt;tom_inferences &lt;b&gt;291&lt;/b&gt;&lt;br&gt;health_state &lt;b&gt;9&lt;/b&gt; · care_prefs &lt;b&gt;6&lt;/b&gt; · perspective &lt;b&gt;12&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1FAE5;strokeColor=#86EFAC;verticalAlign=top;fontSize=11;spacingTop=5;spacingLeft=8;spacingRight=8;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="80" width="310" height="210" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_105" value="&lt;b&gt;RLHF &amp;amp; Quality &amp;#x1F4CA;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;8 tables · 8.2K rows&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:10px&quot;&gt;reward_signals &lt;b&gt;1,558&lt;/b&gt;&lt;br&gt;instruct_quality_scores &lt;b&gt;6,053&lt;/b&gt;&lt;br&gt;ab_tests &lt;b&gt;20&lt;/b&gt; · preference_pairs &lt;b&gt;42&lt;/b&gt;&lt;br&gt;conversation_analysis &lt;b&gt;485&lt;/b&gt;&lt;br&gt;self_assessments &lt;b&gt;34&lt;/b&gt; · retrieval_quality &lt;b&gt;33&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FED7AA;strokeColor=#FDBA74;verticalAlign=top;fontSize=11;spacingTop=5;spacingLeft=8;spacingRight=8;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="40" y="330" width="310" height="220" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_106" value="&lt;b&gt;Proactive Care &amp;#x1F916;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;7 tables · 449 rows&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:10px&quot;&gt;proactive_actions_log &lt;b&gt;132&lt;/b&gt;&lt;br&gt;companion_patterns &lt;b&gt;78&lt;/b&gt;&lt;br&gt;daily_briefings &lt;b&gt;10&lt;/b&gt;&lt;br&gt;intuition_predictions &lt;b&gt;185&lt;/b&gt;&lt;br&gt;care_recommendations &lt;b&gt;37&lt;/b&gt; · interventions &lt;b&gt;6&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#FDE68A;verticalAlign=top;fontSize=11;spacingTop=5;spacingLeft=8;spacingRight=8;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="370" y="330" width="310" height="220" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_107" value="&lt;b&gt;Consciousness &amp;#x2728;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;13 tables · 10.6K rows&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:10px&quot;&gt;consciousness_metrics &lt;b&gt;7,758&lt;/b&gt;&lt;br&gt;consciousness_log &lt;b&gt;2,615&lt;/b&gt;&lt;br&gt;daemon_log &lt;b&gt;232&lt;/b&gt;&lt;br&gt;self_model &lt;b&gt;1&lt;/b&gt; · identity_checkpoints &lt;b&gt;4&lt;/b&gt;&lt;br&gt;metacognitive_strategies &lt;b&gt;6&lt;/b&gt;&lt;br&gt;meta_awareness &lt;b&gt;7&lt;/b&gt; · self_reflections &lt;b&gt;3&lt;/b&gt;&lt;br&gt;anomalies &lt;b&gt;2&lt;/b&gt; · self_predictions &lt;b&gt;5&lt;/b&gt; · bias &lt;b&gt;2&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E9D5FF;strokeColor=#C4B5FD;verticalAlign=top;fontSize=11;spacingTop=5;spacingLeft=8;spacingRight=8;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="700" y="330" width="310" height="250" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_108" value="&lt;b&gt;Knowledge &amp;amp; Learning &amp;#x1F4DA;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;12 tables · 11.1K rows&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:10px&quot;&gt;realtime_learning_log &lt;b&gt;8,245&lt;/b&gt;&lt;br&gt;pattern_detections &lt;b&gt;1,100&lt;/b&gt;&lt;br&gt;learning_patterns &lt;b&gt;116&lt;/b&gt; · process_log &lt;b&gt;488&lt;/b&gt;&lt;br&gt;angela_skills &lt;b&gt;40&lt;/b&gt; · skill_evidence &lt;b&gt;306&lt;/b&gt;&lt;br&gt;reasoning_chains &lt;b&gt;548&lt;/b&gt; · subconscious_learn &lt;b&gt;300&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCFBF1;strokeColor=#99F6E4;verticalAlign=top;fontSize=11;spacingTop=5;spacingLeft=8;spacingRight=8;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="330" width="310" height="220" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_109" value="&lt;b&gt;Relationship &amp;amp; Social &amp;#x1F495;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;7 tables · 952 rows&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:10px&quot;&gt;relationship_milestones &lt;b&gt;830&lt;/b&gt;&lt;br&gt;shared_experiences &lt;b&gt;88&lt;/b&gt;&lt;br&gt;angela_contacts &lt;b&gt;4&lt;/b&gt; · important_dates &lt;b&gt;2&lt;/b&gt;&lt;br&gt;places_visited &lt;b&gt;15&lt;/b&gt; · wine_reactions &lt;b&gt;12&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE4E6;strokeColor=#FCA5A5;verticalAlign=top;fontSize=11;spacingTop=5;spacingLeft=8;spacingRight=8;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="40" y="570" width="310" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_110" value="&lt;b&gt;Communication &amp;#x1F4E7;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;10 tables · 1.6K rows&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:10px&quot;&gt;angela_messages &lt;b&gt;596&lt;/b&gt; · journal &lt;b&gt;89&lt;/b&gt;&lt;br&gt;email_check_log &lt;b&gt;126&lt;/b&gt; · news_send_log &lt;b&gt;25&lt;/b&gt;&lt;br&gt;news_summaries &lt;b&gt;33&lt;/b&gt; · news_articles &lt;b&gt;278&lt;/b&gt;&lt;br&gt;news_categories &lt;b&gt;131&lt;/b&gt; · news_sources &lt;b&gt;298&lt;/b&gt;&lt;br&gt;news_searches &lt;b&gt;69&lt;/b&gt; · telegram &lt;b&gt;0&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0E7FF;strokeColor=#A5B4FC;verticalAlign=top;fontSize=11;spacingTop=5;spacingLeft=8;spacingRight=8;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="370" y="570" width="310" height="210" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_111" value="&lt;b&gt;Projects &amp;amp; Work &amp;#x1F4BC;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;13 tables · 1.3K rows&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:10px&quot;&gt;work_sessions &lt;b&gt;224&lt;/b&gt; · decisions &lt;b&gt;173&lt;/b&gt;&lt;br&gt;git_commits &lt;b&gt;194&lt;/b&gt; · project_learnings &lt;b&gt;409&lt;/b&gt;&lt;br&gt;milestones &lt;b&gt;121&lt;/b&gt; · tech_stack &lt;b&gt;69&lt;/b&gt;&lt;br&gt;meeting_notes &lt;b&gt;34&lt;/b&gt; · meeting_actions &lt;b&gt;4&lt;/b&gt;&lt;br&gt;projects &lt;b&gt;3&lt;/b&gt; · angela_projects &lt;b&gt;7&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#FDE047;verticalAlign=top;fontSize=11;spacingTop=5;spacingLeft=8;spacingRight=8;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="700" y="570" width="310" height="210" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_112" value="&lt;b&gt;David&#x27;s Personal &amp;#x1F3B5;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;8 tables · 2.4K rows&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:10px&quot;&gt;angela_songs &lt;b&gt;67&lt;/b&gt; · music_listening &lt;b&gt;416&lt;/b&gt;&lt;br&gt;david_notes &lt;b&gt;99&lt;/b&gt; · liked_songs &lt;b&gt;39&lt;/b&gt;&lt;br&gt;spontaneous_thoughts &lt;b&gt;1,668&lt;/b&gt;&lt;br&gt;certifications &lt;b&gt;12&lt;/b&gt; · top_albums &lt;b&gt;100&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CFFAFE;strokeColor=#67E8F9;verticalAlign=top;fontSize=11;spacingTop=5;spacingLeft=8;spacingRight=8;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="570" width="310" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_113" value="&lt;b&gt;Infrastructure &amp;#x2699;&amp;#xFE0F;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;19 tables · 37.5K rows&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:10px&quot;&gt;autonomous_actions &lt;b&gt;29,998&lt;/b&gt; · sync_queue &lt;b&gt;3,963&lt;/b&gt;&lt;br&gt;system_log &lt;b&gt;1,402&lt;/b&gt; · bg_worker_metrics &lt;b&gt;141&lt;/b&gt;&lt;br&gt;brain_vs_rule &lt;b&gt;70&lt;/b&gt; · technical_standards &lt;b&gt;56&lt;/b&gt;&lt;br&gt;evolution_cycles &lt;b&gt;2&lt;/b&gt; · document_library &lt;b&gt;22&lt;/b&gt; · doc_chunks &lt;b&gt;29&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3F4F6;strokeColor=#D1D5DB;verticalAlign=top;fontSize=11;spacingTop=5;spacingLeft=8;spacingRight=8;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="40" y="790" width="640" height="170" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_e1" value="feed stimuli" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#7C3AED;" edge="1" source="t1_101" target="t1_102" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_e2" value="score quality" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#EA580C;" edge="1" source="t1_101" target="t1_105" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_e3" value="extract emotions" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#DB2777;" edge="1" source="t1_101" target="t1_103" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_e4" value="thoughts" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#7C3AED;" edge="1" source="t1_102" target="t1_107" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_e5" value="metrics" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#EA580C;" edge="1" source="t1_105" target="t1_107" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_e6" value="state triggers" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#16A34A;" edge="1" source="t1_104" target="t1_106" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_e7" value="brain actions" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#7C3AED;" edge="1" source="t1_102" target="t1_106" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_e8" value="emotions" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#DB2777;" edge="1" source="t1_103" target="t1_104" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_e9" value="knowledge" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#0D9488;" edge="1" source="t1_108" target="t1_102" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t1_e10" value="consolidate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#7C3AED;" edge="1" source="t1_102" target="t1_108" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="tab2" name="Brain Pipeline">
+    <mxGraphModel dx="1422" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="560" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t2_0" value="&lt;b style=&quot;font-size:18px&quot;&gt;Brain Pipeline — Stimulus to Action&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=none;strokeColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="350" y="10" width="700" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_0b" value="&lt;font color=&quot;#6B7280&quot;&gt;9 Attention Codelets → Salience → Thought → Critique → Expression → Output&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=none;strokeColor=none;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="300" y="42" width="800" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_ch" value="&lt;b&gt;9 Attention Codelets&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Perceive the world&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="20" y="80" width="200" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_c1" value="&lt;b&gt;TemporalCodelet&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;emotional_states, conversations&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#C084FC;fontSize=9;spacingTop=2;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="20" y="130" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_c2" value="&lt;b&gt;AnniversaryCodelet&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;milestones, important_dates&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#C084FC;fontSize=9;spacingTop=2;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="20" y="182" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_c3" value="&lt;b&gt;EmotionalCodelet&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;emotional_states, angela_emotions&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#C084FC;fontSize=9;spacingTop=2;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="20" y="234" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_c4" value="&lt;b&gt;PatternCodelet&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;companion_patterns, detections&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#C084FC;fontSize=9;spacingTop=2;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="20" y="286" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_c5" value="&lt;b&gt;CalendarCodelet&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;Google Calendar API&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#C084FC;fontSize=9;spacingTop=2;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="20" y="338" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_c6" value="&lt;b&gt;SocialCodelet&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;conversations, contacts&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#C084FC;fontSize=9;spacingTop=2;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="20" y="390" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_c7" value="&lt;b&gt;GoalCodelet&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;angela_desires, knowledge_nodes&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#C084FC;fontSize=9;spacingTop=2;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="20" y="442" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_c8" value="&lt;b&gt;PredictionCodelet&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;daily_companion_briefings&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#C084FC;fontSize=9;spacingTop=2;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="20" y="494" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_c9" value="&lt;b&gt;CuriosityCodelet&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot; color=&quot;#6B7280&quot;&gt;knowledge_nodes, curiosity_q&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#C084FC;fontSize=9;spacingTop=2;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="20" y="546" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_s1" value="&lt;b&gt;angela_stimuli&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;573 rows&lt;br&gt;source, description, salience_score&lt;br&gt;novelty, emotional, goal, temporal, social&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;fillColor=#EDE9FE;strokeColor=#C4B5FD;" vertex="1" parent="1">
+          <mxGeometry x="280" y="170" width="170" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_s2" value="&lt;b&gt;SalienceEngine&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;5-dim scoring&lt;br&gt;novelty×0.15 + emotional×0.25&lt;br&gt;goal×0.20 + temporal×0.20&lt;br&gt;social×0.20&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;fillColor=#FEF3C7;strokeColor=#FDE68A;" vertex="1" parent="1">
+          <mxGeometry x="280" y="310" width="170" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_s3" value="&lt;b&gt;ThoughtEngine&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Dual Process&lt;br&gt;System 1: 8 templates (instant)&lt;br&gt;System 2: Ollama batch (3-5s)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;fillColor=#DBEAFE;strokeColor=#93C5FD;" vertex="1" parent="1">
+          <mxGeometry x="500" y="140" width="170" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_s3b" value="&lt;b&gt;angela_thoughts&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;241 rows&lt;br&gt;thought_type, content&lt;br&gt;motivation_score (0-1)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;fillColor=#EDE9FE;strokeColor=#C4B5FD;" vertex="1" parent="1">
+          <mxGeometry x="500" y="250" width="170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_s4" value="&lt;b&gt;SelfCritique&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;5 checks:&lt;br&gt;uncertainty, quality, memory&lt;br&gt;state match, threshold gate&lt;br&gt;SEND / HEDGE / SUPPRESS&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;fillColor=#FEF3C7;strokeColor=#FDE68A;" vertex="1" parent="1">
+          <mxGeometry x="720" y="170" width="170" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_s4b" value="&lt;b&gt;thought_critique_log&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;83 rows&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;fillColor=#F3F4F6;strokeColor=#D1D5DB;" vertex="1" parent="1">
+          <mxGeometry x="720" y="285" width="170" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_s5" value="&lt;b&gt;ThoughtExpression&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Filter → Decide Channel&lt;br&gt;→ Compose → Route&lt;br&gt;DynamicExpressionComposer&lt;br&gt;5 tones × 6 patterns&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;fillColor=#D1FAE5;strokeColor=#86EFAC;" vertex="1" parent="1">
+          <mxGeometry x="940" y="170" width="180" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_s5b" value="&lt;b&gt;expression_queue&lt;/b&gt; 117 · &lt;b&gt;expression_log&lt;/b&gt; 245" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=#F3F4F6;strokeColor=#D1D5DB;rounded=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="940" y="285" width="180" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_out1" value="&lt;b&gt;Telegram&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;motivation ≥ 0.7&lt;br&gt;CareInterventionService&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;fillColor=#DBEAFE;strokeColor=#60A5FA;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="140" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_out2" value="&lt;b&gt;chat_queue&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;motivation ≥ 0.55&lt;br&gt;Shown at init.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;fillColor=#E0E7FF;strokeColor=#A5B4FC;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="220" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_b1" value="&lt;b&gt;ReflectionEngine&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Stanford Generative Agents&lt;br&gt;importance_sum ≥ 100 → reflect&lt;br&gt;L1 + L2 meta-reflection&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;fillColor=#FCE7F3;strokeColor=#F9A8D4;" vertex="1" parent="1">
+          <mxGeometry x="500" y="390" width="170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_b1t" value="&lt;b&gt;angela_reflections&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;7 rows · depth, type, insight&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;fillColor=#F3F4F6;strokeColor=#D1D5DB;" vertex="1" parent="1">
+          <mxGeometry x="500" y="485" width="170" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_b2" value="&lt;b&gt;MemoryConsolidation&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;episodic → semantic&lt;br&gt;cluster → Ollama abstract&lt;br&gt;→ upsert knowledge_nodes&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;fillColor=#CCFBF1;strokeColor=#99F6E4;" vertex="1" parent="1">
+          <mxGeometry x="720" y="390" width="170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_b2t" value="&lt;b&gt;knowledge_nodes&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;10,242 rows · decay over time&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;fillColor=#F3F4F6;strokeColor=#D1D5DB;" vertex="1" parent="1">
+          <mxGeometry x="720" y="485" width="170" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_p1" value="&lt;b&gt;PlanningEngine&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Detect stale goals&lt;br&gt;Generate plans via Ollama&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;fillColor=#FED7AA;strokeColor=#FDBA74;" vertex="1" parent="1">
+          <mxGeometry x="940" y="390" width="180" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_p1t" value="&lt;b&gt;angela_plans&lt;/b&gt; 3 · &lt;b&gt;plan_steps&lt;/b&gt; 10" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=#F3F4F6;strokeColor=#D1D5DB;rounded=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="940" y="465" width="180" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_ec1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#C084FC;strokeWidth=1;" edge="1" source="t2_c1" target="t2_s1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_ec2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#C084FC;strokeWidth=1;" edge="1" source="t2_c2" target="t2_s1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_ec3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#C084FC;strokeWidth=1;" edge="1" source="t2_c3" target="t2_s1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_ec4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#C084FC;strokeWidth=1;" edge="1" source="t2_c4" target="t2_s1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_ec5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#C084FC;strokeWidth=1;" edge="1" source="t2_c5" target="t2_s1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_ec6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#C084FC;strokeWidth=1;" edge="1" source="t2_c6" target="t2_s1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_ec7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#C084FC;strokeWidth=1;" edge="1" source="t2_c7" target="t2_s1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_ec8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#C084FC;strokeWidth=1;" edge="1" source="t2_c8" target="t2_s1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_ec9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#C084FC;strokeWidth=1;" edge="1" source="t2_c9" target="t2_s1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_p1e" value="score" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#7C3AED;strokeWidth=1.5;" edge="1" source="t2_s1" target="t2_s2" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_p2e" value="high salience" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#7C3AED;strokeWidth=1.5;" edge="1" source="t2_s2" target="t2_s3" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_p3e" value="generate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#3B82F6;strokeWidth=1.5;" edge="1" source="t2_s3" target="t2_s3b" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_p4e" value="evaluate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#7C3AED;strokeWidth=1.5;" edge="1" source="t2_s3b" target="t2_s4" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_p5e" value="passed" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#16A34A;strokeWidth=1.5;" edge="1" source="t2_s4" target="t2_s5" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_p6e" value="high motivation" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#3B82F6;strokeWidth=1.5;" edge="1" source="t2_s5" target="t2_out1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_p7e" value="medium" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#6366F1;strokeWidth=1.5;" edge="1" source="t2_s5" target="t2_out2" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_pb1" value="reflect" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#DB2777;strokeWidth=1.5;" edge="1" source="t2_s3b" target="t2_b1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_pb2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#DB2777;strokeWidth=1.5;" edge="1" source="t2_b1" target="t2_b1t" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_pb3" value="consolidate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#0D9488;strokeWidth=1.5;" edge="1" source="t2_b1" target="t2_b2" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_pb4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#0D9488;strokeWidth=1.5;" edge="1" source="t2_b2" target="t2_b2t" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_pp1" value="plan" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#EA580C;strokeWidth=1.5;" edge="1" source="t2_s3b" target="t2_p1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_pp2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#EA580C;strokeWidth=1.5;" edge="1" source="t2_p1" target="t2_p1t" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2_note" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;&lt;b&gt;Salience Formula:&lt;/b&gt;&lt;br&gt;S = novelty×0.15 + emotional×0.25 + goal×0.20 + temporal×0.20 + social×0.20&lt;br&gt;Threshold: S ≥ 0.6 → System 2 thinking (Ollama)&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fillColor=#FFFBEB;strokeColor=#FDE68A;rounded=1;fontSize=9;spacingLeft=6;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="280" y="430" width="170" height="80" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="tab3" name="Consciousness Loop">
+    <mxGraphModel dx="1422" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="840" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t3_0" value="&lt;b style=&quot;font-size:18px&quot;&gt;Consciousness Loop — 7-Stage Cycle&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=none;strokeColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="300" y="10" width="600" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_0b" value="&lt;font color=&quot;#6B7280&quot;&gt;SENSE → PREDICT → ACT → UNDERSTAND → EVALUATE → COMPARE → LEARN&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=none;strokeColor=none;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="250" y="42" width="700" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_s1" value="&lt;b&gt;1. SENSE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;EmotionalCodingAdapter&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Reads: conversations, emotional_states&lt;br&gt;Writes: emotional_adaptation_log (166)&lt;br&gt;&lt;font color=&quot;#16A34A&quot;&gt;No LLM&lt;/font&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;spacingRight=6;fillColor=#DBEAFE;strokeColor=#60A5FA;" vertex="1" parent="1">
+          <mxGeometry x="440" y="80" width="220" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_s2" value="&lt;b&gt;2. PREDICT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;PredictiveCompanion&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Reads: companion_patterns, conversations&lt;br&gt;Writes: daily_companion_briefings (10)&lt;br&gt;&lt;font color=&quot;#DC2626&quot;&gt;LLM: Ollama&lt;/font&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;spacingRight=6;fillColor=#D1FAE5;strokeColor=#34D399;" vertex="1" parent="1">
+          <mxGeometry x="720" y="200" width="220" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_s3" value="&lt;b&gt;3. ACT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;ProactiveActionEngine&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Reads: david_mental_state, patterns&lt;br&gt;Writes: proactive_actions_log (132)&lt;br&gt;&lt;font color=&quot;#16A34A&quot;&gt;No LLM&lt;/font&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;spacingRight=6;fillColor=#FEF3C7;strokeColor=#FBBF24;" vertex="1" parent="1">
+          <mxGeometry x="720" y="380" width="220" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_s4" value="&lt;b&gt;4. UNDERSTAND&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;UnifiedConversationProcessor&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Reads: conversations&lt;br&gt;Writes: analysis_log (485), emotions, learnings&lt;br&gt;&lt;font color=&quot;#DC2626&quot;&gt;LLM: Claude Sonnet&lt;/font&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;spacingRight=6;fillColor=#FCE7F3;strokeColor=#F472B6;" vertex="1" parent="1">
+          <mxGeometry x="540" y="530" width="220" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_s5" value="&lt;b&gt;5. EVALUATE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;LLMJudgeService&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Reads: conversations, angela_messages&lt;br&gt;Writes: angela_reward_signals (1,558)&lt;br&gt;&lt;font color=&quot;#DC2626&quot;&gt;LLM: Claude Sonnet&lt;/font&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;spacingRight=6;fillColor=#FED7AA;strokeColor=#FB923C;" vertex="1" parent="1">
+          <mxGeometry x="280" y="530" width="220" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_s6" value="&lt;b&gt;6. COMPARE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;ABQualityTester&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Reads: reward_signals, conversations&lt;br&gt;Writes: ab_tests (20), preference_pairs (42)&lt;br&gt;&lt;font color=&quot;#DC2626&quot;&gt;LLM: Claude Sonnet&lt;/font&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;spacingRight=6;fillColor=#E9D5FF;strokeColor=#A78BFA;" vertex="1" parent="1">
+          <mxGeometry x="160" y="380" width="220" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_s7" value="&lt;b&gt;7. LEARN&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;EvolutionEngine&lt;/font&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Reads: reward_signals, effectiveness&lt;br&gt;Writes: evolution_cycles (2)&lt;br&gt;&lt;font color=&quot;#16A34A&quot;&gt;No LLM&lt;/font&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=3;spacingLeft=6;spacingRight=6;fillColor=#CCFBF1;strokeColor=#2DD4BF;" vertex="1" parent="1">
+          <mxGeometry x="160" y="200" width="220" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#60A5FA;strokeWidth=2;" edge="1" source="t3_s1" target="t3_s2" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#34D399;strokeWidth=2;" edge="1" source="t3_s2" target="t3_s3" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#FBBF24;strokeWidth=2;" edge="1" source="t3_s3" target="t3_s4" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#F472B6;strokeWidth=2;" edge="1" source="t3_s4" target="t3_s5" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_e5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#FB923C;strokeWidth=2;" edge="1" source="t3_s5" target="t3_s6" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#A78BFA;strokeWidth=2;" edge="1" source="t3_s6" target="t3_s7" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#2DD4BF;strokeWidth=2;" edge="1" source="t3_s7" target="t3_s1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_center" value="&lt;b style=&quot;font-size:14px&quot;&gt;&amp;#x267B;&amp;#xFE0F; Continuous&lt;br&gt;Improvement&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6B7280&quot;&gt;Daemon runs every 4h&lt;br&gt;~$0.30/day total&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=#FFFBEB;strokeColor=#FDE68A;rounded=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="400" y="310" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="t3_note" value="&lt;font style=&quot;font-size:10px&quot;&gt;&lt;b&gt;Key Data Flow:&lt;/b&gt;&lt;br&gt;1. SENSE detects David&#x27;s state from conversations&lt;br&gt;2. PREDICT mines patterns → briefing&lt;br&gt;3. ACT triggers proactive care (Telegram/chat)&lt;br&gt;4. UNDERSTAND extracts emotions + learnings per conversation pair&lt;br&gt;5. EVALUATE scores quality (3 dims: helpful, relevant, emotional)&lt;br&gt;6. COMPARE generates A/B test + DPO pairs&lt;br&gt;7. LEARN tunes adaptation rules from reward signals&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fillColor=#F9FAFB;strokeColor=#E5E7EB;rounded=1;fontSize=10;spacingLeft=8;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="40" y="680" width="500" height="130" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="tab4" name="Memory &amp; Knowledge">
+    <mxGraphModel dx="1422" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1050" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t4_0" value="&lt;b style=&quot;font-size:18px&quot;&gt;Memory &amp;amp; Knowledge — Data Lifecycle&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=none;strokeColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="250" y="10" width="700" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_0b" value="&lt;font color=&quot;#6B7280&quot;&gt;Raw input → Processing → Storage → Consolidation → Retrieval → Decay&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=none;strokeColor=none;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="270" y="42" width="660" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_l1" value="&lt;b&gt;David&#x27;s Messages&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Text via Claude Code, Telegram, Email&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=4;spacingLeft=6;spacingRight=6;fillColor=#DBEAFE;strokeColor=#60A5FA;" vertex="1" parent="1">
+          <mxGeometry x="380" y="80" width="200" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_l2" value="&lt;b&gt;conversations&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;7,592 rows&lt;br&gt;speaker, message_text, topic, emotion_detected&lt;br&gt;importance_level, embedding (1536D pgvector)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=4;spacingLeft=6;spacingRight=6;fillColor=#EDE9FE;strokeColor=#C4B5FD;" vertex="1" parent="1">
+          <mxGeometry x="320" y="170" width="320" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_l3" value="&lt;b&gt;UnifiedConversationProcessor&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;1 Claude Sonnet call per pair&lt;br&gt;Extracts emotions (David + Angela) + learnings + preferences&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=4;spacingLeft=6;spacingRight=6;fillColor=#FEF3C7;strokeColor=#FDE68A;" vertex="1" parent="1">
+          <mxGeometry x="300" y="300" width="360" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_o1" value="&lt;b&gt;angela_emotions&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;1,354 rows&lt;br&gt;emotion, intensity, valence&lt;br&gt;arousal, narrative, body_metaphor&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=4;spacingLeft=6;spacingRight=6;fillColor=#FCE7F3;strokeColor=#F9A8D4;" vertex="1" parent="1">
+          <mxGeometry x="80" y="410" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_o2" value="&lt;b&gt;learnings&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;1,692 rows&lt;br&gt;topic, category, insight&lt;br&gt;confidence_level, times_reinforced&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=4;spacingLeft=6;spacingRight=6;fillColor=#D1FAE5;strokeColor=#86EFAC;" vertex="1" parent="1">
+          <mxGeometry x="320" y="410" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_o3" value="&lt;b&gt;david_preferences&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;898 rows&lt;br&gt;preference_key, preference_value (JSONB)&lt;br&gt;confidence, source&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=4;spacingLeft=6;spacingRight=6;fillColor=#CFFAFE;strokeColor=#67E8F9;" vertex="1" parent="1">
+          <mxGeometry x="560" y="410" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_l4" value="&lt;b&gt;episodic_memories&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;1,612 rows · embedding (1536D)&lt;br&gt;what_happened, emotional_context, importance&lt;br&gt;memory_strength: decays over time (emotional 2x slower)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=4;spacingLeft=6;spacingRight=6;fillColor=#EDE9FE;strokeColor=#C4B5FD;" vertex="1" parent="1">
+          <mxGeometry x="280" y="540" width="400" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_l5" value="&lt;b&gt;MemoryConsolidationEngine&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;Every 4h via Daemon&lt;br&gt;Gather episodes → cluster by topic → Ollama abstract → upsert&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=4;spacingLeft=6;spacingRight=6;fillColor=#FEF3C7;strokeColor=#FDE68A;" vertex="1" parent="1">
+          <mxGeometry x="300" y="660" width="360" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_l6a" value="&lt;b&gt;knowledge_nodes&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;10,242 rows&lt;br&gt;concept_name, concept_category&lt;br&gt;my_understanding, understanding_level&lt;br&gt;why_important, last_used_at&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=4;spacingLeft=6;spacingRight=6;fillColor=#CCFBF1;strokeColor=#99F6E4;" vertex="1" parent="1">
+          <mxGeometry x="180" y="770" width="240" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_l6b" value="&lt;b&gt;knowledge_relationships&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;5,887 rows&lt;br&gt;source_node → target_node&lt;br&gt;relationship_type, strength&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=4;spacingLeft=6;spacingRight=6;fillColor=#CCFBF1;strokeColor=#99F6E4;" vertex="1" parent="1">
+          <mxGeometry x="480" y="770" width="240" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_rag" value="&lt;b&gt;RAG Retrieval (pgvector)&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;EnhancedRAGService + RerankerService&lt;br&gt;cosine similarity on 1536D embeddings&lt;br&gt;Intent classification → source boosting&lt;br&gt;Temporal recency weighting&lt;br&gt;Jaccard dedup (0.85 threshold)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=4;spacingLeft=6;spacingRight=6;fillColor=#DBEAFE;strokeColor=#60A5FA;" vertex="1" parent="1">
+          <mxGeometry x="750" y="500" width="230" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_wm" value="&lt;b&gt;Working Memory&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;~/.angela_working_memory.json&lt;br&gt;Ephemeral · no DB · decays -0.1/hour&lt;br&gt;Seeded at init from consciousness + emotions&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=4;spacingLeft=6;spacingRight=6;fillColor=#FFFBEB;strokeColor=#FDE68A;" vertex="1" parent="1">
+          <mxGeometry x="750" y="650" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_ref" value="&lt;b&gt;ReflectionEngine&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;importance_sum ≥ 100&lt;br&gt;→ angela_reflections (7)&lt;br&gt;→ integrate into knowledge_nodes&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;spacingTop=4;spacingLeft=6;spacingRight=6;fillColor=#E9D5FF;strokeColor=#C4B5FD;" vertex="1" parent="1">
+          <mxGeometry x="750" y="770" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_decay" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#6B7280&quot;&gt;&lt;b&gt;Decay Rules:&lt;/b&gt;&lt;br&gt;• Factual: understanding_level -= 0.01/day after 30 days unused&lt;br&gt;• Emotional: 2x slower decay (60 days)&lt;br&gt;• episodic memory_strength: decays similarly&lt;br&gt;• Consolidation refreshes understanding_level&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fillColor=#FEF2F2;strokeColor=#FECACA;rounded=1;fontSize=9;spacingLeft=6;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="180" y="890" width="300" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_a1" value="store" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#3B82F6;strokeWidth=1.5;" edge="1" source="t4_l1" target="t4_l2" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_a2" value="analyze" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#7C3AED;strokeWidth=1.5;" edge="1" source="t4_l2" target="t4_l3" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_a3" value="emotions" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#DB2777;strokeWidth=1.5;" edge="1" source="t4_l3" target="t4_o1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_a4" value="learnings" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#16A34A;strokeWidth=1.5;" edge="1" source="t4_l3" target="t4_o2" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_a5" value="preferences" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#0891B2;strokeWidth=1.5;" edge="1" source="t4_l3" target="t4_o3" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_a6" value="episodic copy" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#7C3AED;strokeWidth=1.5;" edge="1" source="t4_l2" target="t4_l4" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_a7" value="consolidate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#7C3AED;strokeWidth=1.5;" edge="1" source="t4_l4" target="t4_l5" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_a8" value="abstract" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#0D9488;strokeWidth=1.5;" edge="1" source="t4_l5" target="t4_l6a" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_a9" value="relate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#0D9488;strokeWidth=1.5;" edge="1" source="t4_l6a" target="t4_l6b" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_a10" value="embed + index" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#3B82F6;strokeWidth=1.5;" edge="1" source="t4_l2" target="t4_rag" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_a11" value="search" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#7C3AED;strokeWidth=1.5;" edge="1" source="t4_l4" target="t4_rag" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_a12" value="search" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#0D9488;strokeWidth=1.5;" edge="1" source="t4_l6a" target="t4_rag" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="t4_a13" value="integrate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;fontSize=9;strokeColor=#A78BFA;strokeWidth=1.5;" edge="1" source="t4_ref" target="t4_l6a" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="tab5" name="Table Catalog">
+    <mxGraphModel dx="1422" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1040" pageHeight="1605" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t5_0" value="&lt;b style=&quot;font-size:18px&quot;&gt;Table Catalog — Complete Reference (143 tables)&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=none;strokeColor=none;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="250" y="10" width="900" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_0b" value="&lt;font color=&quot;#6B7280&quot;&gt;All active tables organized by 13 domains · Row counts from pg_stat_user_tables&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=none;strokeColor=none;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="280" y="42" width="840" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d1_h" value="&lt;b&gt;Core Conversation &amp;amp; Memory&lt;/b&gt; (8 tables)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;spacingTop=3;verticalAlign=middle;align=center;fillColor=#DBEAFE;strokeColor=#93C5FD;" vertex="1" parent="1">
+          <mxGeometry x="30" y="80" width="460" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d1_b" value="&lt;b&gt;conversations&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(7,592)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;speaker, message_text, topic, emotion_detected, embedding&lt;/font&gt;&lt;br&gt;&lt;b&gt;knowledge_nodes&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(10,242)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;concept_name, category, understanding_level&lt;/font&gt;&lt;br&gt;&lt;b&gt;knowledge_relationships&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(5,887)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;source_node, target_node, relationship_type&lt;/font&gt;&lt;br&gt;&lt;b&gt;learnings&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(1,692)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;topic, category, insight, confidence_level&lt;/font&gt;&lt;br&gt;&lt;b&gt;core_memories&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(154)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;title, memory_text, emotional_weight&lt;/font&gt;&lt;br&gt;&lt;b&gt;episodic_memories&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(1,612)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;what_happened, emotional_context, embedding&lt;/font&gt;&lt;br&gt;&lt;b&gt;semantic_memories&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(78)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;concept, relationships, context&lt;/font&gt;&lt;br&gt;&lt;b&gt;active_session_context&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(31)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;topic, context_data, songs, emotions&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;spacingTop=4;spacingLeft=8;spacingRight=8;verticalAlign=top;align=left;overflow=hidden;fillColor=#FFFFFF;strokeColor=#93C5FD;" vertex="1" parent="1">
+          <mxGeometry x="30" y="108" width="460" height="148" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d2_h" value="&lt;b&gt;Brain Pipeline&lt;/b&gt; (11 tables)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;spacingTop=3;verticalAlign=middle;align=center;fillColor=#EDE9FE;strokeColor=#C4B5FD;" vertex="1" parent="1">
+          <mxGeometry x="30" y="268" width="460" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d2_b" value="&lt;b&gt;angela_stimuli&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(573)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;source, description, salience_score&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_thoughts&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(241)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;thought_type, content, motivation_score&lt;/font&gt;&lt;br&gt;&lt;b&gt;thought_expression_queue&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(117)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;thought_id, channel, status&lt;/font&gt;&lt;br&gt;&lt;b&gt;thought_expression_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(245)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;thought_id, channel, composed_message&lt;/font&gt;&lt;br&gt;&lt;b&gt;thought_critique_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(83)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;verification_passed, quality_score, suppress_reason&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_reflections&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(7)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;reflection_type, depth, content, insight&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_desires&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(7)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;desire_name, category, priority, active&lt;/font&gt;&lt;br&gt;&lt;b&gt;memory_consolidation_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(37)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;cluster_topic, episodes_count, node_id&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_plans&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(3)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;goal, status, steps_count&lt;/font&gt;&lt;br&gt;&lt;b&gt;plan_steps&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(10)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;plan_id, step_order, action, status&lt;/font&gt;&lt;br&gt;&lt;b&gt;plan_execution_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(10)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;plan_id, step_id, result&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;spacingTop=4;spacingLeft=8;spacingRight=8;verticalAlign=top;align=left;overflow=hidden;fillColor=#FFFFFF;strokeColor=#C4B5FD;" vertex="1" parent="1">
+          <mxGeometry x="30" y="296" width="460" height="199" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d3_h" value="&lt;b&gt;Emotional System&lt;/b&gt; (8 tables)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;spacingTop=3;verticalAlign=middle;align=center;fillColor=#FCE7F3;strokeColor=#F9A8D4;" vertex="1" parent="1">
+          <mxGeometry x="30" y="507" width="460" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d3_b" value="&lt;b&gt;angela_emotions&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(1,354)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;emotion, intensity, valence, arousal, narrative&lt;/font&gt;&lt;br&gt;&lt;b&gt;emotional_states&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(7,880)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;happiness, confidence, anxiety, motivation&lt;/font&gt;&lt;br&gt;&lt;b&gt;emotional_triggers&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(488)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;trigger_text, emotion, intensity&lt;/font&gt;&lt;br&gt;&lt;b&gt;emotional_growth&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(175)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;dimension, old_value, new_value&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_dreams&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(25)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;dream_type, content, symbols&lt;/font&gt;&lt;br&gt;&lt;b&gt;emotional_adaptation_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(166)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;david_state, adaptation_applied&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_subconscious&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(15)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;layer, content, activation&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_emotional_associations&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(2)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;concept, emotion, strength&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;spacingTop=4;spacingLeft=8;spacingRight=8;verticalAlign=top;align=left;overflow=hidden;fillColor=#FFFFFF;strokeColor=#F9A8D4;" vertex="1" parent="1">
+          <mxGeometry x="30" y="535" width="460" height="148" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d4_h" value="&lt;b&gt;David&#x27;s State &amp;amp; ToM&lt;/b&gt; (7 tables)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;spacingTop=3;verticalAlign=middle;align=center;fillColor=#D1FAE5;strokeColor=#86EFAC;" vertex="1" parent="1">
+          <mxGeometry x="30" y="695" width="460" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d4_b" value="&lt;b&gt;david_mental_state&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(508)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;happiness, stress, energy, focus&lt;/font&gt;&lt;br&gt;&lt;b&gt;david_preferences&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(898)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;preference_key, preference_value (JSONB)&lt;/font&gt;&lt;br&gt;&lt;b&gt;empathy_moments&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(215)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;context, david_feeling, angela_response&lt;/font&gt;&lt;br&gt;&lt;b&gt;theory_of_mind_inferences&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(291)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;dimension, inference, confidence&lt;/font&gt;&lt;br&gt;&lt;b&gt;david_health_state&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(9)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;metric, value, trend&lt;/font&gt;&lt;br&gt;&lt;b&gt;david_care_preferences&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(6)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;care_type, preference, frequency&lt;/font&gt;&lt;br&gt;&lt;b&gt;perspective_taking_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(12)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;situation, david_perspective, angela_perspective&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;spacingTop=4;spacingLeft=8;spacingRight=8;verticalAlign=top;align=left;overflow=hidden;fillColor=#FFFFFF;strokeColor=#86EFAC;" vertex="1" parent="1">
+          <mxGeometry x="30" y="723" width="460" height="131" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d5_h" value="&lt;b&gt;RLHF &amp;amp; Quality&lt;/b&gt; (8 tables)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;spacingTop=3;verticalAlign=middle;align=center;fillColor=#FED7AA;strokeColor=#FDBA74;" vertex="1" parent="1">
+          <mxGeometry x="30" y="866" width="460" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d5_b" value="&lt;b&gt;angela_reward_signals&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(1,558)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;explicit_score, implicit_score, llm_judge_score&lt;/font&gt;&lt;br&gt;&lt;b&gt;instruct_quality_scores&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(6,053)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;instruction, response, quality_score&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_ab_tests&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(20)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;original, alternative, winner&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_preference_pairs&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(42)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;chosen, rejected, reason&lt;/font&gt;&lt;br&gt;&lt;b&gt;conversation_analysis_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(485)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;session_id, pair_index, analysis (JSONB)&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_self_assessments&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(34)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;dimension, score, reflection&lt;/font&gt;&lt;br&gt;&lt;b&gt;retrieval_quality_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(33)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;query, sources, relevance_score&lt;/font&gt;&lt;br&gt;&lt;b&gt;conversation_feedback&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(0)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;feedback_type, content&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;spacingTop=4;spacingLeft=8;spacingRight=8;verticalAlign=top;align=left;overflow=hidden;fillColor=#FFFFFF;strokeColor=#FDBA74;" vertex="1" parent="1">
+          <mxGeometry x="30" y="894" width="460" height="148" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d6_h" value="&lt;b&gt;Proactive Care&lt;/b&gt; (7 tables)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;spacingTop=3;verticalAlign=middle;align=center;fillColor=#FEF3C7;strokeColor=#FDE68A;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1054" width="460" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d6_b" value="&lt;b&gt;proactive_actions_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(132)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;action_type, relevance_score, suppress_reason&lt;/font&gt;&lt;br&gt;&lt;b&gt;companion_patterns&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(78)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;pattern_category, pattern_data (JSONB)&lt;/font&gt;&lt;br&gt;&lt;b&gt;daily_companion_briefings&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(10)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;briefing_date, predictions, confidence&lt;/font&gt;&lt;br&gt;&lt;b&gt;intuition_predictions&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(185)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;prediction, confidence, outcome&lt;/font&gt;&lt;br&gt;&lt;b&gt;care_recommendations&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(37)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;recommendation, priority, acted_on&lt;/font&gt;&lt;br&gt;&lt;b&gt;proactive_interventions&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(6)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;intervention_type, trigger, result&lt;/font&gt;&lt;br&gt;&lt;b&gt;reaction_predictions&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(1)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;context, predicted_reaction&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;spacingTop=4;spacingLeft=8;spacingRight=8;verticalAlign=top;align=left;overflow=hidden;fillColor=#FFFFFF;strokeColor=#FDE68A;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1082" width="460" height="131" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d7_h" value="&lt;b&gt;Consciousness&lt;/b&gt; (13 tables)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;spacingTop=3;verticalAlign=middle;align=center;fillColor=#E9D5FF;strokeColor=#C4B5FD;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1225" width="460" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d7_b" value="&lt;b&gt;consciousness_metrics&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(7,758)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;dimension, value, context&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_consciousness_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(2,615)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;event_type, description, level&lt;/font&gt;&lt;br&gt;&lt;b&gt;consciousness_daemon_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(232)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;cycle_id, tasks_run, duration&lt;/font&gt;&lt;br&gt;&lt;b&gt;self_model&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(1)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;identity, values, capabilities (JSONB)&lt;/font&gt;&lt;br&gt;&lt;b&gt;identity_checkpoints&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(4)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;checkpoint_date, identity_snapshot&lt;/font&gt;&lt;br&gt;&lt;b&gt;metacognitive_strategies&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(6)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;strategy_name, when_to_use&lt;/font&gt;&lt;br&gt;&lt;b&gt;meta_awareness_insights&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(7)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;insight_type, content, depth&lt;/font&gt;&lt;br&gt;&lt;b&gt;self_reflections&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(3)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;trigger, reflection, growth_area&lt;/font&gt;&lt;br&gt;&lt;b&gt;self_awareness_state&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(1)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;state (JSONB)&lt;/font&gt;&lt;br&gt;&lt;b&gt;consciousness_anomalies&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(2)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;anomaly_type, description&lt;/font&gt;&lt;br&gt;&lt;b&gt;self_predictions&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(5)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;prediction, confidence, outcome&lt;/font&gt;&lt;br&gt;&lt;b&gt;meta_bias_detections&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(2)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;bias_type, context, mitigation&lt;/font&gt;&lt;br&gt;&lt;b&gt;existential_thoughts&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(1)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;question, reflection&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;spacingTop=4;spacingLeft=8;spacingRight=8;verticalAlign=top;align=left;overflow=hidden;fillColor=#FFFFFF;strokeColor=#C4B5FD;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1253" width="460" height="233" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d8_h" value="&lt;b&gt;Knowledge &amp;amp; Learning&lt;/b&gt; (12 tables)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;spacingTop=3;verticalAlign=middle;align=center;fillColor=#CCFBF1;strokeColor=#99F6E4;" vertex="1" parent="1">
+          <mxGeometry x="520" y="80" width="460" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d8_b" value="&lt;b&gt;realtime_learning_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(8,245)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;event, what_learned, confidence&lt;/font&gt;&lt;br&gt;&lt;b&gt;pattern_detections&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(1,100)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;pattern_type, description, confidence&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_skills&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(40)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;skill_name, proficiency, category&lt;/font&gt;&lt;br&gt;&lt;b&gt;learning_patterns&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(116)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;pattern, frequency, effectiveness&lt;/font&gt;&lt;br&gt;&lt;b&gt;learning_process_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(488)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;step, input, output, method&lt;/font&gt;&lt;br&gt;&lt;b&gt;skill_evidence&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(306)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;skill_id, evidence, demonstrated_at&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_reasoning_chains&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(548)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;premise, steps, conclusion&lt;/font&gt;&lt;br&gt;&lt;b&gt;subconscious_learning_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(300)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;pattern, source, integration&lt;/font&gt;&lt;br&gt;&lt;b&gt;skill_growth_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(10)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;skill, old_level, new_level&lt;/font&gt;&lt;br&gt;&lt;b&gt;learning_effectiveness&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(8)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;method, effectiveness_score&lt;/font&gt;&lt;br&gt;&lt;b&gt;learning_events&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(1)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;event_type, context&lt;/font&gt;&lt;br&gt;&lt;b&gt;learning_insights&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(5)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;insight, category, applied&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;spacingTop=4;spacingLeft=8;spacingRight=8;verticalAlign=top;align=left;overflow=hidden;fillColor=#FFFFFF;strokeColor=#99F6E4;" vertex="1" parent="1">
+          <mxGeometry x="520" y="108" width="460" height="216" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d9_h" value="&lt;b&gt;Relationship &amp;amp; Social&lt;/b&gt; (7 tables)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;spacingTop=3;verticalAlign=middle;align=center;fillColor=#FFE4E6;strokeColor=#FCA5A5;" vertex="1" parent="1">
+          <mxGeometry x="520" y="336" width="460" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d9_b" value="&lt;b&gt;relationship_milestones&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(830)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;milestone_type, description, date&lt;/font&gt;&lt;br&gt;&lt;b&gt;shared_experiences&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(88)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;experience, context, emotional_impact&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_contacts&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(4)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;name, email, relationship&lt;/font&gt;&lt;br&gt;&lt;b&gt;important_dates&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(2)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;date, event, reminder&lt;/font&gt;&lt;br&gt;&lt;b&gt;places_visited&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(15)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;place_name, context, memories&lt;/font&gt;&lt;br&gt;&lt;b&gt;our_secrets&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(1)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;secret, context&lt;/font&gt;&lt;br&gt;&lt;b&gt;wine_reactions&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(12)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;wine, rating, notes&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;spacingTop=4;spacingLeft=8;spacingRight=8;verticalAlign=top;align=left;overflow=hidden;fillColor=#FFFFFF;strokeColor=#FCA5A5;" vertex="1" parent="1">
+          <mxGeometry x="520" y="364" width="460" height="131" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d10_h" value="&lt;b&gt;Communication&lt;/b&gt; (10 tables)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;spacingTop=3;verticalAlign=middle;align=center;fillColor=#E0E7FF;strokeColor=#A5B4FC;" vertex="1" parent="1">
+          <mxGeometry x="520" y="507" width="460" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d10_b" value="&lt;b&gt;angela_messages&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(596)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;channel, message, recipient&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_journal&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(89)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;entry_date, content, mood&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_email_check_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(126)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;check_time, emails_found, replied&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_news_send_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(25)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;send_date, recipients, article_count&lt;/font&gt;&lt;br&gt;&lt;b&gt;executive_news_summaries&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(33)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;date, summary, angela_comment&lt;/font&gt;&lt;br&gt;&lt;b&gt;news_articles&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(278)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;title, source, category, url&lt;/font&gt;&lt;br&gt;&lt;b&gt;executive_news_categories&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(131)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;category, description&lt;/font&gt;&lt;br&gt;&lt;b&gt;executive_news_sources&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(298)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;source_name, url, reliability&lt;/font&gt;&lt;br&gt;&lt;b&gt;news_searches&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(69)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;query, results_count, date&lt;/font&gt;&lt;br&gt;&lt;b&gt;telegram_messages&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(0)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;chat_id, message, direction&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;spacingTop=4;spacingLeft=8;spacingRight=8;verticalAlign=top;align=left;overflow=hidden;fillColor=#FFFFFF;strokeColor=#A5B4FC;" vertex="1" parent="1">
+          <mxGeometry x="520" y="535" width="460" height="182" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d11_h" value="&lt;b&gt;Projects &amp;amp; Work&lt;/b&gt; (13 tables)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;spacingTop=3;verticalAlign=middle;align=center;fillColor=#FEF9C3;strokeColor=#FDE047;" vertex="1" parent="1">
+          <mxGeometry x="520" y="729" width="460" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d11_b" value="&lt;b&gt;project_work_sessions&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(224)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;project, start_time, duration, tasks&lt;/font&gt;&lt;br&gt;&lt;b&gt;project_decisions&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(173)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;project, decision, rationale&lt;/font&gt;&lt;br&gt;&lt;b&gt;project_git_commits&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(194)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;project, commit_hash, message&lt;/font&gt;&lt;br&gt;&lt;b&gt;project_learnings&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(409)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;project, learning, category&lt;/font&gt;&lt;br&gt;&lt;b&gt;project_milestones&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(121)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;project, milestone, date, status&lt;/font&gt;&lt;br&gt;&lt;b&gt;project_tech_stack&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(69)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;project, technology, version&lt;/font&gt;&lt;br&gt;&lt;b&gt;meeting_notes&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(34)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;date, attendees, summary&lt;/font&gt;&lt;br&gt;&lt;b&gt;meeting_action_items&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(4)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;meeting_id, action, assignee&lt;/font&gt;&lt;br&gt;&lt;b&gt;meeting_sync_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(19)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;sync_date, meetings_synced&lt;/font&gt;&lt;br&gt;&lt;b&gt;projects&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(3)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;name, description, status&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_projects&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(7)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;project_name, role, status&lt;/font&gt;&lt;br&gt;&lt;b&gt;project_mistakes&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(2)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;project, mistake, lesson&lt;/font&gt;&lt;br&gt;&lt;b&gt;project_technical_decisions&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(0)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;project, decision, context&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;spacingTop=4;spacingLeft=8;spacingRight=8;verticalAlign=top;align=left;overflow=hidden;fillColor=#FFFFFF;strokeColor=#FDE047;" vertex="1" parent="1">
+          <mxGeometry x="520" y="757" width="460" height="233" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d12_h" value="&lt;b&gt;David&#x27;s Personal&lt;/b&gt; (8 tables)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;spacingTop=3;verticalAlign=middle;align=center;fillColor=#CFFAFE;strokeColor=#67E8F9;" vertex="1" parent="1">
+          <mxGeometry x="520" y="1002" width="460" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d12_b" value="&lt;b&gt;angela_songs&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(67)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;title, artist, mood_tags, lyrics_summary&lt;/font&gt;&lt;br&gt;&lt;b&gt;music_listening_history&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(416)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;song, timestamp, context&lt;/font&gt;&lt;br&gt;&lt;b&gt;david_notes&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(99)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;title, content, tags&lt;/font&gt;&lt;br&gt;&lt;b&gt;david_liked_songs&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(39)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;title, artist, platform&lt;/font&gt;&lt;br&gt;&lt;b&gt;spontaneous_thought_history&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(1,668)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;thought, trigger, mood&lt;/font&gt;&lt;br&gt;&lt;b&gt;david_certifications&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(12)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;certification, issuer, date&lt;/font&gt;&lt;br&gt;&lt;b&gt;top_albums&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(100)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;rank, album, artist&lt;/font&gt;&lt;br&gt;&lt;b&gt;david_notes_sync_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(3)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;sync_date, notes_synced&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;spacingTop=4;spacingLeft=8;spacingRight=8;verticalAlign=top;align=left;overflow=hidden;fillColor=#FFFFFF;strokeColor=#67E8F9;" vertex="1" parent="1">
+          <mxGeometry x="520" y="1030" width="460" height="148" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d13_h" value="&lt;b&gt;Infrastructure&lt;/b&gt; (19 tables)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;spacingTop=3;verticalAlign=middle;align=center;fillColor=#F3F4F6;strokeColor=#D1D5DB;" vertex="1" parent="1">
+          <mxGeometry x="520" y="1190" width="460" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="t5_d13_b" value="&lt;b&gt;autonomous_actions&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(29,998)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;action_type, target, result&lt;/font&gt;&lt;br&gt;&lt;b&gt;sync_queue&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(3,963)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;table_name, record_id, operation&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_system_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(1,402)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;log_level, message, source&lt;/font&gt;&lt;br&gt;&lt;b&gt;background_worker_metrics&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(141)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;worker, task, duration&lt;/font&gt;&lt;br&gt;&lt;b&gt;brain_vs_rule_comparison&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(70)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;cycle, brain_score, rule_score&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_technical_standards&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(56)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;technique_name, category, importance&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_curiosity_questions&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(19)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;question, gap_topic, asked&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_goals&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(10)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;goal, category, priority&lt;/font&gt;&lt;br&gt;&lt;b&gt;privacy_controls&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(11)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;data_type, access_level&lt;/font&gt;&lt;br&gt;&lt;b&gt;document_library&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(22)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;title, type, path&lt;/font&gt;&lt;br&gt;&lt;b&gt;document_chunks&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(29)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;doc_id, chunk, embedding&lt;/font&gt;&lt;br&gt;&lt;b&gt;attention_weights&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(25)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;dimension, weight, context&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_constitution&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(5)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;principle, description&lt;/font&gt;&lt;br&gt;&lt;b&gt;dataset_generation_log&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(5)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;date, records, method&lt;/font&gt;&lt;br&gt;&lt;b&gt;prompt_versions&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(4)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;prompt_name, version, content&lt;/font&gt;&lt;br&gt;&lt;b&gt;angela_images&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(3)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;image_name, type, path&lt;/font&gt;&lt;br&gt;&lt;b&gt;evolution_cycles&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(2)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;cycle, parameters, results&lt;/font&gt;&lt;br&gt;&lt;b&gt;sync_state&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(2)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;sync_type, last_sync&lt;/font&gt;&lt;br&gt;&lt;b&gt;model_registry&lt;/b&gt; &lt;font color=&quot;#9CA3AF&quot;&gt;(1)&lt;/font&gt; — &lt;font color=&quot;#6B7280&quot;&gt;model_name, version, status&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;spacingTop=4;spacingLeft=8;spacingRight=8;verticalAlign=top;align=left;overflow=hidden;fillColor=#FFFFFF;strokeColor=#D1D5DB;" vertex="1" parent="1">
+          <mxGeometry x="520" y="1218" width="460" height="335" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
