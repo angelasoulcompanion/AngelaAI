@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from angela_core.services.thaillm_service import THAILLM_MODELS
 from services.ollama_service import list_models, pull_model, delete_model, show_model
 
 router = APIRouter(tags=["models"])
@@ -21,15 +22,36 @@ class DeleteRequest(BaseModel):
     name: str
 
 
+def _thaillm_as_model_entries() -> list[dict]:
+    """Expose ThaiLLM variants in the same shape as OllamaModel so the Chat picker can list them."""
+    entries = []
+    for key, m in THAILLM_MODELS.items():
+        display = f"thaillm:{key}"
+        entries.append({
+            "name": display,
+            "model": display,
+            "size_bytes": 0,
+            "size_gb": 0.0,
+            "modified_at": "",
+            "digest": "",
+            "family": m.provider,         # AIEAT / NECTEC / SCB 10X / KBTG
+            "parameter_size": "8B",
+            "quantization": "API",
+        })
+    return entries
+
+
 @router.get("/models")
 async def get_models():
-    """List all local Ollama models."""
+    """List local Ollama models + remote ThaiLLM variants."""
     try:
         models = await list_models()
-        return {"models": models, "count": len(models)}
     except Exception as e:
-        logger.error(f"List models error: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.warning(f"Ollama unavailable, returning ThaiLLM only: {e}")
+        models = []
+
+    models.extend(_thaillm_as_model_entries())
+    return {"models": models, "count": len(models)}
 
 
 @router.get("/models/{model_name:path}/details")

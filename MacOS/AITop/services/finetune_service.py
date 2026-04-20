@@ -485,6 +485,10 @@ OLLAMA_TO_HF_MLX = {
     "scb10x/typhoon2.5-qwen3-4b": "typhoon-ai/typhoon2.1-gemma3-4b-mlx-4bit",
     "scb10x/typhoon-ocr1.5-3b": "typhoon-ai/llama3.2-typhoon2-3b-instruct-mlx-4bit",
     "gemma3:12b": "typhoon-ai/typhoon2.1-gemma3-12b-mlx-4bit",
+    # NOTE: gemma-3n (E4B/E2B) currently breaks mlx_lm LoRA — altup.prediction_coefs
+    # layer gets LoRA-wrapped but model code accesses .weight directly.
+    # Map gemma4:e4b to Typhoon Gemma3-4B (Thai-tuned, same ~4B class, stable with LoRA).
+    "gemma4:e4b": "typhoon-ai/typhoon2.1-gemma3-4b-mlx-4bit",
     "qwen2.5:7b": "typhoon-ai/typhoon2-qwen2.5-7b-instruct-mlx-4bit",
     "llama3.1:8b": "typhoon-ai/llama3.1-typhoon2-8b-instruct-mlx-4bit",
 }
@@ -510,7 +514,10 @@ def _resolve_mlx_model(ollama_name: str) -> str:
 def _start_mlx_training(job: TrainingJob):
     """Start MLX LoRA/QLoRA training via mlx_lm subprocess."""
     cfg = job.config
-    fine_tune_type = "qlora" if job.training_method == "mlx_qlora" else "lora"
+    # Note: mlx_lm >=0.20 only supports {lora, dora, full}. QLoRA = LoRA on
+    # a pre-quantized base model (e.g. *-4bit). So always pass "lora" here;
+    # the quantization is inherited from the model.
+    fine_tune_type = "lora"
 
     # Resolve model name: Ollama → HuggingFace MLX
     hf_model = _resolve_mlx_model(job.model)

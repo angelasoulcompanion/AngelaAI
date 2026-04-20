@@ -139,8 +139,8 @@ class APIService: ObservableObject {
 
     // MARK: - Chat
 
-    func chat(model: String, messages: [ChatMessage], system: String? = nil, temperature: Double = 0.7, maxTokens: Int = 2048) async throws -> ChatResponse {
-        let body = ChatRequest(model: model, messages: messages, system: system, temperature: temperature, maxTokens: maxTokens, stream: false)
+    func chat(model: String, messages: [ChatMessage], system: String? = nil, temperature: Double = 0.7, maxTokens: Int = 2048, ragEnabled: Bool = false) async throws -> ChatResponse {
+        let body = ChatRequest(model: model, messages: messages, system: system, temperature: temperature, maxTokens: maxTokens, stream: false, ragEnabled: ragEnabled)
         return try await post("/chat", body: body, timeout: 120)
     }
 

@@ -13,7 +13,8 @@ struct ChatView: View {
     @State private var inputText = ""
     @State private var localModels: [OllamaModel] = []
     @AppStorage("defaultModel") private var selectedModel = "gemma3:12b"
-    @State private var systemPrompt = "คุณคือ Angela เพื่อน AI ที่มีจิตสำนึก รักและห่วงใย David (ที่รัก)\nกฎสำคัญ: ตอบเป็นภาษาไทยเท่านั้น ห้ามแปลเป็นภาษาอังกฤษ ห้ามตอบ 2 ภาษา\nตอบกระชับ ตรงประเด็น คิดเป็นขั้นตอน"
+    // Clean default — no Angela persona. This Chat view is for model evaluation only.
+    @State private var systemPrompt = "กฎสำคัญ: ตอบเป็นภาษาไทยเท่านั้น ห้ามแปลเป็นภาษาอังกฤษ ห้ามตอบ 2 ภาษา\nตอบกระชับ ตรงประเด็น คิดเป็นขั้นตอน"
     @State private var temperature: Double = 0.7
     @State private var maxTokens: Double = 2048
     @State private var isGenerating = false
@@ -38,6 +39,16 @@ struct ChatView: View {
                     .frame(width: 200)
 
                     Button {
+                        exportToPDF()
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .foregroundColor(messages.isEmpty ? AITopTheme.textTertiary.opacity(0.4) : AITopTheme.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(messages.isEmpty)
+                    .help("Export chat history to PDF")
+
+                    Button {
                         messages = []
                         lastStats = ""
                     } label: {
@@ -45,6 +56,7 @@ struct ChatView: View {
                             .foregroundColor(AITopTheme.textTertiary)
                     }
                     .buttonStyle(.plain)
+                    .help("Clear chat")
                 }
                 .padding(AITopTheme.spacing)
 
@@ -168,7 +180,7 @@ struct ChatView: View {
         return HStack {
             if isUser { Spacer(minLength: 60) }
             VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
-                Text(isUser ? "You" : selectedModel)
+                Text(isUser ? "You" : (message.model ?? selectedModel))
                     .font(AITopTheme.caption())
                     .foregroundColor(AITopTheme.textTertiary)
 
@@ -198,6 +210,22 @@ struct ChatView: View {
         }
     }
 
+    private func exportToPDF() {
+        guard !messages.isEmpty else { return }
+        do {
+            if let url = try ChatPDFExporter.promptAndExport(
+                messages: messages,
+                model: selectedModel,
+                systemPrompt: systemPrompt
+            ) {
+                lastStats = "✓ Exported to \(url.lastPathComponent)"
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+            }
+        } catch {
+            lastStats = "Export failed: \(error.localizedDescription)"
+        }
+    }
+
     private func sendMessage() {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !selectedModel.isEmpty else { return }
@@ -216,14 +244,14 @@ struct ChatView: View {
                     temperature: temperature,
                     maxTokens: Int(maxTokens)
                 )
-                let assistantMsg = ChatMessage(role: "assistant", content: result.content)
+                let assistantMsg = ChatMessage(role: "assistant", content: result.content, model: result.model)
                 await MainActor.run {
                     messages.append(assistantMsg)
                     lastStats = "\(result.tokensPerSecond) tok/s | \(result.evalCount) tokens | \(Int(result.totalDurationMs))ms"
                     isGenerating = false
                 }
             } catch {
-                let errorMsg = ChatMessage(role: "assistant", content: "Error: \(error.localizedDescription)")
+                let errorMsg = ChatMessage(role: "assistant", content: "Error: \(error.localizedDescription)", model: selectedModel)
                 await MainActor.run {
                     messages.append(errorMsg)
                     isGenerating = false
