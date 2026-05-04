@@ -26,6 +26,9 @@ struct VideoProject: Codable, Identifiable, Hashable {
     let status: String
     let machine: String?
     let createdAt: Date
+    let audience: String?
+    let persona: String?
+    let notes: String?
 
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
     static func == (l: VideoProject, r: VideoProject) -> Bool { l.id == r.id }
@@ -46,6 +49,8 @@ struct VideoProjectFull: Codable {
     let totalEstimatedMinutes: Double
     let recommendedCount: Int
     let audience: String
+    let persona: String?
+    let notes: String?
     let alternatives: [VideoSplitAlternative]?
     let status: String
     let createdAt: Date
@@ -109,4 +114,19 @@ struct VideoSegmentRegenerateResponse: Codable {
     let ok: Bool
     let version: Int
     let prompt: VideoPromptVersion
+}
+
+// MARK: - Project edit / delete
+
+struct VideoProjectUpdateRequest: Codable {
+    let title: String?
+    let audience: String?
+    let persona: String?
+    let notes: String?
+}
+
+struct VideoProjectDeleteResponse: Codable {
+    let deleted: Bool
+    let pdfRemoved: Bool
+    let pdfSha256: String
 }

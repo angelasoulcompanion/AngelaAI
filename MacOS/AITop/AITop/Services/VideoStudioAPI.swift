@@ -64,6 +64,36 @@ extension APIService {
         return try decoder.decode(VideoUploadResponse.self, from: data)
     }
 
+    // MARK: - Project edit / delete
+
+    /// Patch editable text fields (title / audience / persona / notes).
+    /// Only non-nil fields are sent; pass empty string to clear a field.
+    @discardableResult
+    func videoStudioUpdateProject(
+        _ projectId: String,
+        title: String? = nil,
+        audience: String? = nil,
+        persona: String? = nil,
+        notes: String? = nil
+    ) async throws -> [String: AnyCodable] {
+        let body = VideoProjectUpdateRequest(
+            title: title, audience: audience, persona: persona, notes: notes
+        )
+        return try await patch("/video-studio/projects/\(projectId)", body: body)
+    }
+
+    /// Delete a project (segments + prompts cascade). When `removePDF` is true
+    /// (default) and the underlying PDF has no other projects, also drop the
+    /// PDF row + bucket object.
+    @discardableResult
+    func videoStudioDeleteProject(
+        _ projectId: String,
+        removePDF: Bool = true
+    ) async throws -> VideoProjectDeleteResponse {
+        let qs = removePDF ? "true" : "false"
+        return try await deleteReturning("/video-studio/projects/\(projectId)?remove_pdf=\(qs)")
+    }
+
     // MARK: - Segments — prompt regeneration only
 
     func videoStudioRegeneratePrompt(

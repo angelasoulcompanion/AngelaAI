@@ -26,11 +26,13 @@ from pydantic import BaseModel
 from services.video_studio import analyze_pdf, pdf_storage
 from services.video_studio.db import (
     add_prompt_version,
+    delete_project,
     ensure_schema,
     get_pdf_by_sha256,
     get_project,
     list_projects,
     save_analysis_result,
+    update_project,
     upsert_video_pdf,
 )
 from services.video_studio.pdf_ingest import ingest_pdf
@@ -49,6 +51,13 @@ class RegeneratePromptRequest(BaseModel):
     audience: Optional[str] = None
     persona_name: Optional[str] = None
     note: Optional[str] = None
+
+
+class UpdateProjectRequest(BaseModel):
+    title: Optional[str] = None
+    audience: Optional[str] = None
+    persona: Optional[str] = None
+    notes: Optional[str] = None
 
 
 # ============================================================
@@ -164,6 +173,34 @@ async def get_project_endpoint(project_id: str):
     if not proj:
         raise HTTPException(status_code=404, detail="project not found")
     return proj
+
+
+@router.patch("/projects/{project_id}")
+async def update_project_endpoint(project_id: str, req: UpdateProjectRequest):
+    """Patch editable text fields (title, audience, persona, notes)."""
+    updated = await update_project(
+        project_id,
+        title=req.title,
+        audience=req.audience,
+        persona=req.persona,
+        notes=req.notes,
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="project not found")
+    return updated
+
+
+@router.delete("/projects/{project_id}")
+async def delete_project_endpoint(project_id: str, remove_pdf: bool = True):
+    """
+    Delete a project and its segments/prompts (cascade). When `remove_pdf`
+    is true (default) and the underlying PDF has no other projects, also
+    drop the PDF row + bucket object.
+    """
+    try:
+        return await delete_project(project_id, remove_pdf_if_orphan=remove_pdf)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="project not found")
 
 
 @router.get("/pdfs/{sha256}")

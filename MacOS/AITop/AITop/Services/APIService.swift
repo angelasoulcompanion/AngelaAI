@@ -116,6 +116,53 @@ class APIService: ObservableObject {
         }
     }
 
+    func deleteReturning<T: Decodable>(_ path: String, timeout: TimeInterval = 60) async throws -> T {
+        let url = URL(string: "\(APIConfig.apiBaseURL)\(path)")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = timeout
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResp = response as? HTTPURLResponse else {
+            throw APIError.networkError("Invalid response")
+        }
+        guard (200...299).contains(httpResp.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw APIError.httpError(httpResp.statusCode, body)
+        }
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw APIError.decodingError("\(error)")
+        }
+    }
+
+    func patch<T: Decodable, B: Encodable>(_ path: String, body: B, timeout: TimeInterval = 30) async throws -> T {
+        let url = URL(string: "\(APIConfig.apiBaseURL)\(path)")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = timeout
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        request.httpBody = try encoder.encode(body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResp = response as? HTTPURLResponse else {
+            throw APIError.networkError("Invalid response")
+        }
+        guard (200...299).contains(httpResp.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw APIError.httpError(httpResp.statusCode, body)
+        }
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw APIError.decodingError("\(error)")
+        }
+    }
+
     // MARK: - Dashboard
 
     func getDashboard() async throws -> DashboardResponse {

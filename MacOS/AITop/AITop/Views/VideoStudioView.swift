@@ -94,6 +94,57 @@ final class VideoStudioVM: ObservableObject {
             await select(projectId: id)
         }
     }
+
+    /// Apply edits to the project. After saving, refresh the project row +
+    /// the selected detail so the new audience/persona are visible immediately.
+    func updateProject(
+        _ projectId: String,
+        title: String?,
+        audience: String?,
+        persona: String?,
+        notes: String?
+    ) async -> Bool {
+        do {
+            try await api.videoStudioUpdateProject(
+                projectId,
+                title: title,
+                audience: audience,
+                persona: persona,
+                notes: notes
+            )
+            await loadProjects()
+            if selectedProjectId == projectId {
+                await select(projectId: projectId)
+            }
+            statusBanner = "Project updated."
+            return true
+        } catch {
+            errorBanner = "Update failed: \(error.localizedDescription)"
+            return false
+        }
+    }
+
+    /// Delete a project. If `removePDF` is true and the PDF is orphaned, the
+    /// PDF row + bucket object are also removed. Selection is reset to the
+    /// next project (if any) on success.
+    func deleteProject(_ projectId: String, removePDF: Bool) async -> Bool {
+        do {
+            let resp = try await api.videoStudioDeleteProject(projectId, removePDF: removePDF)
+            statusBanner = resp.pdfRemoved
+                ? "Project deleted. PDF removed from storage."
+                : "Project deleted."
+            if selectedProjectId == projectId {
+                selectedProjectId = nil
+                selectedDetail = nil
+                selectedSegmentId = nil
+            }
+            await loadProjects()
+            return true
+        } catch {
+            errorBanner = "Delete failed: \(error.localizedDescription)"
+            return false
+        }
+    }
 }
 
 // MARK: - Main view
@@ -162,6 +213,9 @@ private struct ProjectListPane: View {
     @State private var droppingHover = false
     @State private var customAudience: String = "Software engineers, developers, CIOs — smart, time-poor, allergic to fluff"
     @State private var showAudienceEditor = false
+    @State private var editingProject: VideoProject?
+    @State private var deletingProject: VideoProject?
+    @State private var deleteAlsoRemovePDF = true
 
     var body: some View {
         VStack(spacing: 0) {
@@ -169,6 +223,37 @@ private struct ProjectListPane: View {
             dropZone
             Divider().background(Color.black.opacity(0.3))
             projectList
+        }
+        .sheet(item: $editingProject) { project in
+            VideoProjectEditSheet(project: project) { title, audience, persona, notes in
+                let ok = await vm.updateProject(
+                    project.id,
+                    title: title, audience: audience,
+                    persona: persona, notes: notes
+                )
+                if ok { editingProject = nil }
+            } onCancel: {
+                editingProject = nil
+            }
+        }
+        .confirmationDialog(
+            deletingProject.map { "Delete \"\($0.title)\"?" } ?? "Delete project?",
+            isPresented: Binding(
+                get: { deletingProject != nil },
+                set: { if !$0 { deletingProject = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: deletingProject
+        ) { project in
+            Button("Delete project + PDF file", role: .destructive) {
+                Task {
+                    await vm.deleteProject(project.id, removePDF: true)
+                    deletingProject = nil
+                }
+            }
+            Button("Cancel", role: .cancel) { deletingProject = nil }
+        } message: { project in
+            Text("Deletes \(project.recommendedCount) segment(s), all generated prompts, AND the PDF file from Supabase Storage. This cannot be undone.")
         }
     }
 
@@ -269,6 +354,19 @@ private struct ProjectListPane: View {
                         .onTapGesture {
                             Task { await vm.select(projectId: project.id) }
                         }
+                        .contextMenu {
+                            Button {
+                                editingProject = project
+                            } label: {
+                                Label("Edit details…", systemImage: "pencil")
+                            }
+                            Divider()
+                            Button(role: .destructive) {
+                                deletingProject = project
+                            } label: {
+                                Label("Delete…", systemImage: "trash")
+                            }
+                        }
                     }
                 }
             }
@@ -320,6 +418,22 @@ private struct ProjectRow: View {
                     .background(RoundedRectangle(cornerRadius: 4).fill(AngeloraTheme.leaf.opacity(0.25)))
                     .foregroundColor(AngeloraTheme.leaf)
             }
+
+            // File: name + size
+            HStack(spacing: 6) {
+                Image(systemName: "doc")
+                    .font(.system(size: 9))
+                Text(project.originalFilename)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text("·")
+                Text(formatBytes(project.byteSize))
+                    .monospacedDigit()
+            }
+            .font(.system(size: 10))
+            .foregroundColor(AITopTheme.textSecondary)
+
+            // Stats: pages · minutes · status
             HStack(spacing: 6) {
                 Text("\(project.totalPages)p")
                 Text("·")
@@ -329,6 +443,43 @@ private struct ProjectRow: View {
             }
             .font(.system(size: 10))
             .foregroundColor(AITopTheme.textTertiary)
+
+            if let aud = project.audience, !aud.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "person.crop.rectangle").font(.system(size: 9))
+                    Text(aud)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                .font(.system(size: 10))
+                .foregroundColor(AngeloraTheme.coral.opacity(0.9))
+            }
+
+            if let persona = project.persona, !persona.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "theatermasks").font(.system(size: 9))
+                    Text(persona).lineLimit(1)
+                }
+                .font(.system(size: 10))
+                .foregroundColor(AngeloraTheme.leaf.opacity(0.9))
+            }
+
+            if let notes = project.notes, !notes.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "note.text").font(.system(size: 9))
+                    Text(notes).lineLimit(1)
+                }
+                .font(.system(size: 10))
+                .foregroundColor(AITopTheme.textSecondary)
+            }
+
+            HStack(spacing: 6) {
+                Text("sha")
+                Text(String(project.pdfSha256.prefix(10)))
+                    .monospaced()
+            }
+            .font(.system(size: 9))
+            .foregroundColor(AITopTheme.textTertiary.opacity(0.7))
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
@@ -341,6 +492,12 @@ private struct ProjectRow: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(selected ? AngeloraTheme.leaf : Color.clear, lineWidth: 1)
         )
+    }
+
+    private func formatBytes(_ n: Int) -> String {
+        if n >= 1_000_000 { return String(format: "%.1f MB", Double(n) / 1_000_000) }
+        if n >= 1_000 { return String(format: "%.0f KB", Double(n) / 1_000) }
+        return "\(n) B"
     }
 }
 
@@ -584,5 +741,109 @@ private struct SegmentDetailPanel: View {
                 .textSelection(.enabled)
         }
         .frame(maxHeight: 360)
+    }
+}
+
+// MARK: - Edit project sheet
+
+private struct VideoProjectEditSheet: View {
+    let project: VideoProject
+    let onSave: (_ title: String?, _ audience: String?, _ persona: String?, _ notes: String?) async -> Void
+    let onCancel: () -> Void
+
+    @State private var title: String
+    @State private var audience: String
+    @State private var persona: String
+    @State private var notes: String
+    @State private var saving = false
+
+    init(
+        project: VideoProject,
+        onSave: @escaping (_: String?, _: String?, _: String?, _: String?) async -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        self.project = project
+        self.onSave = onSave
+        self.onCancel = onCancel
+        _title = State(initialValue: project.title)
+        _audience = State(initialValue: project.audience ?? "")
+        _persona = State(initialValue: project.persona ?? "")
+        _notes = State(initialValue: project.notes ?? "")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Image(systemName: "pencil.and.outline").foregroundColor(AngeloraTheme.leaf)
+                Text("Edit project details").font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+                Spacer()
+            }
+
+            Group {
+                field(label: "Title", text: $title)
+                field(label: "Audience", text: $audience, lines: 2...4)
+                field(label: "Persona (optional)", text: $persona, lines: 1...3,
+                      placeholder: "e.g. Andrew Ng, Feynman, custom")
+                field(label: "Notes (optional)", text: $notes, lines: 3...8,
+                      placeholder: "Free-form context, todos, NotebookLM submission notes…")
+            }
+
+            HStack {
+                Text(project.originalFilename)
+                    .font(.system(size: 10))
+                    .foregroundColor(AITopTheme.textTertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer()
+                Button("Cancel", role: .cancel) { onCancel() }
+                    .keyboardShortcut(.cancelAction)
+                Button {
+                    Task {
+                        saving = true
+                        defer { saving = false }
+                        let t = title.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let a = audience.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let p = persona.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let n = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+                        // Send only fields that actually changed; backend treats
+                        // nil as "leave alone" and empty string as "clear".
+                        await onSave(
+                            t == project.title ? nil : t,
+                            a == (project.audience ?? "") ? nil : a,
+                            p == (project.persona ?? "") ? nil : p,
+                            n == (project.notes ?? "") ? nil : n
+                        )
+                    }
+                } label: {
+                    if saving { ProgressView().controlSize(.small) }
+                    else { Text("Save") }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AngeloraTheme.leaf)
+                .keyboardShortcut(.defaultAction)
+                .disabled(saving || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(width: 520)
+        .background(AITopTheme.cardBackground)
+    }
+
+    private func field(
+        label: String,
+        text: Binding<String>,
+        lines: ClosedRange<Int> = 1...1,
+        placeholder: String = ""
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(AITopTheme.textSecondary)
+            TextField(placeholder, text: text, axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 12))
+                .lineLimit(lines)
+        }
     }
 }

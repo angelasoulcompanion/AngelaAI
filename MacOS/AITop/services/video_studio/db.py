@@ -247,7 +247,8 @@ async def list_projects(limit: int = 50) -> list[dict]:
         SELECT p.id, p.title, p.pdf_sha256,
                pdf.original_filename, pdf.byte_size,
                p.total_pages, p.total_estimated_minutes,
-               p.recommended_count, p.status, p.machine, p.created_at
+               p.recommended_count, p.status, p.machine, p.created_at,
+               p.audience, p.persona, p.notes
         FROM angela_video_studio.video_projects p
         JOIN angela_video_studio.video_pdfs pdf ON pdf.sha256 = p.pdf_sha256
         ORDER BY p.created_at DESC
@@ -256,6 +257,109 @@ async def list_projects(limit: int = 50) -> list[dict]:
         limit,
     )
     return [dict(r) for r in rows]
+
+
+# ============================================================
+# Project edit / delete
+# ============================================================
+
+async def update_project(
+    project_id: str,
+    *,
+    title: Optional[str] = None,
+    audience: Optional[str] = None,
+    persona: Optional[str] = None,
+    notes: Optional[str] = None,
+) -> Optional[dict]:
+    """
+    Patch the editable text fields on a project. Returns the updated row, or
+    None if the project doesn't exist. Fields with value `None` are left
+    untouched (use empty string to clear a field).
+    """
+    sets: list[str] = []
+    args: list = []
+    for col, val in (("title", title), ("audience", audience),
+                     ("persona", persona), ("notes", notes)):
+        if val is not None:
+            args.append(val)
+            sets.append(f"{col} = ${len(args)}")
+    if not sets:
+        # Nothing to update — return current row.
+        pool = await get_pool()
+        row = await pool.fetchrow(
+            "SELECT id, title, audience, persona, notes, updated_at "
+            "FROM angela_video_studio.video_projects WHERE id = $1",
+            project_id,
+        )
+        return dict(row) if row else None
+
+    args.append(project_id)
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        f"""
+        UPDATE angela_video_studio.video_projects
+           SET {', '.join(sets)}, updated_at = now()
+         WHERE id = ${len(args)}
+        RETURNING id, title, audience, persona, notes, updated_at
+        """,
+        *args,
+    )
+    return dict(row) if row else None
+
+
+async def delete_project(
+    project_id: str,
+    *,
+    remove_pdf_if_orphan: bool = True,
+) -> dict:
+    """
+    Delete a project (segments + prompts cascade). When the underlying PDF
+    has no other projects referencing it, optionally also delete the
+    `video_pdfs` row + remove the bucket object.
+
+    Returns a summary: {"deleted": True, "pdf_removed": bool, "pdf_sha256": str}.
+    Raises LookupError if the project doesn't exist.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            row = await conn.fetchrow(
+                "SELECT pdf_sha256 FROM angela_video_studio.video_projects WHERE id = $1",
+                project_id,
+            )
+            if not row:
+                raise LookupError(f"project not found: {project_id}")
+            sha = row["pdf_sha256"]
+            await conn.execute(
+                "DELETE FROM angela_video_studio.video_projects WHERE id = $1",
+                project_id,
+            )
+
+            pdf_removed = False
+            if remove_pdf_if_orphan:
+                still_used = await conn.fetchval(
+                    "SELECT 1 FROM angela_video_studio.video_projects "
+                    "WHERE pdf_sha256 = $1 LIMIT 1",
+                    sha,
+                )
+                if not still_used:
+                    await conn.execute(
+                        "DELETE FROM angela_video_studio.video_pdfs WHERE sha256 = $1",
+                        sha,
+                    )
+                    pdf_removed = True
+
+    # Bucket delete is best-effort and outside the DB transaction so a slow
+    # network doesn't hold the row lock.
+    if pdf_removed:
+        try:
+            pdf_storage.delete(sha)
+            cache = pdf_storage.cache_path_for(sha)
+            cache.unlink(missing_ok=True)
+        except Exception as exc:
+            logger.warning("bucket delete failed for sha=%s: %s", sha[:12], exc)
+
+    return {"deleted": True, "pdf_removed": pdf_removed, "pdf_sha256": sha}
 
 
 async def get_project(project_id: str) -> Optional[dict]:
