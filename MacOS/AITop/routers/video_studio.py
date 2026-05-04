@@ -88,8 +88,21 @@ async def upload_pdf(
         tmp_path = Path(tmp.name)
 
     try:
-        sha = pdf_storage.sha256_of(tmp_path)
         size = tmp_path.stat().st_size
+
+        # Pre-flight: fail fast with a clear 413 if the PDF is over the bucket limit.
+        size_limit = pdf_storage.get_file_size_limit()
+        if size > size_limit:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"PDF is {size / 1_048_576:.1f} MB but the storage bucket "
+                    f"allows max {size_limit / 1_048_576:.0f} MB. Raise the limit "
+                    f"in Supabase (Project → Settings → Storage → Upload file size limit)."
+                ),
+            )
+
+        sha = pdf_storage.sha256_of(tmp_path)
 
         # Upload to bucket (no-op if already present).
         await asyncio.get_running_loop().run_in_executor(
@@ -121,9 +134,17 @@ async def upload_pdf(
             "pdf_sha256": sha,
             "summary": result.to_dict(),
         }
-    except Exception:
+    except HTTPException:
+        raise
+    except pdf_storage.PDFTooLargeError as exc:
+        logger.warning("upload rejected: %s", exc)
+        raise HTTPException(status_code=413, detail=str(exc))
+    except Exception as exc:
         logger.exception("upload+analyze failed")
-        raise HTTPException(status_code=500, detail="upload+analyze failed")
+        raise HTTPException(
+            status_code=500,
+            detail=f"upload+analyze failed: {type(exc).__name__}: {exc}",
+        )
     finally:
         tmp_path.unlink(missing_ok=True)
 

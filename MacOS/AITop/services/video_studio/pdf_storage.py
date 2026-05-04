@@ -29,6 +29,23 @@ BUCKET = "video_studio_pdfs"
 OBJECT_PREFIX = "pdfs"
 CACHE_DIR = Path.home() / "Library" / "Caches" / "Angelora" / "VideoStudio" / "pdfs"
 
+# Local fallback used when the live bucket config can't be fetched.
+# The authoritative value is `file_size_limit` on the Supabase bucket.
+DEFAULT_FILE_SIZE_LIMIT = 50 * 1024 * 1024
+
+
+class PDFTooLargeError(RuntimeError):
+    """Raised when a PDF exceeds the bucket's configured file_size_limit."""
+
+    def __init__(self, *, size: int, limit: int):
+        self.size = size
+        self.limit = limit
+        super().__init__(
+            f"PDF is {size / 1_048_576:.1f} MB but the bucket allows max "
+            f"{limit / 1_048_576:.0f} MB. Raise the limit in Supabase "
+            f"(Project → Settings → Storage → Upload file size limit)."
+        )
+
 
 # ---------------------------------------------------------------------------
 # Credential resolution (cached after first call)
@@ -55,6 +72,33 @@ def _auth_headers(extra: Optional[dict] = None) -> dict:
     if extra:
         h.update(extra)
     return h
+
+
+_cached_size_limit: Optional[int] = None
+
+
+def get_file_size_limit() -> int:
+    """
+    Return the bucket's configured `file_size_limit` in bytes. Falls back to
+    `DEFAULT_FILE_SIZE_LIMIT` when the bucket config can't be read (e.g.
+    network error, missing creds). Cached after first successful fetch.
+    """
+    global _cached_size_limit
+    if _cached_size_limit is not None:
+        return _cached_size_limit
+    import json
+    try:
+        api_url, _ = _resolve_creds()
+        url = f"{api_url}/storage/v1/bucket/{BUCKET}"
+        req = request.Request(url, headers=_auth_headers({}))
+        with request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+        limit = int(data.get("file_size_limit") or DEFAULT_FILE_SIZE_LIMIT)
+    except Exception as exc:
+        logger.warning("Could not fetch bucket size limit, using default: %s", exc)
+        limit = DEFAULT_FILE_SIZE_LIMIT
+    _cached_size_limit = limit
+    return limit
 
 
 # ---------------------------------------------------------------------------
@@ -150,6 +194,11 @@ def upload(local_pdf: str | Path, sha: Optional[str] = None) -> str:
         if '"statusCode":"409"' in body_text or e.code == 409:
             logger.info("PDF already in bucket (409 on upload): sha=%s", sha[:12])
             return sha
+        if '"statusCode":"413"' in body_text or "exceeded the maximum allowed size" in body_text:
+            raise PDFTooLargeError(
+                size=local_pdf.stat().st_size,
+                limit=get_file_size_limit(),
+            ) from e
         raise RuntimeError(f"upload failed: HTTP {e.code} {body_text}") from e
     logger.info("Uploaded PDF to bucket: sha=%s size=%d", sha[:12], len(body))
     return sha
