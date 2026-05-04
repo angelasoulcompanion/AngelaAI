@@ -19,7 +19,7 @@ _angela_root = str(Path(__file__).resolve().parents[2])
 if _angela_root not in sys.path:
     sys.path.insert(0, _angela_root)
 
-from routers import dashboard, models, finetune, chat, rag, angela_brain, model_hub
+from routers import dashboard, models, finetune, chat, rag, angela_brain, model_hub, video_studio
 from services.db_service import init_pool, close_pool, MACHINE_TAG
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
@@ -62,6 +62,7 @@ app.include_router(chat.router, prefix="/api")
 app.include_router(rag.router, prefix="/api")
 app.include_router(angela_brain.router, prefix="/api")
 app.include_router(model_hub.router, prefix="/api")
+app.include_router(video_studio.router, prefix="/api")
 
 
 @app.get("/api/health")

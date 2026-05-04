@@ -11,6 +11,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case dashboard
     case models
     case fineTune
+    case videoStudio
     case chat
     case rag
     case settings
@@ -24,6 +25,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .dashboard: return "Dashboard"
         case .models: return "Models"
         case .fineTune: return "Fine-Tune"
+        case .videoStudio: return "Video Studio"
         case .chat: return "Chat"
         case .rag: return "RAG"
         case .settings: return "Settings"
@@ -37,6 +39,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .dashboard: return "gauge.with.dots.needle.33percent"
         case .models: return "cpu.fill"
         case .fineTune: return "wand.and.stars"
+        case .videoStudio: return "video.badge.waveform.fill"
         case .chat: return "bubble.left.and.bubble.right.fill"
         case .rag: return "doc.text.magnifyingglass"
         case .settings: return "gearshape.fill"
@@ -49,6 +52,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .knowledgeGraph: return "ANGELA"
         case .dashboard: return "MONITOR"
         case .models, .fineTune: return "AI STUDIO"
+        case .videoStudio: return "ANGELORA"
         case .chat, .rag: return "INFERENCE"
         case .settings: return "CONFIG"
         }
@@ -63,6 +67,7 @@ struct Sidebar: View {
         ("ANGELA", [.angelaBrain, .knowledgeGraph]),
         ("MONITOR", [.dashboard]),
         ("AI STUDIO", [.models, .fineTune]),
+        ("ANGELORA", [.videoStudio]),
         ("INFERENCE", [.chat, .rag]),
         ("CONFIG", [.settings]),
     ]
