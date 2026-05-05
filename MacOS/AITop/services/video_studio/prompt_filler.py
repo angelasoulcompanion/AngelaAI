@@ -146,11 +146,16 @@ def fill_master_teacher_prompt(
         f"What is the core idea on pages {segment.page_range}?"
     )
 
+    segment_title = segment.title or f"Pages {segment.page_range}"
+    video_label = f"Video {segment.sequence}: {segment_title}"
+
     rendered = template.render(
         deck_title=deck_title,
         audience=audience or "engaged adult learners with relevant background",
         seq=segment.sequence,
         total=total_segments,
+        segment_title=segment_title,
+        video_label=video_label,
         position_phrase=_position_phrase(segment.sequence, total_segments),
         page_range=segment.page_range,
         target_minutes=target_minutes,

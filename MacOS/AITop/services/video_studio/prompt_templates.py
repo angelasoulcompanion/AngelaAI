@@ -22,11 +22,23 @@ brilliant in your subject, warm in your delivery, and obsessed with making
 every learner say "oh, NOW I get it." You teach for genuine understanding,
 not memorization.
 
+OPENING TITLE CARD (MANDATORY — FIRST FRAME):
+The very first frame of the video must be a full-screen title card showing
+exactly this text on a single line, with no other text, logos, or imagery:
+
+    {{ video_label }}
+
+Hold this title card on screen for at least 2 seconds before any narration
+or other visuals begin. Do NOT paraphrase, translate, abbreviate, reorder,
+or restyle this label — it must match this exact wording, including the
+"Video {{ seq }}:" prefix.
+
 AUDIENCE: {{ audience }}
 
 THIS VIDEO IS PART OF A SERIES.
 - Series title: {{ deck_title }}
 - This is video {{ seq }} of {{ total }}.
+- Video title (also shown on the opening title card): {{ segment_title }}
 - Position: {{ position_phrase }}
 
 LEARNING OBJECTIVES — by the end of THIS video, the viewer must be able to:
@@ -99,6 +111,15 @@ CONSTRAINTS:
 BRIEF = """ROLE: A master teacher who can compress a complex topic into 3
 minutes without losing the essence.
 
+OPENING TITLE CARD (MANDATORY — FIRST FRAME):
+Open with a full-screen title card showing exactly this single line,
+with no other text or imagery:
+
+    {{ video_label }}
+
+Hold for ≥ 2 seconds before the hook. Do not paraphrase or translate;
+the prefix "Video {{ seq }}:" is required.
+
 AUDIENCE: {{ audience }}
 
 OBJECTIVE: After watching, the learner should be able to answer this
@@ -132,10 +153,21 @@ SOURCE FOCUS: pages {{ page_range }} of {{ deck_title }}.
 WALK_THROUGH = """ROLE: A senior professor and science communicator who
 specializes in making technical material feel obvious in retrospect.
 
+OPENING TITLE CARD (MANDATORY — FIRST FRAME):
+Open with a full-screen title card showing exactly this single line,
+with no other text, logos, or imagery:
+
+    {{ video_label }}
+
+Hold this card for ≥ 2 seconds before any narration or other visuals.
+Do NOT paraphrase, translate, abbreviate, or drop the "Video {{ seq }}:"
+prefix — the wording must match exactly.
+
 AUDIENCE: {{ audience }}
 
 THIS VIDEO COVERS pages {{ page_range }} of {{ deck_title }}.
 This is video {{ seq }} of {{ total }}.
+Video title (also shown on the opening title card): {{ segment_title }}.
 
 LEARNING OBJECTIVES:
 {% for obj in learning_objectives -%}
@@ -177,6 +209,15 @@ TAKE-HOME: {{ take_home }}
 # ------------------------------------------------------------
 
 PERSONA_DRIVEN = """ROLE: Teach this material as Professor {{ persona_name }}.
+
+OPENING TITLE CARD (MANDATORY — FIRST FRAME):
+Before Professor {{ persona_name }} appears or speaks, show a full-screen
+title card with exactly this single line, no other text or imagery:
+
+    {{ video_label }}
+
+Hold for ≥ 2 seconds. The "Video {{ seq }}:" prefix and the title
+wording are required — do not paraphrase or translate.
 
 This teacher's signature moves:
 - Opens every topic with a question or a demonstration, never a definition

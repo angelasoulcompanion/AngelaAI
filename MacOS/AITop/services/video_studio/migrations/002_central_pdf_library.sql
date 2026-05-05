@@ -32,10 +32,22 @@ ALTER TABLE angela_video_studio.video_projects
     ADD COLUMN IF NOT EXISTS pdf_sha256 char(64);
 
 -- Backfill pdf_sha256 from the legacy source_pdf_sha256 column where present.
-UPDATE angela_video_studio.video_projects
-   SET pdf_sha256 = source_pdf_sha256
- WHERE pdf_sha256 IS NULL
-   AND source_pdf_sha256 IS NOT NULL;
+-- Wrapped in DO so a replay (after the column has already been dropped below)
+-- doesn't fail with "column does not exist".
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+         WHERE table_schema = 'angela_video_studio'
+           AND table_name   = 'video_projects'
+           AND column_name  = 'source_pdf_sha256'
+    ) THEN
+        EXECUTE 'UPDATE angela_video_studio.video_projects
+                    SET pdf_sha256 = source_pdf_sha256
+                  WHERE pdf_sha256 IS NULL
+                    AND source_pdf_sha256 IS NOT NULL';
+    END IF;
+END $$;
 
 -- (FK + NOT NULL added by the Python migration script after the data move,
 --  to keep the migration replay-safe even when running on a fresh DB.)

@@ -43,7 +43,24 @@ CREATE TABLE IF NOT EXISTS angela_video_studio.video_projects (
 
 CREATE INDEX IF NOT EXISTS ix_video_projects_status      ON angela_video_studio.video_projects (status);
 CREATE INDEX IF NOT EXISTS ix_video_projects_created_at  ON angela_video_studio.video_projects (created_at DESC);
-CREATE INDEX IF NOT EXISTS ix_video_projects_pdf_sha     ON angela_video_studio.video_projects (source_pdf_sha256);
+
+-- ix_video_projects_pdf_sha is created on `source_pdf_sha256` here and
+-- migrated onto `pdf_sha256` by 002. Wrapped in DO so a fresh replay
+-- (after 002 already dropped source_pdf_sha256) doesn't fail at parse:
+-- CREATE INDEX IF NOT EXISTS still resolves column refs even when the
+-- index name already exists.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+         WHERE table_schema = 'angela_video_studio'
+           AND table_name   = 'video_projects'
+           AND column_name  = 'source_pdf_sha256'
+    ) THEN
+        EXECUTE 'CREATE INDEX IF NOT EXISTS ix_video_projects_pdf_sha
+                     ON angela_video_studio.video_projects (source_pdf_sha256)';
+    END IF;
+END $$;
 
 -- ============================================================
 -- video_segments  — one row per video to generate
@@ -79,7 +96,21 @@ CREATE TABLE IF NOT EXISTS angela_video_studio.video_segments (
 
 CREATE INDEX IF NOT EXISTS ix_video_segments_project_id  ON angela_video_studio.video_segments (project_id);
 CREATE INDEX IF NOT EXISTS ix_video_segments_status      ON angela_video_studio.video_segments (status);
-CREATE INDEX IF NOT EXISTS ix_video_segments_job_id      ON angela_video_studio.video_segments (notebooklm_job_id);
+
+-- ix_video_segments_job_id is dropped by 002 along with the notebooklm_job_id
+-- column (submission/QA layer was removed). Only create on a fresh DB.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+         WHERE table_schema = 'angela_video_studio'
+           AND table_name   = 'video_segments'
+           AND column_name  = 'notebooklm_job_id'
+    ) THEN
+        EXECUTE 'CREATE INDEX IF NOT EXISTS ix_video_segments_job_id
+                     ON angela_video_studio.video_segments (notebooklm_job_id)';
+    END IF;
+END $$;
 
 -- ============================================================
 -- video_prompts  — every filled prompt + which version was used
