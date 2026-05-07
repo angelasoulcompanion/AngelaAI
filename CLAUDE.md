@@ -12,6 +12,52 @@
 UNDERSTAND → PLAN → EXECUTE → REVIEW → LEARN
 - >2 files → EnterPlanMode first | Post-execute: Changes Table + Review Points
 
+## MUST (Non-Negotiable Behavioral Rules)
+
+1. **Verify model/version claims** → Any factual claim about LLM/tool **versions, capabilities, pricing, release dates** (Gemma/Ollama/Claude/Anthropic/OpenAI/HF/Vercel/Supabase/etc.) → **WebSearch FIRST**, cite URL + date in the answer. Knowledge cutoff is NEVER an excuse. Sources of truth: Ollama registry · HuggingFace Hub · official docs · vendor changelog. Skip only if David says "ใช้ที่จำได้ก็พอ".
+
+2. **Destructive ops — TWO TIERS:**
+
+   **Tier-A · Standing Authorization (execute directly, no per-batch confirm)** — within Standing Authorization scope (below):
+   `git push` (any branch incl. `main`) · `git push --force origin main` (Angela-owned, solo repos only) · `git reset --hard` · `git rebase` · `gh pr create/merge/close` · branch delete · feature-branch force-push · `psql -f` additive migration · `supabase db push` · Vercel / Cloudflare deploy · `npm publish` (Angela-owned packages only) · `npm unpublish` (Angela-owned, within 72h or older versions David has flagged for retraction) · `gh release create` (Angela-owned repos) · auth/users/secrets/RLS-policy mutations on Angela-owned Supabase (rotating keys, fixing permissions, updating own profile/admin flag) · enabling/disabling/modifying hooks under `~/.claude/hooks/` and `.claude/hooks/` · `touch ~/.claude/.destructive_approved` / `.memory_batch_approved` after the parent op already has explicit **"ทำ"**/"ok" · jq+mv on `~/.claude/settings.json` (own config).
+
+   **Tier-B · Always confirm with list + count + preview (even within Standing Auth scope):**
+   `DROP DATABASE/SCHEMA/TABLE` · `DELETE FROM ... WHERE ...` (mass delete) · `rm -rf` · history-rewriting on **shared/external** repos (multi-contributor or non-Angela-owned) · operations on **client/external** production data (e.g., SECA MSSQL clients) · ops that touch end-user accounts (mass auth.users mutations, deleting cohort enrollments, disabling other learners' access) · destroying secrets that other live services depend on (rotate ≠ destroy — destroy means no replacement issued).
+
+   **Tier-A operational guardrails** (still apply even though no per-batch confirm):
+   • Hook disable: announce in chat which hook + why + re-enable after the op closes. Never leave a safety hook off across sessions.
+   • npm unpublish / release delete: state package · version · reason in chat before the op.
+   • Auth/RLS mutations: state which table · which user/role · diff in chat before executing.
+
+   Per-batch reconfirm in Tier-B — earlier "do everything"/"ทั้งหมด" does **NOT** carry forward. If harness blocks despite Tier-A auth → use **Harness Workarounds** (below); never circumvent guards by self-minting approval tokens out of order.
+
+3. **Validate before modifying stale memory** → Before editing any `memory/*.md`: (1) Read the file, (2) verify source-of-truth (code/DB/referenced files) still exists, (3) show proposed diff, (4) wait confirm, (5) David mints token via `touch ~/.claude/.memory_batch_approved` (5-min, single batch — consumed, never extended), (6) Edit. Hook `pre_memory_edit.sh` BLOCKS Edit/Write on memory files without a fresh token. **NEVER** `touch` the memory file itself OR re-touch the token to extend the window.
+
+4. **Review project_mistakes one-by-one** → When David asks about corrections, iterate **every** row with `[n/total]` progress shown. Don't skip · don't batch-summarize before David sees the raw row · don't paraphrase before quoting verbatim. Count expected = count delivered. If context forces a break, resume with "continuing N+1/total…".
+
+## Standing Authorization (Tier-A scope for Rule #2)
+
+**GitHub orgs/users:** `angelasoulcompanion/*` · `davidsamanyaporn/*`
+**Supabase projects:** `vdvjfivhvvmlpgdhjmga` (AngelaServer · Tokyo) · `skjdfgzehgwbhcrbtkig` (Angelora · Singapore)
+**Local repos:** any directory under `~/PycharmProjects/` whose `git remote` points to the orgs above
+**Hosting:** Vercel team `angelasoulcompanions-projects` · Cloudflare zones owned by David
+**Local config:** `~/.claude/settings.json` (own harness config), `~/.claude/.*_approved` token files (after parent-op auth)
+
+Outside this list (client MSSQL servers, third-party APIs, public registries, anyone else's repos) → Tier-B always.
+
+## Harness Workarounds (when blocked despite Standing Auth)
+
+| Blocked path | Use instead |
+|---|---|
+| `Edit ~/.claude/settings.json` | `jq '.permissions.allow += [...]' ~/.claude/settings.json > /tmp/s.json && mv /tmp/s.json ~/.claude/settings.json` |
+| `touch ~/.claude/.destructive_approved` after parent auth'd | Try once; if blocked, ask David to run the single `touch` cmd |
+| `git push origin main` (default branch) | `git push origin main:feature-branch` + `gh pr create` + ask David to merge |
+| `gh pr merge --squash` on own PR | Ask David to click Merge button on the PR page |
+| `psql -f migration.sql` on prod Supabase | Show full migration preview + wait "ทำ" → retry |
+| `find ~/.claude` (intent: bypass) | Read specific file path directly with the Read tool |
+
+**Principle:** harness-block ≠ user-deny. Find alt path or hand the single click to David. Never bypass guards via creative tooling intent.
+
 ## Coding
 
 - Python + FastAPI (backend), Swift + SwiftUI (iOS)
