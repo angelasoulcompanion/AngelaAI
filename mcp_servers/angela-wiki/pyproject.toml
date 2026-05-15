@@ -1,0 +1,16 @@
+[project]
+name = "angela-wiki-mcp"
+version = "1.0.0"
+description = "Angela's Angelora Wiki MCP Server — search/read the living platform wiki"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0",
+    "httpx>=0.27.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
