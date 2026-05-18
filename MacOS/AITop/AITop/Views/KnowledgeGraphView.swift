@@ -507,8 +507,6 @@ struct AnimatedNetworkGraph: View {
 
                     // Count inside project nodes
                     if node.kind == .project && r >= 14 * scale {
-                        let countLabel = Text(node.id.hasPrefix("cat_") ? "" : "\(Int(node.baseRadius - 10) * 6)")
-                        // Actually show kbCount - find from data
                         if let proj = data.projects.first(where: { $0.code == node.id }) {
                             let ct = Text("\(proj.kbCount)")
                                 .font(.system(size: 9 * min(scale, 1.5), weight: .bold, design: .rounded))
@@ -623,7 +621,7 @@ struct AnimatedNetworkGraph: View {
             simulateForces()
         }
         .onAppear { buildGraph() }
-        .onChange(of: data.projects.count) { _ in buildGraph() }
+        .onChange(of: data.projects.count) { buildGraph() }
     }
 
     // MARK: - Build graph from data

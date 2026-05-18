@@ -494,8 +494,20 @@ OLLAMA_TO_HF_MLX = {
 }
 
 
+# Models known to break mlx_lm LoRA (altup.prediction_coefs .weight crash etc.)
+MLX_LORA_INCOMPATIBLE = ("gemma3n", "gemma-3n", "gemma:3n")
+
+
 def _resolve_mlx_model(ollama_name: str) -> str:
     """Convert Ollama model name to HuggingFace MLX model ID."""
+    low = ollama_name.lower()
+    for bad in MLX_LORA_INCOMPATIBLE:
+        if bad in low:
+            raise ValueError(
+                f"{ollama_name} is not LoRA-compatible with mlx_lm "
+                f"(altup.prediction_coefs bug). Use gemma3:*, gemma4:e4b, "
+                f"qwen2.5:*, or llama3.1:8b instead."
+            )
     # Strip :latest or :tag
     base = ollama_name.split(":")[0] if ":" in ollama_name else ollama_name
     # Check mapping
