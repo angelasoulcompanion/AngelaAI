@@ -200,3 +200,20 @@ mcp_servers/**/credentials/credentials.json
 dumbs/
 outputs/
 recordings/
+
+# ========================================
+# Playwright MCP artifacts (local test runs)
+# ========================================
+.playwright-mcp/
+
+# ========================================
+# Build output (per-project release builds)
+# ========================================
+build_release/
+
+# Xcode user state at nested paths (existing *.xcodeproj/xcuserdata/
+# doesn't match deep paths because `*` won't cross `/`)
+**/xcuserdata/
+
+# One-off local screenshots (root only)
+/notebooklm_before_generate.png
