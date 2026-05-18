@@ -102,8 +102,8 @@ def get_supabase_url() -> str:
 
 
 def get_pythia_url() -> str:
-    """Pythia finance DB — Neon Cloud (Singapore)."""
-    return _resolve("PYTHIA_DATABASE_URL", "pythia_database_url")
+    """Pythia finance DB — Supabase Tokyo (schema=pythia)."""
+    return _resolve("PYTHIA_DATABASE_URL", "pythia_supabase_url")
 
 
 def clear_cache() -> None:

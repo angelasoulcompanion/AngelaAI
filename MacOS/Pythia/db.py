@@ -1,7 +1,7 @@
 """
 Database pool + lifecycle management for Pythia API.
-Connects to Neon Cloud — Pythia database (Singapore).
-SSOT: our_secrets table (key: pythia_database_url)
+Connects to Supabase Tokyo — Pythia schema.
+SSOT: our_secrets table (key: pythia_supabase_url)
 """
 import importlib.util
 import sys
@@ -29,9 +29,10 @@ async def startup() -> None:
             DATABASE_URL,
             min_size=2,
             max_size=10,
-            command_timeout=60
+            command_timeout=60,
+            server_settings={"search_path": "pythia, public"},
         )
-        print("✅ Connected to Neon Cloud — Pythia (Singapore)")
+        print("✅ Connected to Supabase Tokyo — Pythia schema")
 
         # Run lightweight migrations
         async with pool.acquire() as conn:
