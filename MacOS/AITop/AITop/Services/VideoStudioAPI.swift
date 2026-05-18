@@ -94,6 +94,21 @@ extension APIService {
         return try await deleteReturning("/video-studio/projects/\(projectId)?remove_pdf=\(qs)")
     }
 
+    // MARK: - Segments — completion toggle
+
+    /// Toggle a segment's done flag. Returns the new completedAt (nil = un-marked).
+    @discardableResult
+    func videoStudioSetSegmentCompletion(
+        _ segmentId: String,
+        completed: Bool
+    ) async throws -> VideoSegmentCompletionResponse {
+        struct Body: Codable { let completed: Bool }
+        return try await patch(
+            "/video-studio/segments/\(segmentId)/completion",
+            body: Body(completed: completed)
+        )
+    }
+
     // MARK: - Segments — prompt regeneration only
 
     func videoStudioRegeneratePrompt(

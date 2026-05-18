@@ -29,14 +29,26 @@ struct VideoProject: Codable, Identifiable, Hashable {
     let audience: String?
     let persona: String?
     let notes: String?
+    let segmentCount: Int?
+    let completedCount: Int?
 
-    func hash(into hasher: inout Hasher) { hasher.combine(id) }
-    static func == (l: VideoProject, r: VideoProject) -> Bool { l.id == r.id }
+    // Hashable / Equatable are synthesized over ALL stored properties so that
+    // SwiftUI ForEach diffing notices when a project's progress counters
+    // change. (An id-only `==` would suppress the row re-render when the
+    // sidebar badge needs to update from "3/5" to "4/5".)
+
+    /// True when all known segments are marked done. Falls back to false
+    /// while the count fields haven't been backfilled yet.
+    var isFullyCompleted: Bool {
+        guard let total = segmentCount, total > 0,
+              let done = completedCount else { return false }
+        return done >= total
+    }
 }
 
 struct VideoProjectDetailEnvelope: Codable {
     let project: VideoProjectFull
-    let segments: [VideoSegment]
+    var segments: [VideoSegment]
 }
 
 struct VideoProjectFull: Codable {
@@ -74,12 +86,41 @@ struct VideoSegment: Codable, Identifiable, Hashable {
     let cognitiveLoad: Double
     let cutsMidSection: Bool
     let status: String           // pending | analyzed | prompt_ready
+    let completedAt: Date?
     let latestPrompt: VideoPromptVersion?
 
-    func hash(into hasher: inout Hasher) { hasher.combine(id) }
-    static func == (l: VideoSegment, r: VideoSegment) -> Bool { l.id == r.id }
+    // Hashable / Equatable synthesized over all properties — required for
+    // SwiftUI to redraw a row when `completedAt` flips on toggle. An
+    // id-only `==` would silently swallow the change.
 
     var pageRange: String { "\(startPage)–\(endPage)" }
+    var isCompleted: Bool { completedAt != nil }
+
+    /// Copy with a new completion timestamp — fields are `let`, so the toggle
+    /// flow rebuilds the struct.
+    func with(completedAt newValue: Date?) -> VideoSegment {
+        VideoSegment(
+            id: id,
+            projectId: projectId,
+            sequence: sequence,
+            title: title,
+            startPage: startPage,
+            endPage: endPage,
+            pageCount: pageCount,
+            estMinutes: estMinutes,
+            cognitiveLoad: cognitiveLoad,
+            cutsMidSection: cutsMidSection,
+            status: status,
+            completedAt: newValue,
+            latestPrompt: latestPrompt
+        )
+    }
+}
+
+struct VideoSegmentCompletionResponse: Codable {
+    let id: String
+    let projectId: String
+    let completedAt: Date?
 }
 
 struct VideoPromptVersion: Codable, Hashable {

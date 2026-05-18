@@ -30,6 +30,30 @@ enum AngeloraTheme {
 
 // MARK: - View model
 
+enum SegmentFilter: String, CaseIterable, Identifiable {
+    case all, pending, completed
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .all:       return "All"
+        case .pending:   return "Pending"
+        case .completed: return "Done"
+        }
+    }
+}
+
+enum ProjectFilter: String, CaseIterable, Identifiable {
+    case inProgress, all, done
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .inProgress: return "In progress"
+        case .all:        return "All"
+        case .done:       return "Done"
+        }
+    }
+}
+
 @MainActor
 final class VideoStudioVM: ObservableObject {
     @Published var projects: [VideoProject] = []
@@ -41,8 +65,29 @@ final class VideoStudioVM: ObservableObject {
     @Published var uploading = false
     @Published var statusBanner: String?
     @Published var errorBanner: String?
+    @Published var segmentFilter: SegmentFilter = .all
+    @Published var projectFilter: ProjectFilter = .inProgress
 
     let api = APIService.shared
+
+    /// Project list filtered by the sidebar dropdown. Applied before render
+    /// so the row count reflects what's actually visible.
+    var filteredProjects: [VideoProject] {
+        switch projectFilter {
+        case .all:        return projects
+        case .done:       return projects.filter { $0.isFullyCompleted }
+        case .inProgress: return projects.filter { !$0.isFullyCompleted }
+        }
+    }
+
+    /// Segments filtered by the segment table dropdown.
+    func filteredSegments(_ segs: [VideoSegment]) -> [VideoSegment] {
+        switch segmentFilter {
+        case .all:       return segs
+        case .pending:   return segs.filter { !$0.isCompleted }
+        case .completed: return segs.filter { $0.isCompleted }
+        }
+    }
 
     func loadProjects() async {
         loadingProjects = true
@@ -92,6 +137,46 @@ final class VideoStudioVM: ObservableObject {
     func refreshSelected() async {
         if let id = selectedProjectId {
             await select(projectId: id)
+        }
+    }
+
+    /// Toggle a segment's completion. Optimistically updates the in-memory
+    /// detail so the UI flips immediately, then reconciles with the server's
+    /// canonical timestamp. Also bumps the project list so the sidebar's
+    /// "X/N done" badge stays in sync.
+    func toggleSegmentCompletion(segmentId: String) async {
+        guard var detail = selectedDetail,
+              let idx = detail.segments.firstIndex(where: { $0.id == segmentId })
+        else { return }
+
+        let current = detail.segments[idx]
+        let newCompleted = !current.isCompleted
+
+        // Optimistic local update — replace the segment with a new instance
+        // because VideoSegment fields are `let`.
+        detail.segments[idx] = current.with(completedAt: newCompleted ? Date() : nil)
+        selectedDetail = detail
+
+        do {
+            let resp = try await api.videoStudioSetSegmentCompletion(
+                segmentId, completed: newCompleted
+            )
+            // Reconcile with server-stamped timestamp (mostly cosmetic).
+            if var d = selectedDetail,
+               let i = d.segments.firstIndex(where: { $0.id == segmentId }) {
+                d.segments[i] = d.segments[i].with(completedAt: resp.completedAt)
+                selectedDetail = d
+            }
+            // Refresh project list so sidebar progress badge updates.
+            await loadProjects()
+        } catch {
+            // Roll back optimistic flip.
+            if var d = selectedDetail,
+               let i = d.segments.firstIndex(where: { $0.id == segmentId }) {
+                d.segments[i] = d.segments[i].with(completedAt: current.completedAt)
+                selectedDetail = d
+            }
+            errorBanner = "Couldn't update: \(error.localizedDescription)"
         }
     }
 
@@ -222,6 +307,7 @@ private struct ProjectListPane: View {
             header
             dropZone
             Divider().background(Color.black.opacity(0.3))
+            projectFilterBar
             projectList
         }
         .sheet(item: $editingProject) { project in
@@ -334,8 +420,45 @@ private struct ProjectListPane: View {
         .padding(12)
     }
 
+    /// Pill-segmented filter: In progress / All / Done. Project counts on the
+    /// right so David can see at a glance how much is left.
+    private var projectFilterBar: some View {
+        let total = vm.projects.count
+        let done  = vm.projects.filter { $0.isFullyCompleted }.count
+        let active = total - done
+        return HStack(spacing: 6) {
+            ForEach(ProjectFilter.allCases) { f in
+                Button {
+                    vm.projectFilter = f
+                } label: {
+                    Text(f.label)
+                        .font(.system(size: 10, weight: .medium))
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(vm.projectFilter == f
+                                      ? AngeloraTheme.leaf.opacity(0.25)
+                                      : Color.clear)
+                        )
+                        .foregroundColor(vm.projectFilter == f
+                                         ? AngeloraTheme.leaf
+                                         : AITopTheme.textSecondary)
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer()
+            Text("\(done)/\(total) done")
+                .font(.system(size: 10))
+                .foregroundColor(AITopTheme.textTertiary)
+                .help("\(active) project(s) still have pending segments")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+    }
+
     private var projectList: some View {
-        ScrollView {
+        let visible = vm.filteredProjects
+        return ScrollView {
             VStack(alignment: .leading, spacing: 6) {
                 if vm.loadingProjects {
                     ProgressView().controlSize(.small).padding(20)
@@ -345,8 +468,18 @@ private struct ProjectListPane: View {
                         Text("Drop a PDF above to start.").font(.system(size: 11)).foregroundColor(AITopTheme.textTertiary)
                     }
                     .padding(16)
+                } else if visible.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("No projects match this filter")
+                            .font(.system(size: 12))
+                            .foregroundColor(AITopTheme.textSecondary)
+                        Text("Switch to \"All\" to see everything.")
+                            .font(.system(size: 11))
+                            .foregroundColor(AITopTheme.textTertiary)
+                    }
+                    .padding(16)
                 } else {
-                    ForEach(vm.projects) { project in
+                    ForEach(visible) { project in
                         ProjectRow(
                             project: project,
                             selected: vm.selectedProjectId == project.id
@@ -404,6 +537,25 @@ private struct ProjectRow: View {
     let project: VideoProject
     let selected: Bool
 
+    /// Progress badge shows X/N when we know how many segments are done.
+    /// Falls back to the raw recommended count for older payloads.
+    private var progressBadge: some View {
+        let total = project.segmentCount ?? project.recommendedCount
+        let done  = project.completedCount ?? 0
+        let allDone = total > 0 && done >= total
+        let tint: Color = allDone ? AITopTheme.success : AngeloraTheme.leaf
+        let label: String = (project.segmentCount == nil)
+            ? "\(total) vdo"
+            : (allDone ? "\(total) ✓" : "\(done)/\(total)")
+        return HStack(spacing: 3) {
+            if allDone { Image(systemName: "checkmark.seal.fill").font(.system(size: 9)) }
+            Text(label).font(.system(size: 10, weight: .semibold))
+        }
+        .padding(.horizontal, 6).padding(.vertical, 2)
+        .background(RoundedRectangle(cornerRadius: 4).fill(tint.opacity(0.25)))
+        .foregroundColor(tint)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
@@ -412,11 +564,7 @@ private struct ProjectRow: View {
                     .foregroundColor(.white)
                     .lineLimit(1)
                 Spacer()
-                Text("\(project.recommendedCount) vdo")
-                    .font(.system(size: 10))
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(RoundedRectangle(cornerRadius: 4).fill(AngeloraTheme.leaf.opacity(0.25)))
-                    .foregroundColor(AngeloraTheme.leaf)
+                progressBadge
             }
 
             // File: name + size
@@ -596,18 +744,55 @@ private struct ProjectDetailContent: View {
     }
 
     private var segmentTable: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
+        let visible = vm.filteredSegments(detail.segments)
+        let total = detail.segments.count
+        let done = detail.segments.filter { $0.isCompleted }.count
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
                 Text("Segments").font(.system(size: 13, weight: .semibold)).foregroundColor(.white)
+                Text("\(done)/\(total) done")
+                    .font(.system(size: 10))
+                    .foregroundColor(AITopTheme.textTertiary)
                 Spacer()
+                ForEach(SegmentFilter.allCases) { f in
+                    Button {
+                        vm.segmentFilter = f
+                    } label: {
+                        Text(f.label)
+                            .font(.system(size: 10, weight: .medium))
+                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(vm.segmentFilter == f
+                                          ? AngeloraTheme.leaf.opacity(0.25)
+                                          : Color.clear)
+                            )
+                            .foregroundColor(vm.segmentFilter == f
+                                             ? AngeloraTheme.leaf
+                                             : AITopTheme.textSecondary)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             VStack(spacing: 4) {
-                ForEach(detail.segments) { seg in
-                    SegmentRow(
-                        segment: seg,
-                        selected: vm.selectedSegmentId == seg.id
-                    )
-                    .onTapGesture { vm.selectedSegmentId = seg.id }
+                if visible.isEmpty {
+                    Text(vm.segmentFilter == .completed
+                         ? "No segments marked done yet."
+                         : "All segments are done — switch to \"All\" to see them.")
+                        .font(.system(size: 11))
+                        .foregroundColor(AITopTheme.textTertiary)
+                        .padding(.vertical, 12)
+                } else {
+                    ForEach(visible) { seg in
+                        SegmentRow(
+                            segment: seg,
+                            selected: vm.selectedSegmentId == seg.id,
+                            onSelect: { vm.selectedSegmentId = seg.id },
+                            onToggleComplete: {
+                                Task { await vm.toggleSegmentCompletion(segmentId: seg.id) }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -617,6 +802,8 @@ private struct ProjectDetailContent: View {
 private struct SegmentRow: View {
     let segment: VideoSegment
     let selected: Bool
+    let onSelect: () -> Void
+    let onToggleComplete: () -> Void
 
     var statusBadge: some View {
         let (label, color): (String, Color) = {
@@ -633,16 +820,33 @@ private struct SegmentRow: View {
             .foregroundColor(color)
     }
 
-    var body: some View {
-        HStack(spacing: 10) {
+    /// Checkbox lives in its OWN tap zone — the parent row's selection tap is
+    /// applied to a sibling area below, not to the entire row, so the checkbox
+    /// click never gets eaten by the parent gesture (a known macOS SwiftUI
+    /// hit-test conflict between Button and onTapGesture on a wrapping view).
+    private var checkbox: some View {
+        let done = segment.isCompleted
+        return Image(systemName: done ? "checkmark.circle.fill" : "circle")
+            .font(.system(size: 18))
+            .foregroundColor(done ? AngeloraTheme.leaf : AITopTheme.textTertiary)
+            .frame(width: 28, height: 28)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onToggleComplete)
+            .help(done ? "Mark as not done" : "Mark as done")
+    }
+
+    private var rowContent: some View {
+        let done = segment.isCompleted
+        return HStack(spacing: 10) {
             Text("\(segment.sequence)")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundColor(AngeloraTheme.coral)
-                .frame(width: 26)
+                .foregroundColor(done ? AITopTheme.textTertiary : AngeloraTheme.coral)
+                .frame(width: 22)
             VStack(alignment: .leading, spacing: 2) {
                 Text(segment.title ?? "Segment \(segment.sequence)")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white)
+                    .foregroundColor(done ? AITopTheme.textSecondary : .white)
+                    .strikethrough(done, color: AITopTheme.textTertiary)
                     .lineLimit(1)
                 HStack(spacing: 6) {
                     Text("pp. \(segment.pageRange)")
@@ -654,11 +858,22 @@ private struct SegmentRow: View {
                 .font(.system(size: 10))
                 .foregroundColor(AITopTheme.textTertiary)
             }
-            Spacer()
+            Spacer(minLength: 8)
             statusBadge
         }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onSelect)
+    }
+
+    var body: some View {
+        let done = segment.isCompleted
+        return HStack(spacing: 6) {
+            checkbox
+            rowContent
+        }
         .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
+        .opacity(done ? 0.65 : 1.0)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(selected ? AngeloraTheme.leaf.opacity(0.12) : AITopTheme.cardBackground.opacity(0.6))

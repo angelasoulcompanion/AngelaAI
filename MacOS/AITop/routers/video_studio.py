@@ -32,6 +32,7 @@ from services.video_studio.db import (
     get_project,
     list_projects,
     save_analysis_result,
+    set_segment_completion,
     update_project,
     upsert_video_pdf,
 )
@@ -58,6 +59,10 @@ class UpdateProjectRequest(BaseModel):
     audience: Optional[str] = None
     persona: Optional[str] = None
     notes: Optional[str] = None
+
+
+class SegmentCompletionRequest(BaseModel):
+    completed: bool
 
 
 # ============================================================
@@ -214,6 +219,15 @@ async def get_pdf_endpoint(sha256: str):
 # ============================================================
 # Segments — prompt regeneration only (manual NotebookLM flow)
 # ============================================================
+
+@router.patch("/segments/{segment_id}/completion")
+async def set_segment_completion_endpoint(segment_id: str, req: SegmentCompletionRequest):
+    """Mark a segment as done (or un-mark). Returns the updated row."""
+    updated = await set_segment_completion(segment_id, req.completed)
+    if not updated:
+        raise HTTPException(status_code=404, detail="segment not found")
+    return updated
+
 
 @router.post("/segments/{segment_id}/regenerate-prompt")
 async def regenerate_prompt(segment_id: str, req: RegeneratePromptRequest):

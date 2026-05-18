@@ -248,7 +248,12 @@ async def list_projects(limit: int = 50) -> list[dict]:
                pdf.original_filename, pdf.byte_size,
                p.total_pages, p.total_estimated_minutes,
                p.recommended_count, p.status, p.machine, p.created_at,
-               p.audience, p.persona, p.notes
+               p.audience, p.persona, p.notes,
+               (SELECT COUNT(*) FROM angela_video_studio.video_segments s
+                 WHERE s.project_id = p.id) AS segment_count,
+               (SELECT COUNT(*) FROM angela_video_studio.video_segments s
+                 WHERE s.project_id = p.id AND s.completed_at IS NOT NULL)
+                 AS completed_count
         FROM angela_video_studio.video_projects p
         JOIN angela_video_studio.video_pdfs pdf ON pdf.sha256 = p.pdf_sha256
         ORDER BY p.created_at DESC
@@ -257,6 +262,35 @@ async def list_projects(limit: int = 50) -> list[dict]:
         limit,
     )
     return [dict(r) for r in rows]
+
+
+async def set_segment_completion(segment_id: str, completed: bool) -> Optional[dict]:
+    """
+    Toggle a segment's completion flag. Sets completed_at = now() when marking
+    done, or NULL when un-marking. Returns the updated row or None if not found.
+    """
+    pool = await get_pool()
+    if completed:
+        row = await pool.fetchrow(
+            """
+            UPDATE angela_video_studio.video_segments
+               SET completed_at = now(), updated_at = now()
+             WHERE id = $1
+            RETURNING id, project_id, completed_at
+            """,
+            segment_id,
+        )
+    else:
+        row = await pool.fetchrow(
+            """
+            UPDATE angela_video_studio.video_segments
+               SET completed_at = NULL, updated_at = now()
+             WHERE id = $1
+            RETURNING id, project_id, completed_at
+            """,
+            segment_id,
+        )
+    return dict(row) if row else None
 
 
 # ============================================================
