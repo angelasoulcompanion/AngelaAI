@@ -21,8 +21,32 @@ MEMORY_DIR = Path.home() / '.claude' / 'projects' / '-Users-davidsamanyaporn-Pyc
 STALE_DAYS = 30
 
 
+def _read_memory_type(path: Path) -> str | None:
+    """Extract `type:` field from frontmatter. Returns None if missing/malformed."""
+    try:
+        with path.open('r', encoding='utf-8') as fh:
+            if fh.readline().strip() != '---':
+                return None
+            for _ in range(20):
+                line = fh.readline()
+                if not line or line.strip() == '---':
+                    return None
+                if line.lower().startswith('type:'):
+                    return line.split(':', 1)[1].strip().lower()
+    except OSError:
+        return None
+    return None
+
+
+# Behavioral/profile memories don't decay with code — skip stale warning for these.
+SKIP_STALE_TYPES = {'feedback', 'user'}
+
+
 def audit_memory_freshness() -> list[tuple[str, int]]:
-    """Scan memory files, return list of (filename, age_days) for stale files."""
+    """Scan memory files, return list of (filename, age_days) for stale files.
+
+    Skips type=feedback/user (behavioral rules, no code dependency).
+    """
     if not MEMORY_DIR.exists():
         return []
     now_ts = datetime.now(timezone.utc).timestamp()
@@ -31,8 +55,11 @@ def audit_memory_freshness() -> list[tuple[str, int]]:
         if f.name == 'MEMORY.md':
             continue
         age_days = int((now_ts - f.stat().st_mtime) / 86400)
-        if age_days >= STALE_DAYS:
-            stale.append((f.name, age_days))
+        if age_days < STALE_DAYS:
+            continue
+        if _read_memory_type(f) in SKIP_STALE_TYPES:
+            continue
+        stale.append((f.name, age_days))
     return sorted(stale, key=lambda x: -x[1])
 
 

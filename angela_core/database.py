@@ -57,6 +57,8 @@ class AngelaDatabase:
                     self.connection_url,
                     min_size=2,
                     max_size=10,
+                    max_queries=50000,
+                    max_inactive_connection_lifetime=300,
                     command_timeout=60,
                     ssl='require' if is_cloud else None,
                     statement_cache_size=0 if is_cloud else 100
