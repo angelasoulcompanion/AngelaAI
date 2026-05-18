@@ -10,9 +10,11 @@ from .logging_config import setup_logging
 from .secrets import get_secret, get_supabase_url
 
 ANGELA_EMAIL = "angelasoulcompanion@gmail.com"
+DAVID_EMAIL = "davidsamanyaporn@gmail.com"
 
 __all__ = [
     "ANGELA_EMAIL",
+    "DAVID_EMAIL",
     "get_google_service",
     "run_in_thread",
     "with_retry",

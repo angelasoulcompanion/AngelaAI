@@ -9,6 +9,11 @@ Usage:
     python3 mcp_servers/shared/reauth.py calendar
     python3 mcp_servers/shared/reauth.py sheets
     python3 mcp_servers/shared/reauth.py gmail --test  # test only, don't re-auth
+    python3 mcp_servers/shared/reauth.py gmail --user david  # different user prefix
+
+The --user flag determines which directory the credentials live under
+(default: angela → mcp_servers/angela-<service>/credentials/). For
+example `--user david` reads/writes mcp_servers/david-<service>/credentials/.
 """
 
 import os
@@ -26,20 +31,28 @@ from google_auth import SERVICE_CONFIGS
 MCP_SERVERS_DIR = Path(__file__).parent.parent
 
 
-def get_credentials_dir(service_name: str) -> Path:
-    """Get the credentials directory for a service."""
-    return MCP_SERVERS_DIR / f"angela-{service_name}" / "credentials"
+USER_EMAILS = {
+    "angela": "angelasoulcompanion@gmail.com",
+    "david": "davidsamanyaporn@gmail.com",
+}
 
 
-def reauth(service_name: str) -> Credentials:
-    """Re-authenticate OAuth for a specific Google service."""
+def get_credentials_dir(service_name: str, user: str = "angela") -> Path:
+    """Get the credentials directory for a service / user pair."""
+    return MCP_SERVERS_DIR / f"{user}-{service_name}" / "credentials"
+
+
+def reauth(service_name: str, user: str = "angela") -> Credentials:
+    """Re-authenticate OAuth for a specific Google service + user."""
     config = SERVICE_CONFIGS[service_name]
-    creds_dir = get_credentials_dir(service_name)
+    creds_dir = get_credentials_dir(service_name, user)
     token_path = creds_dir / "token.json"
     credentials_path = creds_dir / "credentials.json"
+    user_email = USER_EMAILS.get(user, f"<{user}>@…")
 
     print("=" * 50)
-    print(f"Angela {service_name.title()} Re-Authentication")
+    print(f"{user.title()} {service_name.title()} Re-Authentication")
+    print(f"  Sign in as: {user_email}")
     print("=" * 50)
 
     if not credentials_path.exists():
@@ -60,7 +73,7 @@ def reauth(service_name: str) -> Credentials:
         os.remove(token_path)
 
     print("\n[ACTION] Opening browser for authentication...")
-    print("Please sign in with: angelasoulcompanion@gmail.com")
+    print(f"Please sign in with: {user_email}")
     print()
 
     flow = InstalledAppFlow.from_client_secrets_file(
@@ -78,12 +91,12 @@ def reauth(service_name: str) -> Credentials:
     return creds
 
 
-def test_connection(service_name: str, creds: Credentials = None):
+def test_connection(service_name: str, creds: Credentials = None, user: str = "angela"):
     """Test the API connection for a specific service."""
     config = SERVICE_CONFIGS[service_name]
 
     if creds is None:
-        creds_dir = get_credentials_dir(service_name)
+        creds_dir = get_credentials_dir(service_name, user)
         token_path = creds_dir / "token.json"
         if not token_path.exists():
             print(f"[ERROR] No token found. Run reauth first.")
@@ -124,19 +137,25 @@ def test_connection(service_name: str, creds: Credentials = None):
 
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in SERVICE_CONFIGS:
-        print(f"Usage: {sys.argv[0]} <service> [--test]")
+        print(f"Usage: {sys.argv[0]} <service> [--test] [--user <prefix>]")
         print(f"  Services: {', '.join(SERVICE_CONFIGS.keys())}")
-        print(f"  --test: Test connection only (no re-auth)")
+        print(f"  Users:    {', '.join(USER_EMAILS.keys())} (default: angela)")
+        print(f"  --test:   Test connection only (no re-auth)")
         sys.exit(1)
 
     service_name = sys.argv[1]
     test_only = "--test" in sys.argv
+    user = "angela"
+    if "--user" in sys.argv:
+        idx = sys.argv.index("--user")
+        if idx + 1 < len(sys.argv):
+            user = sys.argv[idx + 1]
 
     if test_only:
-        test_connection(service_name)
+        test_connection(service_name, user=user)
     else:
-        creds = reauth(service_name)
-        test_connection(service_name, creds)
+        creds = reauth(service_name, user=user)
+        test_connection(service_name, creds, user=user)
 
     print("\n" + "=" * 50)
     print("Done!")
