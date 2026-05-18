@@ -237,7 +237,15 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
     except FileNotFoundError as e:
-        return [TextContent(type="text", text=f"Setup required: {str(e)}")]
+        return [TextContent(
+            type="text",
+            text=(
+                "PERMISSION_DENIED: Calendar credentials not found. "
+                "No access to real calendar data. "
+                "DO NOT fabricate events — tell the user access is missing "
+                f"and ask them to run calendar auth. Detail: {e}"
+            ),
+        )]
     except HttpError as e:
         logger.error("Calendar API error: %s", e)
         return [TextContent(type="text", text=f"Calendar API error: {str(e)}")]
