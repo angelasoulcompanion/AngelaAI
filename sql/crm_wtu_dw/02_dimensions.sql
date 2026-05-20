@@ -13,7 +13,7 @@ DROP TABLE IF EXISTS dim_staff CASCADE;
 CREATE TABLE dim_staff (
     staff_key           SERIAL PRIMARY KEY,
     staff_id            VARCHAR(36) NOT NULL,          -- Natural key
-    staff_code          VARCHAR(20),
+    staff_code          VARCHAR(60),                   -- widened from 20: src.staff.code now holds Thai names+titles (max 26)
     staff_name          VARCHAR(160) NOT NULL,
     staff_surname       VARCHAR(160) NOT NULL,
     staff_full_name     VARCHAR(320) NOT NULL,         -- Derived: name || ' ' || surname

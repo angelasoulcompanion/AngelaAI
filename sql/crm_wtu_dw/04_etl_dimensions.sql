@@ -209,10 +209,19 @@ WHERE s.status = 'Active'
 -- ============================================
 -- ETL: dim_province (Upsert — derived from lead data)
 -- ============================================
+-- Dedupe: one name per province_code (src has code 0 mapped to both
+-- 'กรุงเทพมหานคร' and 'ต่างประเทศ'); pick the most frequent name to avoid
+-- "ON CONFLICT cannot affect row a second time".
 INSERT INTO dim_province (province_code, province_name)
-SELECT DISTINCT province_code, province_name
-FROM src.lead
-WHERE province_code IS NOT NULL AND province_name IS NOT NULL
+SELECT province_code, province_name
+FROM (
+    SELECT province_code, province_name,
+           ROW_NUMBER() OVER (PARTITION BY province_code ORDER BY COUNT(*) DESC) AS rn
+    FROM src.lead
+    WHERE province_code IS NOT NULL AND province_name IS NOT NULL
+    GROUP BY province_code, province_name
+) t
+WHERE rn = 1
 ON CONFLICT (province_code) DO UPDATE SET
     province_name = EXCLUDED.province_name;
 
