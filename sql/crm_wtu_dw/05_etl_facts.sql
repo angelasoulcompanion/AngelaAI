@@ -534,3 +534,46 @@ LEFT JOIN src.kpi_configuration kpi
     AND kpi.status = 'Active'
 
 WHERE t.status = 'Active';
+
+
+-- ============================================
+-- FACT 7: fact_lead_interest (Demand Analytics)
+-- Source: lead_interest → ~46K rows. Full rebuild each run.
+-- Must run AFTER fact_lead_pipeline (joins it for is_won/is_active/staff/program).
+-- ============================================
+
+TRUNCATE fact_lead_interest;
+
+INSERT INTO fact_lead_interest (
+    lead_key, curriculum_key, program_type_key, staff_key, created_date_key,
+    lead_interest_id, lead_id, sequence, interest_count, is_won, is_active
+)
+SELECT
+    COALESCE(dl.lead_key, -1),
+    COALESCE(dc.curriculum_key, -1),
+    COALESCE(fp.program_type_key, -1),
+    COALESCE(fp.staff_key, -1),
+    dd.date_key,
+    li.id,
+    li.lead_id,
+    li.sequence,
+    1,
+    COALESCE(fp.is_won, FALSE),
+    COALESCE(fp.is_active, FALSE)
+
+FROM src.lead_interest li
+
+LEFT JOIN dim_curriculum dc
+    ON dc.study_level_id = li.study_level_id
+    AND dc.campus_id = li.campus_id
+    AND dc.fac_type_id = li.fac_type_id
+    AND dc.division_id = li.division_id
+    AND dc.department_id = li.department_id
+    AND dc.concentrate_id = li.concentrate_id
+    AND dc.curriculum_id = li.curriculum_id
+
+LEFT JOIN dim_lead dl ON dl.lead_id = li.lead_id AND dl.is_current = TRUE
+LEFT JOIN fact_lead_pipeline fp ON fp.lead_key = dl.lead_key
+LEFT JOIN dim_date dd ON dd.full_date = li.created_at::DATE
+
+WHERE li.status = 'Active';

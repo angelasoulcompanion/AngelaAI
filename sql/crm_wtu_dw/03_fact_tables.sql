@@ -292,3 +292,39 @@ CREATE TABLE fact_kpi_target (
 
 CREATE INDEX idx_fact_kpi_target_dedup ON fact_kpi_target (target_id);
 CREATE INDEX idx_fact_kpi_curriculum ON fact_kpi_target (curriculum_key);
+
+
+-- ============================================
+-- FACT 7: fact_lead_interest (Demand Analytics)
+-- Grain: 1 per lead_interest row (lead × programme of interest, ~46K)
+-- Conversion flags (is_won/is_active) denormalised from fact_lead_pipeline
+-- so demand can be sliced by outcome without an extra join.
+-- ============================================
+CREATE TABLE fact_lead_interest (
+    -- Surrogate FKs
+    lead_key            INT NOT NULL REFERENCES dim_lead(lead_key),
+    curriculum_key      INT NOT NULL REFERENCES dim_curriculum(curriculum_key),
+    program_type_key    INT NOT NULL REFERENCES dim_program_type(program_type_key),
+    staff_key           INT NOT NULL REFERENCES dim_staff(staff_key),
+    created_date_key    INT REFERENCES dim_date(date_key),
+
+    -- Degenerate dimensions
+    lead_interest_id    VARCHAR(36) NOT NULL,    -- PK from source
+    lead_id             VARCHAR(36) NOT NULL,
+    sequence            INT,                     -- interest priority (1 = primary)
+
+    -- Measures
+    interest_count      INT NOT NULL DEFAULT 1,  -- Additive: always 1
+
+    -- Conversion flags (denormalised from fact_lead_pipeline)
+    is_won              BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active           BOOLEAN NOT NULL DEFAULT FALSE,
+
+    -- Metadata
+    etl_loaded_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    etl_batch_id        INT
+);
+
+CREATE INDEX idx_fact_lead_interest_curric ON fact_lead_interest (curriculum_key);
+CREATE INDEX idx_fact_lead_interest_lead ON fact_lead_interest (lead_key);
+CREATE INDEX idx_fact_lead_interest_dedup ON fact_lead_interest (lead_interest_id);
