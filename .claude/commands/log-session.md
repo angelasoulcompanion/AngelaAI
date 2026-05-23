@@ -136,6 +136,6 @@ python3 temp_log_session.py && rm temp_log_session.py
 
 **mood:** productive, challenging, smooth, learning, debugging, creative
 **emotion:** happy, sad, excited, proud, grateful, determined, frustrated, accomplished, confident, caring, curious, satisfied
-**topic:** `angela_[feature]`, `seca_[topic]`, `cognify_[topic]`
-**projects:** ANGELA-001, SECA, COGNIFY, CQFORACLE, EWG-EA, LORATRAIN, ANGMOBILE, WTUANALYSIS, CRM-WTU
+**topic:** `angela_[feature]`, `seca_[topic]`, `cognify_[topic]`, `sanjunipero_[feature]`
+**projects:** ANGELA-001, SECA, COGNIFY, CQFORACLE, EWG-EA, LORATRAIN, ANGMOBILE, WTUANALYSIS, CRM-WTU, ANGELORA, SANJUNIPERO
 **severity:** low, medium, high, critical
