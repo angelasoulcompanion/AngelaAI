@@ -16,6 +16,12 @@ from angela_core.integrations.claude_conversation_logger import (
 )
 from angela_core.database import db
 
+# asyncpg uses dollar-sign positional placeholders. We BUILD them from this var via
+# f-strings ({D}1 -> the real placeholder at runtime) so the /log-session slash command's
+# OWN positional-arg substitution can't blank them out when this template is injected.
+# ⚠️ Never write the bare dollar-number form in SQL here — it gets stripped on injection.
+D = "$"
+
 async def main():
     await db.connect()
     try:
@@ -34,9 +40,9 @@ async def main():
         await fill_missing_embeddings(batch_size=50)
 
         # 4) PROJECT SESSION → project_work_sessions table
-        project = await db.fetchrow("SELECT project_id, working_directory FROM angela_projects WHERE project_code = $1", 'ANGELA-001')
+        project = await db.fetchrow(f"SELECT project_id, working_directory FROM angela_projects WHERE project_code = {D}1", 'ANGELA-001')
         pid = project['project_id']
-        sn = await db.fetchval("SELECT COALESCE(MAX(session_number),0)+1 FROM project_work_sessions WHERE project_id=$1", pid)
+        sn = await db.fetchval(f"SELECT COALESCE(MAX(session_number),0)+1 FROM project_work_sessions WHERE project_id={D}1", pid)
 
         commits = []
         try:
@@ -46,12 +52,12 @@ async def main():
         except Exception:
             pass
 
-        session = await db.fetchrow("""
+        session = await db.fetchrow(f"""
             INSERT INTO project_work_sessions
                 (project_id, session_number, session_date, started_at, ended_at,
                  duration_minutes, david_requests, summary, accomplishments,
                  blockers, next_steps, mood, productivity_score, git_commits)
-            VALUES ($1,$2,CURRENT_DATE,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+            VALUES ({D}1,{D}2,CURRENT_DATE,{D}3,{D}4,{D}5,{D}6,{D}7,{D}8,{D}9,{D}10,{D}11,{D}12,{D}13)
             RETURNING session_id
         """, pid, sn, datetime.now() - timedelta(minutes=30), datetime.now(), 30,
             "[david_requests]", "[summary]", ["[accomplishment 1]"],
@@ -65,9 +71,9 @@ async def main():
             # {"topic": "...", "category": "database", "insight": "...", "source": "session"},
         ]
         for l in learnings:
-            await db.execute("""
+            await db.execute(f"""
                 INSERT INTO learnings (topic, category, insight, confidence_level, source)
-                VALUES ($1, $2, $3, 0.9, $4)
+                VALUES ({D}1, {D}2, {D}3, 0.9, {D}4)
             """, l['topic'], l.get('category'), l['insight'], l.get('source', 'session'))
         if learnings:
             print(f"📚 {len(learnings)} learnings saved")
@@ -79,10 +85,10 @@ async def main():
             # {"title": "...", "category": "architecture", "context": "...", "decision": "...", "reasoning": "..."},
         ]
         for d in decisions:
-            await db.execute("""
+            await db.execute(f"""
                 INSERT INTO project_technical_decisions
                     (project_id, decision_title, category, context, decision_made, reasoning, decided_by, status)
-                VALUES ($1, $2, $3, $4, $5, $6, 'together', 'active')
+                VALUES ({D}1, {D}2, {D}3, {D}4, {D}5, {D}6, 'together', 'active')
             """, pid, d['title'], d['category'], d.get('context', ''), d['decision'], d.get('reasoning', ''))
         if decisions:
             print(f"🎯 {len(decisions)} decisions saved")
@@ -94,10 +100,10 @@ async def main():
             # {"type": "bug", "severity": "high", "category": "...", "title": "...", "what_happened": "...", "how_to_prevent": "..."},
         ]
         for m in mistakes:
-            await db.execute("""
+            await db.execute(f"""
                 INSERT INTO project_mistakes
                     (project_id, session_id, mistake_type, severity, category, title, what_happened, how_to_prevent, auto_warn)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE)
+                VALUES ({D}1, {D}2, {D}3, {D}4, {D}5, {D}6, {D}7, {D}8, TRUE)
             """, pid, sid, m['type'], m['severity'], m.get('category'), m['title'], m['what_happened'], m.get('how_to_prevent', ''))
         if mistakes:
             print(f"⚠️ {len(mistakes)} corrections saved")
