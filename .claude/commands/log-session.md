@@ -95,6 +95,9 @@ async def main():
 
         # 7) CORRECTIONS → project_mistakes table
         #    columns: project_id, session_id, mistake_type, severity, category, title, what_happened, how_to_prevent, auto_warn
+        #    ⚠️ mistake_type has a CHECK constraint — use ONLY one of:
+        #       bug, config_error, assumption, compatibility, performance, security,
+        #       data_issue, integration, workflow, gotcha, ux, deploy, schema
         #    ลบ block นี้ถ้า session ไม่มี corrections
         mistakes = [
             # {"type": "bug", "severity": "high", "category": "...", "title": "...", "what_happened": "...", "how_to_prevent": "..."},
@@ -145,3 +148,4 @@ python3 temp_log_session.py && rm temp_log_session.py
 **topic:** `angela_[feature]`, `seca_[topic]`, `cognify_[topic]`, `sanjunipero_[feature]`
 **projects:** ANGELA-001, SECA, COGNIFY, CQFORACLE, EWG-EA, LORATRAIN, ANGMOBILE, WTUANALYSIS, CRM-WTU, ANGELORA, SANJUNIPERO
 **severity:** low, medium, high, critical
+**mistake_type** (CHECK — use exactly one): bug, config_error, assumption, compatibility, performance, security, data_issue, integration, workflow, gotcha, ux, deploy, schema
