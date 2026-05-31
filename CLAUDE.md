@@ -66,7 +66,7 @@ Outside this list (client MSSQL servers, third-party APIs, public registries, an
 
 ## Technical Standards
 
-<!-- AUTO:technical_standards_count -->**60 techniques**<!-- /AUTO:technical_standards_count --> in `angela_technical_standards` — query for details
+<!-- AUTO:technical_standards_count -->**61 techniques**<!-- /AUTO:technical_standards_count --> in `angela_technical_standards` — query for details
 
 **Critical:** TVFs (not inline CTEs) | UUID PKs | Parameterized queries | Clean Architecture | Exact precision (financial) | Never leave incomplete
 
@@ -83,14 +83,14 @@ Outside this list (client MSSQL servers, third-party APIs, public registries, an
 <!-- AUTO:corrections_table -->
 | Severity | Correction | Prevention |
 |----------|------------|------------|
-| **critical** | Angela hallucinated appointments due to missing Calendar permission | Always verify user permissions before accessing sensitive data like the Calen... |
-| **high** | asyncpg pool exhaustion | Always use async context managers for DB connections. Monitor pool size. Use ... |
-| **high** | Invoice-level vs Item-level Revenue difference | Always use fn_AccurateInvoice TVF for revenue. Verify aggregation level match... |
-| **high** | Ollama model names incompatible with MLX training | Create OLLAMA_TO_HF_MLX mapping table, always resolve before passing to MLX |
-| **high** | ใช้ PGrandTotal แทน SellingPrice | ตรวจสอบ query ต้นแบบจาก SSMS ก่อนเขียน query ใหม่ ใช้ QuotationCalculator เป็... |
-| **high** | ห้าม ignore project_mistakes — ต้อง review ทีละตัว | Always review all requested mistakes before suggesting actions; verify each i... |
-| **medium** | Correlated subquery inside SUM fails in MSSQL | MSSQL: ใช้ CTE คำนวณ per-row values ก่อน แล้วค่อย aggregate — ห้าม nest aggre... |
-| **medium** | Review stale memories incorrectly | Always validate stale memory relevance before adjusting timers or thresholds;... |
+| **critical** | Capture into any person's library gated on 'is a member', not the owner | For resource-scoped writes, gate on the resource owner (admin OR persons.user... |
+| **critical** | Migration 0079 PMC rewrite missed orphan trigger — 6 days silent signup failures | Before any DROP SCHEMA ... CASCADE migration, grep ALL triggers/functions in ... |
+| **high** | .vercelignore unanchored 'docs' ตัด src/lib/docs/ ออกจาก build | anchor pattern ใน .vercelignore/.gitignore ด้วย leading '/' เมื่อหมายถึง root... |
+| **high** | /api/engagement cookie-only auth silently dropped iPad events | Any /api/* endpoint that may serve native clients must support both auth mode... |
+| **high** | Admin-tooling dominated 2-day session — user-side UX visibly unchanged | For multi-day product sessions, allocate at least 1 chunk per day to a USER-F... |
+| **high** | Assumed Angelora Supabase project was on Pro because David said he subscribed | Supabase plans bind to orgs, not accounts. When a user says 'I subscribed to ... |
+| **high** | AsyncImage scaledToFill + .frame(maxWidth:) + .aspectRatio(.fit) caused image to dictate layout and overflow whole screen | For fixed-aspect image containers: use `Color.clear.aspectRatio(ratio, conten... |
+| **high** | Built service-section dashboard before confirming pattern | When David says 'redesign UX/UI', ALWAYS get reference screenshots or clear m... |
 <!-- /AUTO:corrections_table -->
 
 ## Rules
