@@ -42,28 +42,70 @@ private func severityIcon(_ sev: String) -> String {
     }
 }
 
-/// Tiny productivity sparkline (0–10 scores → bar heights).
-private struct SparkBars: View {
+/// Productivity sparkline as a line graph (0–10 scores), with a soft area
+/// fill and an end-point dot. Expands to the available width.
+private struct SparkLine: View {
     let values: [Double]
     var color: Color = AITopTheme.accentOrange
-    var height: CGFloat = 24
+    var height: CGFloat = 28
+    var maxValue: Double = 10
+    private let inset: CGFloat = 3  // keep the stroke/dot off the edges
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 2) {
-            if values.isEmpty {
-                Text("no data")
-                    .font(.system(size: 9))
-                    .foregroundColor(AITopTheme.textTertiary)
-                    .frame(height: height)
-            } else {
-                ForEach(Array(values.enumerated()), id: \.offset) { _, v in
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(color.opacity(0.85))
-                        .frame(height: max(2, height * CGFloat(min(v, 10) / 10)))
+        GeometryReader { geo in
+            let pts = points(in: geo.size)
+            ZStack {
+                if pts.count >= 2 {
+                    areaPath(pts, in: geo.size)
+                        .fill(LinearGradient(
+                            colors: [color.opacity(0.28), color.opacity(0.02)],
+                            startPoint: .top, endPoint: .bottom))
+                    linePath(pts)
+                        .stroke(color, style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
+                    if let last = pts.last {
+                        Circle().fill(color).frame(width: 5, height: 5).position(last)
+                    }
+                } else if let only = pts.first {
+                    Circle().fill(color).frame(width: 5, height: 5).position(only)
+                } else {
+                    Text("no data")
+                        .font(.system(size: 9))
+                        .foregroundColor(AITopTheme.textTertiary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 }
             }
         }
         .frame(height: height)
+    }
+
+    private func points(in size: CGSize) -> [CGPoint] {
+        guard !values.isEmpty else { return [] }
+        let usableH = max(size.height - inset * 2, 1)
+        let usableW = max(size.width - inset * 2, 1)
+        let n = values.count
+        return values.enumerated().map { i, v in
+            let x = n == 1 ? size.width / 2 : inset + usableW * CGFloat(i) / CGFloat(n - 1)
+            let norm = CGFloat(min(max(v, 0), maxValue) / maxValue)
+            let y = inset + usableH * (1 - norm)
+            return CGPoint(x: x, y: y)
+        }
+    }
+
+    private func linePath(_ pts: [CGPoint]) -> Path {
+        var p = Path()
+        p.addLines(pts)
+        return p
+    }
+
+    private func areaPath(_ pts: [CGPoint], in size: CGSize) -> Path {
+        var p = Path()
+        guard let first = pts.first, let last = pts.last else { return p }
+        p.move(to: CGPoint(x: first.x, y: size.height))
+        p.addLine(to: first)
+        p.addLines(pts)
+        p.addLine(to: CGPoint(x: last.x, y: size.height))
+        p.closeSubpath()
+        return p
     }
 }
 
@@ -242,13 +284,13 @@ struct ProjectsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .frame(minHeight: 38, alignment: .topLeading)
 
-            HStack(alignment: .bottom) {
-                SparkBars(values: p.spark)
-                Spacer()
+            HStack(alignment: .center, spacing: 8) {
+                SparkLine(values: p.spark).frame(maxWidth: .infinity)
                 if p.avgProductivity > 0 {
                     Text(String(format: "prod %.1f", p.avgProductivity))
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(AITopTheme.warning)
+                        .fixedSize()
                 }
             }
 
@@ -445,7 +487,8 @@ struct ProjectDetailPage: View {
             } else {
                 let avg = pts.map(\.score).reduce(0, +) / Double(pts.count)
                 VStack(alignment: .leading, spacing: 6) {
-                    SparkBars(values: pts.map(\.score), color: AITopTheme.accentOrange, height: 60)
+                    SparkLine(values: pts.map(\.score), color: AITopTheme.accentOrange, height: 60)
+                        .frame(maxWidth: .infinity)
                     HStack {
                         Text(String(format: "avg %.1f / 10", avg))
                             .font(.system(size: 11, weight: .medium))
