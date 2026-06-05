@@ -163,6 +163,17 @@ class APIService: ObservableObject {
         }
     }
 
+    // MARK: - Projects
+
+    func getProjectsOverview() async throws -> ProjectsOverview {
+        try await get("/projects/overview")
+    }
+
+    func getProjectDetail(code: String) async throws -> ProjectFullDetail {
+        let encoded = code.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? code
+        return try await get("/projects/\(encoded)")
+    }
+
     // MARK: - Dashboard
 
     func getDashboard() async throws -> DashboardResponse {

@@ -9,6 +9,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case angelaBrain
     case knowledgeGraph
     case dashboard
+    case projects
     case models
     case fineTune
     case videoStudio
@@ -23,6 +24,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .angelaBrain: return "Angela Brain"
         case .knowledgeGraph: return "Knowledge Graph"
         case .dashboard: return "Dashboard"
+        case .projects: return "Projects"
         case .models: return "Models"
         case .fineTune: return "Fine-Tune"
         case .videoStudio: return "Video Studio"
@@ -37,6 +39,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .angelaBrain: return "brain.fill"
         case .knowledgeGraph: return "point.3.connected.trianglepath.dotted"
         case .dashboard: return "gauge.with.dots.needle.33percent"
+        case .projects: return "square.stack.3d.up.fill"
         case .models: return "cpu.fill"
         case .fineTune: return "wand.and.stars"
         case .videoStudio: return "video.badge.waveform.fill"
@@ -51,6 +54,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .angelaBrain: return "ANGELA"
         case .knowledgeGraph: return "ANGELA"
         case .dashboard: return "MONITOR"
+        case .projects: return "WORK"
         case .models, .fineTune: return "AI STUDIO"
         case .videoStudio: return "ANGELORA"
         case .chat, .rag: return "INFERENCE"
@@ -66,6 +70,7 @@ struct Sidebar: View {
     private let groups: [(String, [SidebarItem])] = [
         ("ANGELA", [.angelaBrain, .knowledgeGraph]),
         ("MONITOR", [.dashboard]),
+        ("WORK", [.projects]),
         ("AI STUDIO", [.models, .fineTune]),
         ("ANGELORA", [.videoStudio]),
         ("INFERENCE", [.chat, .rag]),

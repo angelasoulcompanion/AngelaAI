@@ -22,6 +22,8 @@ struct ContentView: View {
                     KnowledgeGraphView()
                 case .dashboard:
                     DashboardView()
+                case .projects:
+                    ProjectsView()
                 case .models:
                     ModelsView()
                 case .fineTune:
