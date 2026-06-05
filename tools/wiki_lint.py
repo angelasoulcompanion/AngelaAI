@@ -36,6 +36,8 @@ from pathlib import Path
 MEMORY_DIR = Path.home() / ".claude/projects/-Users-davidsamanyaporn-PycharmProjects-AngelaAI/memory"
 INDEX_FILE = MEMORY_DIR / "MEMORY.md"
 STALE_DAYS = 30
+# Behavioral/profile memories don't decay with code — mirror init.py's skip set.
+SKIP_STALE_TYPES = {"feedback", "user"}
 TEXT_DUPLICATE_THRESHOLD = 0.70
 EMBED_DUPLICATE_THRESHOLD = 0.88
 OLLAMA_URL = "http://localhost:11434/api/embeddings"
@@ -59,7 +61,14 @@ class MemoryFile:
 
 
 def parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
-    """Return (frontmatter dict, body without frontmatter)."""
+    """Return (frontmatter dict, body without frontmatter).
+
+    Note: keys are stripped, so nested-style children (e.g. `  type: feedback`
+    under a `metadata:` block) are hoisted to top-level keys. This means both the
+    flat (`type: feedback`) and nested (`metadata:\n  type: feedback`) frontmatter
+    styles resolve `type`/`name`/`description` correctly here — do not "fix" this
+    by skipping indented lines or it will regress nested-style files.
+    """
     m = FRONTMATTER_RE.match(text)
     if not m:
         return {}, text
@@ -209,11 +218,16 @@ def find_stale(files: list[MemoryFile]) -> list[tuple[str, int]]:
     """Stale = max(mtime_age, last_validated_age) > STALE_DAYS.
     last_validated frontmatter (ISO date) lets us reset the clock without
     touching mtime — the validate-don't-touch rule from CLAUDE.md.
+
+    Skips type=feedback/user (behavioral/profile rules, no code dependency) so
+    this matches init.py's SKIP_STALE_TYPES — those memories don't decay.
     """
     today = datetime.now(tz=timezone.utc).date()
     out = []
     for f in files:
         if f.path.name == "MEMORY.md":
+            continue
+        if f.type.strip().lower() in SKIP_STALE_TYPES:
             continue
         # Parse last_validated if present
         validated_age = f.age_days  # fallback to mtime

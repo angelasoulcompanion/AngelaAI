@@ -22,7 +22,15 @@ STALE_DAYS = 30
 
 
 def _read_memory_type(path: Path) -> str | None:
-    """Extract `type:` field from frontmatter. Returns None if missing/malformed."""
+    """Extract `type:` from frontmatter — handles both flat and nested style.
+
+    Flat:    `type: feedback`
+    Nested:  `metadata:\n  type: feedback`  (memory spec style)
+
+    We strip leading whitespace before matching so an indented `type:` under a
+    `metadata:` block is recognized. `node_type:` does NOT false-match because
+    'node_type:'.startswith('type:') is False.
+    """
     try:
         with path.open('r', encoding='utf-8') as fh:
             if fh.readline().strip() != '---':
@@ -31,8 +39,9 @@ def _read_memory_type(path: Path) -> str | None:
                 line = fh.readline()
                 if not line or line.strip() == '---':
                     return None
-                if line.lower().startswith('type:'):
-                    return line.split(':', 1)[1].strip().lower()
+                stripped = line.strip().lower()
+                if stripped.startswith('type:'):
+                    return stripped.split(':', 1)[1].strip()
     except OSError:
         return None
     return None
