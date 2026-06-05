@@ -17,6 +17,7 @@ cd /Users/davidsamanyaporn/PycharmProjects/AngelaAI && python3 angela_core/scrip
 
 - No args → auto-detect project from current working directory (longest `working_directory` prefix match).
 - `<PROJECT_CODE>` → explicit (ANGELA-001 · ANGELORA · SECA · SANJUNIPERO · SE-ASSET · PYTHIA · …).
+- `<PATH>` → a directory path (absolute or `~`) also resolves by longest `working_directory` prefix.
 - `-t <topic>` → also filter decisions by keyword + pull cross-project learnings (e.g. `-t auth`, `-t tvf`).
 - `-n <N>` → rows per section (default 6).
 

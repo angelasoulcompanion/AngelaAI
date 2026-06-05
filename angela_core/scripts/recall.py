@@ -42,14 +42,32 @@ def _clip(text: str | None, n: int) -> str:
     return s if len(s) <= n else s[: n - 1] + '…'
 
 
+def _match_by_dir(projects: list, target_dir: str) -> dict | None:
+    """Longest working_directory prefix of target_dir (so AITop under AngelaAI
+    maps to AITOP, not ANGELA-001)."""
+    target = os.path.abspath(os.path.expanduser(target_dir))
+    best, best_len = None, -1
+    for p in projects:
+        wd = p['working_directory']
+        if not wd:
+            continue
+        wd_abs = os.path.abspath(os.path.expanduser(wd))
+        if (target == wd_abs or target.startswith(wd_abs.rstrip('/') + '/')) and len(wd_abs) > best_len:
+            best, best_len = p, len(wd_abs)
+    return best
+
+
 async def _resolve_project(db, explicit: str | None) -> dict | None:
-    """Find the project: explicit code/name match, else longest working_directory
-    prefix of the current working directory."""
+    """Find the project: explicit code/name match, else a directory path
+    (longest working_directory prefix), else the current working directory."""
     projects = await db.fetch(
         'SELECT project_id, project_code, project_name, working_directory '
         'FROM angela_projects'
     )
     if explicit and explicit != '.':
+        # A path argument (absolute, home-relative, or an existing dir) → dir match
+        if explicit.startswith(('/', '~', './')) or os.path.isdir(explicit):
+            return _match_by_dir(projects, explicit)
         key = explicit.strip().lower()
         for p in projects:
             if p['project_code'] and p['project_code'].lower() == key:
@@ -60,16 +78,7 @@ async def _resolve_project(db, explicit: str | None) -> dict | None:
                 return p
         return None
 
-    cwd = os.getcwd()
-    best, best_len = None, -1
-    for p in projects:
-        wd = p['working_directory']
-        if not wd:
-            continue
-        # longest matching prefix wins (so AITop under AngelaAI maps to AITOP)
-        if (cwd == wd or cwd.startswith(wd.rstrip('/') + '/')) and len(wd) > best_len:
-            best, best_len = p, len(wd)
-    return best
+    return _match_by_dir(projects, os.getcwd())
 
 
 async def recall(explicit_project: str | None, topic: str | None, limit: int) -> None:
