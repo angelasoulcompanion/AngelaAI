@@ -42,105 +42,78 @@ private func severityIcon(_ sev: String) -> String {
     }
 }
 
-/// Productivity colour band — high score is good (green), not bad.
-private func prodColor(_ v: Double) -> Color {
-    if v >= 8 { return AITopTheme.success }
-    if v >= 6 { return AITopTheme.warning }
-    return AITopTheme.error
-}
-
-/// Productivity line chart. Auto-scales Y to the data's own min–max (so a
-/// cluster of 8–9 scores still shows a readable trend), draws a dot per
-/// session coloured by score band, and optionally an average reference line.
-private struct SparkLine: View {
-    let values: [Double]
-    var color: Color = AITopTheme.accentOrange
-    var height: CGFloat = 34
+/// Combo chart — theme-coloured bars (primary metric, e.g. productivity) with a
+/// secondary line overlaid (e.g. minutes/session) on its own auto-scaled axis.
+/// Both series auto-scale to their own padded min–max so trends stay readable
+/// even when values cluster tightly.
+private struct ComboChart: View {
+    let bars: [Double]                       // primary → orange bars
+    let line: [Double]                       // secondary → cyan line
+    var barColor: Color = AITopTheme.accentOrange
+    var lineColor: Color = AITopTheme.accentCyan
+    var height: CGFloat = 40
     var showDots: Bool = true
-    var showAvg: Bool = false
-    private let inset: CGFloat = 4
+    private let topInset: CGFloat = 5
+    private let botInset: CGFloat = 2
 
-    // Padded data range so the line isn't pinned to the very top/bottom.
-    private var bounds: (lo: Double, hi: Double) {
-        guard let mn = values.min(), let mx = values.max() else { return (0, 10) }
-        if mx == mn { return (max(0, mn - 1), min(10, mn + 1)) }
-        let pad = max(0.3, (mx - mn) * 0.2)
-        return (max(0, mn - pad), min(10, mx + pad))
+    private func bounds(_ a: [Double]) -> (lo: Double, hi: Double) {
+        guard let mn = a.min(), let mx = a.max() else { return (0, 1) }
+        if mx == mn { return (mn - 1, mn + 1) }
+        let pad = (mx - mn) * 0.18
+        return (mn - pad, mx + pad)
     }
 
     var body: some View {
         GeometryReader { geo in
-            let pts = points(in: geo.size)
-            ZStack {
-                if pts.count >= 2 {
-                    areaPath(pts, in: geo.size)
-                        .fill(LinearGradient(colors: [color.opacity(0.30), color.opacity(0.02)],
-                                             startPoint: .top, endPoint: .bottom))
-                    if showAvg { avgLine(in: geo.size) }
-                    linePath(pts)
-                        .stroke(color, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                    if showDots {
-                        ForEach(Array(pts.enumerated()), id: \.offset) { i, pt in
-                            Circle().fill(prodColor(values[i]))
-                                .frame(width: 5, height: 5)
-                                .overlay(Circle().stroke(AITopTheme.cardBackground, lineWidth: 1))
-                                .position(pt)
-                        }
-                    } else if let last = pts.last {
-                        Circle().fill(color).frame(width: 5, height: 5).position(last)
+            let w = geo.size.width, h = geo.size.height
+            let n = bars.count
+            if n == 0 {
+                Text("no data").font(.system(size: 9))
+                    .foregroundColor(AITopTheme.textTertiary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            } else {
+                let slot = w / CGFloat(n)
+                let barW = max(3, slot * 0.5)
+                let (blo, bhi) = bounds(bars)
+                ZStack {
+                    // bars — primary metric
+                    ForEach(0..<n, id: \.self) { i in
+                        let norm = CGFloat((min(max(bars[i], blo), bhi) - blo) / max(bhi - blo, 0.0001))
+                        let bh = max(3, (h - topInset) * (0.18 + 0.82 * norm))
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(LinearGradient(colors: [barColor, AITopTheme.deepOrange],
+                                                 startPoint: .top, endPoint: .bottom))
+                            .frame(width: barW, height: bh)
+                            .position(x: slot * (CGFloat(i) + 0.5), y: h - bh / 2)
                     }
-                } else if let only = pts.first {
-                    Circle().fill(prodColor(values.first ?? 0)).frame(width: 6, height: 6).position(only)
-                } else {
-                    Text("no data").font(.system(size: 9))
-                        .foregroundColor(AITopTheme.textTertiary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    // line — secondary metric (own scale)
+                    if line.count == n {
+                        let pts = linePoints(in: geo.size, n: n)
+                        Path { p in p.addLines(pts) }
+                            .stroke(lineColor, style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
+                        if showDots {
+                            ForEach(0..<pts.count, id: \.self) { i in
+                                Circle().fill(lineColor).frame(width: 4, height: 4)
+                                    .overlay(Circle().stroke(AITopTheme.cardBackground, lineWidth: 1))
+                                    .position(pts[i])
+                            }
+                        }
+                    }
                 }
             }
         }
         .frame(height: height)
     }
 
-    private func points(in size: CGSize) -> [CGPoint] {
-        guard !values.isEmpty else { return [] }
-        let (lo, hi) = bounds
+    private func linePoints(in size: CGSize, n: Int) -> [CGPoint] {
+        let (lo, hi) = bounds(line)
         let span = max(hi - lo, 0.0001)
-        let usableH = max(size.height - inset * 2, 1)
-        let usableW = max(size.width - inset * 2, 1)
-        let n = values.count
-        return values.enumerated().map { i, v in
-            let x = n == 1 ? size.width / 2 : inset + usableW * CGFloat(i) / CGFloat(n - 1)
-            let norm = CGFloat((min(max(v, lo), hi) - lo) / span)
-            return CGPoint(x: x, y: inset + usableH * (1 - norm))
+        let slot = size.width / CGFloat(n)
+        let usableH = max(size.height - topInset - botInset, 1)
+        return (0..<n).map { i in
+            let norm = CGFloat((min(max(line[i], lo), hi) - lo) / span)
+            return CGPoint(x: slot * (CGFloat(i) + 0.5), y: topInset + usableH * (1 - norm))
         }
-    }
-
-    private func avgLine(in size: CGSize) -> some View {
-        let (lo, hi) = bounds
-        let avg = values.reduce(0, +) / Double(max(values.count, 1))
-        let norm = CGFloat((min(max(avg, lo), hi) - lo) / max(hi - lo, 0.0001))
-        let y = inset + max(size.height - inset * 2, 1) * (1 - norm)
-        return Path { p in
-            p.move(to: CGPoint(x: inset, y: y))
-            p.addLine(to: CGPoint(x: size.width - inset, y: y))
-        }
-        .stroke(AITopTheme.textTertiary.opacity(0.5),
-                style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
-    }
-
-    private func linePath(_ pts: [CGPoint]) -> Path {
-        var p = Path(); p.addLines(pts); return p
-    }
-
-    private func areaPath(_ pts: [CGPoint], in size: CGSize) -> Path {
-        var p = Path()
-        guard let first = pts.first, let last = pts.last else { return p }
-        p.move(to: CGPoint(x: first.x, y: size.height))
-        p.addLine(to: first)
-        p.addLines(pts)
-        p.addLine(to: CGPoint(x: last.x, y: size.height))
-        p.closeSubpath()
-        return p
     }
 }
 
@@ -338,20 +311,19 @@ struct ProjectsView: View {
                 .frame(minHeight: 38, alignment: .topLeading)
 
             VStack(alignment: .leading, spacing: 3) {
-                SparkLine(values: p.spark, height: 40).frame(maxWidth: .infinity)
-                HStack(spacing: 6) {
-                    if let lo = p.spark.min(), let hi = p.spark.max(), !p.spark.isEmpty {
-                        Text(lo == hi ? String(format: "prod %.1f", hi)
-                                      : String(format: "%.1f–%.1f", lo, hi))
-                            .font(.system(size: 9))
-                            .foregroundColor(AITopTheme.textTertiary)
-                    }
+                ComboChart(bars: p.spark, line: p.sparkMinutes, height: 42)
+                    .frame(maxWidth: .infinity)
+                HStack(spacing: 8) {
+                    Label("prod", systemImage: "chart.bar.fill")
+                        .font(.system(size: 8)).foregroundColor(AITopTheme.accentOrange)
+                    Label("mins", systemImage: "chart.xyaxis.line")
+                        .font(.system(size: 8)).foregroundColor(AITopTheme.accentCyan)
                     Spacer()
                     TrendBadge(values: p.spark)
                     if p.avgProductivity > 0 {
                         Text(String(format: "avg %.1f", p.avgProductivity))
                             .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(prodColor(p.avgProductivity))
+                            .foregroundColor(AITopTheme.accentOrange)
                     }
                 }
             }
@@ -548,10 +520,11 @@ struct ProjectDetailPage: View {
                     .font(AITopTheme.caption()).foregroundColor(AITopTheme.textTertiary)
             } else {
                 let scores = pts.map(\.score)
+                let minutes = pts.map { Double($0.minutes) }
                 let avg = scores.reduce(0, +) / Double(scores.count)
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .top, spacing: 8) {
-                        // Y-axis hi/lo
+                        // Y-axis hi/lo (productivity)
                         VStack(alignment: .trailing) {
                             Text(String(format: "%.1f", scores.max() ?? 0))
                             Spacer()
@@ -559,24 +532,22 @@ struct ProjectDetailPage: View {
                         }
                         .font(.system(size: 8)).foregroundColor(AITopTheme.textTertiary)
                         .frame(width: 22, height: 80)
-                        SparkLine(values: scores, color: AITopTheme.accentOrange,
-                                  height: 80, showDots: true, showAvg: true)
+                        ComboChart(bars: scores, line: minutes, height: 80)
                             .frame(maxWidth: .infinity)
                     }
                     HStack(spacing: 8) {
-                        Label(String(format: "avg %.1f", avg), systemImage: "minus")
+                        Label(String(format: "avg %.1f", avg), systemImage: "chart.bar.fill")
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(prodColor(avg))
+                            .foregroundColor(AITopTheme.accentOrange)
                         TrendBadge(values: scores)
                         Spacer()
                         Text("\(pts.count) sessions")
                             .font(.system(size: 10)).foregroundColor(AITopTheme.textTertiary)
                     }
-                    // band legend
-                    HStack(spacing: 10) {
-                        legendDot(AITopTheme.success, "≥8")
-                        legendDot(AITopTheme.warning, "6–8")
-                        legendDot(AITopTheme.error, "<6")
+                    // series legend
+                    HStack(spacing: 12) {
+                        legendDot(AITopTheme.accentOrange, "productivity (0–10)")
+                        legendDot(AITopTheme.accentCyan, "minutes / session")
                         Spacer()
                     }
                 }

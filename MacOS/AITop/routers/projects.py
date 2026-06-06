@@ -55,16 +55,20 @@ async def projects_overview():
                          WHERE w.project_id = p.project_id AND w.next_steps IS NOT NULL
                          ORDER BY w.session_date DESC NULLS LAST, w.started_at DESC LIMIT 1
                     ), 0) AS open_threads,
-                    COALESCE((
-                        SELECT ARRAY_AGG(s.productivity_score ORDER BY s.session_date)
-                        FROM (
-                            SELECT productivity_score, session_date
-                            FROM public.project_work_sessions w
-                            WHERE w.project_id = p.project_id AND productivity_score IS NOT NULL
-                            ORDER BY session_date DESC NULLS LAST LIMIT 12
-                        ) s
-                    ), ARRAY[]::double precision[]) AS spark
+                    COALESCE(s.spark, ARRAY[]::double precision[]) AS spark,
+                    COALESCE(s.spark_minutes, ARRAY[]::double precision[]) AS spark_minutes
                 FROM public.angela_projects p
+                LEFT JOIN LATERAL (
+                    SELECT ARRAY_AGG(z.productivity_score ORDER BY z.session_date) AS spark,
+                           ARRAY_AGG(COALESCE(z.duration_minutes, 0)::double precision
+                                     ORDER BY z.session_date) AS spark_minutes
+                    FROM (
+                        SELECT productivity_score, duration_minutes, session_date
+                        FROM public.project_work_sessions w
+                        WHERE w.project_id = p.project_id AND productivity_score IS NOT NULL
+                        ORDER BY session_date DESC NULLS LAST LIMIT 12
+                    ) z
+                ) s ON TRUE
                 ORDER BY last_active DESC NULLS LAST, p.total_hours DESC
             """),
         )
@@ -72,7 +76,9 @@ async def projects_overview():
         projects = []
         for r in rows:
             spark = [float(x) for x in (r["spark"] or [])]
+            spark_minutes = [float(x) for x in (r["spark_minutes"] or [])]
             projects.append({
+                "spark_minutes": spark_minutes,
                 "project_code": r["project_code"],
                 "project_name": r["project_name"],
                 "status": r["status"] or "unknown",
@@ -215,7 +221,8 @@ async def project_detail(project_code: str):
 
         # Productivity trend (chronological, last 30)
         productivity = [
-            {"date": _d(s["session_date"]), "score": float(s["productivity_score"]), "mood": s["mood"]}
+            {"date": _d(s["session_date"]), "score": float(s["productivity_score"]),
+             "minutes": int(s["duration_minutes"]), "mood": s["mood"]}
             for s in reversed(sessions) if s["productivity_score"]
         ][-30:]
 

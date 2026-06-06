@@ -38,6 +38,7 @@ struct ProjectCardInfo: Codable, Identifiable, Hashable {
     let activeGotchas: Int
     let openThreads: Int
     let spark: [Double]
+    let sparkMinutes: [Double]
     let avgProductivity: Double
 
     var id: String { projectCode }
@@ -86,6 +87,7 @@ struct ProjectKpis: Codable {
 struct ProductivityPoint: Codable {
     let date: String?
     let score: Double
+    let minutes: Int
     let mood: String
 }
 
