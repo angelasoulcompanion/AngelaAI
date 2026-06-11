@@ -63,6 +63,11 @@ class EmbeddingService:
     FALLBACK_MODEL = "qllama/multilingual-e5-small"
     DIMENSIONS = 768
     OLLAMA_URL = "http://localhost:11434"
+    # nomic-embed-text context = 2048 tokens; Ollama errors ("input length exceeds the
+    # context length") on longer input. 4000 chars stays under that even for token-dense
+    # Thai/code text, so the local primary never fails on a long blob. The leading content
+    # carries the semantic signal.
+    MAX_EMBED_CHARS = 4000
 
     # Track which model is active
     _active_model: str = None
@@ -80,6 +85,7 @@ class EmbeddingService:
         self._active_model = self.PRIMARY_MODEL
         self._ollama_available = None
         self._hf_token = None  # Will load from our_secrets if needed
+        self._jina_key = None  # Will load from our_secrets ('jina_api_key') if needed
         logger.info(f"🧠 EmbeddingService initialized: {self._active_model} ({self.DIMENSIONS}D)")
 
     @staticmethod
@@ -141,24 +147,35 @@ class EmbeddingService:
             logger.debug(f"Could not get HF token: {e}")
             return None
 
+    async def _get_jina_key(self) -> Optional[str]:
+        """Jina API key from our_secrets ('jina_api_key'). Cached; '' = none on file."""
+        if self._jina_key is None:
+            try:
+                from angela_core.database import get_secret
+                self._jina_key = (await get_secret('jina_api_key')) or ""
+            except Exception:
+                self._jina_key = ""
+        return self._jina_key or None
+
     async def _generate_embedding_jina(self, text: str) -> Optional[List[float]]:
         """
-        Generate embedding using Jina AI Embedding API.
-        Free tier available, good multilingual support.
+        Generate embedding using Jina AI Embedding API (cloud fallback).
+        Requires a real Jina key (jina_xxx) in our_secrets as 'jina_api_key'.
+        Skipped entirely when no key is set — never send an HF token here (Jina → 401).
 
         Returns:
-            List[float] with 384 dimensions, or None if failed
+            List[float] with 768 dimensions, or None if unavailable/failed
         """
+        jina_key = await self._get_jina_key()
+        if not jina_key:
+            # No Jina key on file → skip (avoids a guaranteed 401 from wrong auth).
+            return None
         try:
             headers = {
                 "Content-Type": "application/json",
-                "Accept": "application/json"
+                "Accept": "application/json",
+                "Authorization": f"Bearer {jina_key}",
             }
-
-            # Add HF token as Jina API key if available (optional)
-            hf_token = await self._get_hf_token()
-            if hf_token:
-                headers["Authorization"] = f"Bearer {hf_token}"
 
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
@@ -217,6 +234,12 @@ class EmbeddingService:
             return None
 
         text = text.strip()
+
+        # Cap very long text — nomic-embed-text otherwise times out / errors and the
+        # request falls through to a (now optional) cloud fallback. Truncation keeps the
+        # local Ollama primary reliable; the leading content carries the semantic signal.
+        if len(text) > self.MAX_EMBED_CHARS:
+            text = text[:self.MAX_EMBED_CHARS]
 
         # Check cache first
         cached = self._get_from_cache(text)
