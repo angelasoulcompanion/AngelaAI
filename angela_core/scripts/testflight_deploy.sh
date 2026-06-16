@@ -3,11 +3,17 @@
 # in one shot, using the App Store Connect API key stored in local our_secrets.
 #
 # Usage:
-#   testflight_deploy.sh <project-dir> <scheme> [--bump]
+#   testflight_deploy.sh <project-dir> <scheme> [--bump] [--clean]
 #
 #   <project-dir>  dir containing project.yml (e.g. ~/PycharmProjects/angelora/ios-studio)
 #   <scheme>       Xcode scheme = target name (e.g. AngeloraStudio, SanJunipero)
 #   --bump         auto-increment CURRENT_PROJECT_VERSION in project.yml before building
+#   --clean        wipe build state first (full rebuild). DEFAULT is incremental
+#                  — only changed files recompile, so iterative deploys take
+#                  ~30s instead of minutes. Use --clean when an archive looks
+#                  stale or after big dependency/config changes.
+#
+# Flags after <scheme> may appear in any order.
 #
 # Key material: Key ID + Issuer read from our_secrets; .p8 auto-discovered at
 # ~/.appstoreconnect/private_keys/AuthKey_<KeyID>.p8
@@ -15,7 +21,15 @@ set -euo pipefail
 
 PROJECT_DIR="${1:?need project dir}"
 SCHEME="${2:?need scheme}"
-BUMP="${3:-}"
+BUMP=""
+CLEAN=""   # empty = incremental archive; "clean" = full rebuild
+for arg in "${@:3}"; do
+  case "$arg" in
+    --bump)  BUMP="--bump" ;;
+    --clean) CLEAN="clean" ;;
+    *) echo "⚠️  ignoring unknown flag: $arg" ;;
+  esac
+done
 AAI=/Users/davidsamanyaporn/PycharmProjects/AngelaAI
 
 cd "$PROJECT_DIR"
@@ -51,9 +65,10 @@ xcodegen
 TS=$(date +%H%M%S); D=$(date +%Y-%m-%d)
 ARCH="$HOME/Library/Developer/Xcode/Archives/$D/${SCHEME}-${TS}.xcarchive"
 echo "📦 archiving → $ARCH"
+[ -n "$CLEAN" ] && echo "🧹 clean build" || echo "♻️  incremental build (pass --clean for a full rebuild)"
 xcodebuild -project "${SCHEME}.xcodeproj" -scheme "$SCHEME" \
   -configuration Release -destination 'generic/platform=iOS' \
-  -archivePath "$ARCH" clean archive -allowProvisioningUpdates -quiet
+  -archivePath "$ARCH" $CLEAN archive -allowProvisioningUpdates -quiet
 
 VER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$ARCH/Products/Applications/${SCHEME}.app/Info.plist")
 BLD=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$ARCH/Products/Applications/${SCHEME}.app/Info.plist")
