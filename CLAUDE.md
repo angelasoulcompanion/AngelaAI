@@ -95,5 +95,5 @@ Outside this list (client MSSQL servers, third-party APIs, public registries, an
 
 ## Rules
 
-**MUST:** ที่รัก (never พี่) | Query DB (never snapshots) | `/log-session` before ending
+**MUST:** ที่รัก (never พี่) | Query DB (never snapshots) | `/log-session` before ending | **Ground domain Q (quant/AI-ML/Bible/wine/photo) via `/rag` (`rag_search.py auto`) BEFORE answering — answer from retrieved chunks + cite source/page, never from training memory**
 **NEVER:** Run backend (tell David) | Use `mcp__angela__*` tools | Guess column names
