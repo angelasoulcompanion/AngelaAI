@@ -12,12 +12,10 @@
 		FB34939DE7BA4CD7A88E9888 /* AITopTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE769304698B4D98A16D529B /* AITopTheme.swift */; };
 		D52ED4F0C6494959B58D238B /* BackendManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B39E1E872654816902BB096 /* BackendManager.swift */; };
 		C523667347A6452C91C66D7E /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12B8CB8326CE4B05B1CE0DDB /* APIService.swift */; };
-		CPE1A0B0C0D0E0F010203040 /* ChatPDFExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CPE2A0B0C0D0E0F010203040 /* ChatPDFExporter.swift */; };
 		4BFAFFB2C2E945EEA50D773B /* DashboardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9666A331620247F88D4C2238 /* DashboardModels.swift */; };
 		A1B2C3D4E5F60718293A4B01 /* ProjectsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B02 /* ProjectsModels.swift */; };
 		A1B2C3D4E5F60718293A4B03 /* ProjectsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B04 /* ProjectsView.swift */; };
 		755FA24C7FDB4BEDA86A72E3 /* ModelsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1EA1582CDD947CDB398285F /* ModelsModels.swift */; };
-		8EF0AEF4A8664E0AB53740E1 /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75F29BD209F47FF9215BA18 /* ChatModels.swift */; };
 		E2D1638D568549C09C1A1349 /* FineTuneModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0207C6E613D4B51903D4AA1 /* FineTuneModels.swift */; };
 		5EDE2ED96FE44C2B8080C165 /* RAGModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE623ECDD12B436EB5DC2748 /* RAGModels.swift */; };
 		7B7DEC3C315C4476BC3810E0 /* Sidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85ED375BAF7D4DFE916FDF13 /* Sidebar.swift */; };
@@ -25,7 +23,6 @@
 		B2A6957DD35A4C5C87970742 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F232D0FD4895462FB4B8CD27 /* DashboardView.swift */; };
 		C0BCBE5A306E461DBA46E5B7 /* ModelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E7CEF82E1DE43998505C9DC /* ModelsView.swift */; };
 		77F6875791AA47F39173115E /* FineTuneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB677DCB9FE8411496B4D4E3 /* FineTuneView.swift */; };
-		9906D3CF6ECA4DFCBA401B91 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E74294E9964A4AB0B2E513 /* ChatView.swift */; };
 		36541B00BA214EF5B95DE603 /* RAGView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DA3F2C43DD843E69D943BFE /* RAGView.swift */; };
 		0349921B546A47099CF06A30 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EC503AB029B439F83522D4C /* SettingsView.swift */; };
 		A1B2C3D4E5F647A8B9C0D1E2 /* AngelaBrainModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E4D5C6B7A8490192837465 /* AngelaBrainModels.swift */; };
@@ -47,12 +44,10 @@
 		CE769304698B4D98A16D529B /* AITopTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AITopTheme.swift"; sourceTree = "<group>"; };
 		3B39E1E872654816902BB096 /* BackendManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BackendManager.swift"; sourceTree = "<group>"; };
 		12B8CB8326CE4B05B1CE0DDB /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIService.swift"; sourceTree = "<group>"; };
-		CPE2A0B0C0D0E0F010203040 /* ChatPDFExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChatPDFExporter.swift"; sourceTree = "<group>"; };
 		9666A331620247F88D4C2238 /* DashboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DashboardModels.swift"; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B02 /* ProjectsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProjectsModels.swift"; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B04 /* ProjectsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProjectsView.swift"; sourceTree = "<group>"; };
 		F1EA1582CDD947CDB398285F /* ModelsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelsModels.swift"; sourceTree = "<group>"; };
-		D75F29BD209F47FF9215BA18 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChatModels.swift"; sourceTree = "<group>"; };
 		B0207C6E613D4B51903D4AA1 /* FineTuneModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FineTuneModels.swift"; sourceTree = "<group>"; };
 		DE623ECDD12B436EB5DC2748 /* RAGModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RAGModels.swift"; sourceTree = "<group>"; };
 		85ED375BAF7D4DFE916FDF13 /* Sidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sidebar.swift"; sourceTree = "<group>"; };
@@ -60,7 +55,6 @@
 		F232D0FD4895462FB4B8CD27 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DashboardView.swift"; sourceTree = "<group>"; };
 		1E7CEF82E1DE43998505C9DC /* ModelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelsView.swift"; sourceTree = "<group>"; };
 		DB677DCB9FE8411496B4D4E3 /* FineTuneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FineTuneView.swift"; sourceTree = "<group>"; };
-		C5E74294E9964A4AB0B2E513 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChatView.swift"; sourceTree = "<group>"; };
 		7DA3F2C43DD843E69D943BFE /* RAGView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RAGView.swift"; sourceTree = "<group>"; };
 		2EC503AB029B439F83522D4C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView.swift"; sourceTree = "<group>"; };
 		F3E4D5C6B7A8490192837465 /* AngelaBrainModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AngelaBrainModels.swift"; sourceTree = "<group>"; };
@@ -122,7 +116,6 @@
 			children = (
 				9666A331620247F88D4C2238 /* DashboardModels.swift */,
 				F1EA1582CDD947CDB398285F /* ModelsModels.swift */,
-				D75F29BD209F47FF9215BA18 /* ChatModels.swift */,
 				B0207C6E613D4B51903D4AA1 /* FineTuneModels.swift */,
 				DE623ECDD12B436EB5DC2748 /* RAGModels.swift */,
 				F3E4D5C6B7A8490192837465 /* AngelaBrainModels.swift */,
@@ -137,7 +130,6 @@
 			children = (
 				3B39E1E872654816902BB096 /* BackendManager.swift */,
 				12B8CB8326CE4B05B1CE0DDB /* APIService.swift */,
-				CPE2A0B0C0D0E0F010203040 /* ChatPDFExporter.swift */,
 				B1C2D3E4F56789ABCDEF5678 /* VideoStudioAPI.swift */,
 			);
 			path = Services;
@@ -160,7 +152,6 @@
 				F232D0FD4895462FB4B8CD27 /* DashboardView.swift */,
 				1E7CEF82E1DE43998505C9DC /* ModelsView.swift */,
 				DB677DCB9FE8411496B4D4E3 /* FineTuneView.swift */,
-				C5E74294E9964A4AB0B2E513 /* ChatView.swift */,
 				7DA3F2C43DD843E69D943BFE /* RAGView.swift */,
 				2EC503AB029B439F83522D4C /* SettingsView.swift */,
 				61728394A5B6C7D8E9F0A1B2 /* AngelaBrainView.swift */,
@@ -252,12 +243,10 @@
 				FB34939DE7BA4CD7A88E9888 /* AITopTheme.swift in Sources */,
 				D52ED4F0C6494959B58D238B /* BackendManager.swift in Sources */,
 				C523667347A6452C91C66D7E /* APIService.swift in Sources */,
-				CPE1A0B0C0D0E0F010203040 /* ChatPDFExporter.swift in Sources */,
 				4BFAFFB2C2E945EEA50D773B /* DashboardModels.swift in Sources */,
 				A1B2C3D4E5F60718293A4B01 /* ProjectsModels.swift in Sources */,
 				A1B2C3D4E5F60718293A4B03 /* ProjectsView.swift in Sources */,
 				755FA24C7FDB4BEDA86A72E3 /* ModelsModels.swift in Sources */,
-				8EF0AEF4A8664E0AB53740E1 /* ChatModels.swift in Sources */,
 				E2D1638D568549C09C1A1349 /* FineTuneModels.swift in Sources */,
 				5EDE2ED96FE44C2B8080C165 /* RAGModels.swift in Sources */,
 				7B7DEC3C315C4476BC3810E0 /* Sidebar.swift in Sources */,
@@ -265,7 +254,6 @@
 				B2A6957DD35A4C5C87970742 /* DashboardView.swift in Sources */,
 				C0BCBE5A306E461DBA46E5B7 /* ModelsView.swift in Sources */,
 				77F6875791AA47F39173115E /* FineTuneView.swift in Sources */,
-				9906D3CF6ECA4DFCBA401B91 /* ChatView.swift in Sources */,
 				36541B00BA214EF5B95DE603 /* RAGView.swift in Sources */,
 				0349921B546A47099CF06A30 /* SettingsView.swift in Sources */,
 				A1B2C3D4E5F647A8B9C0D1E2 /* AngelaBrainModels.swift in Sources */,

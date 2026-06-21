@@ -1,6 +1,6 @@
 """
 AI TOP — Local AI Training & Inference Studio
-FastAPI backend for hardware monitoring, model management, fine-tuning, chat, and RAG.
+FastAPI backend for hardware monitoring, model management, fine-tuning, and RAG.
 Port: 8767
 """
 
@@ -19,7 +19,7 @@ _angela_root = str(Path(__file__).resolve().parents[2])
 if _angela_root not in sys.path:
     sys.path.insert(0, _angela_root)
 
-from routers import dashboard, models, finetune, chat, rag, angela_brain, model_hub, video_studio, projects
+from routers import dashboard, models, finetune, rag, angela_brain, model_hub, video_studio, projects
 from services.db_service import init_pool, close_pool, MACHINE_TAG
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
@@ -33,9 +33,7 @@ async def lifespan(app: FastAPI):
         print("Supabase pool connected")
         # Sync data from Supabase
         from services.finetune_service import sync_from_cloud as sync_ft
-        from services.rag_service import sync_from_cloud as sync_rag
         await sync_ft()
-        await sync_rag()
         print("Supabase sync complete")
     except Exception as e:
         print(f"WARNING: Supabase DB not available ({e}) — running in local-only mode")
@@ -58,7 +56,6 @@ app.add_middleware(
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(models.router, prefix="/api")
 app.include_router(finetune.router, prefix="/api")
-app.include_router(chat.router, prefix="/api")
 app.include_router(rag.router, prefix="/api")
 app.include_router(angela_brain.router, prefix="/api")
 app.include_router(model_hub.router, prefix="/api")

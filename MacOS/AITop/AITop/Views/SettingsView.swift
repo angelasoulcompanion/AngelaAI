@@ -15,13 +15,6 @@ struct SettingsView: View {
     @State private var localModels: [OllamaModel] = []
     @State private var settingsSaved = false
 
-    // RAG folder
-    @AppStorage("ragFolderPath") private var ragFolderPath = "/Users/davidsamanyaporn/PycharmProjects/AngelaAI/rag_docs"
-    @State private var isIndexing = false
-    @State private var indexResult: String?
-    @State private var errorMessage: String?
-    @State private var showError = false
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AITopTheme.largeSpacing) {
@@ -71,60 +64,6 @@ struct SettingsView: View {
                         }
                         .aiTopPrimaryButton()
                     }
-                }
-                .padding(AITopTheme.spacing)
-                .aiTopCard()
-
-                // RAG Documents Folder
-                VStack(alignment: .leading, spacing: AITopTheme.spacing) {
-                    Text("RAG Documents")
-                        .font(AITopTheme.heading())
-                        .foregroundColor(AITopTheme.textPrimary)
-
-                    HStack {
-                        Text("Folder:")
-                            .font(AITopTheme.body())
-                            .foregroundColor(AITopTheme.textSecondary)
-                        TextField("Path to documents folder...", text: $ragFolderPath)
-                            .textFieldStyle(.roundedBorder)
-                            .font(AITopTheme.monospace())
-                        Button("Browse") {
-                            browseFolder()
-                        }
-                        .aiTopSecondaryButton()
-                    }
-
-                    Text(ragFolderPath)
-                        .font(AITopTheme.caption())
-                        .foregroundColor(AITopTheme.textTertiary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-
-                    HStack(spacing: 12) {
-                        Button {
-                            indexFolder()
-                        } label: {
-                            HStack(spacing: 6) {
-                                if isIndexing {
-                                    ProgressView().scaleEffect(0.7)
-                                }
-                                Image(systemName: "doc.text.magnifyingglass")
-                                Text("Index Folder")
-                            }
-                        }
-                        .aiTopPrimaryButton()
-                        .disabled(ragFolderPath.isEmpty || isIndexing)
-
-                        if let result = indexResult {
-                            Text(result)
-                                .font(AITopTheme.caption())
-                                .foregroundColor(AITopTheme.success)
-                        }
-                    }
-
-                    Text("Indexes all .txt, .md, .pdf, .py, .json, .csv files in the folder for RAG search.")
-                        .font(AITopTheme.caption())
-                        .foregroundColor(AITopTheme.textTertiary)
                 }
                 .padding(AITopTheme.spacing)
                 .aiTopCard()
@@ -219,11 +158,6 @@ struct SettingsView: View {
             .padding(AITopTheme.largeSpacing)
         }
         .background(AITopTheme.backgroundDark)
-        .alert("Error", isPresented: $showError) {
-            Button("OK") {}
-        } message: {
-            Text(errorMessage ?? "Unknown error")
-        }
         .onAppear { loadModels() }
     }
 
@@ -238,36 +172,4 @@ struct SettingsView: View {
         }
     }
 
-    private func browseFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        if panel.runModal() == .OK, let url = panel.url {
-            ragFolderPath = url.path
-        }
-    }
-
-    private func indexFolder() {
-        isIndexing = true
-        indexResult = nil
-        Task {
-            do {
-                let resp = try await apiService.indexRAGFolder(path: ragFolderPath)
-                await MainActor.run {
-                    isIndexing = false
-                    indexResult = "\(resp.totalIndexed) files indexed"
-                    if resp.totalErrors > 0 {
-                        indexResult! += ", \(resp.totalErrors) errors"
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    isIndexing = false
-                    errorMessage = error.localizedDescription
-                    showError = true
-                }
-            }
-        }
-    }
 }

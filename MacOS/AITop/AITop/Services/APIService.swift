@@ -195,13 +195,6 @@ class APIService: ObservableObject {
         return try await get("/models/search/hf?query=\(encoded)&task=\(task)")
     }
 
-    // MARK: - Chat
-
-    func chat(model: String, messages: [ChatMessage], system: String? = nil, temperature: Double = 0.7, maxTokens: Int = 2048, ragEnabled: Bool = false) async throws -> ChatResponse {
-        let body = ChatRequest(model: model, messages: messages, system: system, temperature: temperature, maxTokens: maxTokens, stream: false, ragEnabled: ragEnabled)
-        return try await post("/chat", body: body, timeout: 120)
-    }
-
     // MARK: - Fine-Tune
 
     func getTrainingMethods() async throws -> MethodsResponse {
@@ -312,26 +305,10 @@ class APIService: ObservableObject {
         return try await post("/finetune/datasets/export", body: body, timeout: 120)
     }
 
-    // MARK: - RAG
+    // MARK: - RAG (read-only dashboard over Angela's rag_* corpora)
 
-    func getDocuments() async throws -> DocumentsResponse {
-        try await get("/rag/documents")
-    }
-
-    func queryRAG(query: String, model: String, topK: Int = 5) async throws -> RAGQueryResponse {
-        let body = RAGQueryRequest(query: query, model: model, topK: topK)
-        return try await post("/rag/query", body: body, timeout: 120)
-    }
-
-    func deleteRAGDocument(id: String) async throws {
-        try await delete("/rag/documents/\(id)")
-    }
-
-    func indexRAGFolder(path: String) async throws -> IndexFolderResponse {
-        struct Req: Encodable {
-            let folder_path: String // snake_case to match Python
-        }
-        return try await post("/rag/documents/index-folder", body: Req(folder_path: path), timeout: 300)
+    func getAngelaRAGStats() async throws -> AngelaRAGStats {
+        try await get("/rag/angela-stats", timeout: 60)
     }
 
     // MARK: - Fine-Tune Datasets

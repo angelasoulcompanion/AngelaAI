@@ -2,53 +2,48 @@
 //  RAGModels.swift
 //  AITop
 //
+//  Read-only stats for Angela's domain RAG knowledge bases (rag_* on Supabase).
+//
 
 import Foundation
 
-struct DocumentsResponse: Codable {
-    let documents: [RAGDocument]
-    let count: Int
+struct AngelaRAGStats: Codable {
+    let embedModel: String
+    let embedDims: Int
+    let totalChunks: Int
+    let totalDomains: Int
+    let totalSources: Int
+    let totalTokens: Int
+    let totalEmbedded: Int
+    let lastUpdated: String?
+    let domains: [RAGDomain]
 }
 
-struct RAGDocument: Codable, Identifiable {
-    let id: String
-    let filename: String
-    let chunkCount: Int
-    let charCount: Int
-    let indexed: Bool
-}
-
-struct RAGQueryRequest: Codable {
-    let query: String
-    let model: String
-    let topK: Int
-}
-
-struct RAGQueryResponse: Codable {
-    let answer: String
-    let chunks: [RAGChunk]
-    let model: String
-    let tokensPerSecond: Double?
-}
-
-struct IndexFolderResponse: Codable {
-    let folder: String
-    let indexed: [IndexedFile]
-    let totalIndexed: Int
-    let totalErrors: Int
-}
-
-struct IndexedFile: Codable {
-    let filename: String
+struct RAGDomain: Codable, Identifiable {
+    let key: String
+    let table: String
+    let label: String
     let chunks: Int
+    let embedded: Int
+    let sources: Int
+    let tokens: Int
+    let updatedAt: String?
+    let languages: [RAGLanguage]
+    let topSources: [RAGTopSource]
+
+    var id: String { key }
 }
 
-struct RAGChunk: Codable, Identifiable {
-    let chunkText: String
-    let score: Double
-    let docId: String
-    let docName: String
-    let chunkIndex: Int
+struct RAGLanguage: Codable, Identifiable {
+    let language: String
+    let count: Int
 
-    var id: String { "\(docId)-\(chunkIndex)" }
+    var id: String { language }
+}
+
+struct RAGTopSource: Codable, Identifiable {
+    let source: String
+    let count: Int
+
+    var id: String { source }
 }

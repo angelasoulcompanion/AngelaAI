@@ -30,8 +30,6 @@ struct ContentView: View {
                     FineTuneView()
                 case .videoStudio:
                     VideoStudioView()
-                case .chat:
-                    ChatView()
                 case .rag:
                     RAGView()
                 case .settings:
