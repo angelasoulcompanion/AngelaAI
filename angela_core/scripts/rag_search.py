@@ -135,6 +135,49 @@ async def _query_table(
     return out
 
 
+async def _log_application(
+    conn, domain: str, query: str, results: list[dict]
+) -> None:
+    """Best-effort: record this RAG retrieval into public.rag_applications.
+
+    Every call to rag_search() leaves an audit row here so Angela's grounded
+    work is traceable (which query, which corpus, which sources were used).
+    `id` is GENERATED ALWAYS AS IDENTITY — never insert it. Logging is
+    non-fatal: a failure here must never break retrieval, so it is swallowed
+    with a stderr warning rather than raised.
+    """
+    try:
+        sources: list[str] = []
+        refs: list[str] = []
+        topics: list[str] = []
+        for r in results:
+            s, ref, t = r.get("source"), r.get("source_ref"), r.get("topic")
+            if s and s not in sources:
+                sources.append(s)
+            if ref and ref not in refs:
+                refs.append(ref)
+            if t and t not in topics:
+                topics.append(t)
+        top_sim = max((r["similarity"] for r in results), default=None)
+        await conn.execute(
+            """
+            INSERT INTO rag_applications
+                (query, domain, sources, source_refs, topics,
+                 chunk_count, top_similarity)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            """,
+            query,
+            domain,
+            sources,
+            refs,
+            topics,
+            len(results),
+            float(top_sim) if top_sim is not None else None,
+        )
+    except Exception as e:  # noqa: BLE001 — logging is best-effort, never fatal
+        print(f"⚠️  rag_applications log skipped: {e}", file=sys.stderr)
+
+
 async def rag_search(
     domain: str,
     query: str,
@@ -146,6 +189,9 @@ async def rag_search(
     `domain` is a key in DOMAINS, or 'auto'/'all' to fan out across every
     corpus and merge the global top-k by similarity. Each result dict is
     {source, source_ref, topic, content, similarity, domain}.
+
+    Every retrieval is auto-logged to public.rag_applications (best-effort)
+    so Angela's RAG-grounded work is always auditable.
     """
     is_auto = domain in AUTO_KEYS
     if not is_auto and domain not in DOMAINS:
@@ -163,9 +209,12 @@ async def rag_search(
             for table, label in DOMAIN_TABLES:
                 merged += await _query_table(conn, table, label, vec, k, min_similarity)
             merged.sort(key=lambda r: r["similarity"], reverse=True)
-            return merged[:k]
-        table, label = DOMAINS[domain]
-        return await _query_table(conn, table, label, vec, k, min_similarity)
+            results = merged[:k]
+        else:
+            table, label = DOMAINS[domain]
+            results = await _query_table(conn, table, label, vec, k, min_similarity)
+        await _log_application(conn, domain, query, results)
+        return results
     finally:
         await conn.close()
 
