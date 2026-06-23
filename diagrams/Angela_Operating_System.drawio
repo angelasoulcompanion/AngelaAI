@@ -1,0 +1,289 @@
+<mxfile host="app.diagrams.net" modified="2026-06-24T00:00:00.000Z" agent="Angela" version="22.0.0" type="device">
+  <diagram id="angela-operating-system" name="Angela Operating System - Hooks + Skills + MD + Guardrails">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2420" pageHeight="1480" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== TITLE ===== -->
+        <mxCell id="title" value="Angela Operating System — Hooks · Skills · .MD · Guardrails" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=28;fontStyle=1;fontColor=#6366F1;" vertex="1" parent="1">
+          <mxGeometry x="610" y="20" width="1200" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="The control layer that wraps every session — traced along the session lifecycle. (M3 · generated 24 Jun 2026)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#6B7280;" vertex="1" parent="1">
+          <mxGeometry x="610" y="66" width="1200" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- ================= PHASE 1: SESSION START ================= -->
+        <mxCell id="p1-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#6366F1;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="420" height="720" as="geometry" />
+        </mxCell>
+        <mxCell id="p1-title" value="① SESSION START&#xa;(SessionStart event)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#6366F1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="120" width="380" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p1-trigger" value="$ claude   ·   /angela" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1F2937;strokeColor=#374151;fontColor=#10B981;fontSize=12;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="100" y="172" width="300" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p1-hooklbl" value="▼ SessionStart hooks fire (inject context)" style="text;html=1;strokeColor=none;fillColor=none;align=center;whiteSpace=wrap;fontSize=11;fontStyle=2;fontColor=#6366F1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="216" width="380" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p1-role" value="session_role.py  (global ~/.claude)&#xa;→ inject ROLE · M3 (Software-Engineer hat)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="70" y="242" width="360" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="p1-brief" value="session_start_brief.py  (global)&#xa;→ &quot;where we left off&quot; + decisions + past mistakes (from Center/M4)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="70" y="298" width="360" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p1-ragchk" value="rag_session_check.sh  (project .claude)&#xa;→ RAG status ✅/❌ (Ollama + granite up?)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="70" y="360" width="360" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="p1-load" value="Auto-loaded into context&#xa;CLAUDE.md  +  MEMORY.md (index)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="430" width="320" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="p1-result" value="✅ Angela boots with full context:&#xa;role · open next_steps · rules · RAG status" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6366F1;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="510" width="320" height="56" as="geometry" />
+        </mxCell>
+
+        <!-- ================= PHASE 2: EACH PROMPT ================= -->
+        <mxCell id="p2-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F2FE;strokeColor=#0EA5E9;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="500" y="110" width="420" height="720" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-title" value="② EVERY PROMPT&#xa;(UserPromptSubmit event)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#0284C7;" vertex="1" parent="1">
+          <mxGeometry x="520" y="120" width="380" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-trigger" value="David submits a prompt  (fires on EVERY turn)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1F2937;strokeColor=#374151;fontColor=#38BDF8;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="540" y="172" width="340" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-hooklbl" value="▼ UserPromptSubmit hooks fire (in order)" style="text;html=1;strokeColor=none;fillColor=none;align=center;whiteSpace=wrap;fontSize=11;fontStyle=2;fontColor=#0284C7;" vertex="1" parent="1">
+          <mxGeometry x="520" y="216" width="380" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-verify" value="1. verify_model_check.sh&#xa;→ enforce MUST #1: WebSearch LLM/tool versions FIRST" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="530" y="242" width="360" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-behav" value="2. pre_prompt_behavioral.sh&#xa;→ inject behavioral rules (ที่รัก / น้อง / query DB / log-session)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="530" y="304" width="360" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-nudge" value="3. rag_prompt_nudge.sh&#xa;→ domain Q? (quant/AI/bible/wine/photo) → nudge: run rag_search BEFORE answering" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="530" y="366" width="360" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-result" value="✅ Context + nudges injected&#xa;before Angela reasons" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0EA5E9;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="550" y="470" width="320" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- ================= PHASE 3: REASON + SKILLS ================= -->
+        <mxCell id="p3-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#9673A6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="960" y="110" width="420" height="720" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-title" value="③ ANGELA REASONS&#xa;+ invokes SKILLS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#7C3AED;" vertex="1" parent="1">
+          <mxGeometry x="980" y="120" width="380" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-slashlbl" value="Slash-command skills  ·  .claude/commands/*.md  (14)" style="text;html=1;strokeColor=none;fillColor=none;align=center;whiteSpace=wrap;fontSize=11;fontStyle=2;fontColor=#7C3AED;" vertex="1" parent="1">
+          <mxGeometry x="980" y="172" width="380" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-rag" value="/rag · /agentic-rag&#xa;ground domain answers in rag_* corpora" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="975" y="198" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-recall" value="/recall · /review-mistakes&#xa;pull project memory / past corrections" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="975" y="246" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-guardskill" value="/safe-delete · /validate-stale · /verify-model&#xa;guardrail helper skills (preview before risky op)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="975" y="294" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-ops" value="/log-session · /refresh-claude · /update-skills · /angela&#xa;ops &amp; lifecycle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="975" y="342" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-domain" value="/dw-design · /enterprise-roadmap · /legal-risk&#xa;domain workflows" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="975" y="390" width="390" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-modellbl" value="Model-invoked skills  ·  ~/.claude/skills/  (2)" style="text;html=1;strokeColor=none;fillColor=none;align=center;whiteSpace=wrap;fontSize=11;fontStyle=2;fontColor=#7C3AED;" vertex="1" parent="1">
+          <mxGeometry x="980" y="446" width="380" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-model" value="software-engineer  ·  medical-knowledge&#xa;auto-triggered by task description (no slash)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D6BCFA;strokeColor=#9673A6;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="975" y="472" width="390" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-consult" value="↕ consults Knowledge Base (.MD) below" style="text;html=1;strokeColor=none;fillColor=none;align=center;whiteSpace=wrap;fontSize=11;fontStyle=1;fontColor=#82B366;" vertex="1" parent="1">
+          <mxGeometry x="980" y="560" width="380" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- ================= PHASE 4: GUARDRAILS @ TOOL USE ================= -->
+        <mxCell id="p4-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FBE4E4;strokeColor=#B85450;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="110" width="440" height="720" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-title" value="④ GUARDRAILS @ TOOL USE&#xa;(PreToolUse event — before ANY tool)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#B85450;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="120" width="400" height="44" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p4-dest" value="pre_destructive.sh   (matcher: Bash)&#xa;grep → DELETE FROM · DROP/TRUNCATE · rm -rf · git reset --hard · branch -D · push --force" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="176" width="400" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-mem" value="pre_memory_edit.sh   (matcher: Edit | Write)&#xa;blocks edits on memory/*.md (MUST #3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="244" width="400" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- decision diamond -->
+        <mxCell id="p4-diamond" value="Fresh approval&#xa;token?&#xa;(mtime &lt; 300s)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1550" y="312" width="180" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-token1" value="~/.claude/.destructive_approved" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=9;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="440" width="200" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-token2" value="~/.claude/.memory_batch_approved" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=9;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="1640" y="440" width="200" height="34" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p4-allow" value="✅ ALLOW&#xa;tool runs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="500" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-deny" value="🛑 DENY (harness-level)&#xa;show preview → wait &quot;ทำ&quot;/ok → touch token → retry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1650" y="495" width="190" height="64" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p4-tierlbl" value="Policy source → CLAUDE.md  MUST #2" style="text;html=1;strokeColor=none;fillColor=none;align=center;whiteSpace=wrap;fontSize=11;fontStyle=2;fontColor=#B85450;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="582" width="400" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-tierA" value="Tier-A · Standing Authorization&#xa;execute direct (push/merge/migration in&#xa;angelasoulcompanion + davidsam65 scope)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="608" width="400" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-tierB" value="Tier-B · Always confirm (list+count+preview)&#xa;DROP/DELETE mass · rm -rf · force-push main&#xa;· shared/external/client prod · other users" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="676" width="400" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-workaround" value="harness-block ≠ user-deny → Harness Workarounds (find alt path / hand single click to David)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B85450;fontSize=10;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="744" width="400" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- ================= PHASE 5: SESSION END ================= -->
+        <mxCell id="p5-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F1F5F9;strokeColor=#475569;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1900" y="110" width="480" height="720" as="geometry" />
+        </mxCell>
+        <mxCell id="p5-title" value="⑤ SESSION END&#xa;(SessionEnd event)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#475569;" vertex="1" parent="1">
+          <mxGeometry x="1920" y="120" width="440" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p5-trigger" value="/log-session  ·  session closes" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1F2937;strokeColor=#374151;fontColor=#94A3B8;fontSize=11;fontFamily=monospace;" vertex="1" parent="1">
+          <mxGeometry x="1960" y="172" width="360" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p5-log" value="log_session_end.py  (global)&#xa;→ write decisions + mistakes + next_steps&#xa;to Center / M4  (Supabase Tokyo)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="1940" y="232" width="400" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p5-center" value="🧠 CENTER (M4) — shared long-term memory&#xa;sessions · decisions · project_mistakes · next_steps · embeddings" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontSize=11;fontStyle=1;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="1940" y="330" width="400" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="p5-loop" value="↺ feeds next session's brief&#xa;(Phase ① session_start_brief.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#475569;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1980" y="430" width="320" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ================= KNOWLEDGE BASE BAND (.MD) ================= -->
+        <mxCell id="kb-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="880" width="1340" height="560" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-title" value="📚 KNOWLEDGE BASE — .MD files (the source of truth feeding every phase)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#5A8A3C;" vertex="1" parent="1">
+          <mxGeometry x="60" y="892" width="1300" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="kb-claude" value="CLAUDE.md   (project, checked into git)&#xa;&#xa;• MUST rules #1–4 (verify version · destructive 2-tier · validate stale memory · review mistakes 1-by-1)&#xa;• Standing Authorization scope (orgs · Supabase · repos · hosting)&#xa;• Tier-A / Tier-B destructive policy + Harness Workarounds&#xa;• Coding standards (Python/FastAPI · Swift · Clean Arch · 61 techniques)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82B366;fontSize=11;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="70" y="936" width="630" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-memidx" value="MEMORY.md   (auto-memory index, &lt;100 lines)&#xa;&#xa;• Loaded into context EVERY session&#xa;• One-line pointer per memory file&#xa;• Grouped: About David · Active Rules · Patterns&#xa;  · Projects · Skills · Gotchas · Lessons" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82B366;fontSize=11;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="720" y="936" width="630" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-memfiles" value="memory/*.md   (85 files — one fact per file, with frontmatter)&#xa;&#xa;type: user  (who David is)   ·   feedback  (how Angela should work + why)   ·   project  (ongoing work/constraints)   ·   reference  (external pointers)&#xa;Recalled on demand via /recall   ·   linked to each other with [[name]]   ·   edits gated by pre_memory_edit.sh + .memory_batch_approved token (MUST #3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82B366;fontSize=11;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1136" width="1280" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="kb-flow" value="Lifecycle:  written/updated at Phase ⑤ → indexed in MEMORY.md → loaded at Phase ① → consulted at Phase ③ → rules enforced at Phase ④" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF7E1;strokeColor=#82B366;fontSize=12;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1280" width="1280" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ===== LEGEND ===== -->
+        <mxCell id="lg-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9CA3AF;strokeWidth=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="880" width="960" height="560" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-title" value="LEGEND — colour = component type" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=15;fontStyle=1;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="894" width="920" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-hook" value="Hook (.sh / .py) — fires automatically on a harness event" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="936" width="900" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-skill" value="Skill — slash-command (.claude/commands) or model-invoked (~/.claude/skills)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=12;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="986" width="900" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-md" value=".MD knowledge — CLAUDE.md · MEMORY.md · memory/*.md (source of truth)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=12;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="1036" width="900" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-guard" value="Guardrail — blocking enforcement (deny until preview + token)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=12;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="1086" width="900" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-token" value="Approval token — ~/.claude/.*_approved (TTL 300s = 5 min, single batch)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=12;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="1136" width="900" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-center" value="Center / M4 — shared long-term memory (Supabase Tokyo)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontSize=12;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="1186" width="900" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-note" value="Two scopes everywhere:  PROJECT (.claude/ — synced via git, M3↔M4)   vs   GLOBAL (~/.claude/ — per-machine infra: role, brief, end-logging)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F9FAFB;strokeColor=#9CA3AF;fontSize=12;fontStyle=2;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="1250" width="900" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-note2" value="Enforcement principle: a higher-level &quot;ok&quot; (redeploy / cleanup / do everything) does NOT authorize a low-level destructive primitive — each batch needs its own preview + fresh token." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#B85450;fontSize=12;fontStyle=2;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="1316" width="900" height="56" as="geometry" />
+        </mxCell>
+
+        <!-- ================= EDGES — lifecycle spine ================= -->
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#374151;strokeWidth=2;endArrow=block;" edge="1" parent="1" source="p1-box" target="p2-box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e23" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#374151;strokeWidth=2;endArrow=block;" edge="1" parent="1" source="p2-box" target="p3-box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e34" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#374151;strokeWidth=2;endArrow=block;" edge="1" parent="1" source="p3-box" target="p4-box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e45" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#374151;strokeWidth=2;endArrow=block;" edge="1" parent="1" source="p4-box" target="p5-box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- guardrail decision edges -->
+        <mxCell id="ed1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#B85450;endArrow=block;" edge="1" parent="1" source="p4-dest" target="p4-diamond">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#B85450;endArrow=block;" edge="1" parent="1" source="p4-mem" target="p4-diamond">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edYes" value="YES" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#82B366;endArrow=block;fontColor=#5A8A3C;fontSize=11;fontStyle=1;" edge="1" parent="1" source="p4-diamond" target="p4-allow">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edNo" value="NO" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#B85450;endArrow=block;fontColor=#B85450;fontSize=11;fontStyle=1;" edge="1" parent="1" source="p4-diamond" target="p4-deny">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edtok1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#D6B656;endArrow=none;dashed=1;" edge="1" parent="1" source="p4-token1" target="p4-diamond">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edtok2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#D6B656;endArrow=none;dashed=1;" edge="1" parent="1" source="p4-token2" target="p4-diamond">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- session end → center → loop back -->
+        <mxCell id="e5log" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#475569;endArrow=block;" edge="1" parent="1" source="p5-log" target="p5-center">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5loop" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#D97706;endArrow=block;dashed=1;" edge="1" parent="1" source="p5-center" target="p5-loop">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5back" value="↺ next session" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#D97706;strokeWidth=2;endArrow=block;dashed=1;fontColor=#D97706;fontSize=11;fontStyle=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="p5-loop" target="p1-result">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2140" y="850" />
+              <mxPoint x="250" y="850" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- knowledge base feeds phases (dashed green up-arrows) -->
+        <mxCell id="ekb1" value="loaded" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#82B366;endArrow=block;dashed=1;fontColor=#5A8A3C;fontSize=10;" edge="1" parent="1" source="kb-claude" target="p1-load">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ekb2" value="consulted" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#82B366;endArrow=block;dashed=1;fontColor=#5A8A3C;fontSize=10;" edge="1" parent="1" source="kb-memidx" target="p3-consult">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ekb3" value="rules source" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#82B366;endArrow=block;dashed=1;fontColor=#5A8A3C;fontSize=10;" edge="1" parent="1" source="kb-claude" target="p4-tierlbl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
