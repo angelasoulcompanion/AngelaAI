@@ -61,6 +61,7 @@ def fetch():
 HTML = """<!DOCTYPE html>
 <html lang="th"><head>
 <meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -236,8 +237,11 @@ def build(d):
 def main():
     data = fetch()
     OUT.parent.mkdir(exist_ok=True)
-    OUT.write_text(build(data), encoding="utf-8")
-    print(f"wrote {OUT}  ({OUT.stat().st_size/1024:.1f} KB)")
+    html = build(data)
+    OUT.write_text(html, encoding="utf-8")
+    # index.html for Vercel static deploy (same content)
+    (OUT.parent / "index.html").write_text(html, encoding="utf-8")
+    print(f"wrote {OUT}  ({OUT.stat().st_size/1024:.1f} KB)  + index.html")
 
 
 if __name__ == "__main__":
