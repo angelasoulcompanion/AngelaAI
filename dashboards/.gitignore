@@ -1,3 +1,2 @@
-# generated dashboard artifacts (regenerate via build_dashboard.py; contains client financials)
+# generated dashboard artifact (regenerate via build_dashboard.py; contains client financials)
 *.html
-.vercel

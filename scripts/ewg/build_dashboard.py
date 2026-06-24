@@ -237,11 +237,8 @@ def build(d):
 def main():
     data = fetch()
     OUT.parent.mkdir(exist_ok=True)
-    html = build(data)
-    OUT.write_text(html, encoding="utf-8")
-    # index.html for Vercel static deploy (same content)
-    (OUT.parent / "index.html").write_text(html, encoding="utf-8")
-    print(f"wrote {OUT}  ({OUT.stat().st_size/1024:.1f} KB)  + index.html")
+    OUT.write_text(build(data), encoding="utf-8")
+    print(f"wrote {OUT}  ({OUT.stat().st_size/1024:.1f} KB)")
 
 
 if __name__ == "__main__":
