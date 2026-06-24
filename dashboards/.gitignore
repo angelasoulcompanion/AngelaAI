@@ -1,0 +1,2 @@
+# generated dashboard artifacts (regenerate via build_dashboard.py; contains client financials)
+*.html
