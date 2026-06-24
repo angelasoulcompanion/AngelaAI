@@ -38,9 +38,11 @@ GROUP BY ROLLUP (c.category_name, a.placement, a.hw_sw)
 ORDER BY c.category_name NULLS LAST, a.placement NULLS LAST, a.hw_sw NULLS LAST;
 
 -- ---- Monetization candidate shortlist -------------------------------------
--- Assets most attractive to monetize: still carry book value but Non-active,
--- or near end-of-life, ranked by net book value released.
-CREATE OR REPLACE VIEW ewg.v_monetize_candidates AS
+-- Prime monetization targets: Non-active assets that still carry book value
+-- (capital tied up in idle assets). Ranked by net book value released.
+-- NOTE: Opex is NOT per-asset — it lives at category grain in ewg.category_cost.
+DROP VIEW IF EXISTS ewg.v_monetize_candidates;
+CREATE VIEW ewg.v_monetize_candidates AS
 SELECT
     e.entity_code,
     a.asset_code,
@@ -51,11 +53,10 @@ SELECT
     a.status,
     a.net_book_value,
     a.dep_year_2026,
-    a.opex,
     a.useful_life_years
 FROM ewg.asset a
 JOIN ewg.entity e ON e.entity_id = a.entity_id
 LEFT JOIN ewg.breakdown_category c ON c.category_id = a.category_id
 WHERE a.net_book_value > 0
-  AND (a.status = 'non_active' OR a.opex > 0)
+  AND a.status = 'non_active'
 ORDER BY a.net_book_value DESC;

@@ -237,6 +237,50 @@ def load_monetization(conn, xlsx: str):
           f"(BV={book:,.0f} WIP={wip:,.0f} total={total:,.0f}) + {len(lines)} lines")
 
 
+# atomic placement × hw_sw column groups (BV, Dep, Opex) in the SUM EWG band
+_SUM_ATOM = {
+    ("back_end", "hw"): (2, 3, 4),
+    ("back_end", "sw"): (5, 6, 7),
+    ("front_end", "hw"): (11, 12, 13),
+    ("front_end", "sw"): (14, 15, 16),
+}
+
+
+def load_category_cost(conn, xlsx: str):
+    """SUM EWG sheet -> ewg.category_cost (authoritative Opex SSOT)."""
+    s = pd.read_excel(xlsx, sheet_name="SUM EWG", header=None)
+    cur = conn.cursor()
+    cur.execute("SELECT category_name, category_id FROM ewg.breakdown_category")
+    cat_map = dict(cur.fetchall())
+
+    rows, cat = [], None
+    for i in range(4, s.shape[0]):
+        c0, c1 = s.iat[i, 0], s.iat[i, 1]
+        c1 = str(c1).strip() if pd.notna(c1) else ""
+        if pd.notna(c0) and str(c0).strip().replace(".0", "").isdigit():
+            cat = c1            # category header row = roll-up of its statuses, skip
+            continue
+        st = norm_status(c1)
+        if not st or cat is None or cat not in cat_map:
+            continue
+        for (pl, hw), (b, d, o) in _SUM_ATOM.items():
+            bv, dep, opx = norm_num(s.iat[i, b]), norm_num(s.iat[i, d]), norm_num(s.iat[i, o])
+            if bv is None and dep is None and opx is None:
+                continue
+            rows.append((cat_map[cat], pl, hw, st, bv, dep, opx, Path(xlsx).name))
+
+    cur.execute("TRUNCATE ewg.category_cost")
+    execute_values(cur, """
+        INSERT INTO ewg.category_cost
+            (category_id, placement, hw_sw, status, book_value, depre, opex, source_file)
+        VALUES %s
+    """, rows)
+    conn.commit()
+    cur.execute("SELECT sum(opex), sum(depre), sum(book_value) FROM ewg.category_cost")
+    so, sd, sb = cur.fetchone()
+    print(f"  category_cost: {len(rows)} rows | opex={so:,.2f} dep={sd:,.2f} bv={sb:,.2f}")
+
+
 def main():
     xlsx = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_FILE
     if not Path(xlsx).exists():
@@ -245,6 +289,7 @@ def main():
     conn = psycopg2.connect(SUPABASE_DATABASE_URL)
     try:
         load_assets(conn, xlsx)
+        load_category_cost(conn, xlsx)
         load_monetization(conn, xlsx)
     finally:
         conn.close()
