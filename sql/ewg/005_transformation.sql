@@ -42,7 +42,7 @@ VALUES
      178126181.45, 'book_value', 'run', 'Y1',
      '1,233 booked IT assets. Opex ฿48.0M/yr, Dep ฿47.2M/yr. Monetization candidates inside.', 1),
     ('pillar', 'maintenance', 'Optimization Model — Water Operation', 'optimization',
-     NULL, 'tbd', 'planned', 'Y1',
+     NULL, 'tbd', 'planned', 'Y2',
      'Operational optimization of existing water operations (analytics-driven).', 2),
     ('pillar', 'maintenance', 'AI / Advanced Analytics', 'ai',
      NULL, 'tbd', 'planned', 'Y2',

@@ -210,11 +210,12 @@ def build(summ, items, kpi):
     <li>Stand up DataWarehouse SSOT (Bronze→Silver→Gold)</li>
     <li>Land IT Asset register + ERP finance (Gold mart live)</li>
     <li>SCADA/OT telemetry ingestion (IIoT historian)</li>
-    <li>IAM + BI Platform go-live; Water-Ops optimization pilot</li>
+    <li>IAM + BI Platform go-live</li>
     <li>IT Asset monetization — action Non-active idle capital {idle}</li></ul></div>
-  <div class="yr"><div class="h">Year 2 · Scale</div><div class="p">2027 — analytics + new builds</div><ul>
+  <div class="yr"><div class="h">Year 2 · Scale</div><div class="p">2027 — optimization + analytics</div><ul>
+    <li>Optimization Model — Water Operation (analytics-driven)</li>
+    <li>AI / Advanced Analytics: leakage, demand, predictive maintenance</li>
     <li>Smart Water sensor network → DW</li>
-    <li>AI/ML platform: leakage, demand, predictive maintenance</li>
     <li>ERP upgrade; SIEM (IT+OT) + ITSM</li>
     <li>Create-pillar WIP builds delivered into production</li></ul></div>
   <div class="yr"><div class="h">Year 3 · Optimize</div><div class="p">2028 — autonomous ops</div><ul>
