@@ -110,6 +110,12 @@ HTML = """<!DOCTYPE html>
     <div class="sub">East Water Group — ทรัพย์สินทาง IT · ณ <span class="asof">31 มีนาคม 2569</span></div></div>
   <div class="sub">Deal Total <b style="color:var(--cyan)">฿355.0M</b> &nbsp;=&nbsp; Asset ฿175.0M + WIP ฿180.0M</div>
 </header>
+<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+     background:#0f1726;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13px">
+  <b style="color:var(--teal)">▸ MAINTENANCE pillar</b>
+  <span class="sub">IT Asset Portfolio (booked, run/optimize) — ส่วนหนึ่งของ EWG Digital Transformation</span>
+  <span style="margin-left:auto" class="sub">Create (NEW) = WIP <b style="color:var(--amber)">฿180.0M</b> · ดูภาพรวมที่ <b>ewg_blueprint.html</b></span>
+</div>
 
 <section>
   <p class="lbl">ภาพรวม</p>
