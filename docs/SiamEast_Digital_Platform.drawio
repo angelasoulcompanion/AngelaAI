@@ -1,0 +1,431 @@
+<mxfile host="Electron" agent="Angela" pages="2">
+  <diagram id="siameast-digital-platform" name="SiamEast Digital Platform">
+    <mxGraphModel dx="1368" dy="852" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="zoneOp" parent="1" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=6 6;fillColor=none;strokeColor=#B85450;verticalAlign=top;fontColor=#B85450;fontStyle=1;fontSize=14;arcSize=4;" value="DIGITAL PLATFORM  —  ( − ) $  ·  cost / investment" vertex="1">
+          <mxGeometry height="420" width="650" x="40" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="zoneCust" parent="1" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=6 6;fillColor=none;strokeColor=#82B366;verticalAlign=top;fontColor=#2D7D46;fontStyle=1;fontSize=14;arcSize=4;" value="CUSTOMER &amp; OMNI-CHANNEL  —  ( + ) $  ·  revenue" vertex="1">
+          <mxGeometry height="600" width="740" x="720" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-11" edge="1" parent="1" source="dp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="GSMafV3sk3FCM9H0Ehpx-9">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="330" y="180" />
+              <mxPoint x="565" y="180" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dp" parent="1" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#F8CECC;strokeColor=#B85450;fontStyle=1;fontSize=13;" value="SE Digital Platform" vertex="1">
+          <mxGeometry height="54" width="170" x="203" y="101" as="geometry" />
+        </mxCell>
+        <mxCell id="seasset3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=12;" value="SEAsset (Web APP)" vertex="1">
+          <mxGeometry height="46" width="130" x="90" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="seengineer" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;" value="SEEngineer (Native Mobile APP)" vertex="1">
+          <mxGeometry height="46" width="130" x="90" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="siamweb" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;" value="www.SiamEastSolution.com (Web Site)" vertex="1">
+          <mxGeometry height="46" width="200" x="270" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-13" edge="1" parent="1" source="semidnight" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;" target="GSMafV3sk3FCM9H0Ehpx-10">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+            <mxPoint x="155" y="680" as="sourcePoint" />
+            <mxPoint x="155" y="780" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-14" connectable="0" parent="GSMafV3sk3FCM9H0Ehpx-13" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ETL" vertex="1">
+          <mxGeometry relative="1" x="-0.1051" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="semidnight" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;" value="SE Midnight" vertex="1">
+          <mxGeometry height="60" width="85" x="112.5" y="670" as="geometry" />
+        </mxCell>
+        <mxCell id="semc" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=12;" value="SEMC (Web APP)" vertex="1">
+          <mxGeometry height="46" width="110" x="325" y="648.5" as="geometry" />
+        </mxCell>
+        <mxCell id="dwh" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;" value="SE DataWareHouse" vertex="1">
+          <mxGeometry height="88" width="160" x="300" y="779" as="geometry" />
+        </mxCell>
+        <mxCell id="omni" parent="1" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontStyle=1;fontSize=12;" value="① Omni-Channel" vertex="1">
+          <mxGeometry height="90" width="170" x="810" y="126" as="geometry" />
+        </mxCell>
+        <mxCell id="chLine" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=12;" value="Line" vertex="1">
+          <mxGeometry height="36" width="90" x="1150" y="101" as="geometry" />
+        </mxCell>
+        <mxCell id="chFB" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=12;" value="FB" vertex="1">
+          <mxGeometry height="36" width="90" x="1150" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="chMore" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=16;fontStyle=1;" value="&lt;font style=&quot;font-size: 14px; font-weight: normal;&quot;&gt;Others&lt;/font&gt;" vertex="1">
+          <mxGeometry height="36" width="90" x="1150" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="seconnex" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontStyle=1;fontSize=12;" value="SEConneX (Web APP)" vertex="1">
+          <mxGeometry height="46" width="140" x="825" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-17" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="featBox" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1295" y="390" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="seconnexmobile" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=11;" value="&lt;font style=&quot;font-size: 12px;&quot;&gt;&lt;b&gt;SEConexMobile (Native Mobile APP)&lt;/b&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="50" width="160" x="1210" y="339" as="geometry" />
+        </mxCell>
+        <mxCell id="featBox" parent="1" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=4 4;fillColor=none;strokeColor=#9673A6;verticalAlign=top;fontColor=#9673A6;fontStyle=2;fontSize=11;arcSize=8;" value="Features" vertex="1">
+          <mxGeometry height="152" width="150" x="1220" y="449" as="geometry" />
+        </mxCell>
+        <mxCell id="contract" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=12;" value="Contract" vertex="1">
+          <mxGeometry height="36" width="100" x="1250" y="481" as="geometry" />
+        </mxCell>
+        <mxCell id="ma" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=12;" value="MA" vertex="1">
+          <mxGeometry height="36" width="100" x="1250" y="547" as="geometry" />
+        </mxCell>
+        <mxCell id="carbon" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontStyle=1;fontSize=12;" value="Carbon&lt;br&gt;Credit" vertex="1">
+          <mxGeometry height="60" width="150" x="825" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dp_seasset" edge="1" parent="1" source="dp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#B85450;endArrow=block;" target="seasset3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dp_web" edge="1" parent="1" source="dp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#B85450;endArrow=block;" target="siamweb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_seasset_eng" edge="1" parent="1" source="seasset3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#B85450;endArrow=block;" target="seengineer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dp_omni" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#D79B00;strokeWidth=2;endArrow=block;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="290" y="80" />
+              <mxPoint x="895" y="80" />
+            </Array>
+            <mxPoint x="290" y="100" as="sourcePoint" />
+            <mxPoint x="895" y="132" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_omni_line" edge="1" parent="1" source="omni" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#D79B00;endArrow=block;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="chLine">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1100" y="150" />
+              <mxPoint x="1100" y="120" />
+              <mxPoint x="1150" y="120" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_omni_fb" edge="1" parent="1" source="omni" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#D79B00;endArrow=block;" target="chFB">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1090" y="180" />
+              <mxPoint x="1090" y="180" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_omni_more" edge="1" parent="1" source="omni" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#D79B00;endArrow=block;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="chMore">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="895" y="230" />
+              <mxPoint x="1100" y="230" />
+              <mxPoint x="1100" y="268" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_A_connex" edge="1" parent="1" source="dp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#D79B00;strokeWidth=2;endArrow=block;exitX=1;exitY=0.5;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="373" y="120" />
+              <mxPoint x="670" y="120" />
+              <mxPoint x="670" y="290" />
+              <mxPoint x="897" y="290" />
+            </Array>
+            <mxPoint x="380" y="130" as="sourcePoint" />
+            <mxPoint x="897" y="330" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_A_carbon" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#D79B00;strokeWidth=2;endArrow=block;" target="carbon">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="650" y="140" />
+              <mxPoint x="650" y="420" />
+              <mxPoint x="895" y="420" />
+            </Array>
+            <mxPoint x="373" y="139.9999999999999" as="sourcePoint" />
+            <mxPoint x="890" y="501" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_connex_mobile" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#D79B00;endArrow=block;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="969.9999999999995" y="353.43999999999977" as="sourcePoint" />
+            <mxPoint x="1210.0000000000005" y="352.44" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_semc_dwh" edge="1" parent="1" source="semc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#B85450;endArrow=none;startArrow=classic;startFill=1;endFill=0;" target="dwh">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="380" y="740" />
+              <mxPoint x="380" y="740" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="IFkEr475RtQaDFvcctKF-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=6 6;fillColor=none;strokeColor=#B85450;verticalAlign=top;fontColor=#B85450;fontStyle=1;fontSize=14;arcSize=4;" value="Database Architecture" vertex="1">
+          <mxGeometry height="425" width="650" x="40" y="459" as="geometry" />
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-5" edge="1" parent="1" source="GSMafV3sk3FCM9H0Ehpx-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#FF3333;strokeWidth=3;dashed=1;" target="seasset3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="460" y="689" />
+              <mxPoint x="460" y="500" />
+              <mxPoint x="60" y="500" />
+              <mxPoint x="60" y="273" />
+            </Array>
+            <mxPoint x="510" y="647" as="sourcePoint" />
+            <mxPoint x="160" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-7" edge="1" parent="1" source="GSMafV3sk3FCM9H0Ehpx-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;dashPattern=8 8;strokeColor=#FF0000;" target="seconnex">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="760" y="689" />
+              <mxPoint x="760" y="353" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-12" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=8 8;strokeWidth=2;strokeColor=#3333FF;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="GSMafV3sk3FCM9H0Ehpx-9">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="520" y="804" />
+              <mxPoint x="520" y="530" />
+              <mxPoint x="565" y="530" />
+            </Array>
+            <mxPoint x="460" y="804" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-2" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;" value="SEAsset Database" vertex="1">
+          <mxGeometry height="81.5" width="110" x="540" y="648.5" as="geometry" />
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-4" edge="1" parent="1" source="dwh" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;" target="GSMafV3sk3FCM9H0Ehpx-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=12;" value="SECA (Web APP)" vertex="1">
+          <mxGeometry height="46" width="110" x="510" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-10" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=12;" value="SEDataWarehouse (Web APP)" vertex="1">
+          <mxGeometry height="46" width="120" x="95" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-15" edge="1" parent="1" source="GSMafV3sk3FCM9H0Ehpx-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="dwh">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-16" connectable="0" parent="GSMafV3sk3FCM9H0Ehpx-15" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ELT" vertex="1">
+          <mxGeometry relative="1" x="-0.042" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-20" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;" value="Sale System+Express" vertex="1">
+          <mxGeometry height="70" width="120" x="95" y="547" as="geometry" />
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-21" edge="1" parent="1" source="GSMafV3sk3FCM9H0Ehpx-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" target="semidnight">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="GSMafV3sk3FCM9H0Ehpx-23" connectable="0" parent="GSMafV3sk3FCM9H0Ehpx-21" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="ELT" vertex="1">
+          <mxGeometry relative="1" x="-0.0189" y="3" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="siameast-er-conceptual" name="ER Diagram (Conceptual)">
+    <mxGraphModel dx="1759" dy="1096" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1150" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="er_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=18;fontStyle=1;fontColor=#333333;" value="SiamEast — Conceptual ER  ·  customer_code = golden key across all systems" vertex="1">
+          <mxGeometry height="30" width="1600" x="40" y="16" as="geometry" />
+        </mxCell>
+        <mxCell id="er_legend" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#999999;align=left;verticalAlign=top;fontSize=10;spacingLeft=8;spacingTop=6;" value="Legend&#xa;━━━━━━━━━━&#xa;──▶  1 — many (crow&#39;s foot)&#xa;╌╌▶  soft link · natural key, no FK&#xa;╌╌▶  client access (read / write)&#xa;&#xa;SEEngineer / SEConneX / SEConnexMobile&#xa;are thin clients over the SAME&#xa;AssetManagement schema (no entity copy)." vertex="1">
+          <mxGeometry height="140" width="240" x="40" y="880" as="geometry" />
+        </mxCell>
+        <mxCell id="er_eng" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;" value="&lt;b&gt;SEEngineer&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Engineer iOS · write-side&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="170" x="40" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="er_web" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;" value="&lt;b&gt;SEConneX&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Customer web · read / request&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="170" x="40" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="er_mob" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;" value="&lt;b&gt;SEConnexMobile&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Customer iOS · read / request&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="170" x="40" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="er_zAsset" parent="1" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=6 6;fillColor=none;strokeColor=#6C8EBF;verticalAlign=top;fontColor=#3B5A82;fontStyle=1;fontSize=13;arcSize=2;spacingTop=6;" value="SEAsset  —  schema AssetManagement   (shared backend hub · PG datawarehouse)" vertex="1">
+          <mxGeometry height="720" width="800" x="240" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="er_appuser" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" value="&lt;b&gt;AppUser&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;user_id · role (Engineer / Customer)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="180" x="270" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="er_asset" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D4E1F5;strokeColor=#6C8EBF;strokeWidth=3;fontSize=11;" value="&lt;b&gt;Asset&lt;/b&gt;  «bridge»&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;asset_id · customer_code · item_code&lt;/font&gt;" vertex="1">
+          <mxGeometry height="66" width="220" x="520" y="205" as="geometry" />
+        </mxCell>
+        <mxCell id="er_assetunit" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" value="&lt;b&gt;AssetUnit&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;unit / position of an asset&lt;/font&gt;" vertex="1">
+          <mxGeometry height="48" width="170" x="530" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="er_ticket" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" value="&lt;b&gt;Ticket&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;ticket_no · service request&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="180" x="270" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="er_job" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" value="&lt;b&gt;Job&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;job_no · work order&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="180" x="270" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="er_jobnote" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" value="&lt;b&gt;JobNote&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;work-log entry&lt;/font&gt;" vertex="1">
+          <mxGeometry height="46" width="180" x="270" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="er_jobeval" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" value="&lt;b&gt;JobEvaluation&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;sign-off · rating · FTF&lt;/font&gt;" vertex="1">
+          <mxGeometry height="46" width="180" x="270" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="er_record" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" value="&lt;b&gt;MaintenanceRecord&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;record_id · service history&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="190" x="520" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="er_omcontract" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" value="&lt;b&gt;OMContract&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;O&amp;amp;M / MA · per customer_code&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="190" x="520" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="er_pm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" value="&lt;b&gt;PMSchedule&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;preventive-maintenance cadence&lt;/font&gt;" vertex="1">
+          <mxGeometry height="48" width="190" x="520" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="er_proctpl" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" value="&lt;b&gt;ProcedureTemplate&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;→ PhaseTemplate → ChecklistItem&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="210" x="790" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="er_procrun" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" value="&lt;b&gt;JobProcedureRun&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;→ PhaseProgress · DataReading · Photo&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="210" x="790" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="er_attach" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" value="&lt;b&gt;Attachment&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;polymorphic · ticket|job|record&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="190" x="790" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="er_comm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" value="&lt;b&gt;Communication&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;news / offers feed&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="190" x="790" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="er_zDW" parent="1" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=6 6;fillColor=none;strokeColor=#D6B656;verticalAlign=top;fontColor=#9A7D1A;fontStyle=1;fontSize=13;arcSize=2;spacingTop=6;" value="SE DataWarehouse  —  DB datawarehouse · CRM schema (consolidation)" vertex="1">
+          <mxGeometry height="370" width="570" x="1090" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="er_dimcust" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;" value="&lt;b&gt;CRM.Dim_Customer&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;customer_code (natural key)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="270" x="1120" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="er_dimprod" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;" value="&lt;b&gt;CRM.Dim_Product&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;item_code&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="270" x="1120" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="er_fact" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;" value="&lt;b&gt;Fact_Service / Fact_Sales&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;rollups (Dim/Fact)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="270" x="1120" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="er_zSECA" parent="1" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=6 6;fillColor=none;strokeColor=#82B366;verticalAlign=top;fontColor=#2D7D46;fontStyle=1;fontSize=13;arcSize=2;spacingTop=6;" value="SECA  —  MSSQL Midnight   (Enterprise BI · read-only)" vertex="1">
+          <mxGeometry height="560" width="570" x="1090" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="er_mcust" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=11;" value="&lt;b&gt;Midnight.Customer&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;customer master&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="200" x="1120" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="er_mitem" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=11;" value="&lt;b&gt;Midnight.Item&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;product master&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="180" x="1440" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="er_inv" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=11;" value="&lt;b&gt;Invoice&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;revenue header&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="180" x="1120" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="er_invit" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=11;" value="&lt;b&gt;InvoiceItems&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;revenue line&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="180" x="1420" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="er_quo" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=11;" value="&lt;b&gt;Quotation&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;quote facts&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="180" x="1120" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="er_sp" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=11;" value="&lt;b&gt;SalePerson&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;sales dimension&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="180" x="1420" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="er_fnacc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=11;" value="&lt;b&gt;fn_AccurateInvoice&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;revenue SSOT · TVF (income + journal_adj)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="54" width="220" x="1120" y="910" as="geometry" />
+        </mxCell>
+        <mxCell id="er_dept" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=11;" value="&lt;b&gt;Department&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;org unit&lt;/font&gt;" vertex="1">
+          <mxGeometry height="48" width="160" x="1440" y="910" as="geometry" />
+        </mxCell>
+        <mxCell id="er_e1" edge="1" parent="1" source="er_appuser" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#6C8EBF;" target="er_job" value="assigned">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_e2" edge="1" parent="1" source="er_asset" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#6C8EBF;" target="er_ticket">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_e3" edge="1" parent="1" source="er_ticket" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#6C8EBF;" target="er_job">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_e4" edge="1" parent="1" source="er_job" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#6C8EBF;" target="er_jobnote">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_e5" edge="1" parent="1" source="er_job" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERone;endFill=0;strokeColor=#6C8EBF;" target="er_jobeval" value="1:1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_e6" edge="1" parent="1" source="er_asset" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#6C8EBF;" target="er_assetunit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_e7" edge="1" parent="1" source="er_asset" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#6C8EBF;" target="er_record">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_e8" edge="1" parent="1" source="er_asset" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#6C8EBF;" target="er_omcontract">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_e9" edge="1" parent="1" source="er_asset" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#6C8EBF;" target="er_pm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_e10" edge="1" parent="1" source="er_job" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#6C8EBF;" target="er_procrun">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_e11" edge="1" parent="1" source="er_proctpl" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#6C8EBF;" target="er_procrun">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_e12" edge="1" parent="1" source="er_job" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;dashed=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#6C8EBF;" target="er_attach" value="polymorphic">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_e13" edge="1" parent="1" source="er_appuser" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#FF3333;dashed=1;dashPattern=1 2;strokeWidth=2;" target="er_comm" value="creator">
+          <mxGeometry relative="1" x="-0.1486" y="3" as="geometry">
+            <mxPoint y="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="er_s1" edge="1" parent="1" source="er_mcust" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#82B366;" target="er_inv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_s2" edge="1" parent="1" source="er_inv" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#82B366;" target="er_invit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_s3" edge="1" parent="1" source="er_mitem" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#82B366;" target="er_invit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_s4" edge="1" parent="1" source="er_sp" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#82B366;" target="er_inv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_s5" edge="1" parent="1" source="er_mcust" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#82B366;" target="er_quo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_s6" edge="1" parent="1" source="er_dept" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;strokeColor=#82B366;" target="er_sp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_s7" edge="1" parent="1" source="er_inv" style="edgeStyle=entityRelationEdgeStyle;fontSize=9;html=1;dashed=1;endArrow=open;strokeColor=#9673A6;" target="er_fnacc" value="feeds">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_x1" edge="1" parent="1" source="er_asset" style="edgeStyle=entityRelationEdgeStyle;fontSize=10;fontStyle=1;html=1;dashed=1;dashPattern=8 6;startArrow=ERmany;startFill=0;endArrow=ERone;endFill=0;strokeColor=#B85450;strokeWidth=2.5;fontColor=#B85450;" target="er_dimcust" value="customer_code (soft · no FK)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_x2" edge="1" parent="1" source="er_asset" style="edgeStyle=entityRelationEdgeStyle;fontSize=10;html=1;dashed=1;dashPattern=8 6;startArrow=ERmany;startFill=0;endArrow=ERone;endFill=0;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;" target="er_dimprod" value="item_code (soft)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_x3" edge="1" parent="1" source="er_dimcust" style="edgeStyle=entityRelationEdgeStyle;fontSize=10;html=1;dashed=1;dashPattern=8 6;startArrow=none;endArrow=none;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;" target="er_mcust" value="= same customer (customer_code)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_x4" edge="1" parent="1" source="er_dimprod" style="edgeStyle=entityRelationEdgeStyle;fontSize=10;html=1;dashed=1;dashPattern=8 6;startArrow=none;endArrow=none;strokeColor=#B85450;strokeWidth=2;fontColor=#B85450;" target="er_mitem" value="= same product (item_code)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_c1" edge="1" parent="1" source="er_eng" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;html=1;dashed=1;endArrow=open;strokeColor=#B85450;rounded=0;" target="er_job" value="writes Job / Note / Procedure / sign-off">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_c2" edge="1" parent="1" source="er_web" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;html=1;dashed=1;endArrow=open;strokeColor=#B85450;rounded=0;" target="er_ticket" value="reads Asset / creates request">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er_c3" edge="1" parent="1" source="er_mob" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;html=1;dashed=1;endArrow=open;strokeColor=#B85450;rounded=0;" target="er_ticket" value="reads history / creates request">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zTwJ-xQyyG9vWHYu9aZL-1" edge="1" parent="1" source="er_zAsset" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="er_zAsset">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
